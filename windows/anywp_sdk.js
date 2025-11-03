@@ -159,17 +159,26 @@
     
     // Handle click event from native
     _handleClick: function(x, y) {
+      console.log('[AnyWP] _handleClick called with: (' + x + ',' + y + ')');
+      console.log('[AnyWP] Registered handlers: ' + this._clickHandlers.length);
+      
       this._log('Click at physical: (' + x + ',' + y + ') CSS: (' + 
                 (x / this.dpiScale) + ',' + (y / this.dpiScale) + ')');
       
       for (let i = 0; i < this._clickHandlers.length; i++) {
         const handler = this._clickHandlers[i];
+        console.log('[AnyWP] Checking handler ' + i + ':', handler.bounds);
+        console.log('[AnyWP] Is in bounds?', this._isInBounds(x, y, handler.bounds));
+        
         if (this._isInBounds(x, y, handler.bounds)) {
+          console.log('[AnyWP] HIT! Calling callback');
           this._log('  -> HIT: ' + (handler.element.id || handler.element.className));
           handler.callback(x, y);
           break;
         }
       }
+      
+      console.log('[AnyWP] No handler matched the click');
     },
     
     // Wait for element to appear in DOM
@@ -510,6 +519,7 @@
       });
       
       window.addEventListener('AnyWP:click', function(event) {
+        console.log('[AnyWP] AnyWP:click event received:', event.detail);
         const detail = event.detail;
         self._handleClick(detail.x, detail.y);
       });
