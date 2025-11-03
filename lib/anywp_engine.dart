@@ -54,16 +54,21 @@ class AnyWPEngine {
     _channel.setMethodCallHandler((call) async {
       print('[AnyWPEngine] Received method call from native: ${call.method}');
       
-      if (call.method == 'onMonitorChange') {
-        print('[AnyWPEngine] Monitor change detected from native - calling callback');
-        if (_onMonitorChangeCallback != null) {
-          _onMonitorChangeCallback!();
-          print('[AnyWPEngine] Callback executed');
+      try {
+        if (call.method == 'onMonitorChange') {
+          print('[AnyWPEngine] Monitor change detected from native - calling callback');
+          if (_onMonitorChangeCallback != null) {
+            _onMonitorChangeCallback!();
+            print('[AnyWPEngine] Callback executed successfully');
+          } else {
+            print('[AnyWPEngine] WARNING: Callback is null!');
+          }
         } else {
-          print('[AnyWPEngine] WARNING: Callback is null!');
+          print('[AnyWPEngine] Unknown method: ${call.method}');
         }
-      } else {
-        print('[AnyWPEngine] Unknown method: ${call.method}');
+      } catch (e, stackTrace) {
+        print('[AnyWPEngine] ERROR in method handler: $e');
+        print('[AnyWPEngine] StackTrace: $stackTrace');
       }
     });
     

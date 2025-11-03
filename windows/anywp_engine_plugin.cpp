@@ -2110,24 +2110,38 @@ void AnyWPEnginePlugin::HandleDisplayChange() {
 
 // Notify Dart side about monitor changes
 void AnyWPEnginePlugin::NotifyMonitorChange() {
-  if (method_channel_) {
-    std::cout << "[AnyWP] [DisplayChange] Notifying Dart about monitor change via channel: " << method_channel_ << std::endl;
-    
-    try {
-      // Invoke method on Dart side
-      method_channel_->InvokeMethod(
-        "onMonitorChange",
-        std::make_unique<flutter::EncodableValue>(flutter::EncodableMap())
-      );
-      std::cout << "[AnyWP] [DisplayChange] Notification sent successfully" << std::endl;
-    } catch (const std::exception& e) {
-      std::cout << "[AnyWP] [DisplayChange] ERROR: Failed to send notification: " << e.what() << std::endl;
-    } catch (...) {
-      std::cout << "[AnyWP] [DisplayChange] ERROR: Failed to send notification (unknown error)" << std::endl;
-    }
-  } else {
+  if (!method_channel_) {
     std::cout << "[AnyWP] [DisplayChange] ERROR: method_channel_ is nullptr!" << std::endl;
+    return;
   }
+  
+  std::cout << "[AnyWP] [DisplayChange] Notifying Dart about monitor change via channel: " << method_channel_ << std::endl;
+  
+  // CRITICAL: InvokeMethod must be called carefully
+  // WM_DISPLAYCHANGE comes from window message loop
+  // We need to ensure it's safe to call Flutter API from this context
+  
+  try {
+    std::cout << "[AnyWP] [DisplayChange] Before InvokeMethod..." << std::endl;
+    
+    // Create empty map for the notification
+    auto args = std::make_unique<flutter::EncodableValue>(flutter::EncodableMap());
+    
+    std::cout << "[AnyWP] [DisplayChange] Calling InvokeMethod..." << std::endl;
+    
+    // Invoke method on Dart side
+    method_channel_->InvokeMethod("onMonitorChange", std::move(args));
+    
+    std::cout << "[AnyWP] [DisplayChange] InvokeMethod returned" << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] Notification sent successfully" << std::endl;
+    
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [DisplayChange] EXCEPTION: " << e.what() << std::endl;
+  } catch (...) {
+    std::cout << "[AnyWP] [DisplayChange] UNKNOWN EXCEPTION caught" << std::endl;
+  }
+  
+  std::cout << "[AnyWP] [DisplayChange] NotifyMonitorChange completed" << std::endl;
 }
 
 // Handle monitor count change (auto-start wallpaper on new monitors)

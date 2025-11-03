@@ -35,8 +35,19 @@ class _MyAppState extends State<MyApp> {
   
   Future<void> _handleMonitorChange() async {
     print('[APP] Handling monitor change - refreshing monitor list...');
-    await _loadMonitors();
-    _showMessage('Display configuration changed - UI updated');
+    
+    try {
+      await _loadMonitors();
+      
+      if (mounted) {
+        _showMessage('Display configuration changed - UI updated');
+      }
+      
+      print('[APP] Monitor change handled successfully');
+    } catch (e, stackTrace) {
+      print('[APP] ERROR in _handleMonitorChange: $e');
+      print('[APP] StackTrace: $stackTrace');
+    }
   }
   
   @override
@@ -49,14 +60,21 @@ class _MyAppState extends State<MyApp> {
   
   Future<void> _loadMonitors() async {
     print('[APP] Loading monitors...');
-    final monitors = await AnyWPEngine.getMonitors();
     
-    print('[APP] Found ${monitors.length} monitor(s):');
-    for (final monitor in monitors) {
-      print('[APP]   $monitor');
-    }
-    
-    setState(() {
+    try {
+      final monitors = await AnyWPEngine.getMonitors();
+      
+      print('[APP] Found ${monitors.length} monitor(s):');
+      for (final monitor in monitors) {
+        print('[APP]   $monitor');
+      }
+      
+      if (!mounted) {
+        print('[APP] Widget not mounted, skipping setState');
+        return;
+      }
+      
+      setState(() {
       // Get current monitor indices before update
       final oldIndices = _monitors.map((m) => m.index).toSet();
       final newIndices = monitors.map((m) => m.index).toSet();
@@ -101,9 +119,13 @@ class _MyAppState extends State<MyApp> {
         _monitorLoading.remove(key);
         print('[APP] Removed monitor $key from UI');
       }
-    });
-    
-    print('[APP] Monitor list updated. Total: ${_monitors.length}');
+      });
+      
+      print('[APP] Monitor list updated. Total: ${_monitors.length}');
+    } catch (e, stackTrace) {
+      print('[APP] ERROR in _loadMonitors: $e');
+      print('[APP] StackTrace: $stackTrace');
+    }
   }
 
 
