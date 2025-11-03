@@ -2139,11 +2139,10 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
     
     std::cout << "[AnyWP] [DisplayChange] Calling InvokeMethod..." << std::endl;
     
-    // Invoke method on Dart side
+    // Invoke method on Dart side (fire and forget - no callback needed)
     method_channel_->InvokeMethod("onMonitorChange", std::move(args));
     
-    std::cout << "[AnyWP] [DisplayChange] InvokeMethod returned" << std::endl;
-    std::cout << "[AnyWP] [DisplayChange] Notification sent successfully" << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] InvokeMethod call completed" << std::endl;
     
   } catch (const std::exception& e) {
     std::cout << "[AnyWP] [DisplayChange] EXCEPTION: " << e.what() << std::endl;
