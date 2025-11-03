@@ -645,6 +645,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                 ConfigurePermissions();
                 SetupSecurityHandlers();
                 SetupMessageBridge();
+                InjectAnyWallpaperSDK();
               } else {
                 // For multi-monitor, setup handlers inline
                 // TODO: Refactor these methods to accept webview parameter
@@ -654,6 +655,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                 ConfigurePermissions();
                 SetupSecurityHandlers();
                 SetupMessageBridge();
+                InjectAnyWallpaperSDK();
                 webview_ = old_webview;
               }
 
@@ -760,6 +762,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                 ConfigurePermissions();
                 SetupSecurityHandlers();
                 SetupMessageBridge();
+                InjectAnyWallpaperSDK();
               } else {
                 // For multi-monitor, setup handlers inline
                 auto old_webview = webview_;
@@ -767,6 +770,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                 ConfigurePermissions();
                 SetupSecurityHandlers();
                 SetupMessageBridge();
+                InjectAnyWallpaperSDK();
                 webview_ = old_webview;
               }
 
