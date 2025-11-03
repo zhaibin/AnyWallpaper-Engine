@@ -164,22 +164,44 @@ SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
 测试文件位于 `examples/` 目录：
 - `test_simple.html` - 简单测试页面
 - `test_api.html` - API 功能测试
-- `test_iframe_ads.html` - iframe 测试
+- `test_basic_click.html` - 基础点击测试
+- `test_react.html` - React 18 集成示例 ⭐ **New**
+- `test_vue.html` - Vue 3 集成示例 ⭐ **New**
+- `test_iframe_ads.html` - iframe 广告测试
 
 运行测试：
 ```bash
-# 自动测试
-.\scripts\test.bat
+# 构建并运行
+.\scripts\build_and_run.bat
 
-# 手动运行
+# 仅运行
 .\scripts\run.bat
 ```
 
 Tested on:
 - ✅ Windows 11 (Build 22000+)
 - ✅ 5120x2784 resolution
+- ✅ React/Vue SPA frameworks ⭐ **New**
+- ✅ iframe ad interactions
 - ✅ Multiple WorkerW configurations
-- ✅ Various web content types
+
+## 📚 Documentation
+
+### For Web Developers
+- 📖 [Web Developer Guide (中文)](docs/WEB_DEVELOPER_GUIDE_CN.md) - React/Vue 集成指南
+- 📖 [Web Developer Guide (English)](docs/WEB_DEVELOPER_GUIDE.md)
+- 📖 [SDK API Reference](docs/SDK_API_REFERENCE.md) - 完整 API 参考
+
+### For Flutter Developers
+- 📖 [中文文档](docs/README_CN.md)
+- 📖 [Quick Start Guide](docs/QUICK_START.md)
+- 📖 [Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md)
+- 📖 [Quick Integration](QUICK_INTEGRATION.md) - 30 秒快速集成
+
+### Technical
+- 📖 [Technical Notes](docs/TECHNICAL_NOTES.md)
+- 📖 [API Bridge](docs/API_BRIDGE.md)
+- 📖 [Testing Guide](docs/TESTING_GUIDE.md)
 
 ## 🤝 Contributing
 
