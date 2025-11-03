@@ -1999,6 +1999,16 @@ LRESULT CALLBACK AnyWPEnginePlugin::DisplayChangeWndProc(HWND hwnd, UINT message
     
     return 0;
   }
+  else if (message == WM_NOTIFY_MONITOR_CHANGE) {
+    std::cout << "[AnyWP] [DisplayChange] Received WM_NOTIFY_MONITOR_CHANGE in main thread" << std::endl;
+    
+    // Now we're in the window's message loop thread (safer for Flutter)
+    if (display_change_instance_) {
+      display_change_instance_->NotifyMonitorChange();
+    }
+    
+    return 0;
+  }
   
   return DefWindowProcW(hwnd, message, wParam, lParam);
 }
@@ -2101,10 +2111,8 @@ void AnyWPEnginePlugin::HandleDisplayChange() {
   
   // Always notify UI to refresh when display changes
   if (should_notify_ui) {
-    std::cout << "[AnyWP] [DisplayChange] Should notify Dart, but skipping for now (thread safety)" << std::endl;
-    // TODO: NotifyMonitorChange() causes crashes due to thread safety issues
-    // Need to implement safe cross-thread communication
-    // For now, user can click "Refresh" button to update UI
+    std::cout << "[AnyWP] [DisplayChange] Queuing UI notification (thread-safe)..." << std::endl;
+    SafeNotifyMonitorChange();
   }
   
   std::cout << "[AnyWP] [DisplayChange] ========== Display change handled ==========" << std::endl;
@@ -2144,6 +2152,24 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
   }
   
   std::cout << "[AnyWP] [DisplayChange] NotifyMonitorChange completed" << std::endl;
+}
+
+// Thread-safe notification using message queue
+void AnyWPEnginePlugin::SafeNotifyMonitorChange() {
+  if (!display_listener_hwnd_) {
+    std::cout << "[AnyWP] [DisplayChange] ERROR: No listener window for safe notification" << std::endl;
+    return;
+  }
+  
+  std::cout << "[AnyWP] [DisplayChange] Posting WM_NOTIFY_MONITOR_CHANGE to message queue" << std::endl;
+  
+  // Post message to our own window's message queue
+  // This will be processed in the window's thread, which is safer for Flutter
+  if (PostMessageW(display_listener_hwnd_, WM_NOTIFY_MONITOR_CHANGE, 0, 0)) {
+    std::cout << "[AnyWP] [DisplayChange] Message posted successfully" << std::endl;
+  } else {
+    std::cout << "[AnyWP] [DisplayChange] ERROR: Failed to post message: " << GetLastError() << std::endl;
+  }
 }
 
 // Handle monitor count change (auto-start wallpaper on new monitors)

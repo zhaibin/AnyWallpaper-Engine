@@ -201,6 +201,10 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // Method channel for callbacks to Dart
   flutter::MethodChannel<flutter::EncodableValue>* method_channel_ = nullptr;
   void NotifyMonitorChange();
+  void SafeNotifyMonitorChange();  // Thread-safe version using message queue
+  
+  // Custom window message for safe thread communication
+  static constexpr UINT WM_NOTIFY_MONITOR_CHANGE = WM_USER + 100;
 };
 
 }  // namespace anywp_engine
