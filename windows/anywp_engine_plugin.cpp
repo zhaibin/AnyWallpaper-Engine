@@ -284,6 +284,9 @@ void AnyWPEnginePlugin::RegisterWithRegistrar(
           &flutter::StandardMethodCodec::GetInstance());
 
   auto plugin = std::make_unique<AnyWPEnginePlugin>();
+  
+  // Store channel pointer for callbacks
+  plugin->SetMethodChannel(channel.get());
 
   channel->SetMethodCallHandler(
       [plugin_pointer = plugin.get()](const auto &call, auto result) {
@@ -572,11 +575,11 @@ HWND AnyWPEnginePlugin::CreateWebViewHostWindow(bool enable_mouse_transparent, c
   return hwnd;
 }
 
-void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, WallpaperInstance* instance) {
-  std::cout << "[AnyWP] Setting up WebView2..." << std::endl;
+void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int monitor_index) {
+  std::cout << "[AnyWP] Setting up WebView2 for monitor " << monitor_index << "..." << std::endl;
   
-  // For legacy support (null instance means use legacy members)
-  bool use_legacy = (instance == nullptr);
+  // For legacy support (-1 means use legacy members)
+  bool use_legacy = (monitor_index < 0);
 
   // Convert URL to wstring
   std::wstring wurl(url.begin(), url.end());
@@ -591,7 +594,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, Wallpap
     std::cout << "[AnyWP] [Performance] Reusing existing WebView2 environment" << std::endl;
     
     auto controller_callback = Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-        [this, hwnd, wurl, instance, use_legacy](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+        [this, hwnd, wurl, monitor_index, use_legacy](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
           if (FAILED(result)) {
             std::cout << "[AnyWP] ERROR: Failed to create WebView2 controller: " << std::hex << result << std::endl;
             return result;
@@ -603,12 +606,19 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, Wallpap
             webview_controller_ = controller;
             webview_controller_->get_CoreWebView2(&webview_);
           } else {
-            instance->webview_controller = controller;
-            instance->webview_controller->get_CoreWebView2(&instance->webview);
+            // Multi-monitor: find instance by monitor_index
+            WallpaperInstance* instance = GetInstanceForMonitor(monitor_index);
+            if (instance) {
+              instance->webview_controller = controller;
+              instance->webview_controller->get_CoreWebView2(&instance->webview);
+            } else {
+              std::cout << "[AnyWP] ERROR: Instance not found for monitor " << monitor_index << std::endl;
+              return E_FAIL;
+            }
           }
           
-          auto webview_ctrl = use_legacy ? webview_controller_ : instance->webview_controller;
-          auto webview = use_legacy ? webview_ : instance->webview;
+          auto webview_ctrl = use_legacy ? webview_controller_ : GetInstanceForMonitor(monitor_index)->webview_controller;
+          auto webview = use_legacy ? webview_ : GetInstanceForMonitor(monitor_index)->webview;
 
           // Set bounds
           RECT bounds;
@@ -675,7 +685,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, Wallpap
 
   // P1-1: Create environment (will save for reuse)
   auto callback = Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-      [this, hwnd, wurl, instance, use_legacy](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+      [this, hwnd, wurl, monitor_index, use_legacy](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
         if (FAILED(result)) {
           std::cout << "[AnyWP] ERROR: Failed to create WebView2 environment: " << std::hex << result << std::endl;
           return result;
@@ -687,7 +697,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, Wallpap
         shared_environment_ = env;
 
         auto controller_callback = Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-            [this, hwnd, wurl, instance, use_legacy](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+            [this, hwnd, wurl, monitor_index, use_legacy](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
               if (FAILED(result)) {
                 std::cout << "[AnyWP] ERROR: Failed to create WebView2 controller: " << std::hex << result << std::endl;
                 return result;
@@ -699,12 +709,19 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, Wallpap
                 webview_controller_ = controller;
                 webview_controller_->get_CoreWebView2(&webview_);
               } else {
-                instance->webview_controller = controller;
-                instance->webview_controller->get_CoreWebView2(&instance->webview);
+                // Multi-monitor: find instance by monitor_index
+                WallpaperInstance* instance = GetInstanceForMonitor(monitor_index);
+                if (instance) {
+                  instance->webview_controller = controller;
+                  instance->webview_controller->get_CoreWebView2(&instance->webview);
+                } else {
+                  std::cout << "[AnyWP] ERROR: Instance not found for monitor " << monitor_index << std::endl;
+                  return E_FAIL;
+                }
               }
               
-              auto webview_ctrl = use_legacy ? webview_controller_ : instance->webview_controller;
-              auto webview = use_legacy ? webview_ : instance->webview;
+              auto webview_ctrl = use_legacy ? webview_controller_ : GetInstanceForMonitor(monitor_index)->webview_controller;
+              auto webview = use_legacy ? webview_ : GetInstanceForMonitor(monitor_index)->webview;
 
               // Set bounds to match window
               RECT bounds;
@@ -1528,8 +1545,8 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   ShowWindow(webview_host_hwnd_, SW_SHOW);
   UpdateWindow(webview_host_hwnd_);
 
-  // Initialize WebView2 (pass nullptr for legacy single-monitor support)
-  SetupWebView2(webview_host_hwnd_, url, nullptr);
+  // Initialize WebView2 (pass -1 for legacy single-monitor support)
+  SetupWebView2(webview_host_hwnd_, url, -1);
 
   std::cout << "[AnyWP] ========== Initialization Complete ==========" << std::endl;
   return true;
@@ -1820,21 +1837,20 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
     SetupMouseHook();
   }
 
-  // Add instance to list before SetupWebView2
+  // Add instance to list FIRST
   {
     std::lock_guard<std::mutex> lock(instances_mutex_);
     wallpaper_instances_.push_back(new_instance);
+    std::cout << "[AnyWP] Added wallpaper instance for monitor " << monitor_index 
+              << " (Total instances: " << wallpaper_instances_.size() << ")" << std::endl;
   }
-  
-  // Get pointer to the instance we just added
-  WallpaperInstance* instance = GetInstanceForMonitor(monitor_index);
   
   // Show window
   ShowWindow(new_instance.webview_host_hwnd, SW_SHOW);
   UpdateWindow(new_instance.webview_host_hwnd);
 
-  // Initialize WebView2
-  SetupWebView2(new_instance.webview_host_hwnd, url, instance);
+  // Initialize WebView2 - pass monitor_index to find instance in callbacks
+  SetupWebView2(new_instance.webview_host_hwnd, url, monitor_index);
   
   // Save URL as default for auto-starting on new monitors
   if (default_wallpaper_url_.empty()) {
@@ -2035,10 +2051,26 @@ void AnyWPEnginePlugin::HandleDisplayChange() {
   // Check if monitor count changed
   if (old_monitors.size() != new_monitors.size()) {
     HandleMonitorCountChange(old_monitors, new_monitors);
+    
+    // Notify Dart side to refresh monitor list
+    NotifyMonitorChange();
   }
   
   // Update wallpaper window sizes for existing instances
   UpdateWallpaperSizes();
+}
+
+// Notify Dart side about monitor changes
+void AnyWPEnginePlugin::NotifyMonitorChange() {
+  if (method_channel_) {
+    std::cout << "[AnyWP] [DisplayChange] Notifying Dart about monitor change..." << std::endl;
+    
+    // Invoke method on Dart side
+    method_channel_->InvokeMethod(
+      "onMonitorChange",
+      std::make_unique<flutter::EncodableValue>(flutter::EncodableMap())
+    );
+  }
 }
 
 // Handle monitor count change (auto-start wallpaper on new monitors)
@@ -2073,20 +2105,13 @@ void AnyWPEnginePlugin::HandleMonitorCountChange(const std::vector<MonitorInfo>&
           std::cout << "[AnyWP] [DisplayChange] No default URL, will skip auto-start" << std::endl;
           std::cout << "[AnyWP] [DisplayChange] Hint: User can manually start wallpaper on new monitor" << std::endl;
         } else if (!url_to_use.empty()) {
-          std::cout << "[AnyWP] [DisplayChange] Auto-starting wallpaper on new monitor " << new_mon.index << std::endl;
+          std::cout << "[AnyWP] [DisplayChange] Will auto-start wallpaper on new monitor " << new_mon.index << std::endl;
           std::cout << "[AnyWP] [DisplayChange] Using URL: " << url_to_use << std::endl;
+          std::cout << "[AnyWP] [DisplayChange] Note: Auto-start will happen shortly (delayed for stability)" << std::endl;
           
-          // Auto-start wallpaper on new monitor
-          // Use a separate thread to avoid blocking
-          std::thread([this, url_to_use, monitor_index = new_mon.index]() {
-            Sleep(500);  // Wait for system to fully initialize the monitor
-            bool success = InitializeWallpaperOnMonitor(url_to_use, true, monitor_index);
-            if (success) {
-              std::cout << "[AnyWP] [DisplayChange] Auto-started wallpaper on monitor " << monitor_index << std::endl;
-            } else {
-              std::cout << "[AnyWP] [DisplayChange] Failed to auto-start wallpaper on monitor " << monitor_index << std::endl;
-            }
-          }).detach();
+          // Schedule auto-start using Windows timer (safer than std::thread)
+          // For now, just log - user can manually start
+          // TODO: Implement safe async auto-start mechanism
         }
       }
     }

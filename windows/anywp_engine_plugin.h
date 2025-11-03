@@ -94,6 +94,11 @@ class AnyWPEnginePlugin : public flutter::Plugin {
 
   AnyWPEnginePlugin(const AnyWPEnginePlugin&) = delete;
   AnyWPEnginePlugin& operator=(const AnyWPEnginePlugin&) = delete;
+  
+  // Set method channel for callbacks
+  void SetMethodChannel(flutter::MethodChannel<flutter::EncodableValue>* channel) {
+    method_channel_ = channel;
+  }
 
  private:
   void HandleMethodCall(
@@ -112,7 +117,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   bool NavigateToUrl(const std::string& url);
 
   HWND CreateWebViewHostWindow(bool enable_mouse_transparent, const MonitorInfo* monitor = nullptr, HWND parent_window = nullptr);
-  void SetupWebView2(HWND hwnd, const std::string& url, WallpaperInstance* instance);
+  void SetupWebView2(HWND hwnd, const std::string& url, int monitor_index = -1);
   
   // Multi-monitor helpers
   WallpaperInstance* GetInstanceForMonitor(int monitor_index);
@@ -192,6 +197,10 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   HWND display_listener_hwnd_ = nullptr;
   static AnyWPEnginePlugin* display_change_instance_;
   std::string default_wallpaper_url_ = "";  // Default URL for auto-start on new monitors
+  
+  // Method channel for callbacks to Dart
+  flutter::MethodChannel<flutter::EncodableValue>* method_channel_ = nullptr;
+  void NotifyMonitorChange();
 };
 
 }  // namespace anywp_engine

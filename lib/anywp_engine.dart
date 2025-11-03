@@ -41,6 +41,22 @@ class MonitorInfo {
 
 class AnyWPEngine {
   static const MethodChannel _channel = MethodChannel('anywp_engine');
+  
+  // Callback for monitor change events
+  static void Function()? _onMonitorChangeCallback;
+  
+  /// Set callback for monitor change events
+  static void setOnMonitorChangeCallback(void Function() callback) {
+    _onMonitorChangeCallback = callback;
+    
+    // Set method call handler for callbacks from native
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'onMonitorChange') {
+        print('[AnyWPEngine] Monitor change detected from native');
+        _onMonitorChangeCallback?.call();
+      }
+    });
+  }
 
   /// Initialize WebView2 as desktop wallpaper
   static Future<bool> initializeWallpaper({
