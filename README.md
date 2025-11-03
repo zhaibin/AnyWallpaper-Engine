@@ -17,6 +17,10 @@ A Flutter Windows plugin that embeds WebView2 as an interactive desktop wallpape
 
 ### Installation
 
+**📦 Want to use this in your own project?**  
+👉 See **[Quick Integration Guide](QUICK_INTEGRATION.md)** for 3 ways to integrate  
+👉 See **[Complete Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md)** for detailed documentation
+
 Add to your `pubspec.yaml`:
 
 ```yaml
@@ -114,19 +118,16 @@ Progman (Desktop Window)
 - [Usage Examples](docs/USAGE_EXAMPLES.md) - Code examples
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues
 
+### 📦 Integration & Packaging
+- [⚡ Quick Integration](QUICK_INTEGRATION.md) - 30-second integration guide
+- [📚 Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md) - Complete packaging guide (中文)
+- [🏗️ Integration Architecture](docs/INTEGRATION_ARCHITECTURE.md) - Architecture & workflows
+- [🎯 Cheat Sheet](docs/CHEAT_SHEET_CN.md) - Quick reference card (中文)
+
 ### Technical Guides
 - [Technical Notes](docs/TECHNICAL_NOTES.md) - Implementation details
-- [Build Info](docs/BUILD_INFO.md) - Compilation details
-- [Build Notes](docs/BUILD_NOTES.md) - Header naming and build issues
 - [API Bridge](docs/API_BRIDGE.md) - JavaScript Bridge documentation
-
-### Optimization & Performance
-- [Optimization Guide](docs/OPTIMIZATION_GUIDE.md) - Performance tuning
-- [Optimization Completed](docs/OPTIMIZATION_COMPLETED.md) - P0/P1 optimizations
-
-### Development
-- [GitHub Setup](docs/GITHUB_SETUP.md) - Push to GitHub guide
-- [Final Summary](docs/FINAL_SUMMARY.md) - Project overview
+- [Project Structure](docs/PROJECT_STRUCTURE.md) - Project organization
 
 ## 🎮 Example App
 

@@ -108,8 +108,7 @@ scripts/                # 构建脚本
 ## 性能优化
 
 **优先级**: P0（必须）> P1（应该）> P2（可以）  
-**已实现**: 智能指针 | URL 快速验证 | 鼠标钩子优化 | WebView2 配置优化  
-详见 `docs/OPTIMIZATION_COMPLETED.md`
+**已实现**: 智能指针 | URL 快速验证 | 鼠标钩子优化 | WebView2 配置优化
 
 ---
 

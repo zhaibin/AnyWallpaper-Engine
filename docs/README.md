@@ -4,23 +4,21 @@
 
 ### 🚀 用户文档
 - [中文文档 (Chinese)](README_CN.md) - 完整的中文使用指南
+- [快速开始](QUICK_START.md) - 快速上手指南
+- [测试指南](TESTING_GUIDE.md) - 测试步骤和检查点
 - [使用示例](USAGE_EXAMPLES.md) - 代码示例和使用模式
 - [故障排除](TROUBLESHOOTING.md) - 常见问题和解决方案
 
+### 📦 集成与打包
+- [快速集成](../QUICK_INTEGRATION.md) - 30 秒快速集成
+- [包使用指南](PACKAGE_USAGE_GUIDE_CN.md) - 完整打包指南（中文）
+- [集成架构](INTEGRATION_ARCHITECTURE.md) - 架构与工作流
+- [快速参考卡](CHEAT_SHEET_CN.md) - 速查表（中文）
+
 ### 🔧 技术文档
 - [技术说明](TECHNICAL_NOTES.md) - 深度实现细节
-- [构建信息](BUILD_INFO.md) - 编译和分发说明
-- [构建注意事项](BUILD_NOTES.md) - 头文件命名和构建问题
 - [API Bridge](API_BRIDGE.md) - JavaScript Bridge 文档
-
-### ⚡ 优化文档
-- [优化指南](OPTIMIZATION_GUIDE.md) - 完整的优化策略
-- [优化完成报告](OPTIMIZATION_COMPLETED.md) - P0/P1 优化实现
-
-### 🔗 开发文档
-- [GitHub 设置](GITHUB_SETUP.md) - 如何推送到 GitHub
-- [项目总结](FINAL_SUMMARY.md) - 项目完成概览
-- [文件夹命名说明](PROJECT_FOLDER_NAMING.md) - 项目文件夹命名建议
+- [项目结构](PROJECT_STRUCTURE.md) - 项目组织说明
 
 ---
 
