@@ -111,7 +111,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   bool StopWallpaper();
   bool NavigateToUrl(const std::string& url);
 
-  HWND CreateWebViewHostWindow(bool enable_mouse_transparent, const MonitorInfo* monitor = nullptr);
+  HWND CreateWebViewHostWindow(bool enable_mouse_transparent, const MonitorInfo* monitor = nullptr, HWND parent_window = nullptr);
   void SetupWebView2(HWND hwnd, const std::string& url, WallpaperInstance* instance);
   
   // Multi-monitor helpers

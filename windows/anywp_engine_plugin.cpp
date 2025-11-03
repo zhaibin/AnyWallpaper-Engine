@@ -463,17 +463,21 @@ void AnyWPEnginePlugin::HandleMethodCall(
 }
 
 
-HWND AnyWPEnginePlugin::CreateWebViewHostWindow(bool enable_mouse_transparent, const MonitorInfo* monitor) {
+HWND AnyWPEnginePlugin::CreateWebViewHostWindow(bool enable_mouse_transparent, const MonitorInfo* monitor, HWND parent_window_arg) {
   std::cout << "[AnyWP] Creating WebView host window..." << std::endl;
 
-  // Determine parent window (use legacy or from monitor-specific instance)
-  HWND parent_window = worker_w_hwnd_;
+  // Determine parent window
+  // Priority: 1. Explicit parent_window_arg (multi-monitor)
+  //           2. Legacy worker_w_hwnd_ (single-monitor)
+  HWND parent_window = parent_window_arg ? parent_window_arg : worker_w_hwnd_;
   
   if (!parent_window) {
     std::cout << "[AnyWP] ERROR: No parent window (WorkerW) available" << std::endl;
     LogError("CreateWebViewHostWindow: No parent window");
     return nullptr;
   }
+  
+  std::cout << "[AnyWP] Using parent window (WorkerW): " << parent_window << std::endl;
 
   // Validate parent window
   if (!IsValidWindowHandle(parent_window)) {
@@ -1775,7 +1779,8 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
             << " [" << target_monitor->width << "x" << target_monitor->height << "]" << std::endl;
 
   // Create WebView host window for this monitor
-  HWND hwnd = CreateWebViewHostWindow(enable_mouse_transparent, target_monitor);
+  // Pass the instance's worker_w_hwnd as parent (not the global one)
+  HWND hwnd = CreateWebViewHostWindow(enable_mouse_transparent, target_monitor, new_instance.worker_w_hwnd);
   if (!hwnd) {
     std::cout << "[AnyWP] ERROR: Failed to create WebView host window" << std::endl;
     return false;
