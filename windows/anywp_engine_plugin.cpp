@@ -2010,18 +2010,24 @@ void AnyWPEnginePlugin::SetupDisplayChangeListener() {
     }
   }
   
-  // Create hidden window to receive messages
+  // Create hidden top-level window to receive WM_DISPLAYCHANGE
+  // Note: HWND_MESSAGE windows don't receive WM_DISPLAYCHANGE, must use regular window
   display_listener_hwnd_ = CreateWindowExW(
     0,
     L"AnyWPDisplayChangeListener",
     L"AnyWP Display Change Listener",
-    0,  // No style (hidden)
-    0, 0, 0, 0,
-    HWND_MESSAGE,  // Message-only window
+    WS_OVERLAPPED,  // Top-level window (but not visible)
+    CW_USEDEFAULT, CW_USEDEFAULT, 1, 1,  // Minimal size
+    nullptr,  // No parent (top-level)
     nullptr,
     GetModuleHandleW(nullptr),
     nullptr
   );
+  
+  // Don't show the window (keep it hidden)
+  if (display_listener_hwnd_) {
+    ShowWindow(display_listener_hwnd_, SW_HIDE);
+  }
   
   if (display_listener_hwnd_) {
     std::cout << "[AnyWP] [DisplayChange] Listener window created: " << display_listener_hwnd_ << std::endl;
