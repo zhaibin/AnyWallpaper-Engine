@@ -1124,9 +1124,16 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
   // Parse JSON message (support both uppercase and lowercase)
   if (message.find("\"type\":\"IFRAME_DATA\"") != std::string::npos) {
     // Handle iframe data synchronization
-    // TODO: Determine which instance sent this message
-    // For now, use legacy handling or first instance
-    HandleIframeDataMessage(message, nullptr);
+    // CRITICAL FIX: Find the correct instance for this message
+    WallpaperInstance* target_instance = nullptr;
+    
+    // Use first instance for now (TODO: improve for multi-monitor)
+    if (!wallpaper_instances_.empty()) {
+      target_instance = &wallpaper_instances_[0];
+      std::cout << "[AnyWP] [API] Using wallpaper instance for iframe data" << std::endl;
+    }
+    
+    HandleIframeDataMessage(message, target_instance);
   }
   else if (message.find("\"type\":\"OPEN_URL\"") != std::string::npos || 
       message.find("\"type\":\"openURL\"") != std::string::npos) {
@@ -1232,6 +1239,9 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
     
     // Check if click is on an iframe ad (priority handling)
     if (wParam == WM_LBUTTONUP && target_instance) {
+      std::cout << "[AnyWP] [Hook] Checking iframe at (" << pt.x << "," << pt.y << ")" << std::endl;
+      std::cout << "[AnyWP] [Hook] Target instance has " << target_instance->iframes.size() << " iframes" << std::endl;
+      
       IframeInfo* iframe = hook_instance_->GetIframeAtPoint(pt.x, pt.y, target_instance);
       
       if (iframe && !iframe->click_url.empty()) {
@@ -1506,17 +1516,29 @@ void AnyWPEnginePlugin::HandleIframeDataMessage(const std::string& json_data, Wa
 IframeInfo* AnyWPEnginePlugin::GetIframeAtPoint(int x, int y, WallpaperInstance* instance) {
   if (instance) {
     // Multi-monitor: check specific instance's iframes
+    std::cout << "[AnyWP] [iframe] GetIframeAtPoint: checking (" << x << "," << y << ") against " 
+              << instance->iframes.size() << " iframes" << std::endl;
+    
     for (auto& iframe : instance->iframes) {
-      if (!iframe.visible) continue;
+      if (!iframe.visible) {
+        std::cout << "[AnyWP] [iframe]   " << iframe.id << " - HIDDEN" << std::endl;
+        continue;
+      }
       
       int right = iframe.left + iframe.width;
       int bottom = iframe.top + iframe.height;
       
+      std::cout << "[AnyWP] [iframe]   " << iframe.id << ": [" << iframe.left << "," << iframe.top 
+                << "] ~ [" << right << "," << bottom << "]" << std::endl;
+      
       if (x >= iframe.left && x < right &&
           y >= iframe.top && y < bottom) {
+        std::cout << "[AnyWP] [iframe]   MATCH!" << std::endl;
         return &iframe;
       }
     }
+    
+    std::cout << "[AnyWP] [iframe]   No match found" << std::endl;
   } else {
     // Legacy: use global iframe list with mutex
     std::lock_guard<std::mutex> lock(iframes_mutex_);
