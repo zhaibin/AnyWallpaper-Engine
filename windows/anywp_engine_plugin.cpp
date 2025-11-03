@@ -1168,9 +1168,14 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
 
 // Mouse Hook: Low-level mouse callback
 LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
-  // CRITICAL FIX: Hook should work when mouse is transparent (!enable_interaction_)
-  // This allows clicking through transparent wallpaper onto registered areas
-  if (nCode >= 0 && hook_instance_ && !hook_instance_->enable_interaction_) {
+  // Mouse hook processes all clicks and decides whether to forward to wallpaper
+  if (nCode >= 0 && hook_instance_) {
+    // Log for debugging
+    static int click_count = 0;
+    if (wParam == WM_LBUTTONDOWN) {
+      click_count++;
+      std::cout << "[AnyWP] [Hook] Mouse click detected #" << click_count << std::endl;
+    }
     MSLLHOOKSTRUCT* info = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
     POINT pt = info->pt;
     
@@ -1599,13 +1604,10 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   // Store interaction mode for mouse hook
   enable_interaction_ = !enable_mouse_transparent;
   
-  if (enable_interaction_) {
-    // Setup mouse hook to capture desktop clicks
-    std::cout << "[AnyWP] Interactive mode: Setting up mouse hook..." << std::endl;
-    SetupMouseHook();
-  } else {
-    std::cout << "[AnyWP] Wallpaper mode: No interaction" << std::endl;
-  }
+  // CRITICAL FIX: Always setup mouse hook regardless of mode
+  // The hook decides internally whether to forward clicks
+  std::cout << "[AnyWP] Setting up mouse hook (transparent=" << enable_mouse_transparent << ")..." << std::endl;
+  SetupMouseHook();
 
   // Show window
   ShowWindow(webview_host_hwnd_, SW_SHOW);
@@ -1898,10 +1900,9 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
   // Store interaction mode
   enable_interaction_ = !enable_mouse_transparent;
   
-  if (enable_interaction_) {
-    std::cout << "[AnyWP] Interactive mode: Setting up mouse hook..." << std::endl;
-    SetupMouseHook();
-  }
+  // CRITICAL FIX: Always setup mouse hook
+  std::cout << "[AnyWP] Setting up mouse hook (transparent=" << enable_mouse_transparent << ")..." << std::endl;
+  SetupMouseHook();
 
   // Add instance to list FIRST
   {
