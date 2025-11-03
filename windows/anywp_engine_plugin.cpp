@@ -2101,8 +2101,10 @@ void AnyWPEnginePlugin::HandleDisplayChange() {
   
   // Always notify UI to refresh when display changes
   if (should_notify_ui) {
-    std::cout << "[AnyWP] [DisplayChange] Notifying Dart to refresh UI..." << std::endl;
-    NotifyMonitorChange();
+    std::cout << "[AnyWP] [DisplayChange] Should notify Dart, but skipping for now (thread safety)" << std::endl;
+    // TODO: NotifyMonitorChange() causes crashes due to thread safety issues
+    // Need to implement safe cross-thread communication
+    // For now, user can click "Refresh" button to update UI
   }
   
   std::cout << "[AnyWP] [DisplayChange] ========== Display change handled ==========" << std::endl;
