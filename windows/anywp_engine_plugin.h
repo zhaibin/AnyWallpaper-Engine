@@ -118,6 +118,14 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   WallpaperInstance* GetInstanceForMonitor(int monitor_index);
   static BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
   
+  // Display change monitoring
+  void SetupDisplayChangeListener();
+  void CleanupDisplayChangeListener();
+  void HandleDisplayChange();
+  void UpdateWallpaperSizes();
+  void HandleMonitorCountChange(const std::vector<MonitorInfo>& old_monitors, const std::vector<MonitorInfo>& new_monitors);
+  static LRESULT CALLBACK DisplayChangeWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+  
   // P0-2: Exception recovery
   bool InitializeWithRetry(const std::string& url, bool enable_mouse_transparent, int max_retries = 3);
   void LogError(const std::string& error);
@@ -179,6 +187,11 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // iframe Ad Detection
   std::vector<IframeInfo> iframes_;
   std::mutex iframes_mutex_;
+  
+  // Display change monitoring
+  HWND display_listener_hwnd_ = nullptr;
+  static AnyWPEnginePlugin* display_change_instance_;
+  std::string default_wallpaper_url_ = "";  // Default URL for auto-start on new monitors
 };
 
 }  // namespace anywp_engine

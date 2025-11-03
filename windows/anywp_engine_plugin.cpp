@@ -175,6 +175,9 @@ Microsoft::WRL::ComPtr<ICoreWebView2Environment> AnyWPEnginePlugin::shared_envir
 // Mouse Hook instance
 AnyWPEnginePlugin* AnyWPEnginePlugin::hook_instance_ = nullptr;
 
+// Display change instance
+AnyWPEnginePlugin* AnyWPEnginePlugin::display_change_instance_ = nullptr;
+
 namespace {
 
 // 验证窗口句柄是否有效（轻量级检查）
@@ -295,6 +298,7 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   
   // Set hook instance
   hook_instance_ = this;
+  display_change_instance_ = this;
   
   // P1-2: Initialize cleanup timer
   last_cleanup_ = std::chrono::steady_clock::now();
@@ -307,10 +311,16 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   // Add common malicious patterns to blacklist
   url_validator_.AddBlacklist("file:///c:/windows");
   url_validator_.AddBlacklist("file:///c:/program");
+  
+  // Setup display change listener
+  SetupDisplayChangeListener();
 }
 
 AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   std::cout << "[AnyWP] Plugin destructor - starting cleanup" << std::endl;
+  
+  // Remove display change listener
+  CleanupDisplayChangeListener();
   
   // Remove mouse hook
   RemoveMouseHook();
@@ -322,6 +332,7 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   ResourceTracker::Instance().CleanupAll();
   
   hook_instance_ = nullptr;
+  display_change_instance_ = nullptr;
   
   std::cout << "[AnyWP] Plugin cleanup complete" << std::endl;
 }
@@ -1824,6 +1835,12 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
 
   // Initialize WebView2
   SetupWebView2(new_instance.webview_host_hwnd, url, instance);
+  
+  // Save URL as default for auto-starting on new monitors
+  if (default_wallpaper_url_.empty()) {
+    default_wallpaper_url_ = url;
+    std::cout << "[AnyWP] Set default wallpaper URL for auto-start: " << url << std::endl;
+  }
 
   std::cout << "[AnyWP] ========== Initialization Complete (Monitor " << monitor_index << ") ==========" << std::endl;
   return true;
@@ -1890,6 +1907,10 @@ bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
   if (wallpaper_instances_.empty()) {
     RemoveMouseHook();
     enable_interaction_ = false;
+    
+    // Clear default URL when all wallpapers are stopped
+    default_wallpaper_url_.clear();
+    std::cout << "[AnyWP] All wallpapers stopped, cleared default URL" << std::endl;
   }
 
   std::cout << "[AnyWP] Wallpaper stopped on monitor " << monitor_index << std::endl;
@@ -1929,6 +1950,233 @@ bool AnyWPEnginePlugin::NavigateToUrlOnMonitor(const std::string& url, int monit
     LogError("Navigation failed on monitor " + std::to_string(monitor_index) + ": " + url);
     return false;
   }
+}
+
+// Display Change Monitoring Implementation
+
+// Window procedure for display change listener
+LRESULT CALLBACK AnyWPEnginePlugin::DisplayChangeWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+  if (message == WM_DISPLAYCHANGE) {
+    std::cout << "[AnyWP] [DisplayChange] Display configuration changed!" << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] New resolution: " << LOWORD(lParam) << "x" << HIWORD(lParam) << std::endl;
+    
+    if (display_change_instance_) {
+      display_change_instance_->HandleDisplayChange();
+    }
+    
+    return 0;
+  }
+  
+  return DefWindowProcW(hwnd, message, wParam, lParam);
+}
+
+// Setup display change listener
+void AnyWPEnginePlugin::SetupDisplayChangeListener() {
+  std::cout << "[AnyWP] [DisplayChange] Setting up display change listener..." << std::endl;
+  
+  // Register window class
+  WNDCLASSEXW wc = {0};
+  wc.cbSize = sizeof(WNDCLASSEXW);
+  wc.lpfnWndProc = DisplayChangeWndProc;
+  wc.hInstance = GetModuleHandleW(nullptr);
+  wc.lpszClassName = L"AnyWPDisplayChangeListener";
+  
+  if (!RegisterClassExW(&wc)) {
+    DWORD error = GetLastError();
+    if (error != ERROR_CLASS_ALREADY_EXISTS) {
+      std::cout << "[AnyWP] [DisplayChange] Failed to register window class: " << error << std::endl;
+      return;
+    }
+  }
+  
+  // Create hidden window to receive messages
+  display_listener_hwnd_ = CreateWindowExW(
+    0,
+    L"AnyWPDisplayChangeListener",
+    L"AnyWP Display Change Listener",
+    0,  // No style (hidden)
+    0, 0, 0, 0,
+    HWND_MESSAGE,  // Message-only window
+    nullptr,
+    GetModuleHandleW(nullptr),
+    nullptr
+  );
+  
+  if (display_listener_hwnd_) {
+    std::cout << "[AnyWP] [DisplayChange] Listener window created: " << display_listener_hwnd_ << std::endl;
+  } else {
+    std::cout << "[AnyWP] [DisplayChange] Failed to create listener window: " << GetLastError() << std::endl;
+  }
+}
+
+// Cleanup display change listener
+void AnyWPEnginePlugin::CleanupDisplayChangeListener() {
+  if (display_listener_hwnd_) {
+    std::cout << "[AnyWP] [DisplayChange] Cleaning up display change listener..." << std::endl;
+    DestroyWindow(display_listener_hwnd_);
+    display_listener_hwnd_ = nullptr;
+  }
+}
+
+// Handle display change
+void AnyWPEnginePlugin::HandleDisplayChange() {
+  std::cout << "[AnyWP] [DisplayChange] Handling display change..." << std::endl;
+  
+  // Wait a bit for system to stabilize
+  Sleep(200);
+  
+  // Update monitor list
+  std::vector<MonitorInfo> old_monitors = monitors_;
+  std::vector<MonitorInfo> new_monitors = GetMonitors();
+  
+  std::cout << "[AnyWP] [DisplayChange] Monitor count: " << old_monitors.size() 
+            << " -> " << new_monitors.size() << std::endl;
+  
+  // Check if monitor count changed
+  if (old_monitors.size() != new_monitors.size()) {
+    HandleMonitorCountChange(old_monitors, new_monitors);
+  }
+  
+  // Update wallpaper window sizes for existing instances
+  UpdateWallpaperSizes();
+}
+
+// Handle monitor count change (auto-start wallpaper on new monitors)
+void AnyWPEnginePlugin::HandleMonitorCountChange(const std::vector<MonitorInfo>& old_monitors, const std::vector<MonitorInfo>& new_monitors) {
+  std::cout << "[AnyWP] [DisplayChange] Monitor count changed!" << std::endl;
+  
+  // Detect new monitors
+  if (new_monitors.size() > old_monitors.size()) {
+    std::cout << "[AnyWP] [DisplayChange] New monitor(s) detected!" << std::endl;
+    
+    // Find which monitors are new
+    for (const auto& new_mon : new_monitors) {
+      bool is_new = true;
+      
+      // Check if this monitor existed before (by comparing device name)
+      for (const auto& old_mon : old_monitors) {
+        if (new_mon.device_name == old_mon.device_name) {
+          is_new = false;
+          break;
+        }
+      }
+      
+      if (is_new) {
+        std::cout << "[AnyWP] [DisplayChange] New monitor " << new_mon.index 
+                  << ": " << new_mon.device_name << " [" << new_mon.width << "x" << new_mon.height << "]" << std::endl;
+        
+        // Check if any existing wallpaper is running to get default URL
+        std::string url_to_use = default_wallpaper_url_;
+        
+        if (url_to_use.empty() && !wallpaper_instances_.empty()) {
+          // Use URL from first running instance
+          std::cout << "[AnyWP] [DisplayChange] No default URL, will skip auto-start" << std::endl;
+          std::cout << "[AnyWP] [DisplayChange] Hint: User can manually start wallpaper on new monitor" << std::endl;
+        } else if (!url_to_use.empty()) {
+          std::cout << "[AnyWP] [DisplayChange] Auto-starting wallpaper on new monitor " << new_mon.index << std::endl;
+          std::cout << "[AnyWP] [DisplayChange] Using URL: " << url_to_use << std::endl;
+          
+          // Auto-start wallpaper on new monitor
+          // Use a separate thread to avoid blocking
+          std::thread([this, url_to_use, monitor_index = new_mon.index]() {
+            Sleep(500);  // Wait for system to fully initialize the monitor
+            bool success = InitializeWallpaperOnMonitor(url_to_use, true, monitor_index);
+            if (success) {
+              std::cout << "[AnyWP] [DisplayChange] Auto-started wallpaper on monitor " << monitor_index << std::endl;
+            } else {
+              std::cout << "[AnyWP] [DisplayChange] Failed to auto-start wallpaper on monitor " << monitor_index << std::endl;
+            }
+          }).detach();
+        }
+      }
+    }
+  }
+  // Detect removed monitors
+  else if (new_monitors.size() < old_monitors.size()) {
+    std::cout << "[AnyWP] [DisplayChange] Monitor(s) removed!" << std::endl;
+    
+    // Find which monitors were removed
+    for (const auto& old_mon : old_monitors) {
+      bool still_exists = false;
+      
+      for (const auto& new_mon : new_monitors) {
+        if (old_mon.device_name == new_mon.device_name) {
+          still_exists = true;
+          break;
+        }
+      }
+      
+      if (!still_exists) {
+        std::cout << "[AnyWP] [DisplayChange] Monitor removed: " << old_mon.device_name << std::endl;
+        
+        // Clean up wallpaper on removed monitor
+        WallpaperInstance* instance = GetInstanceForMonitor(old_mon.index);
+        if (instance) {
+          std::cout << "[AnyWP] [DisplayChange] Cleaning up wallpaper on removed monitor " << old_mon.index << std::endl;
+          StopWallpaperOnMonitor(old_mon.index);
+        }
+      }
+    }
+  }
+}
+
+// Update wallpaper sizes for all active instances
+void AnyWPEnginePlugin::UpdateWallpaperSizes() {
+  std::lock_guard<std::mutex> lock(instances_mutex_);
+  
+  std::cout << "[AnyWP] [DisplayChange] Updating " << wallpaper_instances_.size() << " wallpaper instance(s)..." << std::endl;
+  
+  for (auto& instance : wallpaper_instances_) {
+    // Find current monitor info
+    const MonitorInfo* monitor = nullptr;
+    for (const auto& m : monitors_) {
+      if (m.index == instance.monitor_index) {
+        monitor = &m;
+        break;
+      }
+    }
+    
+    if (!monitor) {
+      std::cout << "[AnyWP] [DisplayChange] Monitor " << instance.monitor_index << " not found, skipping" << std::endl;
+      continue;
+    }
+    
+    if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
+      // Update window position and size
+      BOOL success = SetWindowPos(
+        instance.webview_host_hwnd,
+        nullptr,
+        monitor->left,
+        monitor->top,
+        monitor->width,
+        monitor->height,
+        SWP_NOZORDER | SWP_NOACTIVATE
+      );
+      
+      if (success) {
+        std::cout << "[AnyWP] [DisplayChange] Updated monitor " << instance.monitor_index 
+                  << " window to " << monitor->width << "x" << monitor->height 
+                  << " @ (" << monitor->left << "," << monitor->top << ")" << std::endl;
+        
+        // Update WebView bounds
+        if (instance.webview_controller) {
+          RECT bounds;
+          bounds.left = 0;
+          bounds.top = 0;
+          bounds.right = monitor->width;
+          bounds.bottom = monitor->height;
+          
+          instance.webview_controller->put_Bounds(bounds);
+          std::cout << "[AnyWP] [DisplayChange] Updated WebView bounds for monitor " << instance.monitor_index << std::endl;
+        }
+      } else {
+        std::cout << "[AnyWP] [DisplayChange] Failed to update window for monitor " << instance.monitor_index 
+                  << ", error: " << GetLastError() << std::endl;
+      }
+    }
+  }
+  
+  std::cout << "[AnyWP] [DisplayChange] Update complete" << std::endl;
 }
 
 }  // namespace anywp_engine
