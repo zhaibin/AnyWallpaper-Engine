@@ -13,6 +13,24 @@ AnyWP 是一个 Flutter Windows 插件，可以将 WebView2 嵌入到 Windows �
 - ✅ 自动检测操作系统版本并使用对应的 WorkerW 挂载方案
 - ✅ 支持鼠标穿透（可选）
 - ✅ 实时导航到不同的 URL
+- ✅ **React/Vue SPA 完整支持**（SDK v4.0.0）
+- ✅ **智能点击区域检测**（SPA 路由切换自动更新）
+- ✅ **iframe 广告点击支持**
+
+## 🎨 Web 开发者
+
+**如果你是 Web 开发者，想将网页作为交互式壁纸**，请查看：
+
+- 📖 [Web 开发者集成指南（中文）](WEB_DEVELOPER_GUIDE_CN.md)
+- 📖 [SDK API Reference](SDK_API_REFERENCE.md)
+- 📝 示例：`examples/test_react.html`, `test_vue.html`
+
+**支持的技术栈**：
+- ✅ 原生 HTML/CSS/JavaScript
+- ✅ React (包括 Create React App, Next.js 等)
+- ✅ Vue 2/3 (包括 Nuxt.js 等)
+- ✅ Angular
+- ✅ 任何 Web 框架
 
 ## 技术实现
 
