@@ -1743,6 +1743,10 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
   if (existing) {
     std::cout << "[AnyWP] Monitor " << monitor_index << " already has wallpaper, stopping first..." << std::endl;
     StopWallpaperOnMonitor(monitor_index);
+    
+    // Give system time to clean up resources (window destruction, WebView cleanup)
+    std::cout << "[AnyWP] Waiting for resources to be released..." << std::endl;
+    Sleep(500);  // 500ms should be enough for cleanup
   }
   
   // P1-2: Periodic cleanup check
@@ -1855,8 +1859,13 @@ bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
       if (!DestroyWindow(instance->webview_host_hwnd)) {
         DWORD error = GetLastError();
         std::cout << "[AnyWP] WARNING: Failed to destroy window, error: " << error << std::endl;
+      } else {
+        std::cout << "[AnyWP] Window destroyed successfully" << std::endl;
+        // Wait a bit to ensure window is fully destroyed
+        Sleep(50);
       }
     } else {
+      std::cout << "[AnyWP] WARNING: Window already destroyed" << std::endl;
       ResourceTracker::Instance().UntrackWindow(instance->webview_host_hwnd);
     }
     instance->webview_host_hwnd = nullptr;
