@@ -2064,8 +2064,23 @@ void AnyWPEnginePlugin::HandleDisplayChange() {
   // Check if monitor count changed
   if (old_monitors.size() != new_monitors.size()) {
     std::cout << "[AnyWP] [DisplayChange] Monitor count changed - will notify UI" << std::endl;
-    HandleMonitorCountChange(old_monitors, new_monitors);
+    
+    // Handle removed monitors FIRST (cleanup)
+    if (new_monitors.size() < old_monitors.size()) {
+      std::cout << "[AnyWP] [DisplayChange] Monitor(s) removed - cleaning up first" << std::endl;
+      HandleMonitorCountChange(old_monitors, new_monitors);
+    }
+    
     should_notify_ui = true;
+    
+    // Update remaining wallpaper sizes AFTER cleanup
+    UpdateWallpaperSizes();
+    
+    // Handle added monitors AFTER size update
+    if (new_monitors.size() > old_monitors.size()) {
+      std::cout << "[AnyWP] [DisplayChange] Monitor(s) added - handling new monitors" << std::endl;
+      HandleMonitorCountChange(old_monitors, new_monitors);
+    }
   } else {
     std::cout << "[AnyWP] [DisplayChange] Monitor count unchanged - checking for other changes" << std::endl;
     // Even if count is same, monitors might have changed (resolution, position, etc.)
@@ -2165,11 +2180,24 @@ void AnyWPEnginePlugin::HandleMonitorCountChange(const std::vector<MonitorInfo>&
         std::cout << "[AnyWP] [DisplayChange] Monitor removed: " << old_mon.device_name 
                   << " (index: " << old_mon.index << ")" << std::endl;
         
-        // Clean up wallpaper on removed monitor
-        WallpaperInstance* instance = GetInstanceForMonitor(old_mon.index);
-        if (instance) {
+        // Check if wallpaper is running on removed monitor (thread-safe check)
+        bool has_wallpaper = false;
+        {
+          std::lock_guard<std::mutex> lock(instances_mutex_);
+          for (const auto& inst : wallpaper_instances_) {
+            if (inst.monitor_index == old_mon.index) {
+              has_wallpaper = true;
+              break;
+            }
+          }
+        }
+        
+        if (has_wallpaper) {
           std::cout << "[AnyWP] [DisplayChange] Found wallpaper on removed monitor " << old_mon.index 
                     << ", cleaning up..." << std::endl;
+          
+          // Clean up wallpaper on removed monitor
+          // This will acquire lock internally
           bool cleanup_success = StopWallpaperOnMonitor(old_mon.index);
           std::cout << "[AnyWP] [DisplayChange] Cleanup " << (cleanup_success ? "succeeded" : "failed") << std::endl;
         } else {
@@ -2186,7 +2214,12 @@ void AnyWPEnginePlugin::UpdateWallpaperSizes() {
   
   std::cout << "[AnyWP] [DisplayChange] Updating " << wallpaper_instances_.size() << " wallpaper instance(s)..." << std::endl;
   
-  for (auto& instance : wallpaper_instances_) {
+  // Use index-based loop to avoid iterator invalidation
+  for (size_t i = 0; i < wallpaper_instances_.size(); ++i) {
+    auto& instance = wallpaper_instances_[i];
+    
+    std::cout << "[AnyWP] [DisplayChange] Checking instance " << i << " (monitor " << instance.monitor_index << ")" << std::endl;
+    
     // Find current monitor info
     const MonitorInfo* monitor = nullptr;
     for (const auto& m : monitors_) {
@@ -2197,42 +2230,49 @@ void AnyWPEnginePlugin::UpdateWallpaperSizes() {
     }
     
     if (!monitor) {
-      std::cout << "[AnyWP] [DisplayChange] Monitor " << instance.monitor_index << " not found, skipping" << std::endl;
+      std::cout << "[AnyWP] [DisplayChange] Monitor " << instance.monitor_index << " not found in current list, skipping update" << std::endl;
       continue;
     }
     
-    if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
-      // Update window position and size
-      BOOL success = SetWindowPos(
-        instance.webview_host_hwnd,
-        nullptr,
-        monitor->left,
-        monitor->top,
-        monitor->width,
-        monitor->height,
-        SWP_NOZORDER | SWP_NOACTIVATE
-      );
+    if (!instance.webview_host_hwnd || !IsWindow(instance.webview_host_hwnd)) {
+      std::cout << "[AnyWP] [DisplayChange] Window for monitor " << instance.monitor_index << " is invalid, skipping" << std::endl;
+      continue;
+    }
+    
+    // Update window position and size
+    BOOL success = SetWindowPos(
+      instance.webview_host_hwnd,
+      nullptr,
+      monitor->left,
+      monitor->top,
+      monitor->width,
+      monitor->height,
+      SWP_NOZORDER | SWP_NOACTIVATE
+    );
+    
+    if (success) {
+      std::cout << "[AnyWP] [DisplayChange] Updated monitor " << instance.monitor_index 
+                << " window to " << monitor->width << "x" << monitor->height 
+                << " @ (" << monitor->left << "," << monitor->top << ")" << std::endl;
       
-      if (success) {
-        std::cout << "[AnyWP] [DisplayChange] Updated monitor " << instance.monitor_index 
-                  << " window to " << monitor->width << "x" << monitor->height 
-                  << " @ (" << monitor->left << "," << monitor->top << ")" << std::endl;
+      // Update WebView bounds
+      if (instance.webview_controller) {
+        RECT bounds;
+        bounds.left = 0;
+        bounds.top = 0;
+        bounds.right = monitor->width;
+        bounds.bottom = monitor->height;
         
-        // Update WebView bounds
-        if (instance.webview_controller) {
-          RECT bounds;
-          bounds.left = 0;
-          bounds.top = 0;
-          bounds.right = monitor->width;
-          bounds.bottom = monitor->height;
-          
-          instance.webview_controller->put_Bounds(bounds);
+        HRESULT hr = instance.webview_controller->put_Bounds(bounds);
+        if (SUCCEEDED(hr)) {
           std::cout << "[AnyWP] [DisplayChange] Updated WebView bounds for monitor " << instance.monitor_index << std::endl;
+        } else {
+          std::cout << "[AnyWP] [DisplayChange] Failed to update WebView bounds: " << std::hex << hr << std::endl;
         }
-      } else {
-        std::cout << "[AnyWP] [DisplayChange] Failed to update window for monitor " << instance.monitor_index 
-                  << ", error: " << GetLastError() << std::endl;
       }
+    } else {
+      std::cout << "[AnyWP] [DisplayChange] Failed to update window for monitor " << instance.monitor_index 
+                << ", error: " << GetLastError() << std::endl;
     }
   }
   
