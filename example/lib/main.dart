@@ -23,6 +23,8 @@ class _MyAppState extends State<MyApp> {
   List<MonitorInfo> _monitors = [];
   Map<int, bool> _monitorWallpapers = {};  // Track which monitors have wallpapers
   Map<int, TextEditingController> _monitorUrlControllers = {};  // Each monitor has its own URL
+  Map<int, bool> _monitorLoading = {};  // Track loading state for each monitor
+  bool _allMonitorsLoading = false;  // Track "Start All" / "Stop All" loading state
   int _selectedTabIndex = 1;  // Start with multi-monitor tab (0 = single, 1 = multi-monitor)
 
   @override
@@ -45,9 +47,10 @@ class _MyAppState extends State<MyApp> {
     final monitors = await AnyWPEngine.getMonitors();
     setState(() {
       _monitors = monitors;
-      // Initialize wallpaper tracking and URL controllers for each monitor
+      // Initialize wallpaper tracking, loading state and URL controllers for each monitor
       for (final monitor in monitors) {
         _monitorWallpapers[monitor.index] = false;
+        _monitorLoading[monitor.index] = false;
         // Each monitor gets its own URL controller with default URL
         _monitorUrlControllers[monitor.index] = TextEditingController(
           text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_simple.html',
@@ -126,80 +129,145 @@ class _MyAppState extends State<MyApp> {
       return;
     }
 
-    print('[APP] Starting wallpaper on monitor $monitorIndex with URL: $url');
-    final success = await AnyWPEngine.initializeWallpaperOnMonitor(
-      url: url,
-      monitorIndex: monitorIndex,
-      enableMouseTransparent: _mouseTransparent,
-    );
-
+    // Set loading state
     setState(() {
-      _monitorWallpapers[monitorIndex] = success;
+      _monitorLoading[monitorIndex] = true;
     });
 
-    if (success) {
-      _showMessage('Wallpaper started on monitor $monitorIndex');
-    } else {
-      _showMessage('Failed to start wallpaper on monitor $monitorIndex');
+    print('[APP] Starting wallpaper on monitor $monitorIndex with URL: $url');
+    
+    try {
+      final success = await AnyWPEngine.initializeWallpaperOnMonitor(
+        url: url,
+        monitorIndex: monitorIndex,
+        enableMouseTransparent: _mouseTransparent,
+      );
+
+      setState(() {
+        _monitorWallpapers[monitorIndex] = success;
+        _monitorLoading[monitorIndex] = false;
+      });
+
+      if (success) {
+        _showMessage('Wallpaper started on monitor $monitorIndex');
+      } else {
+        _showMessage('Failed to start wallpaper on monitor $monitorIndex');
+      }
+    } catch (e) {
+      setState(() {
+        _monitorLoading[monitorIndex] = false;
+      });
+      _showMessage('Error starting wallpaper on monitor $monitorIndex: $e');
     }
   }
 
   Future<void> _stopWallpaperOnMonitor(int monitorIndex) async {
-    print('[APP] Stopping wallpaper on monitor $monitorIndex');
-    final success = await AnyWPEngine.stopWallpaperOnMonitor(monitorIndex);
-
+    // Set loading state
     setState(() {
-      _monitorWallpapers[monitorIndex] = false;
+      _monitorLoading[monitorIndex] = true;
     });
 
-    if (success) {
-      _showMessage('Wallpaper stopped on monitor $monitorIndex');
-    } else {
-      _showMessage('Failed to stop wallpaper on monitor $monitorIndex');
+    print('[APP] Stopping wallpaper on monitor $monitorIndex');
+    
+    try {
+      final success = await AnyWPEngine.stopWallpaperOnMonitor(monitorIndex);
+
+      setState(() {
+        _monitorWallpapers[monitorIndex] = false;
+        _monitorLoading[monitorIndex] = false;
+      });
+
+      if (success) {
+        _showMessage('Wallpaper stopped on monitor $monitorIndex');
+      } else {
+        _showMessage('Failed to stop wallpaper on monitor $monitorIndex');
+      }
+    } catch (e) {
+      setState(() {
+        _monitorLoading[monitorIndex] = false;
+      });
+      _showMessage('Error stopping wallpaper on monitor $monitorIndex: $e');
     }
   }
 
   Future<void> _startWallpaperOnAllMonitors() async {
-    print('[APP] Starting wallpaper on all monitors with individual URLs');
-    
-    int successCount = 0;
-    for (final monitor in _monitors) {
-      final controller = _monitorUrlControllers[monitor.index];
-      if (controller == null) continue;
-      
-      final url = controller.text.trim();
-      if (url.isEmpty) continue;
-      
-      final success = await AnyWPEngine.initializeWallpaperOnMonitor(
-        url: url,
-        monitorIndex: monitor.index,
-        enableMouseTransparent: _mouseTransparent,
-      );
-      
-      setState(() {
-        _monitorWallpapers[monitor.index] = success;
-      });
-      
-      if (success) successCount++;
-    }
-    
-    _showMessage('Started wallpaper on $successCount/${_monitors.length} monitor(s)');
-  }
-
-  Future<void> _stopWallpaperOnAllMonitors() async {
-    print('[APP] Stopping wallpaper on all monitors');
-    final success = await AnyWPEngine.stopWallpaperOnAllMonitors();
-
+    // Set loading state
     setState(() {
-      for (final key in _monitorWallpapers.keys) {
-        _monitorWallpapers[key] = false;
+      _allMonitorsLoading = true;
+      for (final monitor in _monitors) {
+        _monitorLoading[monitor.index] = true;
       }
     });
 
-    if (success) {
-      _showMessage('Wallpaper stopped on all monitors');
-    } else {
-      _showMessage('Some monitors failed to stop');
+    print('[APP] Starting wallpaper on all monitors with individual URLs');
+    
+    int successCount = 0;
+    try {
+      for (final monitor in _monitors) {
+        final controller = _monitorUrlControllers[monitor.index];
+        if (controller == null) continue;
+        
+        final url = controller.text.trim();
+        if (url.isEmpty) continue;
+        
+        final success = await AnyWPEngine.initializeWallpaperOnMonitor(
+          url: url,
+          monitorIndex: monitor.index,
+          enableMouseTransparent: _mouseTransparent,
+        );
+        
+        setState(() {
+          _monitorWallpapers[monitor.index] = success;
+        });
+        
+        if (success) successCount++;
+      }
+      
+      _showMessage('Started wallpaper on $successCount/${_monitors.length} monitor(s)');
+    } finally {
+      // Clear loading state
+      setState(() {
+        _allMonitorsLoading = false;
+        for (final monitor in _monitors) {
+          _monitorLoading[monitor.index] = false;
+        }
+      });
+    }
+  }
+
+  Future<void> _stopWallpaperOnAllMonitors() async {
+    // Set loading state
+    setState(() {
+      _allMonitorsLoading = true;
+      for (final monitor in _monitors) {
+        _monitorLoading[monitor.index] = true;
+      }
+    });
+
+    print('[APP] Stopping wallpaper on all monitors');
+    
+    try {
+      final success = await AnyWPEngine.stopWallpaperOnAllMonitors();
+
+      setState(() {
+        for (final key in _monitorWallpapers.keys) {
+          _monitorWallpapers[key] = false;
+        }
+      });
+
+      if (success) {
+        _showMessage('Wallpaper stopped on all monitors');
+      } else {
+        _showMessage('Some monitors failed to stop');
+      }
+    } finally {
+      // Clear loading state
+      setState(() {
+        _allMonitorsLoading = false;
+        for (final monitor in _monitors) {
+          _monitorLoading[monitor.index] = false;
+        }
+      });
     }
   }
 
@@ -399,9 +467,15 @@ class _MyAppState extends State<MyApp> {
           children: [
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: _startWallpaperOnAllMonitors,
-                icon: Icon(Icons.play_arrow),
-                label: Text('Start All (with individual URLs)'),
+                onPressed: _allMonitorsLoading ? null : _startWallpaperOnAllMonitors,
+                icon: _allMonitorsLoading 
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Icon(Icons.play_arrow),
+                label: Text(_allMonitorsLoading ? 'Starting...' : 'Start All (with individual URLs)'),
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.all(16),
                   backgroundColor: Colors.green,
@@ -412,9 +486,15 @@ class _MyAppState extends State<MyApp> {
             SizedBox(width: 16),
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: _stopWallpaperOnAllMonitors,
-                icon: Icon(Icons.stop),
-                label: Text('Stop All'),
+                onPressed: _allMonitorsLoading ? null : _stopWallpaperOnAllMonitors,
+                icon: _allMonitorsLoading 
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Icon(Icons.stop),
+                label: Text(_allMonitorsLoading ? 'Stopping...' : 'Stop All'),
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.all(16),
                   backgroundColor: Colors.red,
@@ -506,11 +586,18 @@ class _MyAppState extends State<MyApp> {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _monitorWallpapers[monitor.index] == true
+                          onPressed: (_monitorWallpapers[monitor.index] == true || 
+                                     _monitorLoading[monitor.index] == true)
                               ? null
                               : () => _startWallpaperOnMonitor(monitor.index),
-                          icon: Icon(Icons.play_arrow, size: 16),
-                          label: Text('Start'),
+                          icon: _monitorLoading[monitor.index] == true
+                              ? SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : Icon(Icons.play_arrow, size: 16),
+                          label: Text(_monitorLoading[monitor.index] == true ? 'Starting...' : 'Start'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
@@ -520,11 +607,18 @@ class _MyAppState extends State<MyApp> {
                       SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _monitorWallpapers[monitor.index] != true
+                          onPressed: (_monitorWallpapers[monitor.index] != true || 
+                                     _monitorLoading[monitor.index] == true)
                               ? null
                               : () => _stopWallpaperOnMonitor(monitor.index),
-                          icon: Icon(Icons.stop, size: 16),
-                          label: Text('Stop'),
+                          icon: _monitorLoading[monitor.index] == true
+                              ? SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : Icon(Icons.stop, size: 16),
+                          label: Text(_monitorLoading[monitor.index] == true ? 'Stopping...' : 'Stop'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
