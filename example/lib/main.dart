@@ -25,6 +25,18 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _loadMonitors();
+    
+    // Listen for monitor changes from native side
+    AnyWPEngine.setOnMonitorChangeCallback(() {
+      print('[APP] Monitor change callback received!');
+      _handleMonitorChange();
+    });
+  }
+  
+  Future<void> _handleMonitorChange() async {
+    print('[APP] Handling monitor change - refreshing monitor list...');
+    await _loadMonitors();
+    _showMessage('Display configuration changed - UI updated');
   }
   
   @override
@@ -39,14 +51,29 @@ class _MyAppState extends State<MyApp> {
     final monitors = await AnyWPEngine.getMonitors();
     setState(() {
       _monitors = monitors;
-      // Initialize wallpaper tracking, loading state and URL controllers for each monitor
+      
+      // Initialize wallpaper tracking, loading state and URL controllers for NEW monitors only
+      // (keep existing ones)
       for (final monitor in monitors) {
-        _monitorWallpapers[monitor.index] = false;
-        _monitorLoading[monitor.index] = false;
-        // Each monitor gets its own URL controller with default URL
-        _monitorUrlControllers[monitor.index] = TextEditingController(
-          text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_simple.html',
-        );
+        // Only initialize if this monitor index is new
+        if (!_monitorWallpapers.containsKey(monitor.index)) {
+          _monitorWallpapers[monitor.index] = false;
+          _monitorLoading[monitor.index] = false;
+          // Each monitor gets its own URL controller with default URL
+          _monitorUrlControllers[monitor.index] = TextEditingController(
+            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_simple.html',
+          );
+        }
+      }
+      
+      // Clean up controllers for removed monitors
+      final currentIndices = monitors.map((m) => m.index).toSet();
+      final keysToRemove = _monitorUrlControllers.keys.where((k) => !currentIndices.contains(k)).toList();
+      for (final key in keysToRemove) {
+        _monitorUrlControllers[key]?.dispose();
+        _monitorUrlControllers.remove(key);
+        _monitorWallpapers.remove(key);
+        _monitorLoading.remove(key);
       }
     });
     print('[APP] Found ${monitors.length} monitor(s):');
