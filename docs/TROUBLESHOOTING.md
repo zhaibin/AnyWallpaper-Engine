@@ -461,7 +461,7 @@ Include:
 
 ### Community Resources
 
-- GitHub Issues: [Create Issue](https://github.com/yourusername/anywallpaper_engine/issues)
+- GitHub Issues: [Create Issue](https://github.com/zhaibin/AnyWallpaper-Engine/issues)
 - Stack Overflow: Tag `flutter` + `windows` + `webview2`
 - Discord: Flutter Community
 

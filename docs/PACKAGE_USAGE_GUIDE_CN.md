@@ -23,10 +23,10 @@
 ```
 AnyWP_Engine/
 ├── lib/
-│   └── anywp_engine.dart
+│   └── AnyWallpaper-Engine.dart
 ├── windows/
-│   ├── anywp_engine_plugin.cpp
-│   ├── anywp_engine_plugin.h
+│   ├── AnyWallpaper-Engine_plugin.cpp
+│   ├── AnyWallpaper-Engine_plugin.h
 │   ├── anywp_sdk.js
 │   └── CMakeLists.txt
 ├── pubspec.yaml
@@ -48,21 +48,21 @@ Projects/
 dependencies:
   flutter:
     sdk: flutter
-  anywp_engine:
+  AnyWallpaper-Engine:
     path: ../AnyWP_Engine
 ```
 
 **场景B：自定义路径**
 ```yaml
 dependencies:
-  anywp_engine:
+  AnyWallpaper-Engine:
     path: E:/Plugins/AnyWP_Engine
 ```
 
 ### 3. 使用示例
 
 ```dart
-import 'package:anywp_engine/anywp_engine.dart';
+import 'package:AnyWallpaper-Engine/AnyWallpaper-Engine.dart';
 
 class WallpaperController {
   // 启动壁纸（透明模式）
@@ -114,7 +114,7 @@ flutter pub get
 
 **步骤 A：创建 GitHub 仓库**
 
-1. 在 GitHub 创建新仓库，例如：`https://github.com/yourusername/anywp_engine`
+1. 在 GitHub 创建新仓库，例如：`https://github.com/zhaibin/AnyWallpaper-Engine`
 2. 使用项目中的脚本推送：
 
 ```bash
@@ -127,7 +127,7 @@ git init
 git add .
 git commit -m "Initial release v1.0.0"
 git branch -M main
-git remote add origin https://github.com/yourusername/anywp_engine.git
+git remote add origin https://github.com/zhaibin/AnyWallpaper-Engine.git
 git push -u origin main
 ```
 
@@ -145,7 +145,7 @@ git push origin v1.0.0
 dependencies:
   anywp_engine:
     git:
-      url: https://github.com/yourusername/anywp_engine.git
+      url: https://github.com/zhaibin/AnyWallpaper-Engine.git
 ```
 
 **方式 B：引用特定分支**
@@ -153,7 +153,7 @@ dependencies:
 dependencies:
   anywp_engine:
     git:
-      url: https://github.com/yourusername/anywp_engine.git
+      url: https://github.com/zhaibin/AnyWallpaper-Engine.git
       ref: develop
 ```
 
@@ -162,7 +162,7 @@ dependencies:
 dependencies:
   anywp_engine:
     git:
-      url: https://github.com/yourusername/anywp_engine.git
+      url: https://github.com/zhaibin/AnyWallpaper-Engine.git
       ref: v1.0.0
 ```
 
@@ -171,7 +171,7 @@ dependencies:
 dependencies:
   anywp_engine:
     git:
-      url: git@github.com:yourusername/anywp_engine.git
+      url: git@github.com:zhaibin/AnyWallpaper-Engine.git
       ref: v1.0.0
 ```
 
@@ -183,7 +183,7 @@ git tag v1.0.1
 git push origin v1.0.1
 
 # 更新依赖
-flutter pub upgrade anywp_engine
+flutter pub upgrade AnyWallpaper-Engine
 ```
 
 ---
@@ -206,10 +206,10 @@ flutter pub upgrade anywp_engine
 name: anywp_engine
 description: A Flutter Windows plugin that embeds WebView2 as an interactive desktop wallpaper, displaying web content behind desktop icons.
 version: 1.0.0
-homepage: https://github.com/yourusername/anywp_engine
-repository: https://github.com/yourusername/anywp_engine
-issue_tracker: https://github.com/yourusername/anywp_engine/issues
-documentation: https://github.com/yourusername/anywp_engine/wiki
+homepage: https://github.com/zhaibin/AnyWallpaper-Engine
+repository: https://github.com/zhaibin/AnyWallpaper-Engine
+issue_tracker: https://github.com/zhaibin/AnyWallpaper-Engine/issues
+documentation: https://github.com/zhaibin/AnyWallpaper-Engine/wiki
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -225,7 +225,7 @@ flutter:
     platforms:
       windows:
         pluginClass: AnyWPEnginePlugin
-        fileName: anywp_engine_plugin.cpp
+        fileName: AnyWallpaper-Engine_plugin.cpp
 ```
 
 ### 2. 验证包
@@ -248,7 +248,7 @@ flutter pub publish
 
 ```yaml
 dependencies:
-  anywp_engine: ^1.0.0
+  AnyWallpaper-Engine: ^1.0.0
 ```
 
 ---
@@ -259,7 +259,7 @@ dependencies:
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:anywp_engine/anywp_engine.dart';
+import 'package:AnyWallpaper-Engine/AnyWallpaper-Engine.dart';
 
 void main() {
   runApp(MyApp());
@@ -311,7 +311,7 @@ class WallpaperScreen extends StatelessWidget {
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:anywp_engine/anywp_engine.dart';
+import 'package:AnyWallpaper-Engine/AnyWallpaper-Engine.dart';
 
 class AdvancedWallpaperController extends StatefulWidget {
   @override
@@ -638,7 +638,7 @@ setup_webview2.bat
 **Q: Git 引用更新不生效？**
 ```bash
 # 强制更新到最新版本
-flutter pub upgrade anywp_engine --major-versions
+flutter pub upgrade AnyWallpaper-Engine --major-versions
 ```
 
 ---
@@ -655,8 +655,8 @@ flutter pub upgrade anywp_engine --major-versions
 
 ## 📞 获取帮助
 
-- **GitHub Issues**: [报告问题](https://github.com/yourusername/anywp_engine/issues)
-- **讨论区**: [提问和交流](https://github.com/yourusername/anywp_engine/discussions)
+- **GitHub Issues**: [报告问题](https://github.com/zhaibin/AnyWallpaper-Engine/issues)
+- **讨论区**: [提问和交流](https://github.com/zhaibin/AnyWallpaper-Engine/discussions)
 
 ---
 

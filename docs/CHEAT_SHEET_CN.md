@@ -291,7 +291,7 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
 | **完整指南** | [PACKAGE_USAGE_GUIDE_CN.md](PACKAGE_USAGE_GUIDE_CN.md) |
 | **架构文档** | [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) |
 | **API 文档** | [API_BRIDGE.md](API_BRIDGE.md) |
-| **GitHub Issues** | [报告问题](https://github.com/yourusername/anywp_engine/issues) |
+| **GitHub Issues** | [报告问题](https://github.com/zhaibin/AnyWallpaper-Engine/issues) |
 
 ---
 

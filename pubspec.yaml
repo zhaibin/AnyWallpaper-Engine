@@ -1,7 +1,7 @@
 ﻿name: anywp_engine
 description: AnyWP - Flutter plugin for WebView2 desktop wallpaper engine
 version: 1.0.0
-homepage: https://github.com/yourusername/anywp_engine
+homepage: https://github.com/zhaibin/AnyWallpaper-Engine
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

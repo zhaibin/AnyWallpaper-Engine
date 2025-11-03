@@ -19,7 +19,7 @@ dependencies:
   # 方式B：Git 仓库（团队推荐）
   anywp_engine:
     git:
-      url: https://github.com/yourusername/anywp_engine.git
+      url: https://github.com/zhaibin/AnyWallpaper-Engine.git
       ref: v1.0.0
 
   # 方式C：pub.dev（发布后）

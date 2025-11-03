@@ -197,8 +197,8 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- GitHub Issues: [Report a bug](https://github.com/yourusername/anywp_engine/issues)
-- Discussions: [Ask questions](https://github.com/yourusername/anywp_engine/discussions)
+- GitHub Issues: [Report a bug](https://github.com/zhaibin/AnyWallpaper-Engine/issues)
+- Discussions: [Ask questions](https://github.com/zhaibin/AnyWallpaper-Engine/discussions)
 
 ## 🗺️ Roadmap
 
