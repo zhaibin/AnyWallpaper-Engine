@@ -14,7 +14,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final TextEditingController _urlController = TextEditingController(
-    text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper Engine/examples/test_simple.html',
+    text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_simple.html',
   );
   bool _isRunning = false;
   bool _mouseTransparent = true;  // Default: wallpaper mode (transparent)
