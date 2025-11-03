@@ -1218,7 +1218,10 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
     
     // If occluded by app window, don't forward
     if (is_app_window) {
-      // Silently ignore - app window is in front
+      // Log for debugging
+      if (wParam == WM_LBUTTONDOWN) {
+        std::wcout << L"[AnyWP] [Hook] Click blocked - app window in front: " << className << std::endl;
+      }
       return CallNextHookEx(nullptr, nCode, wParam, lParam);
     }
     
@@ -1263,6 +1266,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
     }
     
     if (event_type) {
+      std::cout << "[AnyWP] [Hook] Forwarding " << event_type << " to WebView at (" << pt.x << "," << pt.y << ")" << std::endl;
       hook_instance_->SendClickToWebView(pt.x, pt.y, event_type);
     }
   }
@@ -1283,26 +1287,44 @@ void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type)
     // Fallback to legacy single-monitor webview
     target_webview = webview_;
   } else {
+    std::cout << "[AnyWP] [Hook] ERROR: No webview available" << std::endl;
     return;
   }
   
-  // Dispatch AnyWP:mouse event (SDK expects this format)
+  std::cout << "[AnyWP] [Hook] SendClickToWebView called: (" << x << "," << y << ") type=" << event_type << std::endl;
+  
+  // Dispatch both AnyWP:mouse AND AnyWP:click events (SDK v4.0.0 compatibility)
   std::wstringstream script;
   std::wstring wtype(event_type, event_type + strlen(event_type));
   
   script << L"(function() {"
-         << L"  var event = new CustomEvent('AnyWP:mouse', {"
+         << L"  console.log('[Native] Dispatching events at (' + " << x << L" + ',' + " << y << L" + ')');"
+         << L"  var mouseEvent = new CustomEvent('AnyWP:mouse', {"
          << L"    detail: {"
          << L"      type: '" << wtype << L"',"
          << L"      x: " << x << L","
          << L"      y: " << y << L","
-         << L"      button: 0"  // 0 = left button
+         << L"      button: 0"
          << L"    }"
          << L"  });"
-         << L"  window.dispatchEvent(event);"
-         << L"})();";
+         << L"  window.dispatchEvent(mouseEvent);";
+  
+  // CRITICAL: Also dispatch AnyWP:click for onClick handlers
+  if (strcmp(event_type, "mouseup") == 0) {
+    script << L"  var clickEvent = new CustomEvent('AnyWP:click', {"
+           << L"    detail: {"
+           << L"      x: " << x << L","
+           << L"      y: " << y
+           << L"    }"
+           << L"  });"
+           << L"  console.log('[Native] Dispatching AnyWP:click event');"
+           << L"  window.dispatchEvent(clickEvent);";
+  }
+  
+  script << L"})();";
   
   target_webview->ExecuteScript(script.str().c_str(), nullptr);
+  std::cout << "[AnyWP] [Hook] Events dispatched" << std::endl;
 }
 
 // Mouse Hook: Setup hook
