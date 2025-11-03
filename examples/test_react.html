@@ -189,6 +189,7 @@
       const [count, setCount] = useState(0);
       const [logs, setLogs] = useState([]);
       const [spaDetected, setSpaDetected] = useState(false);
+      const [sdkReady, setSdkReady] = useState(false);
       const incrementRef = useRef(null);
       const decrementRef = useRef(null);
       const resetRef = useRef(null);
@@ -199,12 +200,23 @@
         setLogs(prev => [...prev, `[${timestamp}] ${message}`].slice(-10));
       };
 
-      // Initialize AnyWP
+      // Wait for SDK to load
       useEffect(() => {
-        if (!window.AnyWP) {
-          console.error('AnyWP SDK not loaded');
-          return;
-        }
+        const checkSDK = () => {
+          if (window.AnyWP) {
+            console.log('[React] AnyWP SDK detected!');
+            setSdkReady(true);
+          } else {
+            console.log('[React] Waiting for AnyWP SDK...');
+            setTimeout(checkSDK, 100);
+          }
+        };
+        checkSDK();
+      }, []);
+
+      // Initialize AnyWP after SDK is ready
+      useEffect(() => {
+        if (!sdkReady || !window.AnyWP) return;
 
         // Enable debug mode
         AnyWP.enableDebug();
@@ -221,7 +233,7 @@
 
       // Register click handlers for counter buttons
       useEffect(() => {
-        if (!window.AnyWP) return;
+        if (!sdkReady || !window.AnyWP) return;
 
         // Use waitFor mode for SPA
         AnyWP.onClick('.counter-btn.increment', (x, y) => {
@@ -247,7 +259,7 @@
 
       // Register click handlers for cards
       useEffect(() => {
-        if (!window.AnyWP) return;
+        if (!sdkReady || !window.AnyWP) return;
 
         AnyWP.onClick('#card-1', () => {
           addLog('Card 1 clicked - Opening GitHub');
