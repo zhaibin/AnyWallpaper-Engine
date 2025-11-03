@@ -268,7 +268,7 @@ SetWindowPos(..., HWND_BOTTOM - 1)
   await AnyWPEngine.initializeWallpaper(
     url: 'https://example.com',
   );
-  ```
+```
 
 #### 🌐 独立 URL 导航
 - 每个显示器的壁纸可独立导航到不同 URL：

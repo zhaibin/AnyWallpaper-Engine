@@ -13,7 +13,7 @@
     screenHeight: screen.height * (window.devicePixelRatio || 1),
     interactionEnabled: false,
     
-    // Debug mode
+    // Internal state
     _debugMode: false,
     _clickHandlers: [],
     _mouseCallbacks: [],
@@ -30,16 +30,10 @@
       console.log('========================================');
       console.log('Screen: ' + this.screenWidth + 'x' + this.screenHeight);
       console.log('DPI Scale: ' + this.dpiScale + 'x');
-      console.log('User Agent: ' + navigator.userAgent);
       console.log('========================================');
       
-      // Detect debug mode from URL
       this._detectDebugMode();
-      
-      // Detect SPA framework
       this._detectSPA();
-      
-      // Setup event listeners
       this._setupEventListeners();
     },
     
@@ -55,8 +49,7 @@
       if (isReact || isVue || isAngular) {
         self._spaMode = true;
         const framework = isReact ? 'React' : (isVue ? 'Vue' : 'Angular');
-        console.log('[AnyWP] SPA Framework detected immediately: ' + framework);
-        console.log('[AnyWP] Auto-refresh enabled for dynamic content');
+        console.log('[AnyWP] SPA Framework detected: ' + framework);
         self._setupSPAMonitoring();
       } else {
         // Delayed check for DOM elements
@@ -68,8 +61,7 @@
           if (isReactDOM || isVueDOM || isAngularDOM) {
             self._spaMode = true;
             const framework = isReactDOM ? 'React' : (isVueDOM ? 'Vue' : 'Angular');
-            console.log('[AnyWP] SPA Framework detected via DOM: ' + framework);
-            console.log('[AnyWP] Auto-refresh enabled for dynamic content');
+            console.log('[AnyWP] SPA Framework detected: ' + framework);
             self._setupSPAMonitoring();
           }
         }, 500);
@@ -81,14 +73,14 @@
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.has('debug')) {
         this._debugMode = true;
-        console.log('[AnyWP] Debug mode ENABLED via URL parameter');
+        console.log('[AnyWP] Debug mode ENABLED');
       }
     },
     
     // Enable debug mode manually
     enableDebug: function() {
       this._debugMode = true;
-      console.log('[AnyWP] Debug mode ENABLED manually');
+      console.log('[AnyWP] Debug mode ENABLED');
     },
     
     // Enable/Disable SPA mode manually
@@ -147,7 +139,6 @@
         'z-index: 999999;';
       document.body.appendChild(border);
       
-      // Store reference for later removal
       element._anywpDebugBorder = border;
     },
     
@@ -159,33 +150,24 @@
     
     // Handle click event from native
     _handleClick: function(x, y) {
-      console.log('[AnyWP] _handleClick called with: (' + x + ',' + y + ')');
-      console.log('[AnyWP] Registered handlers: ' + this._clickHandlers.length);
-      
-      this._log('Click at physical: (' + x + ',' + y + ') CSS: (' + 
-                (x / this.dpiScale) + ',' + (y / this.dpiScale) + ')');
+      this._log('Click at: (' + x + ',' + y + ')');
       
       for (let i = 0; i < this._clickHandlers.length; i++) {
         const handler = this._clickHandlers[i];
-        console.log('[AnyWP] Checking handler ' + i + ':', handler.bounds);
-        console.log('[AnyWP] Is in bounds?', this._isInBounds(x, y, handler.bounds));
         
         if (this._isInBounds(x, y, handler.bounds)) {
-          console.log('[AnyWP] HIT! Calling callback');
-          this._log('  -> HIT: ' + (handler.element.id || handler.element.className));
+          this._log('HIT: ' + (handler.element.id || handler.element.className));
           handler.callback(x, y);
           break;
         }
       }
-      
-      console.log('[AnyWP] No handler matched the click');
     },
     
     // Wait for element to appear in DOM
     _waitForElement: function(selector, callback, maxWait) {
       const self = this;
       const startTime = Date.now();
-      maxWait = maxWait || 10000; // Default 10 seconds
+      maxWait = maxWait || 10000;
       
       function check() {
         const element = document.querySelector(selector);
@@ -194,7 +176,7 @@
         } else if (Date.now() - startTime < maxWait) {
           setTimeout(check, 100);
         } else {
-          console.error('[AnyWP] Element not found after ' + maxWait + 'ms: ' + selector);
+          console.error('[AnyWP] Element not found: ' + selector);
         }
       }
       
@@ -206,7 +188,6 @@
       const self = this;
       options = options || {};
       
-      // Parse options
       const immediate = options.immediate || false;
       const waitFor = options.waitFor !== undefined ? options.waitFor : !immediate;
       const maxWait = options.maxWait || 10000;
@@ -244,7 +225,7 @@
         
         self._clickHandlers.push(handlerData);
         
-        // Setup ResizeObserver for this element
+        // Setup ResizeObserver
         if (autoRefresh && window.ResizeObserver) {
           const resizeObserver = new ResizeObserver(function() {
             self._refreshElementBounds(handlerData);
@@ -256,37 +237,25 @@
         // Debug output
         const showDebug = (options.debug !== undefined) ? options.debug : self._debugMode;
         if (showDebug) {
-          console.log('----------------------------------------');
-          console.log('Click Handler Registered:');
-          console.log('  Element:', el.id || el.className || el.tagName || 'unknown');
+          console.log('[AnyWP] Click Handler Registered:', el.id || el.className);
           console.log('  Physical: [' + bounds.left + ',' + bounds.top + '] ~ [' + 
                       bounds.right + ',' + bounds.bottom + ']');
-          console.log('  Size: ' + bounds.width + 'x' + bounds.height + ' px');
-          console.log('  CSS: [' + (bounds.left / self.dpiScale) + ',' + 
-                      (bounds.top / self.dpiScale) + '] ' + 
-                      Math.round(bounds.width / self.dpiScale) + 'x' + 
-                      Math.round(bounds.height / self.dpiScale));
-          console.log('  Mode: ' + (self._spaMode ? 'SPA' : 'Static'));
-          console.log('  Auto-refresh: ' + autoRefresh);
-          console.log('----------------------------------------');
+          console.log('  Size: ' + bounds.width + 'x' + bounds.height);
           
           self._showDebugBorder(bounds, el);
         }
       }
       
-      // Execute registration with appropriate strategy
+      // Execute registration
       if (immediate) {
-        // Immediate mode: register now
         let el = element;
         if (typeof element === 'string') {
           el = document.querySelector(element);
         }
         registerElement(el);
       } else if (waitFor && typeof element === 'string') {
-        // Wait for element mode: for SPA
         this._waitForElement(element, registerElement, maxWait);
       } else {
-        // Delay mode: traditional
         setTimeout(function() {
           let el = element;
           if (typeof element === 'string') {
@@ -300,13 +269,11 @@
     // Refresh bounds for a specific handler
     _refreshElementBounds: function(handler) {
       if (!handler.element || !handler.element.isConnected) {
-        this._log('Element disconnected, skipping refresh');
         return;
       }
       
       const newBounds = this._calculateElementBounds(handler.element);
       
-      // Check if bounds actually changed
       const changed = 
         newBounds.left !== handler.bounds.left ||
         newBounds.top !== handler.bounds.top ||
@@ -315,9 +282,7 @@
       
       if (changed) {
         handler.bounds = newBounds;
-        this._log('Bounds refreshed for: ' + (handler.element.id || handler.element.className));
         
-        // Update debug border if exists
         if (handler.element._anywpDebugBorder) {
           this._showDebugBorder(newBounds, handler.element);
         }
@@ -336,13 +301,12 @@
         }
       });
       
-      this._log('Refreshed bounds for ' + refreshed + ' elements', true);
+      this._log('Refreshed ' + refreshed + ' elements', true);
       return refreshed;
     },
     
     // Clear all registered handlers
     clearHandlers: function() {
-      // Cleanup observers
       this._clickHandlers.forEach(function(handler) {
         if (handler.resizeObserver) {
           handler.resizeObserver.disconnect();
@@ -359,11 +323,11 @@
       this._log('All handlers cleared', true);
     },
     
-    // Setup SPA monitoring (route changes, DOM mutations)
+    // Setup SPA monitoring
     _setupSPAMonitoring: function() {
       const self = this;
       
-      // Monitor history changes (SPA routing)
+      // Monitor history changes
       const originalPushState = history.pushState;
       const originalReplaceState = history.replaceState;
       
@@ -387,7 +351,6 @@
           let shouldRefresh = false;
           
           mutations.forEach(function(mutation) {
-            // Check if any registered element was affected
             if (mutation.type === 'childList' || mutation.type === 'attributes') {
               self._clickHandlers.forEach(function(handler) {
                 if (mutation.target === handler.element || 
@@ -410,8 +373,6 @@
           attributeFilter: ['class', 'style']
         });
       }
-      
-      this._log('SPA monitoring enabled', true);
     },
     
     // Teardown SPA monitoring
@@ -420,27 +381,21 @@
         this._mutationObserver.disconnect();
         this._mutationObserver = null;
       }
-      this._log('SPA monitoring disabled');
     },
     
     // Handle SPA route change
     _onRouteChange: function() {
       const self = this;
-      this._log('Route changed, refreshing in 500ms...');
+      this._log('Route changed, refreshing...');
       
-      // Delay to allow new content to render
       setTimeout(function() {
-        // Re-register handlers with selectors
         self._clickHandlers.forEach(function(handler) {
           if (handler.selector && handler.autoRefresh) {
-            // Try to find element again
             const newElement = document.querySelector(handler.selector);
             if (newElement && newElement !== handler.element) {
-              self._log('Element re-mounted: ' + handler.selector);
               handler.element = newElement;
               self._refreshElementBounds(handler);
               
-              // Re-setup ResizeObserver
               if (handler.resizeObserver) {
                 handler.resizeObserver.disconnect();
               }
@@ -463,14 +418,13 @@
     openURL: function(url) {
       this._log('Opening URL: ' + url);
       
-      // Call native method via postMessage
       if (window.chrome && window.chrome.webview) {
         window.chrome.webview.postMessage({
           type: 'openURL',
           url: url
         });
       } else {
-        console.warn('[AnyWP] Native bridge not available, opening in current window');
+        console.warn('[AnyWP] Native bridge not available');
         window.open(url, '_blank');
       }
     },
@@ -490,38 +444,33 @@
     // Register mouse event callback
     onMouse: function(callback) {
       this._mouseCallbacks.push(callback);
-      this._log('Mouse callback registered (total: ' + this._mouseCallbacks.length + ')');
+      this._log('Mouse callback registered');
     },
     
     // Register keyboard event callback
     onKeyboard: function(callback) {
       this._keyboardCallbacks.push(callback);
-      this._log('Keyboard callback registered (total: ' + this._keyboardCallbacks.length + ')');
+      this._log('Keyboard callback registered');
     },
     
     // Setup event listeners
     _setupEventListeners: function() {
       const self = this;
       
-      // Listen for custom events from native
       window.addEventListener('AnyWP:mouse', function(event) {
-        const detail = event.detail;
         self._mouseCallbacks.forEach(function(cb) {
-          cb(detail);
+          cb(event.detail);
         });
       });
       
       window.addEventListener('AnyWP:keyboard', function(event) {
-        const detail = event.detail;
         self._keyboardCallbacks.forEach(function(cb) {
-          cb(detail);
+          cb(event.detail);
         });
       });
       
       window.addEventListener('AnyWP:click', function(event) {
-        console.log('[AnyWP] AnyWP:click event received:', event.detail);
-        const detail = event.detail;
-        self._handleClick(detail.x, detail.y);
+        self._handleClick(event.detail.x, event.detail.y);
       });
       
       window.addEventListener('AnyWP:interactionMode', function(event) {
@@ -529,44 +478,12 @@
         self._log('Interaction mode: ' + (self.interactionEnabled ? 'ON' : 'OFF'), true);
       });
       
-      // Listen for window resize
       window.addEventListener('resize', function() {
-        self._log('Window resized, refreshing bounds...');
+        self._log('Window resized, refreshing...');
         setTimeout(function() {
           self.refreshBounds();
         }, 200);
       });
-    },
-    
-    // Helper: React useEffect integration
-    useReactEffect: function(element, callback, options) {
-      const self = this;
-      return function() {
-        // Register on mount
-        self.onClick(element, callback, Object.assign({}, options, { immediate: true }));
-        
-        // Cleanup on unmount
-        return function() {
-          self._clickHandlers = self._clickHandlers.filter(function(h) {
-            return h.element !== element;
-          });
-        };
-      };
-    },
-    
-    // Helper: Vue mounted/unmounted integration
-    vueLifecycle: function(element, callback, options) {
-      const self = this;
-      return {
-        mounted: function() {
-          self.onClick(element, callback, Object.assign({}, options, { immediate: true }));
-        },
-        unmounted: function() {
-          self._clickHandlers = self._clickHandlers.filter(function(h) {
-            return h.element !== element;
-          });
-        }
-      };
     }
   };
   
