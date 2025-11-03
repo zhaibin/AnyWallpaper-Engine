@@ -1168,7 +1168,9 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
 
 // Mouse Hook: Low-level mouse callback
 LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
-  if (nCode >= 0 && hook_instance_ && hook_instance_->enable_interaction_) {
+  // CRITICAL FIX: Hook should work when mouse is transparent (!enable_interaction_)
+  // This allows clicking through transparent wallpaper onto registered areas
+  if (nCode >= 0 && hook_instance_ && !hook_instance_->enable_interaction_) {
     MSLLHOOKSTRUCT* info = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
     POINT pt = info->pt;
     
