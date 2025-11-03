@@ -954,7 +954,7 @@ std::string AnyWPEnginePlugin::LoadSDKScript() {
     exe_dir = exe_dir.substr(0, last_slash);
   }
   
-  std::string sdk_path = exe_dir + "\\data\\flutter_assets\\packages\\anywallpaper_engine\\AnyWallpaper_sdk.js";
+  std::string sdk_path = exe_dir + "\\data\\flutter_assets\\packages\\anywp_engine\\windows\\anywp_sdk.js";
   
   std::ifstream file(sdk_path);
   if (!file.is_open()) {
@@ -965,7 +965,7 @@ std::string AnyWPEnginePlugin::LoadSDKScript() {
     return R"(
 (function() {
   window.AnyWP = {
-    version: '3.1.0',
+    version: '4.0.0',
     dpiScale: window.devicePixelRatio || 1,
     screenWidth: screen.width * (window.devicePixelRatio || 1),
     screenHeight: screen.height * (window.devicePixelRatio || 1),
