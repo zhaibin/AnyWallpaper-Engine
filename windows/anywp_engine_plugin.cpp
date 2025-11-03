@@ -1209,7 +1209,9 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
           if (wcscmp(rootClassName, L"Progman") != 0 &&
               wcscmp(rootClassName, L"WorkerW") != 0 &&
               wcscmp(rootClassName, L"Shell_TrayWnd") != 0 &&  // Taskbar
-              wcsstr(rootClassName, L"Xaml") == nullptr) {  // System UI
+              wcsstr(rootClassName, L"Xaml") == nullptr &&  // System UI
+              wcsstr(rootClassName, L"Chrome") == nullptr &&  // WebView2 windows
+              wcsstr(className, L"Chrome") == nullptr) {  // WebView2 render windows
             is_app_window = true;
           }
         }
