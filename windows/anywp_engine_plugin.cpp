@@ -607,23 +607,29 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
 
           std::cout << "[AnyWP] WebView2 controller created" << std::endl;
 
+          Microsoft::WRL::ComPtr<ICoreWebView2Controller> webview_ctrl;
+          Microsoft::WRL::ComPtr<ICoreWebView2> webview;
+
           if (use_legacy) {
             webview_controller_ = controller;
             webview_controller_->get_CoreWebView2(&webview_);
+            webview_ctrl = webview_controller_;
+            webview = webview_;
           } else {
-            // Multi-monitor: find instance by monitor_index
+            // Multi-monitor: find instance by monitor_index and save references locally
             WallpaperInstance* instance = GetInstanceForMonitor(monitor_index);
-            if (instance) {
-              instance->webview_controller = controller;
-              instance->webview_controller->get_CoreWebView2(&instance->webview);
-            } else {
-              std::cout << "[AnyWP] ERROR: Instance not found for monitor " << monitor_index << std::endl;
+            if (!instance) {
+              std::cout << "[AnyWP] ERROR: Instance not found for monitor " << monitor_index << " - may have been removed" << std::endl;
               return E_FAIL;
             }
+            
+            instance->webview_controller = controller;
+            instance->webview_controller->get_CoreWebView2(&instance->webview);
+            
+            // Store in local COM pointers (thread-safe, reference-counted)
+            webview_ctrl = instance->webview_controller;
+            webview = instance->webview;
           }
-          
-          auto webview_ctrl = use_legacy ? webview_controller_ : GetInstanceForMonitor(monitor_index)->webview_controller;
-          auto webview = use_legacy ? webview_ : GetInstanceForMonitor(monitor_index)->webview;
 
           // Set bounds
           RECT bounds;
@@ -710,23 +716,29 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
 
               std::cout << "[AnyWP] WebView2 controller created" << std::endl;
 
+              Microsoft::WRL::ComPtr<ICoreWebView2Controller> webview_ctrl;
+              Microsoft::WRL::ComPtr<ICoreWebView2> webview;
+
               if (use_legacy) {
                 webview_controller_ = controller;
                 webview_controller_->get_CoreWebView2(&webview_);
+                webview_ctrl = webview_controller_;
+                webview = webview_;
               } else {
-                // Multi-monitor: find instance by monitor_index
+                // Multi-monitor: find instance by monitor_index and save references locally
                 WallpaperInstance* instance = GetInstanceForMonitor(monitor_index);
-                if (instance) {
-                  instance->webview_controller = controller;
-                  instance->webview_controller->get_CoreWebView2(&instance->webview);
-                } else {
-                  std::cout << "[AnyWP] ERROR: Instance not found for monitor " << monitor_index << std::endl;
+                if (!instance) {
+                  std::cout << "[AnyWP] ERROR: Instance not found for monitor " << monitor_index << " - may have been removed" << std::endl;
                   return E_FAIL;
                 }
+                
+                instance->webview_controller = controller;
+                instance->webview_controller->get_CoreWebView2(&instance->webview);
+                
+                // Store in local COM pointers (thread-safe, reference-counted)
+                webview_ctrl = instance->webview_controller;
+                webview = instance->webview;
               }
-              
-              auto webview_ctrl = use_legacy ? webview_controller_ : GetInstanceForMonitor(monitor_index)->webview_controller;
-              auto webview = use_legacy ? webview_ : GetInstanceForMonitor(monitor_index)->webview;
 
               // Set bounds to match window
               RECT bounds;
