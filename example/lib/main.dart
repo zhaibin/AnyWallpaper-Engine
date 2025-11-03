@@ -13,30 +13,22 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final TextEditingController _urlController = TextEditingController(
-    text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_simple.html',
-  );
-  bool _isRunning = false;
-  bool _mouseTransparent = true;  // Default: wallpaper mode (transparent)
-  
   // Multi-monitor support
   List<MonitorInfo> _monitors = [];
   Map<int, bool> _monitorWallpapers = {};  // Track which monitors have wallpapers
   Map<int, TextEditingController> _monitorUrlControllers = {};  // Each monitor has its own URL
   Map<int, bool> _monitorLoading = {};  // Track loading state for each monitor
   bool _allMonitorsLoading = false;  // Track "Start All" / "Stop All" loading state
-  int _selectedTabIndex = 1;  // Start with multi-monitor tab (0 = single, 1 = multi-monitor)
+  bool _mouseTransparent = true;  // Default: wallpaper mode (transparent)
 
   @override
   void initState() {
     super.initState();
     _loadMonitors();
-    // Don't auto-start - let user choose
   }
   
   @override
   void dispose() {
-    _urlController.dispose();
     for (final controller in _monitorUrlControllers.values) {
       controller.dispose();
     }
@@ -63,61 +55,6 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  Future<void> _startWallpaper() async {
-    final url = _urlController.text.trim();
-    if (url.isEmpty) {
-      _showMessage('Please enter a URL');
-      return;
-    }
-
-    print('[APP] Starting wallpaper with URL: $url');
-    final success = await AnyWPEngine.initializeWallpaper(
-      url: url,
-      enableMouseTransparent: _mouseTransparent,
-    );
-
-    setState(() {
-      _isRunning = success;
-    });
-
-    if (success) {
-      _showMessage('Wallpaper started successfully!');
-    } else {
-      _showMessage('Failed to start wallpaper');
-    }
-  }
-
-  Future<void> _stopWallpaper() async {
-    print('[APP] Stopping wallpaper');
-    final success = await AnyWPEngine.stopWallpaper();
-
-    setState(() {
-      _isRunning = false;
-    });
-
-    if (success) {
-      _showMessage('Wallpaper stopped');
-    } else {
-      _showMessage('Failed to stop wallpaper');
-    }
-  }
-
-  Future<void> _navigateToUrl() async {
-    final url = _urlController.text.trim();
-    if (url.isEmpty) {
-      _showMessage('Please enter a URL');
-      return;
-    }
-
-    print('[APP] Navigating to URL: $url');
-    final success = await AnyWPEngine.navigateToUrl(url);
-
-    if (success) {
-      _showMessage('Navigation successful');
-    } else {
-      _showMessage('Navigation failed');
-    }
-  }
 
   Future<void> _startWallpaperOnMonitor(int monitorIndex) async {
     final controller = _monitorUrlControllers[monitorIndex];
@@ -281,135 +218,6 @@ class _MyAppState extends State<MyApp> {
         );
       }
     }
-  }
-
-  Widget _buildSingleMonitorTab() {
-    return ListView(
-      padding: const EdgeInsets.all(24.0),
-      children: [
-              Card(
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Status: ${_isRunning ? "Running" : "Stopped"}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: _isRunning ? Colors.green : Colors.red,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'WebView2 will be displayed as desktop wallpaper behind icons',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _urlController,
-                decoration: const InputDecoration(
-                  labelText: 'URL',
-                  hintText: 'Enter URL to display',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link),
-                ),
-              ),
-              const SizedBox(height: 16),
-              CheckboxListTile(
-                title: const Text('Enable Mouse Transparency'),
-                subtitle: const Text('Allow clicks to pass through to desktop'),
-                value: _mouseTransparent,
-                onChanged: (value) {
-                  setState(() {
-                    _mouseTransparent = value ?? true;
-                  });
-                },
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _isRunning ? null : _startWallpaper,
-                      icon: const Icon(Icons.play_arrow),
-                      label: const Text('Start Wallpaper'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(16),
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: !_isRunning ? null : _stopWallpaper,
-                      icon: const Icon(Icons.stop),
-                      label: const Text('Stop Wallpaper'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(16),
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: !_isRunning ? null : _navigateToUrl,
-                icon: const Icon(Icons.navigation),
-                label: const Text('Navigate to URL'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(16),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Card(
-                color: Colors.blue[50],
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.info_outline, color: Colors.blue),
-                          SizedBox(width: 8),
-                          Text(
-                            'Instructions:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '1. Enter a URL (e.g., https://www.bing.com)\n'
-                        '2. Click "Start Wallpaper"\n'
-                        '3. Check your desktop - WebView2 should appear behind icons\n'
-                        '4. Use "Navigate to URL" to change content\n'
-                        '5. Click "Stop Wallpaper" to remove',
-                        style: TextStyle(color: Colors.grey[800]),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-      ],
-    );
   }
 
   Widget _buildMultiMonitorTab() {
@@ -682,31 +490,12 @@ class _MyAppState extends State<MyApp> {
         primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      home: DefaultTabController(
-        length: 2,
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('AnyWallpaper Engine - Desktop Wallpaper'),
-            backgroundColor: Colors.blue,
-            bottom: TabBar(
-              onTap: (index) {
-                setState(() {
-                  _selectedTabIndex = index;
-                });
-              },
-              tabs: [
-                Tab(icon: Icon(Icons.desktop_windows), text: 'Single Monitor'),
-                Tab(icon: Icon(Icons.view_column), text: 'Multi-Monitor'),
-              ],
-            ),
-          ),
-          body: TabBarView(
-            children: [
-              _buildSingleMonitorTab(),
-              _buildMultiMonitorTab(),
-            ],
-          ),
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('AnyWallpaper Engine - Multi-Monitor Wallpaper'),
+          backgroundColor: Colors.blue,
         ),
+        body: _buildMultiMonitorTab(),
       ),
     );
   }
