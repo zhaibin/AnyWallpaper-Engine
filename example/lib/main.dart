@@ -99,7 +99,7 @@ class _MyAppState extends State<MyApp> {
           _monitorWallpapers[monitor.index] = false;
           _monitorLoading[monitor.index] = false;
           _monitorUrlControllers[monitor.index] = TextEditingController(
-            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_react.html',
+            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_basic_click.html',
           );
         }
       }
