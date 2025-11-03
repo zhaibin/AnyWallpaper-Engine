@@ -19,6 +19,18 @@
 
 namespace anywp_engine {
 
+// Monitor information
+struct MonitorInfo {
+  int index;
+  std::string device_name;
+  int left;
+  int top;
+  int width;
+  int height;
+  bool is_primary;
+  HMONITOR handle;
+};
+
 // iframe information for ad click detection
 struct IframeInfo {
   std::string id;
@@ -29,6 +41,16 @@ struct IframeInfo {
   int width;
   int height;
   bool visible;
+};
+
+// Wallpaper instance for a specific monitor
+struct WallpaperInstance {
+  int monitor_index;
+  HWND webview_host_hwnd;
+  HWND worker_w_hwnd;
+  Microsoft::WRL::ComPtr<ICoreWebView2Controller> webview_controller;
+  Microsoft::WRL::ComPtr<ICoreWebView2> webview;
+  std::vector<IframeInfo> iframes;
 };
 
 // P0-1: Resource Tracker for memory leak detection
@@ -78,12 +100,23 @@ class AnyWPEnginePlugin : public flutter::Plugin {
       const flutter::MethodCall<flutter::EncodableValue> &method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
+  // Multi-monitor support
+  std::vector<MonitorInfo> GetMonitors();
+  bool InitializeWallpaperOnMonitor(const std::string& url, bool enable_mouse_transparent, int monitor_index);
+  bool StopWallpaperOnMonitor(int monitor_index);
+  bool NavigateToUrlOnMonitor(const std::string& url, int monitor_index);
+
+  // Legacy single-monitor methods (uses primary monitor)
   bool InitializeWallpaper(const std::string& url, bool enable_mouse_transparent);
   bool StopWallpaper();
   bool NavigateToUrl(const std::string& url);
 
-  HWND CreateWebViewHostWindow(bool enable_mouse_transparent);
-  void SetupWebView2(HWND hwnd, const std::string& url);
+  HWND CreateWebViewHostWindow(bool enable_mouse_transparent, const MonitorInfo* monitor = nullptr);
+  void SetupWebView2(HWND hwnd, const std::string& url, WallpaperInstance* instance);
+  
+  // Multi-monitor helpers
+  WallpaperInstance* GetInstanceForMonitor(int monitor_index);
+  static BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
   
   // P0-2: Exception recovery
   bool InitializeWithRetry(const std::string& url, bool enable_mouse_transparent, int max_retries = 3);
@@ -110,14 +143,21 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void SendClickToWebView(int x, int y, const char* event_type = "mouseup");
   
   // iframe Ad Detection: Handle iframe click regions
-  void HandleIframeDataMessage(const std::string& json_data);
-  IframeInfo* GetIframeAtPoint(int x, int y);
+  void HandleIframeDataMessage(const std::string& json_data, WallpaperInstance* instance);
+  IframeInfo* GetIframeAtPoint(int x, int y, WallpaperInstance* instance);
+  WallpaperInstance* GetInstanceAtPoint(int x, int y);
 
+  // Legacy single-monitor members (kept for compatibility)
   HWND webview_host_hwnd_ = nullptr;
   HWND worker_w_hwnd_ = nullptr;
   Microsoft::WRL::ComPtr<ICoreWebView2Controller> webview_controller_;
   Microsoft::WRL::ComPtr<ICoreWebView2> webview_;
   bool is_initialized_ = false;
+  
+  // Multi-monitor members
+  std::vector<MonitorInfo> monitors_;
+  std::vector<WallpaperInstance> wallpaper_instances_;
+  std::mutex instances_mutex_;
   
   // P0: Retry tracking
   int init_retry_count_ = 0;

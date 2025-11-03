@@ -376,45 +376,144 @@ void AnyWPEnginePlugin::HandleMethodCall(
     bool success = NavigateToUrl(url);
     result->Success(flutter::EncodableValue(success));
   }
+  else if (method_call.method_name() == "getMonitors") {
+    // Get all monitors
+    std::vector<MonitorInfo> monitors = GetMonitors();
+    
+    // Convert to Flutter EncodableList
+    flutter::EncodableList monitor_list;
+    for (const auto& monitor : monitors) {
+      flutter::EncodableMap monitor_map;
+      monitor_map[flutter::EncodableValue("index")] = flutter::EncodableValue(monitor.index);
+      monitor_map[flutter::EncodableValue("deviceName")] = flutter::EncodableValue(monitor.device_name);
+      monitor_map[flutter::EncodableValue("left")] = flutter::EncodableValue(monitor.left);
+      monitor_map[flutter::EncodableValue("top")] = flutter::EncodableValue(monitor.top);
+      monitor_map[flutter::EncodableValue("width")] = flutter::EncodableValue(monitor.width);
+      monitor_map[flutter::EncodableValue("height")] = flutter::EncodableValue(monitor.height);
+      monitor_map[flutter::EncodableValue("isPrimary")] = flutter::EncodableValue(monitor.is_primary);
+      monitor_list.push_back(flutter::EncodableValue(monitor_map));
+    }
+    
+    result->Success(flutter::EncodableValue(monitor_list));
+  }
+  else if (method_call.method_name() == "initializeWallpaperOnMonitor") {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (!arguments) {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
+      return;
+    }
+
+    auto url_it = arguments->find(flutter::EncodableValue("url"));
+    auto monitor_it = arguments->find(flutter::EncodableValue("monitorIndex"));
+    auto transparent_it = arguments->find(flutter::EncodableValue("enableMouseTransparent"));
+    
+    if (url_it == arguments->end() || monitor_it == arguments->end()) {
+      result->Error("INVALID_ARGS", "Missing 'url' or 'monitorIndex' argument");
+      return;
+    }
+
+    std::string url = std::get<std::string>(url_it->second);
+    int monitor_index = std::get<int>(monitor_it->second);
+    bool enable_transparent = transparent_it != arguments->end() 
+        ? std::get<bool>(transparent_it->second) : true;
+
+    bool success = InitializeWallpaperOnMonitor(url, enable_transparent, monitor_index);
+    result->Success(flutter::EncodableValue(success));
+  }
+  else if (method_call.method_name() == "stopWallpaperOnMonitor") {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (!arguments) {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
+      return;
+    }
+
+    auto monitor_it = arguments->find(flutter::EncodableValue("monitorIndex"));
+    if (monitor_it == arguments->end()) {
+      result->Error("INVALID_ARGS", "Missing 'monitorIndex' argument");
+      return;
+    }
+
+    int monitor_index = std::get<int>(monitor_it->second);
+    bool success = StopWallpaperOnMonitor(monitor_index);
+    result->Success(flutter::EncodableValue(success));
+  }
+  else if (method_call.method_name() == "navigateToUrlOnMonitor") {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (!arguments) {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
+      return;
+    }
+
+    auto url_it = arguments->find(flutter::EncodableValue("url"));
+    auto monitor_it = arguments->find(flutter::EncodableValue("monitorIndex"));
+    
+    if (url_it == arguments->end() || monitor_it == arguments->end()) {
+      result->Error("INVALID_ARGS", "Missing 'url' or 'monitorIndex' argument");
+      return;
+    }
+
+    std::string url = std::get<std::string>(url_it->second);
+    int monitor_index = std::get<int>(monitor_it->second);
+    bool success = NavigateToUrlOnMonitor(url, monitor_index);
+    result->Success(flutter::EncodableValue(success));
+  }
   else {
     result->NotImplemented();
   }
 }
 
 
-HWND AnyWPEnginePlugin::CreateWebViewHostWindow(bool enable_mouse_transparent) {
+HWND AnyWPEnginePlugin::CreateWebViewHostWindow(bool enable_mouse_transparent, const MonitorInfo* monitor) {
   std::cout << "[AnyWP] Creating WebView host window..." << std::endl;
 
-  if (!worker_w_hwnd_) {
+  // Determine parent window (use legacy or from monitor-specific instance)
+  HWND parent_window = worker_w_hwnd_;
+  
+  if (!parent_window) {
     std::cout << "[AnyWP] ERROR: No parent window (WorkerW) available" << std::endl;
     LogError("CreateWebViewHostWindow: No parent window");
     return nullptr;
   }
 
-  // 验证父窗口有效性（使用轻量级检查即可）
-  if (!IsValidWindowHandle(worker_w_hwnd_)) {
+  // Validate parent window
+  if (!IsValidWindowHandle(parent_window)) {
     std::cout << "[AnyWP] ERROR: Parent window (WorkerW) is invalid" << std::endl;
     LogError("CreateWebViewHostWindow: Invalid parent window");
-    worker_w_hwnd_ = nullptr;
     return nullptr;
   }
 
-  // Get work area (desktop minus taskbar)
-  RECT workArea = {0};
-  if (!SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0)) {
-    std::cout << "[AnyWP] ERROR: Failed to get work area, using screen dimensions" << std::endl;
-    workArea.left = 0;
-    workArea.top = 0;
-    workArea.right = GetSystemMetrics(SM_CXSCREEN);
-    workArea.bottom = GetSystemMetrics(SM_CYSCREEN);
+  int x, y, width, height;
+  
+  if (monitor) {
+    // Use specific monitor's dimensions and position
+    // WorkerW is a global window covering all monitors (virtual desktop)
+    // So we need to use absolute coordinates relative to the virtual desktop origin
+    x = monitor->left;   // Absolute position in virtual desktop
+    y = monitor->top;    // Absolute position in virtual desktop
+    width = monitor->width;
+    height = monitor->height;
+    
+    std::cout << "[AnyWP] Creating window for monitor: " << monitor->device_name 
+              << " [" << width << "x" << height << "]"
+              << " at virtual desktop position (" << x << "," << y << ")" << std::endl;
+  } else {
+    // Legacy: Get work area (desktop minus taskbar)
+    RECT workArea = {0};
+    if (!SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0)) {
+      std::cout << "[AnyWP] ERROR: Failed to get work area, using screen dimensions" << std::endl;
+      workArea.left = 0;
+      workArea.top = 0;
+      workArea.right = GetSystemMetrics(SM_CXSCREEN);
+      workArea.bottom = GetSystemMetrics(SM_CYSCREEN);
+    }
+    
+    x = 0;
+    y = 0;
+    width = workArea.right - workArea.left;
+    height = workArea.bottom - workArea.top;
   }
   
-  int x = 0;  // Relative to parent
-  int y = 0;
-  int width = workArea.right - workArea.left;
-  int height = workArea.bottom - workArea.top;
-  
-  // 验证尺寸合理性
+  // Validate dimensions
   if (width <= 0 || height <= 0 || width > 10000 || height > 10000) {
     std::cout << "[AnyWP] ERROR: Invalid window dimensions: " << width << "x" << height << std::endl;
     LogError("CreateWebViewHostWindow: Invalid dimensions");
@@ -424,14 +523,13 @@ HWND AnyWPEnginePlugin::CreateWebViewHostWindow(bool enable_mouse_transparent) {
   std::cout << "[AnyWP] Creating child window: " << width << "x" << height << std::endl;
 
   // Create as CHILD window of WorkerW
-  // For interactive mode, create without WS_EX_TRANSPARENT
   HWND hwnd = CreateWindowExW(
-      0,  // No extended styles for interactive mode
-      L"STATIC",  // Use built-in STATIC class
+      0,
+      L"STATIC",
       L"AnyWallpaperHost",
-      WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,  // CHILD window
+      WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
       x, y, width, height,
-      worker_w_hwnd_,  // Parent window (WorkerW)
+      parent_window,
       nullptr,
       GetModuleHandle(nullptr),
       nullptr);
@@ -443,7 +541,7 @@ HWND AnyWPEnginePlugin::CreateWebViewHostWindow(bool enable_mouse_transparent) {
     return nullptr;
   }
 
-  // 验证创建的窗口（使用轻量级检查）
+  // Validate created window
   if (!IsValidWindowHandle(hwnd)) {
     std::cout << "[AnyWP] ERROR: Created window is invalid" << std::endl;
     LogError("CreateWebViewHostWindow: Created window is invalid");
@@ -453,14 +551,17 @@ HWND AnyWPEnginePlugin::CreateWebViewHostWindow(bool enable_mouse_transparent) {
 
   std::cout << "[AnyWP] WebView host window created successfully: " << hwnd << std::endl;
   
-  // P0-1: Track window for cleanup
+  // Track window for cleanup
   ResourceTracker::Instance().TrackWindow(hwnd);
   
   return hwnd;
 }
 
-void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
+void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, WallpaperInstance* instance) {
   std::cout << "[AnyWP] Setting up WebView2..." << std::endl;
+  
+  // For legacy support (null instance means use legacy members)
+  bool use_legacy = (instance == nullptr);
 
   // Convert URL to wstring
   std::wstring wurl(url.begin(), url.end());
@@ -475,7 +576,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
     std::cout << "[AnyWP] [Performance] Reusing existing WebView2 environment" << std::endl;
     
     auto controller_callback = Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-        [this, hwnd, wurl](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+        [this, hwnd, wurl, instance, use_legacy](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
           if (FAILED(result)) {
             std::cout << "[AnyWP] ERROR: Failed to create WebView2 controller: " << std::hex << result << std::endl;
             return result;
@@ -483,8 +584,16 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
 
           std::cout << "[AnyWP] WebView2 controller created" << std::endl;
 
-          webview_controller_ = controller;
-          webview_controller_->get_CoreWebView2(&webview_);
+          if (use_legacy) {
+            webview_controller_ = controller;
+            webview_controller_->get_CoreWebView2(&webview_);
+          } else {
+            instance->webview_controller = controller;
+            instance->webview_controller->get_CoreWebView2(&instance->webview);
+          }
+          
+          auto webview_ctrl = use_legacy ? webview_controller_ : instance->webview_controller;
+          auto webview = use_legacy ? webview_ : instance->webview;
 
           // Set bounds
           RECT bounds;
@@ -492,23 +601,33 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
           std::cout << "[AnyWP] Setting WebView bounds: " << bounds.left << "," << bounds.top 
                     << " " << (bounds.right - bounds.left) << "x" << (bounds.bottom - bounds.top) << std::endl;
           
-          webview_controller_->put_Bounds(bounds);
-          webview_controller_->put_IsVisible(TRUE);
+          webview_ctrl->put_Bounds(bounds);
+          webview_ctrl->put_IsVisible(TRUE);
 
-              // P1-3: Configure permissions and security
-              ConfigurePermissions();
-              SetupSecurityHandlers();
-              
-              // API Bridge: Setup message bridge only (no SDK injection, user loads it)
-              SetupMessageBridge();
+              // P1-3: Configure permissions and security (use temp pointers)
+              if (use_legacy) {
+                ConfigurePermissions();
+                SetupSecurityHandlers();
+                SetupMessageBridge();
+              } else {
+                // For multi-monitor, setup handlers inline
+                // TODO: Refactor these methods to accept webview parameter
+                // For now, temporarily set legacy members
+                auto old_webview = webview_;
+                webview_ = webview;
+                ConfigurePermissions();
+                SetupSecurityHandlers();
+                SetupMessageBridge();
+                webview_ = old_webview;
+              }
 
               // Navigate
-              webview_->Navigate(wurl.c_str());
+              webview->Navigate(wurl.c_str());
               
               // After navigation completes, send interaction mode
-              webview_->add_NavigationCompleted(
+              webview->add_NavigationCompleted(
                 Microsoft::WRL::Callback<ICoreWebView2NavigationCompletedEventHandler>(
-                  [this](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
+                  [this, webview](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
                     // Send interaction mode to JavaScript
                     std::wstringstream script;
                     script << L"(function() {"
@@ -519,7 +638,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
                            << L"  console.log('[AnyWP] Interaction mode set to: " << (enable_interaction_ ? L"true" : L"false") << L"');"
                            << L"})();";
                     
-                    webview_->ExecuteScript(script.str().c_str(), nullptr);
+                    sender->ExecuteScript(script.str().c_str(), nullptr);
                     std::cout << "[AnyWP] [API] Sent interaction mode to JS: " << enable_interaction_ << std::endl;
                     return S_OK;
                   }).Get(), nullptr);
@@ -529,7 +648,9 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
           }
           std::cout << "[AnyWP] Navigating to: " << url_str << std::endl;
 
-          is_initialized_ = true;
+          if (use_legacy) {
+            is_initialized_ = true;
+          }
           return S_OK;
         });
 
@@ -539,7 +660,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
 
   // P1-1: Create environment (will save for reuse)
   auto callback = Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-      [this, hwnd, wurl](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+      [this, hwnd, wurl, instance, use_legacy](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
         if (FAILED(result)) {
           std::cout << "[AnyWP] ERROR: Failed to create WebView2 environment: " << std::hex << result << std::endl;
           return result;
@@ -551,7 +672,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
         shared_environment_ = env;
 
         auto controller_callback = Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-            [this, hwnd, wurl](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+            [this, hwnd, wurl, instance, use_legacy](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
               if (FAILED(result)) {
                 std::cout << "[AnyWP] ERROR: Failed to create WebView2 controller: " << std::hex << result << std::endl;
                 return result;
@@ -559,8 +680,16 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
 
               std::cout << "[AnyWP] WebView2 controller created" << std::endl;
 
-              webview_controller_ = controller;
-              webview_controller_->get_CoreWebView2(&webview_);
+              if (use_legacy) {
+                webview_controller_ = controller;
+                webview_controller_->get_CoreWebView2(&webview_);
+              } else {
+                instance->webview_controller = controller;
+                instance->webview_controller->get_CoreWebView2(&instance->webview);
+              }
+              
+              auto webview_ctrl = use_legacy ? webview_controller_ : instance->webview_controller;
+              auto webview = use_legacy ? webview_ : instance->webview;
 
               // Set bounds to match window
               RECT bounds;
@@ -568,27 +697,35 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
               std::cout << "[AnyWP] Setting WebView bounds: " << bounds.left << "," << bounds.top 
                         << " " << (bounds.right - bounds.left) << "x" << (bounds.bottom - bounds.top) << std::endl;
               
-              HRESULT hr = webview_controller_->put_Bounds(bounds);
+              HRESULT hr = webview_ctrl->put_Bounds(bounds);
               if (FAILED(hr)) {
                 std::cout << "[AnyWP] ERROR: Failed to set bounds: " << std::hex << hr << std::endl;
               }
               
               // Make sure WebView is visible
-              webview_controller_->put_IsVisible(TRUE);
+              webview_ctrl->put_IsVisible(TRUE);
               std::cout << "[AnyWP] WebView2 visibility set to TRUE" << std::endl;
 
               // P1-3: Configure permissions and security
-              ConfigurePermissions();
-              SetupSecurityHandlers();
-              
-              // API Bridge: Setup message bridge only (no SDK injection, user loads it)
-              SetupMessageBridge();
+              if (use_legacy) {
+                ConfigurePermissions();
+                SetupSecurityHandlers();
+                SetupMessageBridge();
+              } else {
+                // For multi-monitor, setup handlers inline
+                auto old_webview = webview_;
+                webview_ = webview;
+                ConfigurePermissions();
+                SetupSecurityHandlers();
+                SetupMessageBridge();
+                webview_ = old_webview;
+              }
 
               // Navigate to URL
-              webview_->Navigate(wurl.c_str());
+              webview->Navigate(wurl.c_str());
               
               // After navigation completes, send interaction mode
-              webview_->add_NavigationCompleted(
+              webview->add_NavigationCompleted(
                 Microsoft::WRL::Callback<ICoreWebView2NavigationCompletedEventHandler>(
                   [this](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
                     // Send interaction mode to JavaScript
@@ -601,7 +738,7 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
                            << L"  console.log('[AnyWP] Interaction mode set to: " << (enable_interaction_ ? L"true" : L"false") << L"');"
                            << L"})();";
                     
-                    webview_->ExecuteScript(script.str().c_str(), nullptr);
+                    sender->ExecuteScript(script.str().c_str(), nullptr);
                     std::cout << "[AnyWP] [API] Sent interaction mode to JS: " << enable_interaction_ << std::endl;
                     return S_OK;
                   }).Get(), nullptr);
@@ -613,7 +750,9 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url) {
               }
               std::cout << "[AnyWP] Navigating to: " << url_str << std::endl;
 
-              is_initialized_ = true;
+              if (use_legacy) {
+                is_initialized_ = true;
+              }
               return S_OK;
             });
 
@@ -889,7 +1028,9 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
   // Parse JSON message (support both uppercase and lowercase)
   if (message.find("\"type\":\"IFRAME_DATA\"") != std::string::npos) {
     // Handle iframe data synchronization
-    HandleIframeDataMessage(message);
+    // TODO: Determine which instance sent this message
+    // For now, use legacy handling or first instance
+    HandleIframeDataMessage(message, nullptr);
   }
   else if (message.find("\"type\":\"OPEN_URL\"") != std::string::npos || 
       message.find("\"type\":\"openURL\"") != std::string::npos) {
@@ -978,9 +1119,12 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
       return CallNextHookEx(nullptr, nCode, wParam, lParam);
     }
     
+    // Multi-monitor: Find which wallpaper instance is at this point
+    WallpaperInstance* target_instance = hook_instance_->GetInstanceAtPoint(pt.x, pt.y);
+    
     // Check if click is on an iframe ad (priority handling)
-    if (wParam == WM_LBUTTONUP) {
-      IframeInfo* iframe = hook_instance_->GetIframeAtPoint(pt.x, pt.y);
+    if (wParam == WM_LBUTTONUP && target_instance) {
+      IframeInfo* iframe = hook_instance_->GetIframeAtPoint(pt.x, pt.y, target_instance);
       
       if (iframe && !iframe->click_url.empty()) {
         std::cout << "[AnyWP] [iframe] Click detected on iframe: " << iframe->id 
@@ -1025,7 +1169,17 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
 
 // Mouse Hook: Send mouse event to WebView (compatible with AnyWallpaper SDK)
 void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type) {
-  if (!webview_) {
+  // Multi-monitor support: Find which instance is at this point
+  WallpaperInstance* instance = GetInstanceAtPoint(x, y);
+  
+  Microsoft::WRL::ComPtr<ICoreWebView2> target_webview;
+  
+  if (instance && instance->webview) {
+    target_webview = instance->webview;
+  } else if (webview_) {
+    // Fallback to legacy single-monitor webview
+    target_webview = webview_;
+  } else {
     return;
   }
   
@@ -1045,7 +1199,7 @@ void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type)
          << L"  window.dispatchEvent(event);"
          << L"})();";
   
-  webview_->ExecuteScript(script.str().c_str(), nullptr);
+  target_webview->ExecuteScript(script.str().c_str(), nullptr);
 }
 
 // Mouse Hook: Setup hook
@@ -1080,14 +1234,24 @@ void AnyWPEnginePlugin::RemoveMouseHook() {
 }
 
 // iframe Ad Detection: Handle iframe data from JavaScript
-void AnyWPEnginePlugin::HandleIframeDataMessage(const std::string& json_data) {
-  std::lock_guard<std::mutex> lock(iframes_mutex_);
-  
+void AnyWPEnginePlugin::HandleIframeDataMessage(const std::string& json_data, WallpaperInstance* instance) {
   std::cout << "[AnyWP] [iframe] Parsing iframe data..." << std::endl;
   std::cout << "[AnyWP] [iframe] Raw JSON: " << json_data << std::endl;
   
+  // Determine which iframe list to update
+  std::vector<IframeInfo>* target_iframes;
+  
+  if (instance) {
+    // Multi-monitor: update specific instance's iframe list
+    target_iframes = &instance->iframes;
+  } else {
+    // Legacy: use global iframe list with mutex
+    std::lock_guard<std::mutex> lock(iframes_mutex_);
+    target_iframes = &iframes_;
+  }
+  
   // Clear existing data
-  iframes_.clear();
+  target_iframes->clear();
   
   // Simple JSON parsing for iframe array
   // Format: {"type":"IFRAME_DATA","iframes":[{...},{...}]}
@@ -1197,9 +1361,9 @@ void AnyWPEnginePlugin::HandleIframeDataMessage(const std::string& json_data) {
     }
     
     // Add to list
-    iframes_.push_back(iframe);
+    target_iframes->push_back(iframe);
     
-    std::cout << "[AnyWP] [iframe] Added iframe #" << iframes_.size() << ": id=" << iframe.id 
+    std::cout << "[AnyWP] [iframe] Added iframe #" << target_iframes->size() << ": id=" << iframe.id 
               << " pos=(" << iframe.left << "," << iframe.top << ")"
               << " size=" << iframe.width << "x" << iframe.height
               << " url=" << iframe.click_url << std::endl;
@@ -1208,22 +1372,38 @@ void AnyWPEnginePlugin::HandleIframeDataMessage(const std::string& json_data) {
     pos = obj_end;
   }
   
-  std::cout << "[AnyWP] [iframe] Total iframes: " << iframes_.size() << std::endl;
+  std::cout << "[AnyWP] [iframe] Total iframes: " << target_iframes->size() << std::endl;
 }
 
 // iframe Ad Detection: Check if click is on an iframe
-IframeInfo* AnyWPEnginePlugin::GetIframeAtPoint(int x, int y) {
-  std::lock_guard<std::mutex> lock(iframes_mutex_);
-  
-  for (auto& iframe : iframes_) {
-    if (!iframe.visible) continue;
+IframeInfo* AnyWPEnginePlugin::GetIframeAtPoint(int x, int y, WallpaperInstance* instance) {
+  if (instance) {
+    // Multi-monitor: check specific instance's iframes
+    for (auto& iframe : instance->iframes) {
+      if (!iframe.visible) continue;
+      
+      int right = iframe.left + iframe.width;
+      int bottom = iframe.top + iframe.height;
+      
+      if (x >= iframe.left && x < right &&
+          y >= iframe.top && y < bottom) {
+        return &iframe;
+      }
+    }
+  } else {
+    // Legacy: use global iframe list with mutex
+    std::lock_guard<std::mutex> lock(iframes_mutex_);
     
-    int right = iframe.left + iframe.width;
-    int bottom = iframe.top + iframe.height;
-    
-    if (x >= iframe.left && x < right &&
-        y >= iframe.top && y < bottom) {
-      return &iframe;
+    for (auto& iframe : iframes_) {
+      if (!iframe.visible) continue;
+      
+      int right = iframe.left + iframe.width;
+      int bottom = iframe.top + iframe.height;
+      
+      if (x >= iframe.left && x < right &&
+          y >= iframe.top && y < bottom) {
+        return &iframe;
+      }
     }
   }
   
@@ -1333,8 +1513,8 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   ShowWindow(webview_host_hwnd_, SW_SHOW);
   UpdateWindow(webview_host_hwnd_);
 
-  // Initialize WebView2
-  SetupWebView2(webview_host_hwnd_, url);
+  // Initialize WebView2 (pass nullptr for legacy single-monitor support)
+  SetupWebView2(webview_host_hwnd_, url, nullptr);
 
   std::cout << "[AnyWP] ========== Initialization Complete ==========" << std::endl;
   return true;
@@ -1429,6 +1609,310 @@ bool AnyWPEnginePlugin::NavigateToUrl(const std::string& url) {
   } else {
     std::cout << "[AnyWP] ERROR: Navigation failed: " << std::hex << hr << std::endl;
     LogError("Navigation failed: " + url);
+    return false;
+  }
+}
+
+// Multi-Monitor Support Implementation
+
+// Monitor enumeration callback
+BOOL CALLBACK AnyWPEnginePlugin::MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
+  auto* monitors = reinterpret_cast<std::vector<MonitorInfo>*>(dwData);
+  
+  MONITORINFOEXW monitor_info;
+  monitor_info.cbSize = sizeof(MONITORINFOEXW);
+  
+  if (GetMonitorInfoW(hMonitor, &monitor_info)) {
+    MonitorInfo info;
+    info.index = static_cast<int>(monitors->size());
+    info.handle = hMonitor;
+    info.left = monitor_info.rcMonitor.left;
+    info.top = monitor_info.rcMonitor.top;
+    info.width = monitor_info.rcMonitor.right - monitor_info.rcMonitor.left;
+    info.height = monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top;
+    info.is_primary = (monitor_info.dwFlags & MONITORINFOF_PRIMARY) != 0;
+    
+    // Convert device name from wchar to string
+    std::wstring wname(monitor_info.szDevice);
+    // Use proper conversion to avoid C4244 warning
+    info.device_name.reserve(wname.size());
+    for (wchar_t wc : wname) {
+      info.device_name.push_back(static_cast<char>(wc));
+    }
+    
+    monitors->push_back(info);
+    
+    std::cout << "[AnyWP] [Monitor] Found: " << info.device_name 
+              << " [" << info.width << "x" << info.height << "]"
+              << " at (" << info.left << "," << info.top << ")"
+              << (info.is_primary ? " (PRIMARY)" : "") << std::endl;
+  }
+  
+  return TRUE;  // Continue enumeration
+}
+
+// Get all monitors
+std::vector<MonitorInfo> AnyWPEnginePlugin::GetMonitors() {
+  std::cout << "[AnyWP] [Monitor] Enumerating monitors..." << std::endl;
+  
+  std::vector<MonitorInfo> monitors;
+  EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, reinterpret_cast<LPARAM>(&monitors));
+  
+  std::cout << "[AnyWP] [Monitor] Found " << monitors.size() << " monitor(s)" << std::endl;
+  
+  // Cache monitors list
+  monitors_ = monitors;
+  
+  return monitors;
+}
+
+// Get wallpaper instance for a specific monitor
+WallpaperInstance* AnyWPEnginePlugin::GetInstanceForMonitor(int monitor_index) {
+  std::lock_guard<std::mutex> lock(instances_mutex_);
+  
+  for (auto& instance : wallpaper_instances_) {
+    if (instance.monitor_index == monitor_index) {
+      return &instance;
+    }
+  }
+  
+  return nullptr;
+}
+
+// Get wallpaper instance at a specific screen position
+WallpaperInstance* AnyWPEnginePlugin::GetInstanceAtPoint(int x, int y) {
+  std::lock_guard<std::mutex> lock(instances_mutex_);
+  
+  for (auto& instance : wallpaper_instances_) {
+    // Find which monitor this instance belongs to
+    for (const auto& monitor : monitors_) {
+      if (monitor.index == instance.monitor_index) {
+        int right = monitor.left + monitor.width;
+        int bottom = monitor.top + monitor.height;
+        
+        if (x >= monitor.left && x < right && y >= monitor.top && y < bottom) {
+          return &instance;
+        }
+        break;
+      }
+    }
+  }
+  
+  return nullptr;
+}
+
+// Initialize wallpaper on specific monitor
+bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, bool enable_mouse_transparent, int monitor_index) {
+  std::cout << "[AnyWP] ========== Initializing Wallpaper on Monitor " << monitor_index << " ==========" << std::endl;
+  std::cout << "[AnyWP] URL: " << url << std::endl;
+  std::cout << "[AnyWP] Mouse Transparent: " << (enable_mouse_transparent ? "true" : "false") << std::endl;
+
+  // P0-3: Validate URL
+  if (!url_validator_.IsAllowed(url)) {
+    std::cout << "[AnyWP] [Security] URL validation failed: " << url << std::endl;
+    LogError("URL validation failed: " + url);
+    return false;
+  }
+
+  // Get monitors if not cached
+  if (monitors_.empty()) {
+    GetMonitors();
+  }
+  
+  // Find the target monitor
+  const MonitorInfo* target_monitor = nullptr;
+  for (const auto& monitor : monitors_) {
+    if (monitor.index == monitor_index) {
+      target_monitor = &monitor;
+      break;
+    }
+  }
+  
+  if (!target_monitor) {
+    std::cout << "[AnyWP] ERROR: Monitor index " << monitor_index << " not found" << std::endl;
+    LogError("Monitor not found: " + std::to_string(monitor_index));
+    return false;
+  }
+  
+  // Check if already initialized on this monitor
+  WallpaperInstance* existing = GetInstanceForMonitor(monitor_index);
+  if (existing) {
+    std::cout << "[AnyWP] Monitor " << monitor_index << " already has wallpaper, stopping first..." << std::endl;
+    StopWallpaperOnMonitor(monitor_index);
+  }
+  
+  // P1-2: Periodic cleanup check
+  PeriodicCleanup();
+
+  // Find WorkerW for this monitor
+  WorkerWInfo workerw_info;
+  if (!FindWorkerWSafe(workerw_info, 3000)) {
+    std::cout << "[AnyWP] ERROR: Failed to find WorkerW window" << std::endl;
+    LogError("Failed to find WorkerW window");
+    return false;
+  }
+  
+  if (!workerw_info.wallpaper_layer) {
+    std::cout << "[AnyWP] ERROR: No wallpaper layer found" << std::endl;
+    LogError("No wallpaper layer found");
+    return false;
+  }
+  
+  // Validate window handle
+  if (!IsValidWindowHandle(workerw_info.wallpaper_layer)) {
+    std::cout << "[AnyWP] ERROR: Wallpaper layer window is invalid" << std::endl;
+    LogError("Invalid wallpaper layer window");
+    return false;
+  }
+  
+  // Create new instance
+  WallpaperInstance new_instance;
+  new_instance.monitor_index = monitor_index;
+  new_instance.worker_w_hwnd = workerw_info.wallpaper_layer;
+  
+  std::cout << "[AnyWP] Using wallpaper layer: " << new_instance.worker_w_hwnd << std::endl;
+  std::cout << "[AnyWP] Monitor: " << target_monitor->device_name 
+            << " [" << target_monitor->width << "x" << target_monitor->height << "]" << std::endl;
+
+  // Create WebView host window for this monitor
+  HWND hwnd = CreateWebViewHostWindow(enable_mouse_transparent, target_monitor);
+  if (!hwnd) {
+    std::cout << "[AnyWP] ERROR: Failed to create WebView host window" << std::endl;
+    return false;
+  }
+  
+  new_instance.webview_host_hwnd = hwnd;
+  std::cout << "[AnyWP] WebView host created for monitor " << monitor_index << std::endl;
+  
+  // Set Z-order behind SHELLDLL_DefView
+  HWND shelldll = FindWindowExW(new_instance.worker_w_hwnd, nullptr, L"SHELLDLL_DefView", nullptr);
+  if (shelldll) {
+    std::cout << "[AnyWP] Setting Z-order behind SHELLDLL_DefView..." << std::endl;
+    SetWindowPos(new_instance.webview_host_hwnd, shelldll, 0, 0, 0, 0, 
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+  }
+  
+  // Store interaction mode
+  enable_interaction_ = !enable_mouse_transparent;
+  
+  if (enable_interaction_) {
+    std::cout << "[AnyWP] Interactive mode: Setting up mouse hook..." << std::endl;
+    SetupMouseHook();
+  }
+
+  // Add instance to list before SetupWebView2
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    wallpaper_instances_.push_back(new_instance);
+  }
+  
+  // Get pointer to the instance we just added
+  WallpaperInstance* instance = GetInstanceForMonitor(monitor_index);
+  
+  // Show window
+  ShowWindow(new_instance.webview_host_hwnd, SW_SHOW);
+  UpdateWindow(new_instance.webview_host_hwnd);
+
+  // Initialize WebView2
+  SetupWebView2(new_instance.webview_host_hwnd, url, instance);
+
+  std::cout << "[AnyWP] ========== Initialization Complete (Monitor " << monitor_index << ") ==========" << std::endl;
+  return true;
+}
+
+// Stop wallpaper on specific monitor
+bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
+  std::cout << "[AnyWP] Stopping wallpaper on monitor " << monitor_index << "..." << std::endl;
+
+  WallpaperInstance* instance = GetInstanceForMonitor(monitor_index);
+  if (!instance) {
+    std::cout << "[AnyWP] No wallpaper found on monitor " << monitor_index << std::endl;
+    return false;
+  }
+
+  // Close WebView
+  if (instance->webview_controller) {
+    try {
+      instance->webview_controller->Close();
+    } catch (...) {
+      std::cout << "[AnyWP] WARNING: Exception while closing WebView controller" << std::endl;
+    }
+    instance->webview_controller = nullptr;
+  }
+
+  instance->webview = nullptr;
+
+  // Destroy window
+  if (instance->webview_host_hwnd) {
+    if (IsWindow(instance->webview_host_hwnd)) {
+      ResourceTracker::Instance().UntrackWindow(instance->webview_host_hwnd);
+      
+      if (!DestroyWindow(instance->webview_host_hwnd)) {
+        DWORD error = GetLastError();
+        std::cout << "[AnyWP] WARNING: Failed to destroy window, error: " << error << std::endl;
+      }
+    } else {
+      ResourceTracker::Instance().UntrackWindow(instance->webview_host_hwnd);
+    }
+    instance->webview_host_hwnd = nullptr;
+  }
+
+  // Clear iframe data
+  instance->iframes.clear();
+
+  // Remove instance from list
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    wallpaper_instances_.erase(
+      std::remove_if(wallpaper_instances_.begin(), wallpaper_instances_.end(),
+        [monitor_index](const WallpaperInstance& inst) {
+          return inst.monitor_index == monitor_index;
+        }),
+      wallpaper_instances_.end()
+    );
+  }
+  
+  // Remove mouse hook if no more instances
+  if (wallpaper_instances_.empty()) {
+    RemoveMouseHook();
+    enable_interaction_ = false;
+  }
+
+  std::cout << "[AnyWP] Wallpaper stopped on monitor " << monitor_index << std::endl;
+  return true;
+}
+
+// Navigate to URL on specific monitor
+bool AnyWPEnginePlugin::NavigateToUrlOnMonitor(const std::string& url, int monitor_index) {
+  WallpaperInstance* instance = GetInstanceForMonitor(monitor_index);
+  if (!instance || !instance->webview) {
+    std::cout << "[AnyWP] ERROR: No wallpaper on monitor " << monitor_index << std::endl;
+    LogError("NavigateToUrlOnMonitor: WebView not initialized on monitor " + std::to_string(monitor_index));
+    return false;
+  }
+
+  // P0-3: Validate URL
+  if (!url_validator_.IsAllowed(url)) {
+    std::cout << "[AnyWP] [Security] URL validation failed: " << url << std::endl;
+    LogError("URL validation failed: " + url);
+    return false;
+  }
+
+  // Clear iframe data
+  instance->iframes.clear();
+
+  // P1-2: Check if cleanup needed
+  PeriodicCleanup();
+
+  std::wstring wurl(url.begin(), url.end());
+  HRESULT hr = instance->webview->Navigate(wurl.c_str());
+  
+  if (SUCCEEDED(hr)) {
+    std::cout << "[AnyWP] Navigated to: " << url << " on monitor " << monitor_index << std::endl;
+    return true;
+  } else {
+    std::cout << "[AnyWP] ERROR: Navigation failed on monitor " << monitor_index << ": " << std::hex << hr << std::endl;
+    LogError("Navigation failed on monitor " + std::to_string(monitor_index) + ": " + url);
     return false;
   }
 }
