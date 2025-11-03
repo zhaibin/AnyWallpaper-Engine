@@ -41,28 +41,39 @@
       
       // Setup event listeners
       this._setupEventListeners();
-      
-      // Setup SPA monitoring
-      if (this._spaMode) {
-        this._setupSPAMonitoring();
-      }
     },
     
     // Detect SPA framework
     _detectSPA: function() {
       const self = this;
-      setTimeout(function() {
-        const isReact = !!(window.React || document.querySelector('[data-reactroot], [data-reactid]'));
-        const isVue = !!(window.Vue || document.querySelector('[data-v-]'));
-        const isAngular = !!(window.angular || document.querySelector('[ng-version]'));
-        
-        if (isReact || isVue || isAngular) {
-          self._spaMode = true;
-          const framework = isReact ? 'React' : (isVue ? 'Vue' : 'Angular');
-          console.log('[AnyWP] SPA Framework detected: ' + framework);
-          console.log('[AnyWP] Auto-refresh enabled for dynamic content');
-        }
-      }, 100);
+      
+      // Immediate check for React/Vue/Angular globals
+      const isReact = !!(window.React || window.ReactDOM);
+      const isVue = !!(window.Vue);
+      const isAngular = !!(window.angular);
+      
+      if (isReact || isVue || isAngular) {
+        self._spaMode = true;
+        const framework = isReact ? 'React' : (isVue ? 'Vue' : 'Angular');
+        console.log('[AnyWP] SPA Framework detected immediately: ' + framework);
+        console.log('[AnyWP] Auto-refresh enabled for dynamic content');
+        self._setupSPAMonitoring();
+      } else {
+        // Delayed check for DOM elements
+        setTimeout(function() {
+          const isReactDOM = !!document.querySelector('[data-reactroot], [data-reactid], #root');
+          const isVueDOM = !!document.querySelector('[data-v-]');
+          const isAngularDOM = !!document.querySelector('[ng-version]');
+          
+          if (isReactDOM || isVueDOM || isAngularDOM) {
+            self._spaMode = true;
+            const framework = isReactDOM ? 'React' : (isVueDOM ? 'Vue' : 'Angular');
+            console.log('[AnyWP] SPA Framework detected via DOM: ' + framework);
+            console.log('[AnyWP] Auto-refresh enabled for dynamic content');
+            self._setupSPAMonitoring();
+          }
+        }, 500);
+      }
     },
     
     // Detect debug mode from URL parameter
