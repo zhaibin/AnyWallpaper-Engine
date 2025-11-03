@@ -47,15 +47,27 @@ class AnyWPEngine {
   
   /// Set callback for monitor change events
   static void setOnMonitorChangeCallback(void Function() callback) {
+    print('[AnyWPEngine] Setting up monitor change callback');
     _onMonitorChangeCallback = callback;
     
     // Set method call handler for callbacks from native
     _channel.setMethodCallHandler((call) async {
+      print('[AnyWPEngine] Received method call from native: ${call.method}');
+      
       if (call.method == 'onMonitorChange') {
-        print('[AnyWPEngine] Monitor change detected from native');
-        _onMonitorChangeCallback?.call();
+        print('[AnyWPEngine] Monitor change detected from native - calling callback');
+        if (_onMonitorChangeCallback != null) {
+          _onMonitorChangeCallback!();
+          print('[AnyWPEngine] Callback executed');
+        } else {
+          print('[AnyWPEngine] WARNING: Callback is null!');
+        }
+      } else {
+        print('[AnyWPEngine] Unknown method: ${call.method}');
       }
     });
+    
+    print('[AnyWPEngine] Monitor change callback setup complete');
   }
 
   /// Initialize WebView2 as desktop wallpaper

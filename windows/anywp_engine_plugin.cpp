@@ -285,13 +285,18 @@ void AnyWPEnginePlugin::RegisterWithRegistrar(
 
   auto plugin = std::make_unique<AnyWPEnginePlugin>();
   
-  // Store channel pointer for callbacks
-  plugin->SetMethodChannel(channel.get());
+  // Store raw channel pointer before moving
+  auto* channel_ptr = channel.get();
 
   channel->SetMethodCallHandler(
       [plugin_pointer = plugin.get()](const auto &call, auto result) {
         plugin_pointer->HandleMethodCall(call, std::move(result));
       });
+
+  // Set channel pointer after handler is set
+  plugin->SetMethodChannel(channel_ptr);
+  
+  std::cout << "[AnyWP] Channel registered at: " << channel_ptr << std::endl;
 
   registrar->AddPlugin(std::move(plugin));
 }
@@ -2036,7 +2041,7 @@ void AnyWPEnginePlugin::CleanupDisplayChangeListener() {
 
 // Handle display change
 void AnyWPEnginePlugin::HandleDisplayChange() {
-  std::cout << "[AnyWP] [DisplayChange] Handling display change..." << std::endl;
+  std::cout << "[AnyWP] [DisplayChange] ========== Handling display change ==========" << std::endl;
   
   // Wait a bit for system to stabilize
   Sleep(200);
@@ -2048,28 +2053,47 @@ void AnyWPEnginePlugin::HandleDisplayChange() {
   std::cout << "[AnyWP] [DisplayChange] Monitor count: " << old_monitors.size() 
             << " -> " << new_monitors.size() << std::endl;
   
+  bool should_notify_ui = false;
+  
   // Check if monitor count changed
   if (old_monitors.size() != new_monitors.size()) {
+    std::cout << "[AnyWP] [DisplayChange] Monitor count changed - will notify UI" << std::endl;
     HandleMonitorCountChange(old_monitors, new_monitors);
-    
-    // Notify Dart side to refresh monitor list
+    should_notify_ui = true;
+  } else {
+    std::cout << "[AnyWP] [DisplayChange] Monitor count unchanged - checking for other changes" << std::endl;
+    // Even if count is same, monitors might have changed (resolution, position, etc.)
+    UpdateWallpaperSizes();
+  }
+  
+  // Always notify UI to refresh when display changes
+  if (should_notify_ui) {
+    std::cout << "[AnyWP] [DisplayChange] Notifying Dart to refresh UI..." << std::endl;
     NotifyMonitorChange();
   }
   
-  // Update wallpaper window sizes for existing instances
-  UpdateWallpaperSizes();
+  std::cout << "[AnyWP] [DisplayChange] ========== Display change handled ==========" << std::endl;
 }
 
 // Notify Dart side about monitor changes
 void AnyWPEnginePlugin::NotifyMonitorChange() {
   if (method_channel_) {
-    std::cout << "[AnyWP] [DisplayChange] Notifying Dart about monitor change..." << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] Notifying Dart about monitor change via channel: " << method_channel_ << std::endl;
     
-    // Invoke method on Dart side
-    method_channel_->InvokeMethod(
-      "onMonitorChange",
-      std::make_unique<flutter::EncodableValue>(flutter::EncodableMap())
-    );
+    try {
+      // Invoke method on Dart side
+      method_channel_->InvokeMethod(
+        "onMonitorChange",
+        std::make_unique<flutter::EncodableValue>(flutter::EncodableMap())
+      );
+      std::cout << "[AnyWP] [DisplayChange] Notification sent successfully" << std::endl;
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [DisplayChange] ERROR: Failed to send notification: " << e.what() << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [DisplayChange] ERROR: Failed to send notification (unknown error)" << std::endl;
+    }
+  } else {
+    std::cout << "[AnyWP] [DisplayChange] ERROR: method_channel_ is nullptr!" << std::endl;
   }
 }
 
@@ -2132,13 +2156,18 @@ void AnyWPEnginePlugin::HandleMonitorCountChange(const std::vector<MonitorInfo>&
       }
       
       if (!still_exists) {
-        std::cout << "[AnyWP] [DisplayChange] Monitor removed: " << old_mon.device_name << std::endl;
+        std::cout << "[AnyWP] [DisplayChange] Monitor removed: " << old_mon.device_name 
+                  << " (index: " << old_mon.index << ")" << std::endl;
         
         // Clean up wallpaper on removed monitor
         WallpaperInstance* instance = GetInstanceForMonitor(old_mon.index);
         if (instance) {
-          std::cout << "[AnyWP] [DisplayChange] Cleaning up wallpaper on removed monitor " << old_mon.index << std::endl;
-          StopWallpaperOnMonitor(old_mon.index);
+          std::cout << "[AnyWP] [DisplayChange] Found wallpaper on removed monitor " << old_mon.index 
+                    << ", cleaning up..." << std::endl;
+          bool cleanup_success = StopWallpaperOnMonitor(old_mon.index);
+          std::cout << "[AnyWP] [DisplayChange] Cleanup " << (cleanup_success ? "succeeded" : "failed") << std::endl;
+        } else {
+          std::cout << "[AnyWP] [DisplayChange] No wallpaper found on removed monitor " << old_mon.index << std::endl;
         }
       }
     }
