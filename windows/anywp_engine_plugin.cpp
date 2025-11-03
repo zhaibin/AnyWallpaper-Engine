@@ -662,21 +662,43 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
               // Navigate
               webview->Navigate(wurl.c_str());
               
-              // After navigation completes, send interaction mode
+              // After navigation completes, manually inject SDK and send interaction mode
               webview->add_NavigationCompleted(
                 Microsoft::WRL::Callback<ICoreWebView2NavigationCompletedEventHandler>(
                   [this, webview](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
-                    // Send interaction mode to JavaScript
-                    std::wstringstream script;
-                    script << L"(function() {"
-                           << L"  var event = new CustomEvent('AnyWP:interactionMode', {"
-                           << L"    detail: { enabled: " << (enable_interaction_ ? L"true" : L"false") << L" }"
-                           << L"  });"
-                           << L"  window.dispatchEvent(event);"
-                           << L"  console.log('[AnyWP] Interaction mode set to: " << (enable_interaction_ ? L"true" : L"false") << L"');"
-                           << L"})();";
+                    std::cout << "[AnyWP] [API] NavigationCompleted - manually injecting SDK" << std::endl;
                     
-                    sender->ExecuteScript(script.str().c_str(), nullptr);
+                    // CRITICAL FIX: Manually inject SDK script after navigation completes
+                    // This ensures SDK is available before page scripts run
+                    std::string sdk_script = LoadSDKScript();
+                    std::wstring wsdk_script(sdk_script.begin(), sdk_script.end());
+                    
+                    sender->ExecuteScript(wsdk_script.c_str(),
+                      Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+                        [this](HRESULT error, LPCWSTR result) -> HRESULT {
+                          if (SUCCEEDED(error)) {
+                            std::cout << "[AnyWP] [API] SDK manually injected successfully" << std::endl;
+                            
+                            // Send interaction mode after SDK is loaded
+                            std::wstringstream script;
+                            script << L"(function() {"
+                                   << L"  if (window.AnyWP) {"
+                                   << L"    var event = new CustomEvent('AnyWP:interactionMode', {"
+                                   << L"      detail: { enabled: " << (enable_interaction_ ? L"true" : L"false") << L" }"
+                                   << L"    });"
+                                   << L"    window.dispatchEvent(event);"
+                                   << L"  }"
+                                   << L"})();";
+                            
+                            if (webview_) {
+                              webview_->ExecuteScript(script.str().c_str(), nullptr);
+                            }
+                          } else {
+                            std::cout << "[AnyWP] [API] ERROR: Failed to manually inject SDK: " << std::hex << error << std::endl;
+                          }
+                          return S_OK;
+                        }).Get());
+                    
                     std::cout << "[AnyWP] [API] Sent interaction mode to JS: " << enable_interaction_ << std::endl;
                     return S_OK;
                   }).Get(), nullptr);
@@ -777,21 +799,42 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
               // Navigate to URL
               webview->Navigate(wurl.c_str());
               
-              // After navigation completes, send interaction mode
+              // After navigation completes, manually inject SDK and send interaction mode
               webview->add_NavigationCompleted(
                 Microsoft::WRL::Callback<ICoreWebView2NavigationCompletedEventHandler>(
                   [this](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args) -> HRESULT {
-                    // Send interaction mode to JavaScript
-                    std::wstringstream script;
-                    script << L"(function() {"
-                           << L"  var event = new CustomEvent('AnyWP:interactionMode', {"
-                           << L"    detail: { enabled: " << (enable_interaction_ ? L"true" : L"false") << L" }"
-                           << L"  });"
-                           << L"  window.dispatchEvent(event);"
-                           << L"  console.log('[AnyWP] Interaction mode set to: " << (enable_interaction_ ? L"true" : L"false") << L"');"
-                           << L"})();";
+                    std::cout << "[AnyWP] [API] NavigationCompleted - manually injecting SDK" << std::endl;
                     
-                    sender->ExecuteScript(script.str().c_str(), nullptr);
+                    // CRITICAL FIX: Manually inject SDK script after navigation completes
+                    std::string sdk_script = LoadSDKScript();
+                    std::wstring wsdk_script(sdk_script.begin(), sdk_script.end());
+                    
+                    sender->ExecuteScript(wsdk_script.c_str(),
+                      Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+                        [this](HRESULT error, LPCWSTR result) -> HRESULT {
+                          if (SUCCEEDED(error)) {
+                            std::cout << "[AnyWP] [API] SDK manually injected successfully" << std::endl;
+                            
+                            // Send interaction mode after SDK is loaded
+                            std::wstringstream script;
+                            script << L"(function() {"
+                                   << L"  if (window.AnyWP) {"
+                                   << L"    var event = new CustomEvent('AnyWP:interactionMode', {"
+                                   << L"      detail: { enabled: " << (enable_interaction_ ? L"true" : L"false") << L" }"
+                                   << L"    });"
+                                   << L"    window.dispatchEvent(event);"
+                                   << L"  }"
+                                   << L"})();";
+                            
+                            if (webview_) {
+                              webview_->ExecuteScript(script.str().c_str(), nullptr);
+                            }
+                          } else {
+                            std::cout << "[AnyWP] [API] ERROR: Failed to manually inject SDK: " << std::hex << error << std::endl;
+                          }
+                          return S_OK;
+                        }).Get());
+                    
                     std::cout << "[AnyWP] [API] Sent interaction mode to JS: " << enable_interaction_ << std::endl;
                     return S_OK;
                   }).Get(), nullptr);
