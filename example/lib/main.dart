@@ -22,26 +22,36 @@ class _MyAppState extends State<MyApp> {
   // Multi-monitor support
   List<MonitorInfo> _monitors = [];
   Map<int, bool> _monitorWallpapers = {};  // Track which monitors have wallpapers
-  int _selectedTabIndex = 0;  // 0 = single, 1 = multi-monitor
+  Map<int, TextEditingController> _monitorUrlControllers = {};  // Each monitor has its own URL
+  int _selectedTabIndex = 1;  // Start with multi-monitor tab (0 = single, 1 = multi-monitor)
 
   @override
   void initState() {
     super.initState();
     _loadMonitors();
-    // Auto-start for testing - 3 seconds delay
-    Future.delayed(Duration(seconds: 3), () {
-      print('[APP] Auto-starting wallpaper for test...');
-      _startWallpaper();
-    });
+    // Don't auto-start - let user choose
+  }
+  
+  @override
+  void dispose() {
+    _urlController.dispose();
+    for (final controller in _monitorUrlControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
   }
   
   Future<void> _loadMonitors() async {
     final monitors = await AnyWPEngine.getMonitors();
     setState(() {
       _monitors = monitors;
-      // Initialize wallpaper tracking
+      // Initialize wallpaper tracking and URL controllers for each monitor
       for (final monitor in monitors) {
         _monitorWallpapers[monitor.index] = false;
+        // Each monitor gets its own URL controller with default URL
+        _monitorUrlControllers[monitor.index] = TextEditingController(
+          text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_simple.html',
+        );
       }
     });
     print('[APP] Found ${monitors.length} monitor(s):');
@@ -107,9 +117,12 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _startWallpaperOnMonitor(int monitorIndex) async {
-    final url = _urlController.text.trim();
+    final controller = _monitorUrlControllers[monitorIndex];
+    if (controller == null) return;
+    
+    final url = controller.text.trim();
     if (url.isEmpty) {
-      _showMessage('Please enter a URL');
+      _showMessage('Please enter a URL for monitor $monitorIndex');
       return;
     }
 
@@ -147,24 +160,30 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _startWallpaperOnAllMonitors() async {
-    final url = _urlController.text.trim();
-    if (url.isEmpty) {
-      _showMessage('Please enter a URL');
-      return;
+    print('[APP] Starting wallpaper on all monitors with individual URLs');
+    
+    int successCount = 0;
+    for (final monitor in _monitors) {
+      final controller = _monitorUrlControllers[monitor.index];
+      if (controller == null) continue;
+      
+      final url = controller.text.trim();
+      if (url.isEmpty) continue;
+      
+      final success = await AnyWPEngine.initializeWallpaperOnMonitor(
+        url: url,
+        monitorIndex: monitor.index,
+        enableMouseTransparent: _mouseTransparent,
+      );
+      
+      setState(() {
+        _monitorWallpapers[monitor.index] = success;
+      });
+      
+      if (success) successCount++;
     }
-
-    print('[APP] Starting wallpaper on all monitors');
-    final results = await AnyWPEngine.initializeWallpaperOnAllMonitors(
-      url: url,
-      enableMouseTransparent: _mouseTransparent,
-    );
-
-    setState(() {
-      _monitorWallpapers.addAll(results);
-    });
-
-    final successCount = results.values.where((v) => v).length;
-    _showMessage('Started wallpaper on $successCount/${results.length} monitor(s)');
+    
+    _showMessage('Started wallpaper on $successCount/${_monitors.length} monitor(s)');
   }
 
   Future<void> _stopWallpaperOnAllMonitors() async {
@@ -340,45 +359,40 @@ class _MyAppState extends State<MyApp> {
                   children: [
                     Icon(Icons.monitor, color: Colors.blue),
                     SizedBox(width: 8),
-                    Text(
-                      'Detected Monitors: ${_monitors.length}',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        'Detected Monitors: ${_monitors.length}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _loadMonitors,
+                      icon: Icon(Icons.refresh, size: 16),
+                      label: Text('Refresh'),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _loadMonitors,
-                  icon: Icon(Icons.refresh),
-                  label: Text('Refresh Monitors'),
+                SizedBox(height: 12),
+                CheckboxListTile(
+                  title: const Text('Enable Mouse Transparency'),
+                  subtitle: const Text('Allow clicks to pass through to desktop'),
+                  value: _mouseTransparent,
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (value) {
+                    setState(() {
+                      _mouseTransparent = value ?? true;
+                    });
+                  },
                 ),
               ],
             ),
           ),
-        ),
-        SizedBox(height: 16),
-        TextField(
-          controller: _urlController,
-          decoration: const InputDecoration(
-            labelText: 'URL',
-            hintText: 'Enter URL to display',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.link),
-          ),
-        ),
-        SizedBox(height: 16),
-        CheckboxListTile(
-          title: const Text('Enable Mouse Transparency'),
-          subtitle: const Text('Allow clicks to pass through to desktop'),
-          value: _mouseTransparent,
-          onChanged: (value) {
-            setState(() {
-              _mouseTransparent = value ?? true;
-            });
-          },
         ),
         SizedBox(height: 16),
         Row(
@@ -387,7 +401,7 @@ class _MyAppState extends State<MyApp> {
               child: ElevatedButton.icon(
                 onPressed: _startWallpaperOnAllMonitors,
                 icon: Icon(Icons.play_arrow),
-                label: Text('Start on All'),
+                label: Text('Start All (with individual URLs)'),
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.all(16),
                   backgroundColor: Colors.green,
@@ -419,95 +433,111 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
         SizedBox(height: 8),
-        ..._monitors.map((monitor) => Card(
-          margin: EdgeInsets.symmetric(vertical: 8),
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      monitor.isPrimary ? Icons.star : Icons.monitor,
-                      color: monitor.isPrimary ? Colors.amber : Colors.grey,
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Monitor ${monitor.index}${monitor.isPrimary ? ' (Primary)' : ''}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Text(
-                            '${monitor.width}x${monitor.height} @ (${monitor.left}, ${monitor.top})',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          Text(
-                            monitor.deviceName,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
+        ..._monitors.map((monitor) {
+          final controller = _monitorUrlControllers[monitor.index];
+          return Card(
+            margin: EdgeInsets.symmetric(vertical: 8),
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        monitor.isPrimary ? Icons.star : Icons.monitor,
+                        color: monitor.isPrimary ? Colors.amber : Colors.grey,
                       ),
-                    ),
-                    Chip(
-                      label: Text(
-                        _monitorWallpapers[monitor.index] == true ? 'Running' : 'Stopped',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      backgroundColor: _monitorWallpapers[monitor.index] == true
-                          ? Colors.green[100]
-                          : Colors.grey[300],
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _monitorWallpapers[monitor.index] == true
-                            ? null
-                            : () => _startWallpaperOnMonitor(monitor.index),
-                        icon: Icon(Icons.play_arrow, size: 16),
-                        label: Text('Start'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Monitor ${monitor.index}${monitor.isPrimary ? ' (Primary)' : ''}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              '${monitor.width}x${monitor.height} @ (${monitor.left}, ${monitor.top})',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Text(
+                              monitor.deviceName,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      Chip(
+                        label: Text(
+                          _monitorWallpapers[monitor.index] == true ? 'Running' : 'Stopped',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        backgroundColor: _monitorWallpapers[monitor.index] == true
+                            ? Colors.green[100]
+                            : Colors.grey[300],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  if (controller != null)
+                    TextField(
+                      controller: controller,
+                      decoration: InputDecoration(
+                        labelText: 'URL for Monitor ${monitor.index}',
+                        hintText: 'Enter URL to display',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.link, size: 20),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      ),
+                      style: TextStyle(fontSize: 14),
                     ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _monitorWallpapers[monitor.index] != true
-                            ? null
-                            : () => _stopWallpaperOnMonitor(monitor.index),
-                        icon: Icon(Icons.stop, size: 16),
-                        label: Text('Stop'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _monitorWallpapers[monitor.index] == true
+                              ? null
+                              : () => _startWallpaperOnMonitor(monitor.index),
+                          icon: Icon(Icons.play_arrow, size: 16),
+                          label: Text('Start'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _monitorWallpapers[monitor.index] != true
+                              ? null
+                              : () => _stopWallpaperOnMonitor(monitor.index),
+                          icon: Icon(Icons.stop, size: 16),
+                          label: Text('Stop'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        )).toList(),
+          );
+        }).toList(),
         SizedBox(height: 24),
         Card(
           color: Colors.blue[50],
@@ -532,11 +562,15 @@ class _MyAppState extends State<MyApp> {
                 SizedBox(height: 8),
                 Text(
                   '1. Check detected monitors above\n'
-                  '2. Enter a URL to display\n'
-                  '3. Use "Start on All" to set wallpaper on all monitors\n'
+                  '2. Enter different URLs for each monitor (optional)\n'
+                  '3. Use "Start All" to set all monitors at once\n'
                   '4. Or use individual controls for each monitor\n'
-                  '5. Each monitor can have independent wallpapers',
-                  style: TextStyle(color: Colors.grey[800]),
+                  '5. Each monitor displays its own independent content!\n\n'
+                  '💡 Tips:\n'
+                  '  • Try different HTML files on different monitors\n'
+                  '  • Disable mouse transparency for interactive wallpapers\n'
+                  '  • Use test_simple.html, test_api.html, or test_iframe_ads.html',
+                  style: TextStyle(color: Colors.grey[800], fontSize: 13),
                 ),
               ],
             ),
