@@ -22,12 +22,15 @@
 <html>
 <head>
   <title>我的壁纸</title>
+  <!-- 加载 AnyWP SDK -->
+  <script src="../windows/anywp_sdk.js"></script>
 </head>
 <body>
   <button id="myButton">点击我</button>
+  <div id="widget" style="position:absolute; left:100px; top:100px;">可拖拽</div>
 
   <script>
-    // SDK 会自动注入，直接使用
+    // SDK 自动初始化，直接使用
     if (window.AnyWP) {
       // 通知壁纸已就绪
       AnyWP.ready('我的壁纸');
@@ -36,6 +39,11 @@
       AnyWP.onClick('#myButton', function(x, y) {
         console.log('按钮被点击了！');
         AnyWP.openURL('https://example.com');
+      });
+      
+      // 使元素可拖拽（v4.2.0+）
+      AnyWP.makeDraggable('#widget', {
+        persistKey: 'widget_position'  // 位置自动保存
       });
     }
   </script>
@@ -130,6 +138,55 @@ AnyWP.refreshBounds();
 
 ```javascript
 AnyWP.clearHandlers();
+```
+
+##### `makeDraggable(element, options)` 🆕
+使元素可拖拽，位置自动保存。
+
+**参数**：
+- `element`: 元素选择器或 DOM 元素
+- `options`: 配置选项
+
+**Options**：
+```javascript
+{
+  persistKey: 'element_pos',  // 保存标识（必需）
+  bounds: { left, top, right, bottom },  // 边界限制（可选）
+  onDragStart: (pos) => {},   // 拖拽开始回调
+  onDrag: (pos) => {},        // 拖拽中回调
+  onDragEnd: (pos) => {}      // 拖拽结束回调
+}
+```
+
+**示例**：
+```javascript
+AnyWP.makeDraggable('#widget', {
+  persistKey: 'widget_position',
+  onDragEnd: (pos) => console.log('最终位置', pos)
+});
+```
+
+##### `resetPosition(element, position)` 🆕
+复位元素位置。
+
+**参数**：
+- `element`: 元素选择器或 DOM 元素
+- `position`: 目标位置对象 `{left, top}`，不传则清除保存的位置
+
+**示例**：
+```javascript
+// 复位到指定位置
+AnyWP.resetPosition('#widget', { left: 100, top: 100 });
+
+// 清除保存的位置
+AnyWP.resetPosition('#widget');
+```
+
+##### `removeDraggable(element)`
+移除元素的拖拽功能。
+
+```javascript
+AnyWP.removeDraggable('#widget');
 ```
 
 ##### `enableDebug()`
@@ -661,9 +718,26 @@ onUnmounted(() => {
 
 暂不支持 iframe 内的点击检测，请在顶层页面注册。
 
-### Q: 能否检测拖拽、滚动等事件？
+### Q: 如何实现拖拽功能？
 
-当前版本仅支持点击事件，后续版本将支持更多交互。
+**SDK v4.2.0+ 已支持拖拽**：
+
+```javascript
+AnyWP.makeDraggable('#element', {
+  persistKey: 'element_pos',  // 位置自动保存到 Registry
+  bounds: { left: 0, top: 0, right: 1920, bottom: 1080 },  // 可选：边界限制
+  onDragStart: (pos) => console.log('开始拖拽', pos),
+  onDragEnd: (pos) => console.log('拖拽结束', pos)
+});
+
+// 复位位置
+AnyWP.resetPosition('#element', { left: 100, top: 100 });
+```
+
+**注意**：
+- 必须在 HTML 中添加 `<script src="../windows/anywp_sdk.js"></script>`
+- 壁纸保持鼠标透明，拖拽通过鼠标钩子实现
+- 位置自动保存到 Windows Registry，重启后恢复
 
 ### Q: 开发时如何测试？
 

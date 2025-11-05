@@ -34,8 +34,7 @@ AnyWP 是一个 Flutter Windows 插件，可以将 WebView2 嵌入到 Windows �
 ```
 
 **文档**：
-- 📖 [Web 开发者指南](WEB_DEVELOPER_GUIDE_CN.md)
-- 🎨 [拖拽架构](DRAG_ARCHITECTURE.md)
+- 📖 [Web 开发者指南](WEB_DEVELOPER_GUIDE_CN.md) - 完整 API 参考
 - 📝 示例：`examples/test_draggable.html`
 
 ## 技术实现
