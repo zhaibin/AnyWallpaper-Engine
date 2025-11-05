@@ -239,7 +239,7 @@ class PowerAwareSettings {
 }
 ```
 
-### ✅ DO: Pause When Not Visible
+### ✅ DO: Handle Visibility Changes
 
 ```dart
 class SmartWallpaperController {
@@ -247,36 +247,41 @@ class SmartWallpaperController {
     AnyWPEngine.setOnPowerStateChangeCallback((old, newState) {
       print('State: $old -> $newState');
       
-      // Inform web content about state changes
-      if (newState == 'PAUSED' || newState == 'LOCKED') {
-        // Content can reduce activity
-        print('Wallpaper paused - reduce activity');
-      } else if (newState == 'ACTIVE') {
-        // Resume normal activity
-        print('Wallpaper active - resume activity');
-      }
+      // State changes are automatic - no action needed
+      // Content is notified via Page Visibility API
     });
   }
 }
 ```
 
-### ❌ DON'T: Keep Heavy Animations Running
+**Web Side - Auto-Pause Media:**
+```javascript
+// SDK automatically handles video/audio pause
+// But you can add custom behavior:
+AnyWP.onVisibilityChange(function(visible) {
+  if (visible) {
+    console.log('Wallpaper visible - resuming');
+    resumeCustomAnimations();
+  } else {
+    console.log('Wallpaper hidden - pausing');
+    pauseCustomAnimations();
+  }
+});
+```
+
+### ✅ DO: Use Page Visibility API
 
 ```javascript
-// Avoid: Always running heavy effects
-function renderParticles() {
-  particles.forEach(p => {
-    p.update();
-    p.render();
-  });
-  requestAnimationFrame(renderParticles);
-}
-
-// Good: Pause when not visible
+// Good: Pause animations when wallpaper is hidden
 let isPaused = false;
+let lastFrameTime = 0;
 
-window.addEventListener('AnyWP:interactionMode', (e) => {
-  isPaused = !e.detail.enabled;
+// Listen to AnyWP visibility events
+window.addEventListener('AnyWP:visibility', (e) => {
+  isPaused = !e.detail.visible;
+  if (isPaused) {
+    lastFrameTime = Date.now();  // Save state
+  }
 });
 
 function renderParticles() {
@@ -288,6 +293,46 @@ function renderParticles() {
   }
   requestAnimationFrame(renderParticles);
 }
+```
+
+### ✅ DO: Preserve State During Pause
+
+```javascript
+// Good: Save state and resume smoothly
+let animationState = {
+  progress: 0,
+  timestamp: 0,
+};
+
+AnyWP.onVisibilityChange(function(visible) {
+  if (!visible) {
+    // Save current state
+    animationState.timestamp = Date.now();
+    pauseAnimation();
+  } else {
+    // Resume from saved state (no restart)
+    const pausedDuration = Date.now() - animationState.timestamp;
+    resumeAnimation(animationState.progress);
+  }
+});
+```
+
+### ❌ DON'T: Restart Animations on Resume
+
+```javascript
+// Avoid: Restarting from beginning
+AnyWP.onVisibilityChange(function(visible) {
+  if (visible) {
+    startAnimationFromBeginning();  // Bad - jarring experience
+  }
+});
+
+// Good: Continue from where it stopped
+AnyWP.onVisibilityChange(function(visible) {
+  if (visible) {
+    continueAnimation();  // Smooth transition
+  }
+});
 ```
 
 ---

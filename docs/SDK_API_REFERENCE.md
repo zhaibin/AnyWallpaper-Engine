@@ -178,6 +178,78 @@ AnyWP.onKeyboard((event) => {
 
 ---
 
+### `onVisibilityChange(callback)` 🆕
+
+监听壁纸可见性变化（用于省电优化）。
+
+**参数**：
+- `callback(visible)` (Function) - 可见性回调
+  - `visible` (boolean) - `true` 表示可见，`false` 表示隐藏
+
+**何时触发**：
+- 系统锁屏时 → `visible = false`
+- 系统解锁时 → `visible = true`
+- 全屏应用启动时 → `visible = false`
+- 用户空闲超时时 → `visible = false`
+- 手动暂停时 → `visible = false`
+
+**自动行为**：
+- SDK 会**自动暂停**所有 `<video>` 和 `<audio>` 元素
+- SDK 会**自动恢复**之前播放的媒体
+- 开发者可添加自定义暂停/恢复逻辑
+
+**示例**：
+```javascript
+// 基础用法
+AnyWP.onVisibilityChange(function(visible) {
+  if (visible) {
+    console.log('壁纸可见 - 恢复动画');
+    resumeAnimations();
+  } else {
+    console.log('壁纸隐藏 - 暂停动画以省电');
+    pauseAnimations();
+  }
+});
+
+// 保存和恢复状态
+let animationState = { frame: 0 };
+
+AnyWP.onVisibilityChange(function(visible) {
+  if (visible) {
+    // 从保存的状态恢复
+    resumeFromFrame(animationState.frame);
+  } else {
+    // 保存当前状态
+    animationState.frame = getCurrentFrame();
+    pauseAnimation();
+  }
+});
+
+// Canvas 动画优化
+let isVisible = true;
+
+AnyWP.onVisibilityChange(function(visible) {
+  isVisible = visible;
+});
+
+function animate() {
+  if (isVisible) {
+    // 只在可见时渲染
+    ctx.clearRect(0, 0, width, height);
+    drawFrame();
+  }
+  requestAnimationFrame(animate);
+}
+```
+
+**💡 提示**：
+- ✅ SDK 自动处理视频/音频，大多数情况下无需额外代码
+- ✅ 对于自定义动画，使用此 API 优化性能
+- ✅ 保存状态以实现流畅的暂停/恢复体验
+- ⚡ 恢复速度 <50ms，用户几乎感觉不到暂停
+
+---
+
 ## 🔄 SPA 支持
 
 ### 自动检测

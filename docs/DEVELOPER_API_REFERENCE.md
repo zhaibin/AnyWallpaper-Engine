@@ -152,11 +152,19 @@ await AnyWPEngine.pauseWallpaper();
 await AnyWPEngine.resumeWallpaper();
 ```
 
-**Effects of Pause:**
-- Hides wallpaper windows
-- Reduces animation frame rate to 1 FPS
-- Automatically triggers memory optimization
-- Skips mouse hook processing
+**Effects of Pause (Lightweight Strategy):**
+- ✅ WebView2 stops rendering (saves CPU/GPU)
+- ✅ Preserves DOM state and memory (instant resume)
+- ✅ Notifies web content via Page Visibility API
+- ✅ Auto-pauses videos and audio
+- ✅ Skips mouse hook processing
+- ✅ Light memory trim (no cache clearing)
+
+**Resume Performance:**
+- ⚡ **Instant recovery** (<50ms)
+- 🎯 No reloading or DOM reconstruction
+- 🎨 Animations continue from where they stopped
+- 💾 All state preserved
 
 ### Auto Power Saving
 

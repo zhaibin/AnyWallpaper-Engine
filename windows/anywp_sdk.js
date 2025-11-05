@@ -7,7 +7,7 @@
 
   // AnyWP Global Object
   window.AnyWP = {
-    version: '4.0.0',
+    version: '4.1.0',
     dpiScale: window.devicePixelRatio || 1,
     screenWidth: screen.width * (window.devicePixelRatio || 1),
     screenHeight: screen.height * (window.devicePixelRatio || 1),

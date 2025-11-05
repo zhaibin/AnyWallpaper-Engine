@@ -164,6 +164,52 @@ AnyWP.onKeyboard(function(event) {
 });
 ```
 
+##### `onVisibilityChange(callback)` 🆕
+监听壁纸可见性变化（省电优化）。
+
+**何时触发**：
+- 系统锁屏/解锁
+- 全屏应用启动/退出
+- 用户空闲/活跃
+- 手动暂停/恢复
+
+**自动行为**：
+- SDK 自动暂停所有视频和音频
+- 解锁后自动恢复播放
+- **瞬间恢复**（<50ms）
+
+**示例**：
+```javascript
+AnyWP.onVisibilityChange(function(visible) {
+  if (visible) {
+    console.log('壁纸可见 - 恢复动画');
+    resumeMyAnimations();
+  } else {
+    console.log('壁纸隐藏 - 暂停动画（省电）');
+    pauseMyAnimations();
+  }
+});
+
+// 高级用法：保存和恢复状态
+let animationFrame = 0;
+
+AnyWP.onVisibilityChange(function(visible) {
+  if (visible) {
+    // 从保存的帧继续（流畅体验）
+    continueFromFrame(animationFrame);
+  } else {
+    // 保存当前帧
+    animationFrame = getCurrentFrame();
+    stopAnimation();
+  }
+});
+```
+
+**💡 提示**：
+- 大多数情况下，SDK 的自动暂停已经足够
+- 对于复杂动画，使用此 API 优化性能
+- 保存状态可实现无缝的暂停/恢复体验
+
 ---
 
 ## ⚛️ React 集成

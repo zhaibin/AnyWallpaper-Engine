@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnyWP - Visibility API 测试</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      overflow: hidden;
+    }
+    
+    .container {
+      padding: 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .status-panel {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 30px;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+    
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      margin: 10px 0;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+    }
+    
+    .status-label {
+      font-size: 18px;
+      font-weight: 500;
+    }
+    
+    .status-value {
+      font-size: 24px;
+      font-weight: bold;
+      padding: 10px 20px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.2);
+    }
+    
+    .status-value.active {
+      background: #4CAF50;
+      animation: pulse 2s infinite;
+    }
+    
+    .status-value.paused {
+      background: #FF9800;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    .test-section {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    
+    h2 {
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+    
+    .animation-demo {
+      width: 100%;
+      height: 200px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+    
+    .moving-circle {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 50%;
+      position: absolute;
+      top: 70px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    
+    video {
+      width: 100%;
+      max-width: 600px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    
+    .log {
+      background: rgba(0,0,0,0.5);
+      border-radius: 10px;
+      padding: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Consolas', monospace;
+      font-size: 14px;
+      margin-top: 20px;
+    }
+    
+    .log-entry {
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+    
+    .log-time {
+      color: #888;
+      margin-right: 10px;
+    }
+    
+    .log-visible {
+      color: #4CAF50;
+    }
+    
+    .log-hidden {
+      color: #FF9800;
+    }
+    
+    .info-box {
+      background: rgba(33, 150, 243, 0.2);
+      border-left: 4px solid #2196F3;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔋 Visibility API 测试</h1>
+    
+    <div class="status-panel">
+      <h2>实时状态</h2>
+      
+      <div class="status-item">
+        <span class="status-label">可见性状态</span>
+        <span class="status-value" id="visibility-status">可见</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">动画状态</span>
+        <span class="status-value" id="animation-status">运行中</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">视频状态</span>
+        <span class="status-value" id="video-status">未加载</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">暂停次数</span>
+        <span class="status-value" id="pause-count">0</span>
+      </div>
+      
+      <div class="status-item">
+        <span class="status-label">恢复次数</span>
+        <span class="status-value" id="resume-count">0</span>
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h2>🎬 视频测试（自动暂停/恢复）</h2>
+      <div class="info-box">
+        💡 <strong>测试方法</strong>：锁屏（Win+L）时视频会自动暂停，解锁后自动恢复播放
+      </div>
+      <video id="test-video" controls>
+        <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+    
+    <div class="test-section">
+      <h2>🎨 CSS 动画测试（持续运行）</h2>
+      <div class="info-box">
+        💡 <strong>说明</strong>：此圆圈动画在暂停时会停止（WebView2 停止渲染），恢复时立即继续
+      </div>
+      <div class="animation-demo">
+        <div class="moving-circle" id="circle"></div>
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h2>📊 事件日志</h2>
+      <div class="log" id="event-log"></div>
+    </div>
+  </div>
+
+  <script>
+    // Event log
+    const logContainer = document.getElementById('event-log');
+    let pauseCount = 0;
+    let resumeCount = 0;
+    
+    function addLog(message, type) {
+      const time = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">${time}</span><span class="log-${type}">${message}</span>`;
+      logContainer.insertBefore(entry, logContainer.firstChild);
+      
+      // Keep only last 20 entries
+      while (logContainer.children.length > 20) {
+        logContainer.removeChild(logContainer.lastChild);
+      }
+    }
+    
+    function updateStatus(visible) {
+      const visibilityEl = document.getElementById('visibility-status');
+      const animationEl = document.getElementById('animation-status');
+      
+      if (visible) {
+        visibilityEl.textContent = '可见';
+        visibilityEl.className = 'status-value active';
+        animationEl.textContent = '运行中';
+        animationEl.className = 'status-value active';
+        resumeCount++;
+        document.getElementById('resume-count').textContent = resumeCount;
+      } else {
+        visibilityEl.textContent = '隐藏';
+        visibilityEl.className = 'status-value paused';
+        animationEl.textContent = '已暂停';
+        animationEl.className = 'status-value paused';
+        pauseCount++;
+        document.getElementById('pause-count').textContent = pauseCount;
+      }
+    }
+    
+    // Track video status
+    const video = document.getElementById('test-video');
+    const videoStatus = document.getElementById('video-status');
+    
+    video.addEventListener('play', () => {
+      videoStatus.textContent = '播放中';
+      videoStatus.className = 'status-value active';
+      addLog('视频开始播放', 'visible');
+    });
+    
+    video.addEventListener('pause', () => {
+      videoStatus.textContent = '已暂停';
+      videoStatus.className = 'status-value paused';
+      addLog('视频暂停', 'hidden');
+    });
+    
+    video.addEventListener('ended', () => {
+      videoStatus.textContent = '已结束';
+      videoStatus.className = 'status-value';
+    });
+    
+    // CSS animation for the circle
+    let circlePosition = 0;
+    const circle = document.getElementById('circle');
+    
+    function animateCircle() {
+      circlePosition = (circlePosition + 2) % (window.innerWidth - 60);
+      circle.style.left = circlePosition + 'px';
+      requestAnimationFrame(animateCircle);
+    }
+    animateCircle();
+    
+    // Wait for AnyWP SDK
+    function initAnyWP() {
+      if (!window.AnyWP) {
+        console.log('[Test] Waiting for AnyWP SDK...');
+        setTimeout(initAnyWP, 100);
+        return;
+      }
+      
+      console.log('[Test] AnyWP SDK detected:', AnyWP.version);
+      addLog('AnyWP SDK v' + AnyWP.version + ' 加载完成', 'visible');
+      
+      // Register visibility callback
+      AnyWP.onVisibilityChange(function(visible) {
+        console.log('[Test] Visibility changed:', visible);
+        addLog(visible ? '壁纸恢复可见 ⚡' : '壁纸已隐藏（省电模式）', visible ? 'visible' : 'hidden');
+        updateStatus(visible);
+      });
+      
+      // Notify ready
+      AnyWP.ready('Visibility API Test Page');
+      addLog('壁纸已就绪', 'visible');
+    }
+    
+    // Initialize on DOMContentLoaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initAnyWP);
+    } else {
+      initAnyWP();
+    }
+    
+    // Add initial log
+    addLog('页面加载完成', 'visible');
+    addLog('准备测试可见性 API', 'visible');
+    addLog('💡 提示：按 Win+L 锁屏，然后解锁，观察恢复速度', 'visible');
+  </script>
+</body>
+</html>
+
