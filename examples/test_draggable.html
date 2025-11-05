@@ -142,33 +142,43 @@
     .btn {
       padding: 12px 30px;
       margin: 0 10px;
-      border: none;
+      border: 3px solid transparent;
       border-radius: 25px;
       font-size: 16px;
       font-weight: bold;
       cursor: pointer;
       transition: all 0.3s;
       box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      user-select: none;
+    }
+
+    .btn:active {
+      transform: translateY(2px) scale(0.98);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
 
     .btn-primary {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
+      border-color: #667eea;
     }
 
     .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+      border-color: #fff;
     }
 
     .btn-danger {
       background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
       color: white;
+      border-color: #f093fb;
     }
 
     .btn-danger:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 20px rgba(245, 87, 108, 0.5);
+      border-color: #fff;
     }
   </style>
 </head>
@@ -176,17 +186,25 @@
   <div class="container">
     <h1>🎨 AnyWP 拖拽功能测试</h1>
     
+    <div class="info-panel" style="background: rgba(255,200,200,0.95);">
+      <h2>⚠️ 重要：使用拖拽功能的步骤</h2>
+      <p><strong>第1步：</strong>在 Flutter 应用中取消勾选 "Enable Mouse Transparency"</p>
+      <p><strong>第2步：</strong>点击 "Start" 按钮启动壁纸</p>
+      <p><strong>第3步：</strong>直接拖动下方的彩色方块或卡片！</p>
+      <p style="color: #d32f2f; font-weight: bold;">⚠️ 如果不禁用鼠标透明，点击和拖拽将无法工作！</p>
+    </div>
+
     <div class="info-panel">
-      <h2>📌 使用说明</h2>
-      <p><strong>1. 启用交互模式：</strong>点击下方的 "启用交互模式" 按钮</p>
-      <p><strong>2. 拖拽元素：</strong>拖动彩色方块或卡片到任意位置</p>
-      <p><strong>3. 状态保存：</strong>元素位置会自动保存，重新打开壁纸后会恢复</p>
-      <p><strong>4. 清除状态：</strong>点击 "清除所有状态" 按钮重置所有位置</p>
+      <h2>📌 功能说明</h2>
+      <p><strong>✅ 交互模式：</strong>默认已启用（可点击按钮切换）</p>
+      <p><strong>🖱️ 拖拽元素：</strong>拖动彩色方块或卡片到任意位置</p>
+      <p><strong>💾 自动保存：</strong>元素位置会自动保存到注册表</p>
+      <p><strong>🔄 自动恢复：</strong>重新打开壁纸后会恢复到上次的位置</p>
     </div>
 
     <div class="button-group">
-      <button class="btn btn-primary" onclick="toggleInteraction()">启用交互模式</button>
-      <button class="btn btn-danger" onclick="clearAllState()">清除所有状态</button>
+      <button id="toggleBtn" class="btn btn-danger">禁用交互模式</button>
+      <button id="clearBtn" class="btn btn-primary">清除所有状态</button>
     </div>
   </div>
 
@@ -212,14 +230,16 @@
 
   <!-- 状态显示 -->
   <div class="status" id="status">
-    <div>🎯 AnyWP Engine v4.2.0</div>
-    <div id="interaction-status">❌ 交互模式: 未启用</div>
-    <div id="drag-status">📍 拖拽状态: 空闲</div>
+    <div style="font-weight: bold; color: #4CAF50;">🎯 AnyWP Engine v4.2.0</div>
+    <div id="interaction-status">⏳ 等待 SDK 加载...</div>
+    <div id="drag-status">📍 拖拽状态: 初始化中</div>
     <div id="save-status">💾 保存状态: 就绪</div>
+    <div id="mouse-status" style="color: #ff9800;">🖱️ 鼠标透明: 请检查设置</div>
   </div>
 
   <script>
-    let interactionEnabled = false;
+    // 默认启用交互模式，这样用户禁用鼠标透明后就可以直接拖拽
+    let interactionEnabled = true;
     let currentTime = new Date();
 
     // 更新时钟
@@ -236,22 +256,27 @@
     function toggleInteraction() {
       interactionEnabled = !interactionEnabled;
       
-      const btn = event.target;
+      console.log('[Test] Interaction mode toggled to:', interactionEnabled);
+      
+      const btn = document.getElementById('toggleBtn');
       if (interactionEnabled) {
         btn.textContent = '禁用交互模式';
         btn.classList.remove('btn-primary');
         btn.classList.add('btn-danger');
         document.getElementById('interaction-status').innerHTML = '✅ 交互模式: 已启用';
+        document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 就绪（可以拖拽了）';
       } else {
         btn.textContent = '启用交互模式';
         btn.classList.remove('btn-danger');
         btn.classList.add('btn-primary');
         document.getElementById('interaction-status').innerHTML = '❌ 交互模式: 未启用';
+        document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 空闲';
       }
 
-      // 模拟 AnyWP.interactionEnabled
+      // 同步 AnyWP.interactionEnabled
       if (window.AnyWP) {
         AnyWP.interactionEnabled = interactionEnabled;
+        console.log('[Test] AnyWP.interactionEnabled set to:', AnyWP.interactionEnabled);
       }
     }
 
@@ -289,11 +314,57 @@
         // 设置可拖拽元素
         setupDraggable();
         
+        // 设置按钮点击处理
+        setupButtons();
+        
+        // 默认启用交互模式
+        if (window.AnyWP) {
+          AnyWP.interactionEnabled = true;
+          console.log('[Test] AnyWP.interactionEnabled initialized to: true');
+        }
+        
         document.getElementById('interaction-status').innerHTML = 
-          '✅ AnyWP SDK 已加载 (v' + AnyWP.version + ')';
+          '✅ SDK 已加载 - 交互已启用';
+        document.getElementById('drag-status').innerHTML = 
+          '📍 拖拽状态: 就绪（可以拖拽）';
+        document.getElementById('mouse-status').innerHTML = 
+          '🖱️ 鼠标透明: 请确保已禁用';
       } else {
         console.log('[Test] Waiting for AnyWP SDK...');
         setTimeout(waitForAnyWP, 100);
+      }
+    }
+    
+    // 设置按钮点击（使用 AnyWP.onClick）
+    function setupButtons() {
+      if (window.AnyWP && window.AnyWP.onClick) {
+        console.log('[Test] Setting up button click handlers via AnyWP.onClick');
+        
+        // 注册按钮点击区域
+        AnyWP.onClick('#toggleBtn', function(x, y) {
+          console.log('[Test] Toggle button clicked at:', x, y);
+          toggleInteraction();
+        }, { immediate: true, debug: true });
+        
+        AnyWP.onClick('#clearBtn', function(x, y) {
+          console.log('[Test] Clear button clicked at:', x, y);
+          clearAllState();
+        }, { immediate: true, debug: true });
+        
+        console.log('[Test] Button click handlers registered');
+      } else {
+        console.log('[Test] Using fallback button handlers (standard DOM events)');
+        
+        // Fallback: 使用标准 DOM 事件
+        document.getElementById('toggleBtn').addEventListener('click', function() {
+          console.log('[Test] Toggle button clicked (fallback)');
+          toggleInteraction();
+        });
+        
+        document.getElementById('clearBtn').addEventListener('click', function() {
+          console.log('[Test] Clear button clicked (fallback)');
+          clearAllState();
+        });
       }
     }
 
