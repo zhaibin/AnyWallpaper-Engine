@@ -2,6 +2,77 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [4.3.0] - 2025-11-05 - 📦 预编译 DLL 支持与发布流程
+
+### ✨ 新增功能
+
+#### 预编译 DLL 支持
+- **快速集成**：提供预编译的 DLL 包，Flutter 开发者无需安装 WebView2 SDK
+- **自动化构建**：新增 `build_release.bat` 脚本，一键生成 Release 包
+- **完整打包**：包含 DLL、头文件、Dart 源码、JavaScript SDK
+- **GitHub Release**：支持作为 GitHub Release 发布
+
+#### 文档完善
+- **集成指南**：新增 `PRECOMPILED_DLL_INTEGRATION.md` 详细说明预编译 DLL 使用方法
+- **发布指南**：新增 `RELEASE_GUIDE.md` 说明如何构建和发布版本
+- **Release 模板**：新增 `RELEASE_TEMPLATE.md` 作为 GitHub Release 说明模板
+- **更新现有文档**：在 `PACKAGE_USAGE_GUIDE_CN.md` 和 `FOR_FLUTTER_DEVELOPERS.md` 中添加预编译 DLL 方式
+
+### 🔨 构建工具
+
+**新增脚本**：
+```bash
+.\scripts\build_release.bat  # 构建并打包 Release 版本
+```
+
+**生成产物**：
+```
+release/
+└── anywp_engine_v1.1.0/
+    ├── bin/              # DLL 文件
+    ├── lib/              # 库文件和 Dart 源码
+    ├── include/          # C++ 头文件
+    ├── sdk/              # JavaScript SDK
+    └── pubspec.yaml      # Flutter 包配置
+```
+
+### 📚 集成方式
+
+现在支持四种集成方式（按推荐顺序）：
+
+1. **预编译 DLL** ⭐（新增）
+   - 无需编译，快速集成
+   - 适合生产环境
+   
+2. **本地路径引用**
+   - 适合开发测试
+   
+3. **Git 仓库引用**
+   - 适合团队协作
+   
+4. **pub.dev 发布**
+   - 适合公开发布
+
+### 🎯 使用预编译 DLL
+
+**下载**：
+```
+https://github.com/zhaibin/AnyWallpaper-Engine/releases
+```
+
+**集成**：
+```yaml
+dependencies:
+  anywp_engine:
+    path: ./anywp_engine_v1.1.0
+```
+
+**详细文档**：
+- [预编译 DLL 集成指南](docs/PRECOMPILED_DLL_INTEGRATION.md)
+- [发布指南](docs/RELEASE_GUIDE.md)
+
+---
+
 ## [4.2.0] - 2025-11-05 - 🎨 拖拽支持与状态持久化
 
 ### ✨ 核心功能

@@ -4,6 +4,23 @@ AnyWP Engine 项目的构建和运行脚本。
 
 ## 📜 脚本列表
 
+### build_release.bat ⭐ 新增
+构建并打包 Release 版本（用于 GitHub Releases）。
+
+**功能**：
+- 自动编译 Release 版本
+- 收集 DLL、头文件、SDK、文档
+- 生成完整的发布包
+- 创建 ZIP 压缩包
+
+```bash
+.\scripts\build_release.bat
+```
+
+**输出**：`release/anywp_engine_v1.1.0.zip`
+
+**详细文档**：[RELEASE_GUIDE.md](../docs/RELEASE_GUIDE.md)
+
 ### setup_webview2.bat
 安装 WebView2 SDK（首次构建前必须运行）。
 

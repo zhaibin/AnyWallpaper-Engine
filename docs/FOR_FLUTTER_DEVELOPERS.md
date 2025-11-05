@@ -10,6 +10,22 @@
 
 ### 第一步：安装
 
+**推荐：使用预编译 DLL（无需编译）**
+
+1. 下载预编译包：[GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
+2. 解压到项目根目录
+3. 在 `pubspec.yaml` 中添加：
+
+```yaml
+dependencies:
+  anywp_engine:
+    path: ./anywp_engine_v1.1.0
+```
+
+**详细指南：** [PRECOMPILED_DLL_INTEGRATION.md](PRECOMPILED_DLL_INTEGRATION.md) ⭐
+
+**或者：从 Git 引用（需要编译）**
+
 **阅读：** [QUICK_START.md](QUICK_START.md)
 
 ```yaml
@@ -19,6 +35,8 @@ dependencies:
     git:
       url: https://github.com/zhaibin/AnyWallpaper-Engine.git
 ```
+
+> ⚠️ Git 方式需要安装 WebView2 SDK，运行 `scripts\setup_webview2.bat`
 
 ### 第二步：使用
 
@@ -139,9 +157,14 @@ setOnPowerStateChangeCallback(callback)   // 电源状态变化
 
 ### 集成方式详解
 
+**[PRECOMPILED_DLL_INTEGRATION.md](PRECOMPILED_DLL_INTEGRATION.md)** ⭐ 推荐
+- 使用预编译 DLL 快速集成
+- 无需安装 WebView2 SDK
+- 适合生产环境
+
 **[PACKAGE_USAGE_GUIDE_CN.md](PACKAGE_USAGE_GUIDE_CN.md)**
-- 三种集成方式对比
-- 本地路径 vs Git vs pub.dev
+- 四种集成方式对比
+- 预编译 DLL vs 本地路径 vs Git vs pub.dev
 - 发布准备
 - 依赖管理
 

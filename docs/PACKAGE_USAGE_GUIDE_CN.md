@@ -4,17 +4,64 @@
 
 ---
 
-## 🎯 三种集成方式对比
+## 🎯 四种集成方式对比
 
 | 方式 | 适用场景 | 优点 | 缺点 |
 |------|---------|------|------|
+| **预编译 DLL** ⭐ | 快速集成、生产环境 | 无需编译、快速部署 | 功能固定 |
 | **本地路径引用** | 开发测试、本地项目 | 简单快速、即时修改 | 不便于分发 |
 | **Git 仓库引用** | 团队协作、版本管理 | 便于共享、版本追踪 | 需要 Git 仓库 |
 | **pub.dev 发布** | 公开发布、生产环境 | 最规范、易于管理 | 需要发布审核 |
 
 ---
 
-## 📋 方式一：本地路径引用（推荐用于开发）
+## 📦 方式一：预编译 DLL（推荐用于生产环境）⭐
+
+### 优势
+
+✅ **无需编译**：不需要安装 WebView2 SDK、Visual Studio  
+✅ **快速集成**：下载即用，节省构建时间  
+✅ **稳定可靠**：使用经过测试的发布版本  
+✅ **CI/CD 友好**：简化自动化构建流程  
+
+### 完整指南
+
+请参阅详细文档：**[PRECOMPILED_DLL_INTEGRATION.md](PRECOMPILED_DLL_INTEGRATION.md)**
+
+### 快速开始
+
+**1. 下载预编译包**
+
+访问 [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)，下载：
+```
+anywp_engine_v1.1.0.zip
+```
+
+**2. 解压到项目根目录**
+```
+YourProject/
+├── pubspec.yaml
+└── anywp_engine_v1.1.0/
+```
+
+**3. 在 pubspec.yaml 中引用**
+```yaml
+dependencies:
+  anywp_engine:
+    path: ./anywp_engine_v1.1.0
+```
+
+**4. 获取依赖**
+```bash
+flutter pub get
+flutter build windows
+```
+
+**完成！** 你的项目已集成 AnyWP Engine，无需任何编译配置。
+
+---
+
+## 📋 方式二：本地路径引用（推荐用于开发）
 
 ### 1. 准备插件包
 
@@ -108,7 +155,7 @@ flutter pub get
 
 ---
 
-## 🌐 方式二：Git 仓库引用（推荐用于团队）
+## 🌐 方式三：Git 仓库引用（推荐用于团队）
 
 ### 1. 发布到 Git 仓库
 
@@ -188,7 +235,7 @@ flutter pub upgrade AnyWallpaper-Engine
 
 ---
 
-## 📢 方式三：发布到 pub.dev（推荐用于公开发布）
+## 📢 方式四：发布到 pub.dev（推荐用于公开发布）
 
 ### 1. 准备发布
 

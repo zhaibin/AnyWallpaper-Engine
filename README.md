@@ -30,16 +30,38 @@ A Flutter Windows plugin that embeds WebView2 as an interactive desktop wallpape
 ### Installation
 
 **📦 Want to use this in your own project?**  
-👉 See **[Quick Integration Guide](QUICK_INTEGRATION.md)** for 3 ways to integrate  
-👉 See **[Complete Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md)** for detailed documentation
 
-Add to your `pubspec.yaml`:
+**Option 1: Precompiled DLL (Recommended) ⭐**
+- ✅ No compilation required
+- ✅ No WebView2 SDK needed
+- ✅ Fast integration
 
+Download from [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
+
+```yaml
+dependencies:
+  anywp_engine:
+    path: ./anywp_engine_v1.1.0
+```
+
+👉 See **[Precompiled DLL Integration Guide](docs/PRECOMPILED_DLL_INTEGRATION.md)** for details
+
+**Option 2: Git Reference**
+```yaml
+dependencies:
+  anywp_engine:
+    git:
+      url: https://github.com/zhaibin/AnyWallpaper-Engine.git
+```
+
+**Option 3: Local Path (Development)**
 ```yaml
 dependencies:
   anywp_engine:
     path: ../
 ```
+
+👉 See **[Complete Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md)** for all integration methods
 
 ### Basic Usage (Dart)
 
