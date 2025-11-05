@@ -1335,19 +1335,23 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
     }
   }
   else if (message.find("\"type\":\"saveState\"") != std::string::npos) {
-    // Extract key and value
+    // Extract key and value from JSON
     size_t key_start = message.find("\"key\":\"") + 7;
     size_t key_end = message.find("\"", key_start);
     size_t value_start = message.find("\"value\":\"") + 9;
-    size_t value_end = message.find("\"", value_start);
+    // Find the closing brace, then work backwards to find last quote
+    size_t end_brace = message.rfind("}");
+    size_t value_end = message.rfind("\"", end_brace);
     
     if (key_start != std::string::npos && key_end != std::string::npos &&
-        value_start != std::string::npos && value_end != std::string::npos) {
+        value_start != std::string::npos && value_end != std::string::npos && value_end > value_start) {
       std::string key = message.substr(key_start, key_end - key_start);
       std::string value = message.substr(value_start, value_end - value_start);
       
       SaveState(key, value);
-      std::cout << "[AnyWP] [State] Saved state for key: " << key << std::endl;
+      std::cout << "[AnyWP] [State] Saved via WebMessage: " << key << " = " << value << std::endl;
+    } else {
+      std::cout << "[AnyWP] [State] ERROR: Failed to parse saveState message" << std::endl;
     }
   }
   else if (message.find("\"type\":\"loadState\"") != std::string::npos) {
@@ -1376,7 +1380,7 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
   }
   else if (message.find("\"type\":\"clearState\"") != std::string::npos) {
     ClearState();
-    std::cout << "[AnyWP] [State] Cleared all state" << std::endl;
+    std::cout << "[AnyWP] [State] Cleared all state via WebMessage" << std::endl;
   }
   else {
     std::cout << "[AnyWP] [API] Unknown message type (showing raw): " << message << std::endl;
