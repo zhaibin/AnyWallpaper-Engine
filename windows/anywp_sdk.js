@@ -677,8 +677,17 @@
         self._log('[makeDraggable] Mouse event: ' + mouseType + ' at (' + mouseX + ',' + mouseY + ')');
       }
       
-      // Check if mouse is over this element (reuse common function)
-      const isOver = self._isMouseOverElement(mouseX, mouseY, el);
+      // Get element bounds (needed for both detection and drag offset)
+      const rect = el.getBoundingClientRect();
+      const dpi = self.dpiScale;
+      const physicalLeft = Math.round(rect.left * dpi);
+      const physicalTop = Math.round(rect.top * dpi);
+      const physicalRight = Math.round(rect.right * dpi);
+      const physicalBottom = Math.round(rect.bottom * dpi);
+      
+      // Check if mouse is over this element
+      const isOver = mouseX >= physicalLeft && mouseX <= physicalRight &&
+                     mouseY >= physicalTop && mouseY <= physicalBottom;
       
       // Debug: log mousedown events
       if (mouseType === 'mousedown') {
@@ -689,12 +698,6 @@
       if (mouseType === 'mousedown' && isOver && !self._dragState) {
         // Start dragging
         console.log('[AnyWP] [Drag] START - Mouse at (' + mouseX + ',' + mouseY + ')');
-        
-        // Get element bounds for offset calculation
-        const rect = el.getBoundingClientRect();
-        const dpi = self.dpiScale;
-        const physicalLeft = Math.round(rect.left * dpi);
-        const physicalTop = Math.round(rect.top * dpi);
         
         self._dragState = {
           element: el,
