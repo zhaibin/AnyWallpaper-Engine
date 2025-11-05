@@ -1212,67 +1212,78 @@ std::string AnyWPEnginePlugin::LoadSDKScript() {
   
   std::string sdk_path = exe_dir + "\\data\\flutter_assets\\packages\\anywp_engine\\windows\\anywp_sdk.js";
   
+  std::cout << "[AnyWP] [API] Trying to load SDK from: " << sdk_path << std::endl;
+  
   std::ifstream file(sdk_path);
-  if (!file.is_open()) {
-    std::cout << "[AnyWP] [API] WARNING: SDK file not found at: " << sdk_path << std::endl;
-    std::cout << "[AnyWP] [API] Using embedded SDK script" << std::endl;
+  if (file.is_open()) {
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string script = buffer.str();
+    file.close();
     
-    // Return embedded minimal SDK
-    return R"(
-(function() {
-  window.AnyWP = {
-    version: '4.0.0',
-    dpiScale: window.devicePixelRatio || 1,
-    screenWidth: screen.width * (window.devicePixelRatio || 1),
-    screenHeight: screen.height * (window.devicePixelRatio || 1),
-    interactionEnabled: true,
-    
-    onClick: function(element, callback, options) {
-      console.log('[AnyWP] onClick registered');
-      setTimeout(function() {
-        var el = (typeof element === 'string') ? document.querySelector(element) : element;
-        if (el) el.addEventListener('click', function(e) { callback(e.clientX, e.clientY); });
-      }, 2000);
-    },
-    
-    openURL: function(url) {
-      console.log('[AnyWP] Opening URL:', url);
-      if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage({type: 'openURL', url: url});
-      }
-    },
-    
-    ready: function(name) {
-      console.log('[AnyWP] Ready:', name);
-      if (window.chrome && window.chrome.webview) {
-        window.chrome.webview.postMessage({type: 'ready', name: name});
-      }
-    },
-    
-    onMouse: function(callback) {
-      window.addEventListener('AnyWP:mouse', function(e) { callback(e.detail); });
-    },
-    
-    onKeyboard: function(callback) {
-      window.addEventListener('AnyWP:keyboard', function(e) { callback(e.detail); });
-    },
-    
-    enableDebug: function() {
-      console.log('[AnyWP] Debug enabled');
-    }
-  };
-  console.log('[AnyWallpaper SDK] Loaded v' + AnyWallpaper.version);
-})();
-)";
+    std::cout << "[AnyWP] [API] SDK script loaded from file (" << script.length() << " bytes)" << std::endl;
+    return script;
   }
   
-  std::stringstream buffer;
-  buffer << file.rdbuf();
-  std::string script = buffer.str();
-  file.close();
+  std::cout << "[AnyWP] [API] WARNING: SDK file not found in flutter_assets" << std::endl;
+  std::cout << "[AnyWP] [API] Trying alternative paths..." << std::endl;
   
-  std::cout << "[AnyWP] [API] SDK script loaded (" << script.length() << " bytes)" << std::endl;
-  return script;
+  // Try multiple possible paths
+  std::vector<std::string> try_paths = {
+    exe_dir + "\\..\\..\\..\\..\\..\\windows\\anywp_sdk.js",  // Dev path from runner
+    exe_dir + "\\..\\..\\..\\..\\..\\..\\windows\\anywp_sdk.js",  // Alternative dev path
+    exe_dir + "\\..\\..\\windows\\anywp_sdk.js",  // Short dev path
+    "E:\\Projects\\AnyWallpaper\\AnyWallpaper-Engine\\windows\\anywp_sdk.js"  // Absolute path
+  };
+  
+  for (const auto& try_path : try_paths) {
+    std::cout << "[AnyWP] [API] Trying: " << try_path << std::endl;
+    
+    std::ifstream try_file(try_path);
+    if (try_file.is_open()) {
+      std::stringstream buffer;
+      buffer << try_file.rdbuf();
+      std::string script = buffer.str();
+      try_file.close();
+      
+      std::cout << "[AnyWP] [API] ✅ SDK loaded from: " << try_path << " (" << script.length() << " bytes)" << std::endl;
+      return script;
+    }
+  }
+  
+  std::cout << "[AnyWP] [API] ERROR: Cannot find SDK file anywhere!" << std::endl;
+  std::cout << "[AnyWP] [API] Returning minimal embedded SDK (DRAG NOT SUPPORTED)" << std::endl;
+  
+  // Return minimal embedded SDK without drag support
+  return R"(
+console.log('[AnyWP] WARNING: Using minimal embedded SDK - drag support NOT available');
+window.AnyWP = {
+  version: '4.0.0-embedded',
+  dpiScale: window.devicePixelRatio || 1,
+  screenWidth: screen.width * (window.devicePixelRatio || 1),
+  screenHeight: screen.height * (window.devicePixelRatio || 1),
+  interactionEnabled: true,
+  
+  onClick: function(element, callback, options) {
+    console.log('[AnyWP] onClick registered');
+  },
+  
+  openURL: function(url) {
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage({type: 'openURL', url: url});
+    }
+  },
+  
+  ready: function(name) {
+    console.log('[AnyWP] Ready:', name);
+  },
+  
+  onMouse: function(callback) {
+    window.addEventListener('AnyWP:mouse', function(e) { callback(e.detail); });
+  }
+};
+console.log('[AnyWP] Minimal SDK loaded - version: ' + window.AnyWP.version);
+)";
 }
 
 // API Bridge: Inject SDK into page
