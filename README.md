@@ -5,16 +5,25 @@ A Flutter Windows plugin that embeds WebView2 as an interactive desktop wallpape
 
 ## ✨ Features
 
+### Core Features
 - 🖼️ **WebView2 Integration** - Display any web content as desktop wallpaper
 - 🎯 **Proper Z-Order** - WebView renders behind desktop icons (not covering them)
 - 🖱️ **Mouse Transparency** - Optional click-through to desktop
 - 📺 **Multi-Monitor Support** - Different content on each display
 - 🪟 **Windows 10/11 Support** - Optimized for modern Windows
+
+### Performance & Power
 - ⚡ **High Performance** - Hardware-accelerated rendering
 - 🔋 **Smart Power Saving** - Auto-pause on lock/idle/fullscreen
 - ⚡ **Instant Resume** - <50ms recovery time (20x faster)
 - 💾 **Memory Optimized** - Intelligent cleanup and state preservation
-- 🎮 **SPA Compatible** - React, Vue, Angular supported
+
+### JavaScript SDK (NEW ✨)
+- 🎨 **Element Dragging** - Make any element draggable with `makeDraggable()`
+- 💾 **State Persistence** - Save/load state across sessions to Windows Registry
+- 👁️ **Visibility API** - Detect wallpaper visibility changes
+- 🖱️ **Click Events** - Handle click events with `onClick()`
+- 🎮 **Framework Ready** - React, Vue, Angular supported
 
 ## 🚀 Quick Start
 
@@ -32,7 +41,7 @@ dependencies:
     path: ../
 ```
 
-### Usage
+### Basic Usage (Dart)
 
 ```dart
 import 'package:anywp_engine/anywp_engine.dart';
@@ -54,6 +63,46 @@ await AnyWPEngine.stopWallpaper();
 
 // Navigate to different URL
 await AnyWPEngine.navigateToUrl('https://new-url.com');
+
+// Save/Load state
+await AnyWPEngine.saveState('my_key', 'my_value');
+String value = await AnyWPEngine.loadState('my_key');
+```
+
+### JavaScript SDK Usage (NEW ✨)
+
+```html
+<!-- Load SDK in your HTML -->
+<script src="../windows/anywp_sdk.js"></script>
+```
+
+```javascript
+// Make element draggable with position persistence
+AnyWP.makeDraggable('#widget', {
+  persistKey: 'widget_position',  // Auto-save position
+  onDragEnd: (x, y) => console.log('Moved to:', x, y)
+});
+
+// Save/Load custom state
+AnyWP.saveState('settings', JSON.stringify({ theme: 'dark' }));
+AnyWP.loadState('settings', (value) => {
+  const settings = JSON.parse(value);
+  console.log('Settings:', settings);
+});
+
+// Monitor visibility (pause animations when hidden)
+AnyWP.onVisibilityChange((visible) => {
+  if (visible) {
+    resumeAnimations();
+  } else {
+    pauseAnimations();  // Save power
+  }
+});
+
+// Handle clicks
+AnyWP.onClick('#button', (x, y) => {
+  console.log('Clicked at:', x, y);
+});
 ```
 
 ## 🛠️ Setup
@@ -118,8 +167,13 @@ Progman (Desktop Window)
 - [中文文档](docs/README_CN.md) - Chinese documentation
 - [快速开始](docs/QUICK_START.md) - Quick start guide
 - [测试指南](docs/TESTING_GUIDE.md) - Testing guide
-- [Usage Examples](docs/USAGE_EXAMPLES.md) - Code examples
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues
+
+### Developer Guides
+- [🎯 Developer API Reference](docs/DEVELOPER_API_REFERENCE.md) - Complete API documentation
+- [📝 API Usage Examples](docs/API_USAGE_EXAMPLES.md) - Practical code examples
+- [🌐 Web Developer Guide](docs/WEB_DEVELOPER_GUIDE_CN.md) - JavaScript SDK guide (中文)
+- [💡 Best Practices](docs/BEST_PRACTICES.md) - Recommended patterns
 
 ### 📦 Integration & Packaging
 - [⚡ Quick Integration](QUICK_INTEGRATION.md) - 30-second integration guide
@@ -166,7 +220,10 @@ SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
 
 测试文件位于 `examples/` 目录：
 - `test_simple.html` - 简单测试页面
-- `test_api.html` - API 功能测试
+- `test_api.html` - 完整 API 功能测试
+- `test_draggable.html` - 拖拽功能测试
+- `test_visibility.html` - 可见性 API 测试
+- `test_react.html` / `test_vue.html` - 框架集成测试
 - `test_iframe_ads.html` - iframe 测试
 
 运行测试：
@@ -176,6 +233,9 @@ SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
 
 # 手动运行
 .\scripts\run.bat
+
+# 调试模式
+.\scripts\debug_run.bat
 ```
 
 Tested on:
@@ -183,6 +243,7 @@ Tested on:
 - ✅ 5120x2784 resolution
 - ✅ Multiple WorkerW configurations
 - ✅ Various web content types
+- ✅ React, Vue, Angular frameworks
 
 ## 🤝 Contributing
 
@@ -205,12 +266,25 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
-- [ ] Multi-monitor support
+### ✅ Completed (v1.1.0)
+- ✅ Multi-monitor support
+- ✅ Smart power saving & instant resume
+- ✅ JavaScript SDK with drag & drop
+- ✅ State persistence (Registry)
+- ✅ Visibility API for animations
+
+### 🚧 In Progress
 - [ ] Performance profiling tools
-- [ ] Custom transparency levels
-- [ ] Video wallpaper presets
-- [ ] Configuration file support
+- [ ] Custom transparency levels (0-100%)
+- [ ] Audio visualization support
+
+### 📋 Planned
+- [ ] Video wallpaper presets library
+- [ ] Configuration file support (JSON/YAML)
 - [ ] System tray integration
+- [ ] Wallpaper marketplace/gallery
+- [ ] Plugin system for custom effects
+- [ ] Touch gesture support
 
 ---
 
