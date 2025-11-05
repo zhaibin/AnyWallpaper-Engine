@@ -594,13 +594,16 @@
       return;
     }
     
-    // Load persisted position if available
-    if (persistKey && self._persistedState[persistKey]) {
-      const savedPos = self._persistedState[persistKey];
-      el.style.position = 'absolute';
-      el.style.left = savedPos.left + 'px';
-      el.style.top = savedPos.top + 'px';
-      self._log('Restored position for ' + persistKey + ': ' + savedPos.left + ',' + savedPos.top);
+    // Load persisted position from storage
+    if (persistKey) {
+      self.loadState(persistKey, function(savedPos) {
+        if (savedPos) {
+          el.style.position = 'absolute';
+          el.style.left = savedPos.left + 'px';
+          el.style.top = savedPos.top + 'px';
+          console.log('[AnyWP] Restored position for ' + persistKey + ': ' + savedPos.left + ',' + savedPos.top);
+        }
+      });
     }
     
     // Register draggable element

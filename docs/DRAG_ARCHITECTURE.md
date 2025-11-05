@@ -1,5 +1,12 @@
 # 拖拽功能架构设计
 
+## 📌 SDK 加载（重要）
+
+**在 HTML 的 `<head>` 中添加**：
+```html
+<script src="../windows/anywp_sdk.js"></script>
+```
+
 ## 🎯 设计目标
 
 实现互动壁纸的拖拽功能，同时满足以下约束：
@@ -273,22 +280,20 @@ _saveElementPosition: function(key, x, y) {
    - 监控鼠标钩子开销
    - 自适应调整事件转发频率
 
-## 📚 相关文件
+## 💡 快速开始
 
-- `windows/anywp_engine_plugin.cpp` - C++ 鼠标钩子实现
-- `windows/anywp_sdk.js` - JavaScript SDK 拖拽逻辑
-- `examples/test_draggable.html` - 拖拽功能演示
-- `examples/README_DRAG_TEST.md` - 使用指南
-- `CHANGELOG_CN.md` - 更新日志
+### HTML 中加载 SDK
+```html
+<script src="../windows/anywp_sdk.js"></script>
+```
 
-## 🏆 技术亮点
+### 使元素可拖拽
+```javascript
+AnyWP.makeDraggable('#element', {
+  persistKey: 'element_pos'  // 位置自动保存到 Registry
+});
+```
 
-这个架构的核心价值在于：
-
-1. **保持真实壁纸特性**：窗口透明，在桌面图标下方
-2. **支持复杂交互**：通过系统级钩子突破窗口透明限制
-3. **状态持久化**：用户体验的连续性
-4. **DPI 感知**：正确处理高 DPI 显示器
-
-这是一个**系统级与 Web 技术结合**的优秀案例！
+### 测试
+运行 `examples/test_draggable.html` 查看完整演示
 

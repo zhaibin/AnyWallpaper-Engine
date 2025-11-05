@@ -4,16 +4,6 @@
 
 ## [4.2.0] - 2025-11-05 - 🎨 拖拽支持与状态持久化
 
-### 📌 SDK 加载方式
-
-**重要**: 拖拽功能需要在 HTML 中添加 SDK 加载标签：
-
-```html
-<script src="../windows/anywp_sdk.js"></script>
-```
-
-参考 `examples/test_draggable.html` 或 `examples/test_iframe_ads.html`
-
 ### ✨ 核心功能
 
 #### 拖拽支持
@@ -28,57 +18,26 @@
 - **通用存储**：支持保存任意键值对数据
 - **跨会话**：状态在应用重启后依然保留
 
-### 🆕 新增 API
+### 🆕 API 
 
-#### JavaScript SDK (v4.2.0)
+**SDK 加载（HTML）**:
+```html
+<script src="../windows/anywp_sdk.js"></script>
+```
+
+**拖拽 (JavaScript)**:
 ```javascript
-// 使元素可拖拽并自动保存位置
-AnyWP.makeDraggable('#myElement', {
-  persistKey: 'myElement_position',  // 持久化标识
-  bounds: { left: 0, top: 0, right: 1920, bottom: 1080 },  // 拖拽边界
-  onDragStart: function(pos) { console.log('开始拖拽', pos); },
-  onDrag: function(pos) { console.log('拖拽中', pos); },
-  onDragEnd: function(pos) { console.log('拖拽结束', pos); }
+AnyWP.makeDraggable('#element', {
+  persistKey: 'element_pos',  // 自动保存位置到 Registry
+  onDragStart: (pos) => console.log('开始', pos)
 });
-
-// 移除拖拽功能
-AnyWP.removeDraggable('#myElement');
-
-// 保存自定义状态
-AnyWP.saveState('myKey', 'myValue');
-
-// 加载状态
-AnyWP.loadState('myKey', function(value) {
-  console.log('加载的值:', value);
-});
-
-// 清除所有状态
-AnyWP.clearState();
 ```
 
-#### Dart API
+**状态管理 (Dart)**:
 ```dart
-// 保存状态
 await AnyWPEngine.saveState('key', 'value');
-
-// 加载状态
 String value = await AnyWPEngine.loadState('key');
-
-// 清除所有状态
-await AnyWPEngine.clearState();
 ```
-
-### 📦 测试用例
-- 新增 `examples/test_draggable.html` - 完整的拖拽功能演示
-- 包含多种可拖拽元素（方块、卡片、小部件）
-- 实时显示拖拽状态和保存状态
-- 支持清除状态和重置位置
-
-### 🔧 技术实现
-- **C++ 插件**：使用 Windows Registry 存储状态
-- **线程安全**：使用 mutex 保护状态读写
-- **JSON 支持**：支持存储和加载 JSON 格式的数据
-- **缓存机制**：内存缓存减少 Registry 访问次数
 
 ## [4.1.0] - 2025-11-05 - 🚀 省电优化与即时恢复
 

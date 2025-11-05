@@ -13,23 +13,30 @@ AnyWP 是一个 Flutter Windows 插件，可以将 WebView2 嵌入到 Windows �
 - ✅ 自动检测操作系统版本并使用对应的 WorkerW 挂载方案
 - ✅ 支持鼠标穿透（可选）
 - ✅ 实时导航到不同的 URL
-- ✅ **React/Vue SPA 完整支持**（SDK v4.0.0）
+- ✅ **拖拽支持**（SDK v4.2.0）- 元素拖拽 + 位置持久化
+- ✅ **React/Vue SPA 完整支持**
 - ✅ **智能点击区域检测**（SPA 路由切换自动更新）
 - ✅ **iframe 广告点击支持**
 
 ## 🎨 Web 开发者
 
-**如果你是 Web 开发者，想将网页作为交互式壁纸**，请查看：
+**SDK 快速开始**：
+```html
+<!-- 1. 加载 SDK -->
+<script src="../windows/anywp_sdk.js"></script>
 
-- 📖 [Web 开发者集成指南（中文）](WEB_DEVELOPER_GUIDE_CN.md) - 包含完整的SDK API参考和使用教程
-- 📝 示例：`examples/test_react.html`, `test_vue.html`, `test_visibility.html`
+<!-- 2. 使用拖拽 -->
+<script>
+  AnyWP.makeDraggable('#element', {
+    persistKey: 'element_pos'  // 位置自动保存
+  });
+</script>
+```
 
-**支持的技术栈**：
-- ✅ 原生 HTML/CSS/JavaScript
-- ✅ React (包括 Create React App, Next.js 等)
-- ✅ Vue 2/3 (包括 Nuxt.js 等)
-- ✅ Angular
-- ✅ 任何 Web 框架
+**文档**：
+- 📖 [Web 开发者指南](WEB_DEVELOPER_GUIDE_CN.md) - SDK API 完整参考
+- 🎨 [拖拽功能架构](DRAG_ARCHITECTURE.md) - 拖拽实现原理
+- 📝 示例：`examples/test_draggable.html`, `test_react.html`, `test_vue.html`
 
 ## 技术实现
 
