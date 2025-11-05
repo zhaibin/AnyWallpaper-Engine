@@ -1548,7 +1548,6 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
       // Check if it's a visible top-level window
       if (root_window && IsWindowVisible(root_window)) {
         LONG style = GetWindowLongW(root_window, GWL_STYLE);
-        LONG exStyle = GetWindowLongW(root_window, GWL_EXSTYLE);
         
         // Get root window class name
         wchar_t rootClassName[256] = {0};
