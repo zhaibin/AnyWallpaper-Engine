@@ -4,7 +4,8 @@
 Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在桌面图标后方）。
 
 **技术栈**: Flutter 3.0+ | C++17 | WebView2 | CMake | JavaScript  
-**命名规范**: 包名 `anywp_engine` | 类名 `AnyWPEngine` `AnyWPEnginePlugin`
+**命名规范**: 包名 `anywp_engine` | 类名 `AnyWPEngine` `AnyWPEnginePlugin`  
+**核心功能**: 壁纸嵌入 | 鼠标交互 | 元素拖拽 | 状态持久化 | 省电优化
 
 ---
 
@@ -23,6 +24,8 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 ### JavaScript
 - **命名**: 全局 `PascalCase` | 方法 `lowerCamelCase` | 常量 `UPPER_SNAKE_CASE`
 - **必须**: 参数验证 | 错误处理 | 挂载到 `window.AnyWPSDK`
+- **SDK 加载**: 在 HTML 中引入 `<script src="../windows/anywp_sdk.js"></script>`
+- **核心 API**: `setInteractionMode()` `makeDraggable()` `saveState()` `loadState()`
 
 ---
 
@@ -42,15 +45,27 @@ scripts/                # 构建脚本
 - Dart → `lib/` | C++ → `windows/` | 头文件 → `windows/include/anywp_engine/`
 - 测试 HTML → `examples/` | 文档 → `docs/` | 脚本 → `scripts/`
 
+**测试文件**:
+- `test_simple.html` - 简单壁纸测试
+- `test_api.html` - 完整 API 测试
+- `test_draggable.html` - 拖拽功能测试
+- `test_visibility.html` - 可见性测试
+- `test_react.html` / `test_vue.html` - 框架集成测试
+
 ---
 
 ## 常用命令
 
 ```bash
+# 基础命令
 .\scripts\setup_webview2.bat      # 首次: 安装 WebView2 SDK
 .\scripts\build_and_run.bat       # 构建并运行
-.\scripts\run.bat                 # 运行（已构建）
-.\scripts\test.bat                # 测试
+.\scripts\run.bat                 # 运行（已构建，支持 -r/-f 参数）
+.\scripts\test.bat                # 快速测试
+
+# 调试命令
+.\scripts\debug_run.bat           # 调试模式运行（保留日志输出）
+.\scripts\monitor_log.bat         # 监控日志输出
 ```
 
 ---
@@ -63,9 +78,12 @@ scripts/                # 构建脚本
 - 代码用反引号: `initializeWallpaper()`
 
 ### 文档位置
-- 中文: `docs/README_CN.md` `docs/PACKAGE_USAGE_GUIDE_CN.md`
-- 英文: `README.md` `docs/QUICK_START.md`
-- 技术: `docs/TECHNICAL_NOTES.md` `docs/API_BRIDGE.md`
+- **用户文档**: `README.md` `docs/README_CN.md` `docs/QUICK_START.md`
+- **开发者**: `docs/PACKAGE_USAGE_GUIDE_CN.md` `docs/FOR_FLUTTER_DEVELOPERS.md`
+- **Web 开发**: `docs/WEB_DEVELOPER_GUIDE_CN.md` `docs/FOR_WEB_DEVELOPERS.md`
+- **API 参考**: `docs/DEVELOPER_API_REFERENCE.md` `docs/API_USAGE_EXAMPLES.md`
+- **技术文档**: `docs/TECHNICAL_NOTES.md` `docs/API_BRIDGE.md` `docs/INTEGRATION_ARCHITECTURE.md`
+- **最佳实践**: `docs/BEST_PRACTICES.md` `docs/TESTING_GUIDE.md` `docs/TROUBLESHOOTING.md`
 
 ### 更新原则
 修改功能 → 同步更新文档 + `CHANGELOG_CN.md`
@@ -134,12 +152,17 @@ scripts/                # 构建脚本
 
 ### 调试流程
 1. **自动化调试**: 
-   - AI 自己编译代码 (`.\scripts\build_and_run.bat`)
+   - AI 自己编译代码 (`.\scripts\build_and_run.bat` 或 `.\scripts\debug_run.bat`)
    - AI 自己执行程序
-   - AI 自己监听和读取日志输出
-2. **用户反馈**: 用户只反馈看到的现象（如"壁纸显示了"、"点击无效"）
+   - AI 自己监听和读取日志输出（`debug_run.log` 或 `example/test_output.log`）
+2. **用户反馈**: 用户只反馈看到的现象（如"壁纸显示了"、"点击无效"、"拖拽卡顿"）
 3. **AI 优化**: AI 根据现象 + 日志自动分析并优化代码，无需用户粘贴日志
 4. **持续迭代**: 重复上述流程直至功能完成
+
+**日志位置**:
+- `debug_run.log` - debug_run.bat 的输出日志
+- `example/test_output.log` - Flutter 运行日志
+- 控制台输出 - 实时日志（以 `[AnyWP]` 开头）
 
 ### Git 工作流
 - **自动提交**: 每个功能或优化完成后自动提交 git
@@ -169,8 +192,10 @@ scripts/                # 构建脚本
 ## 参考
 - [完整中文指南](docs/README_CN.md)
 - [快速开始](docs/QUICK_START.md)
-- [包使用指南](docs/PACKAGE_USAGE_GUIDE_CN.md)
+- [Flutter 开发者](docs/FOR_FLUTTER_DEVELOPERS.md)
+- [Web 开发者](docs/WEB_DEVELOPER_GUIDE_CN.md)
+- [API 参考](docs/DEVELOPER_API_REFERENCE.md)
 - [技术实现](docs/TECHNICAL_NOTES.md)
 
-**版本**: 1.0.0 | **更新**: 2025-11-03
+**版本**: 1.1.0 (Changelog: 4.2.0) | **更新**: 2025-11-05
 
