@@ -1,10 +1,14 @@
-﻿# AnyWP API Bridge 实现文档
+﻿# AnyWP API Bridge - Technical Implementation
 
-## 🌉 JavaScript Bridge 架构
+## 🌉 JavaScript Bridge Architecture
 
-AnyWP 提供了完整的 JavaScript Bridge，让 Web 壁纸可以与原生客户端通信。
+AnyWP Engine provides a complete JavaScript Bridge for web wallpapers to communicate with the native client.
 
-### 核心机制
+**Document Type:** Technical implementation details for developers who want to understand the underlying architecture.
+
+**For Usage Guide:** See [Web Developer Guide](WEB_DEVELOPER_GUIDE.md) or [Web Developer Guide (中文)](WEB_DEVELOPER_GUIDE_CN.md)
+
+### Core Mechanism
 
 ```
 Desktop Click
@@ -13,11 +17,11 @@ Windows Mouse Hook (WH_MOUSE_LL)
      ↓
 C++ Plugin (LowLevelMouseProc)
      ↓
-Dispatch AnyWallpaper:mouse Event
+Dispatch AnyWP:mouse Event + AnyWP:click Event
      ↓
 WebView2 JavaScript
      ↓
-AnyWallpaper SDK
+AnyWP SDK (v4.1.0)
      ↓
 onClick Handler Match
      ↓
@@ -26,60 +30,74 @@ Callback Triggered
 
 ---
 
-## 📡 支持的 API
+## 📡 Supported API Channels
 
-### 从 Web 到 Native
+### From Web to Native
 
-#### 1. AnyWallpaper.openURL(url)
-**Web 调用**:
+#### 1. AnyWP.openURL(url)
+**Web Call**:
 ```javascript
-AnyWallpaper.openURL('https://www.bing.com');
+AnyWP.openURL('https://www.bing.com');
 ```
 
-**Native 处理**:
+**Native Handler**:
 ```cpp
 HandleWebMessage() {
-  // Parse: {"type":"OPEN_URL","url":"..."}
-  ShellExecuteW(nullptr, L"open", url, ...);
+  // Parse: {"type":"openURL","url":"..."}
+  std::wstring wurl(url.begin(), url.end());
+  ShellExecuteW(nullptr, L"open", wurl.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 ```
 
-**效果**: 在系统默认浏览器打开 URL
+**Effect**: Opens URL in system default browser
 
 ---
 
-#### 2. AnyWallpaper.ready(name)
-**Web 调用**:
+#### 2. AnyWP.ready(name)
+**Web Call**:
 ```javascript
-AnyWallpaper.ready('Weather Wallpaper v1.0');
+AnyWP.ready('Weather Wallpaper v1.0');
 ```
 
-**Native 处理**:
+**Native Handler**:
 ```cpp
 HandleWebMessage() {
-  // Parse: {"type":"READY","name":"..."}
-  std::cout << "[AnyWallpaper] Wallpaper ready: " << name;
+  // Parse: {"type":"ready","name":"..."}
+  std::cout << "[AnyWP] [API] Wallpaper ready: " << name << std::endl;
 }
 ```
 
-**效果**: 通知客户端壁纸加载完成
+**Effect**: Notifies client that wallpaper has loaded
 
 ---
 
-### 从 Native 到 Web
+### From Native to Web
 
-#### 3. 鼠标事件 (AnyWallpaper:mouse)
-**Native 捕获**:
+#### 3. Mouse Events (AnyWP:mouse + AnyWP:click)
+**Native Capture**:
 ```cpp
 // Windows Mouse Hook
-WH_MOUSE_LL -> LowLevelMouseProc()
-  -> WM_LBUTTONDOWN / WM_LBUTTONUP
-  -> SendClickToWebView(x, y, "mouseup")
+LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
+  if (nCode >= 0 && hook_instance_) {
+    if (hook_instance_->is_paused_) {
+      return CallNextHookEx(nullptr, nCode, wParam, lParam);  // Skip when paused
+    }
+    
+    MSLLHOOKSTRUCT* info = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
+    POINT pt = info->pt;
+    
+    if (wParam == WM_LBUTTONUP) {
+      hook_instance_->SendClickToWebView(pt.x, pt.y, "mouseup");
+    }
+  }
+  return CallNextHookEx(nullptr, nCode, wParam, lParam);
+}
 ```
 
-**发送到 Web**:
+**Sent to Web**:
 ```javascript
-window.dispatchEvent(new CustomEvent('AnyWallpaper:mouse', {
+// AnyWP:mouse event (for general mouse handling)
+window.dispatchEvent(new CustomEvent('AnyWP:mouse', {
   detail: {
     type: 'mouseup',  // or 'mousedown'
     x: 3200,          // Physical pixels
@@ -87,125 +105,184 @@ window.dispatchEvent(new CustomEvent('AnyWallpaper:mouse', {
     button: 0         // 0=left, 1=middle, 2=right
   }
 }));
+
+// AnyWP:click event (for onClick handlers)
+window.dispatchEvent(new CustomEvent('AnyWP:click', {
+  detail: {
+    x: 3200,
+    y: 1600
+  }
+}));
 ```
 
-**SDK 处理**:
+**SDK Handler**:
 ```javascript
-AnyWallpaper._setupEventListeners() {
-  window.addEventListener('AnyWallpaper:mouse', (event) => {
-    if (event.detail.type === 'mouseup' && event.detail.button === 0) {
-      this._handleClick(event.detail.x, event.detail.y);
-    }
-  });
-}
-```
-
-**效果**: SDK 检查点击是否在注册元素内，触发回调
-
----
-
-#### 4. 交互模式 (AnyWallpaper:interactionMode)
-**Native 发送**:
-```cpp
-// Navigation completed callback
-webview_->add_NavigationCompleted([](args) {
-  ExecuteScript("
-    window.dispatchEvent(new CustomEvent('AnyWallpaper:interactionMode', {
-      detail: { enabled: true }
-    }));
-  ");
+window.addEventListener('AnyWP:click', (event) => {
+  this._handleClick(event.detail.x, event.detail.y);
 });
 ```
 
-**SDK 接收**:
+**Effect**: SDK checks if click is within registered element bounds and triggers callback
+
+---
+
+#### 4. Interaction Mode (AnyWP:interactionMode)
+**Native Send**:
+```cpp
+std::wstringstream script;
+script << L"(function() {"
+       << L"  if (window.AnyWP) {"
+       << L"    var event = new CustomEvent('AnyWP:interactionMode', {"
+       << L"      detail: { enabled: " << (enable_interaction_ ? L"true" : L"false") << L" }"
+       << L"    });"
+       << L"    window.dispatchEvent(event);"
+       << L"  }"
+       << L"})();";
+
+webview_->ExecuteScript(script.str().c_str(), nullptr);
+```
+
+**SDK Receive**:
 ```javascript
-window.addEventListener('AnyWallpaper:interactionMode', (event) => {
-  AnyWallpaper.interactionEnabled = event.detail.enabled;
+window.addEventListener('AnyWP:interactionMode', (event) => {
+  AnyWP.interactionEnabled = event.detail.enabled;
   console.log('Interaction mode:', event.detail.enabled ? 'ON' : 'OFF');
 });
 ```
 
-**效果**: 控制是否处理鼠标/键盘事件
+**Effect**: Controls whether to process mouse/keyboard events
 
 ---
 
-## 🎯 完整交互流程
+#### 5. Visibility Events (AnyWP:visibility) 🆕 v4.1.0
+**Native Send**:
+```cpp
+void NotifyWebContentVisibility(bool visible) {
+  std::wstring visibility_script = L"(function() {"
+    L"  var event = new Event('visibilitychange');"
+    L"  document.dispatchEvent(event);"
+    L"  "
+    L"  var customEvent = new CustomEvent('AnyWP:visibility', {"
+    L"    detail: { visible: " + std::wstring(visible ? L"true" : L"false") + L" }"
+    L"  });"
+    L"  window.dispatchEvent(customEvent);"
+    L"})();";
+  
+  webview->ExecuteScript(visibility_script.c_str(), nullptr);
+}
+```
 
-### 用户点击按钮示例
-
-#### 1. 网页注册点击区域
+**SDK Handler**:
 ```javascript
-AnyWallpaper.onClick('#btn-weather', (x, y) => {
-  console.log('Weather button clicked!');
-  AnyWallpaper.openURL('https://weather.com');
+window.addEventListener('AnyWP:visibility', (event) => {
+  const visible = event.detail.visible;
+  
+  // Auto-pause videos/audio
+  if (!visible) {
+    pauseAllMedia();
+  } else {
+    resumeAllMedia();
+  }
+  
+  // User callback
+  if (this._visibilityCallback) {
+    this._visibilityCallback(visible);
+  }
 });
 ```
 
-#### 2. SDK 计算物理像素边界
+**Effect**: Power saving - auto-pause media when wallpaper is hidden
+
+---
+
+## 🎯 Complete Interaction Flow
+
+### Example: User Clicks Button
+
+#### 1. Web Page Registers Click Area
+```javascript
+AnyWP.onClick('#btn-weather', (x, y) => {
+  console.log('Weather button clicked!');
+  AnyWP.openURL('https://weather.com');
+});
+```
+
+#### 2. SDK Calculates Physical Pixel Bounds
 ```javascript
 _calculateElementBounds(element) {
   const rect = element.getBoundingClientRect();
+  const dpi = this.dpiScale;
   return {
-    left: rect.left * dpiScale,    // CSS -> Physical
-    top: rect.top * dpiScale,
-    right: rect.right * dpiScale,
-    bottom: rect.bottom * dpiScale
+    left: Math.round(rect.left * dpi),    // CSS -> Physical
+    top: Math.round(rect.top * dpi),
+    right: Math.round(rect.right * dpi),
+    bottom: Math.round(rect.bottom * dpi),
+    width: Math.round(rect.width * dpi),
+    height: Math.round(rect.height * dpi)
   };
 }
-// 存储到 _clickHandlers[]
+// Stored in _clickHandlers[]
 ```
 
-#### 3. 用户点击桌面
+#### 3. User Clicks Desktop
 ```
 User clicks desktop at (3200, 1600)
      ↓
 Windows Hook captures WM_LBUTTONUP
      ↓
 C++: LowLevelMouseProc(WM_LBUTTONUP, {pt: {x:3200, y:1600}})
+     ↓
+Check if paused (skip if is_paused_ == true)
+     ↓
+Check if occluded by app window (skip if yes)
 ```
 
-#### 4. Native 透传到 Web
+#### 4. Native Forwards to Web
 ```cpp
 SendClickToWebView(3200, 1600, "mouseup");
   ↓
 ExecuteScript("
-  window.dispatchEvent(new CustomEvent('AnyWallpaper:mouse', {
+  // Dispatch mouse event
+  window.dispatchEvent(new CustomEvent('AnyWP:mouse', {
     detail: {type: 'mouseup', x: 3200, y: 1600, button: 0}
+  }));
+  
+  // Dispatch click event
+  window.dispatchEvent(new CustomEvent('AnyWP:click', {
+    detail: {x: 3200, y: 1600}
   }));
 ");
 ```
 
-#### 5. SDK 处理点击
+#### 5. SDK Processes Click
 ```javascript
-// SDK 事件监听器
-window.addEventListener('AnyWallpaper:mouse', (event) => {
-  if (event.detail.type === 'mouseup') {
-    _handleClick(3200, 1600);
-  }
+// SDK event listener
+window.addEventListener('AnyWP:click', (event) => {
+  this._handleClick(event.detail.x, event.detail.y);
 });
 
 _handleClick(x, y) {
   for (const handler of _clickHandlers) {
     if (_isInBounds(x, y, handler.bounds)) {
-      handler.callback(x, y);  // 触发回调！
+      handler.callback(x, y);  // Trigger callback!
       return;
     }
   }
 }
 ```
 
-#### 6. 回调执行
+#### 6. Callback Execution
 ```javascript
-// 用户的回调被调用
+// User's callback is called
 callback(3200, 1600) {
   console.log('Weather button clicked!');
-  AnyWallpaper.openURL('https://weather.com');
+  AnyWP.openURL('https://weather.com');
 }
 ```
 
-#### 7. Native 打开 URL
+#### 7. Native Opens URL
 ```cpp
-HandleWebMessage({"type":"OPEN_URL","url":"https://weather.com"})
+HandleWebMessage({"type":"openURL","url":"https://weather.com"})
   ↓
 ShellExecuteW(L"open", L"https://weather.com", ...);
   ↓
@@ -267,47 +344,84 @@ void SetupMessageBridge() {
 
 ---
 
-### JavaScript 端 (AnyWallpaper SDK)
+### JavaScript Side (AnyWP SDK v4.1.0)
 
-#### 事件监听器
+#### Event Listeners
 ```javascript
 _setupEventListeners() {
-  // 交互模式
-  window.addEventListener('AnyWallpaper:interactionMode', (event) => {
+  // Interaction mode
+  window.addEventListener('AnyWP:interactionMode', (event) => {
     this.interactionEnabled = event.detail.enabled;
   });
   
-  // 鼠标事件
-  window.addEventListener('AnyWallpaper:mouse', (event) => {
-    if (!this.interactionEnabled) return;  // 检查交互模式
+  // Mouse events
+  window.addEventListener('AnyWP:mouse', (event) => {
+    if (!this.interactionEnabled) return;  // Check interaction mode
     
     const {type, x, y, button} = event.detail;
     
-    // 调用用户的 onMouse 回调
-    this._mouseHandlers.forEach(handler => handler(event.detail));
-    
-    // 处理点击（仅 mouseup + 左键）
-    if (type === 'mouseup' && button === 0) {
-      this._handleClick(x, y);
+    // Call user's onMouse callbacks
+    this._mouseCallbacks.forEach(cb => cb(event.detail));
+  });
+  
+  // Click events (optimized)
+  window.addEventListener('AnyWP:click', (event) => {
+    this._handleClick(event.detail.x, event.detail.y);
+  });
+  
+  // Visibility events (v4.1.0)
+  window.addEventListener('AnyWP:visibility', (event) => {
+    const visible = event.detail.visible;
+    if (!visible) {
+      this._autoPauseAnimations();
+    } else {
+      this._autoResumeAnimations();
+    }
+    if (this._visibilityCallback) {
+      this._visibilityCallback(visible);
     }
   });
 }
 ```
 
-#### 点击区域匹配
+#### Click Area Matching
 ```javascript
 onClick(element, callback, options) {
-  // 延迟 2 秒确保 DOM 渲染完成
-  setTimeout(() => {
-    const bounds = this._calculateElementBounds(element);
-    this._clickHandlers.push({bounds, callback, element});
-  }, 2000);
+  options = options || {};
+  const waitFor = options.waitFor !== undefined ? options.waitFor : !options.immediate;
+  
+  function registerElement(el) {
+    const bounds = this._calculateElementBounds(el);
+    this._clickHandlers.push({
+      element: el,
+      callback: callback,
+      bounds: bounds,
+      selector: typeof element === 'string' ? element : null,
+      autoRefresh: options.autoRefresh !== undefined ? options.autoRefresh : true
+    });
+    
+    // Setup ResizeObserver for auto-refresh
+    if (window.ResizeObserver && options.autoRefresh) {
+      const resizeObserver = new ResizeObserver(() => {
+        this._refreshElementBounds(handlerData);
+      });
+      resizeObserver.observe(el);
+    }
+  }
+  
+  if (waitFor && typeof element === 'string') {
+    this._waitForElement(element, registerElement, options.maxWait || 10000);
+  } else {
+    // Register with delay or immediately
+    const delay = options.immediate ? 0 : (options.delay || 100);
+    setTimeout(() => registerElement(element), delay);
+  }
 }
 
 _handleClick(x, y) {
   for (const handler of this._clickHandlers) {
     if (this._isInBounds(x, y, handler.bounds)) {
-      handler.callback(x, y);  // 命中！
+      handler.callback(x, y);  // Hit!
       return;
     }
   }
@@ -316,28 +430,28 @@ _handleClick(x, y) {
 
 ---
 
-## 📊 像素坐标系统
+## 📊 Pixel Coordinate System
 
-### 物理像素 vs CSS 像素
+### Physical Pixels vs CSS Pixels
 
 ```javascript
-// DPI 缩放 = 2x (200%)
-AnyWallpaper.dpiScale = 2;
+// DPI Scaling = 2x (200%)
+AnyWP.dpiScale = 2;
 
-// 用户点击桌面
+// User clicks desktop
 Physical: (4000, 2000)
 
-// SDK 转换显示
+// SDK internal display
 CSS: (4000 / 2, 2000 / 2) = (2000, 1000)
 
-// 元素边界
+// Element bounds
 DOM Rect: {left: 100, top: 50, width: 200, height: 100}  // CSS pixels
 Physical: {left: 200, top: 100, width: 400, height: 200}  // Physical pixels
 
-// 点击检测
+// Click detection
 if (4000 >= 200 && 4000 <= 600 &&    // X: 200~600
     2000 >= 100 && 2000 <= 300) {    // Y: 100~300
-  callback();  // 命中！
+  callback();  // Hit!
 }
 ```
 
@@ -371,23 +485,23 @@ if (4000 >= 200 && 4000 <= 600 &&    // X: 200~600
 
 ---
 
-## 🔍 调试支持
+## 🔍 Debugging Support
 
-### Debug 模式
+### Debug Mode
 ```html
-<!-- URL 参数启用 -->
+<!-- Enable via URL parameter -->
 <script src="...?debug"></script>
 
-<!-- 或手动启用 -->
+<!-- Or manually enable -->
 <script>
-AnyWallpaper.enableDebug();
+AnyWP.enableDebug();
 </script>
 ```
 
-### Debug 输出
+### Debug Output
 ```
 ========================================
-AnyWallpaper Engine v3.1.0 [DEBUG MODE]
+AnyWP Engine v4.1.0 [DEBUG MODE]
 ========================================
 Screen: 5120x2880
 DPI Scale: 2x
@@ -444,14 +558,15 @@ AnyWallpaper.onMouse((event) => {
 
 ---
 
-## 📝 完整示例
+## 📝 Complete Example
 
-### 天气壁纸
+### Weather Wallpaper
 ```html
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="/path/to/anywallpaper_sdk.js"></script>
+  <title>Weather Wallpaper</title>
+  <!-- SDK auto-injected by AnyWP Engine -->
 </head>
 <body>
   <div id="weather-card">
@@ -460,49 +575,58 @@ AnyWallpaper.onMouse((event) => {
   </div>
 
   <script>
-    // 注册点击事件
-    AnyWallpaper.onClick('#weather-card', () => {
-      AnyWallpaper.openURL('https://weather.com');
-    });
-    
-    // 通知就绪
-    AnyWallpaper.ready('Weather Wallpaper v1.0');
+    // Wait for SDK
+    if (window.AnyWP) {
+      // Register click event
+      AnyWP.onClick('#weather-card', () => {
+        console.log('Weather card clicked!');
+        AnyWP.openURL('https://weather.com');
+      });
+      
+      // Notify ready
+      AnyWP.ready('Weather Wallpaper v1.0');
+    }
   </script>
 </body>
 </html>
 ```
 
-### 运行效果
-1. 用户点击天气卡片区域
-2. Windows 钩子捕获点击
-3. 坐标发送到 JavaScript
-4. SDK 检测命中 #weather-card
-5. 触发回调
-6. 调用 AnyWallpaper.openURL()
-7. 消息发送到 C++
-8. ShellExecute 打开浏览器
+### Execution Flow
+1. User clicks weather card area on desktop
+2. Windows hook captures click
+3. Coordinates sent to JavaScript
+4. SDK detects hit on #weather-card bounds
+5. Triggers callback
+6. Calls AnyWP.openURL()
+7. Message sent to C++ via chrome.webview.postMessage
+8. ShellExecute opens browser
 
 ---
 
-## 🎯 当前实现状态
+## 🎯 Current Implementation Status
 
-### ✅ 完全支持
-- [x] onClick 点击区域注册
-- [x] openURL 打开链接
-- [x] ready 就绪通知
-- [x] onMouse 鼠标事件（down/up）
-- [x] 交互模式控制
-- [x] DPI 缩放支持
-- [x] Debug 模式
+### ✅ Fully Supported (v4.1.0)
+- [x] onClick - Click area registration with SPA support
+- [x] openURL - Open links in browser
+- [x] ready - Ready notification
+- [x] onMouse - Mouse events (down/up)
+- [x] onKeyboard - Keyboard event placeholder
+- [x] **onVisibilityChange** - Visibility change callback (NEW v4.1.0)
+- [x] Interaction mode control
+- [x] DPI scaling support
+- [x] Debug mode with visual borders
+- [x] SPA framework auto-detection (React/Vue/Angular)
+- [x] Multi-monitor support
+- [x] **Auto-pause media** (videos/audio) (NEW v4.1.0)
 
-### ⚠️ 部分支持
-- [ ] onKeyboard（需要键盘钩子）
-- [ ] mousemove（已禁用，可选启用）
+### ⚠️ Partial Support
+- [ ] Keyboard hook (interface ready, needs implementation)
+- [ ] mousemove (disabled for performance, can be enabled)
 
-### 📋 未来增强
-- [ ] onResize - 窗口大小变化
-- [ ] onFocus - 窗口焦点
-- [ ] 多显示器坐标转换
+### 📋 Future Enhancements
+- [ ] Drag and drop support
+- [ ] Scroll event forwarding
+- [ ] Multi-touch support
 
 ---
 
@@ -522,39 +646,75 @@ AnyWallpaper.onMouse((event) => {
 - 点击按钮区域 → SDK 触发回调
 - 点击 "打开网页" → 浏览器打开
 
-### 3. 查看日志
+### 3. Check Logs
 ```
-[AnyWallpaper] [Hook] Mouse hook installed successfully
-[AnyWallpaper] [API] Sent interaction mode to JS: 1
-[AnyWallpaper] [Hook] Mouse click at: 3200,1600
-[AnyWallpaper] [API] Received message: {"type":"OPEN_URL","url":"..."}
+[AnyWP] [Hook] Mouse hook installed successfully
+[AnyWP] [PowerSaving] Power saving monitoring setup complete
+[AnyWP] [API] SDK manually injected successfully
+[AnyWP] [API] Sent interaction mode to JS: 1
+[AnyWP] [Memory] Auto-optimizing memory after page load...
+[AnyWP] [Memory] Auto-optimization: 200MB -> 95MB (freed 105MB)
+[AnyWP] [API] Received message: {"type":"openURL","url":"..."}
 ```
 
 ---
 
-## 🔒 安全机制
+## 🔒 Security Mechanisms
 
-### URL 验证
-所有通过 `openURL()` 的 URL 都经过验证：
+### URL Validation
+All URLs via `openURL()` are validated:
 ```cpp
-// 黑名单
+// Blacklist (default)
 url_validator_.AddBlacklist("file:///c:/windows");
 url_validator_.AddBlacklist("file:///c:/program");
 
-// 白名单（可选）
-url_validator_.AddWhitelist("https://*");
+// Whitelist (optional)
+// url_validator_.AddWhitelist("https://*");  // Uncomment to enable
 ```
 
-### 权限控制
-WebView2 权限自动拒绝：
-- 麦克风
-- 摄像头
-- 地理位置
-- 剪贴板读取
+### Permission Control
+WebView2 permissions auto-denied:
+- Microphone
+- Camera
+- Geolocation
+- Clipboard read
+
+### Safety Features (v4.1.0)
+- NULL pointer checks on all webview access
+- COM pointer validation (.Get())
+- Memory value range validation
+- Graceful error handling (no crashes)
 
 ---
 
-**版本**: v1.2.0  
-**最后更新**: 2025-10-31  
-**SDK 兼容**: AnyWallpaper Engine SDK v3.1.0
+## 🆕 What's New in v4.1.0
+
+### Power Saving & Optimization
+- **Lightweight pause**: WebView stops rendering but preserves state
+- **Instant resume**: <50ms recovery (20x faster than v1.0)
+- **Auto memory optimization**: 200MB -> 100MB after page load
+- **Visibility API**: Page Visibility API integration
+
+### Safety Enhancements
+- No dangling pointers (removed detached threads)
+- Comprehensive NULL checks
+- Memory overflow protection
+- API call validation
+
+### Performance
+- Reduced logging overhead
+- Optimized mouse hook (skip when paused)
+- Lower memory threshold (150MB)
+- More frequent cleanup (15min)
+
+---
+
+**Version**: v4.1.0  
+**Last Updated**: 2025-11-05  
+**SDK Compatible**: AnyWP Engine SDK v4.1.0
+
+**Related Documentation**:
+- [Web Developer Guide](WEB_DEVELOPER_GUIDE.md) - Usage guide for web developers
+- [SDK API Reference](SDK_API_REFERENCE.md) - Complete SDK API documentation
+- [Developer API Reference](DEVELOPER_API_REFERENCE.md) - Flutter/Dart API documentation
 
