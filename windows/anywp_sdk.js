@@ -620,9 +620,25 @@
       el.style.position = 'absolute';
     }
     
-    // Set cursor
+    // Set cursor and disable system drag behaviors
     el.style.cursor = 'move';
     el.style.userSelect = 'none';
+    el.style.webkitUserSelect = 'none';
+    el.style.mozUserSelect = 'none';
+    el.style.msUserSelect = 'none';
+    
+    // Prevent system drag/drop
+    el.draggable = false;
+    el.ondragstart = function(e) { 
+      e.preventDefault(); 
+      return false; 
+    };
+    
+    // Prevent text selection during drag
+    el.onselectstart = function(e) {
+      e.preventDefault();
+      return false;
+    };
     
     // IMPORTANT: Use AnyWP:mouse events instead of DOM events
     // This allows dragging even with transparent windows (mouse hook architecture)
@@ -657,6 +673,14 @@
       const isOver = mouseX >= physicalLeft && mouseX <= physicalRight &&
                      mouseY >= physicalTop && mouseY <= physicalBottom;
       
+      // Debug: log mousedown events
+      if (mouseType === 'mousedown') {
+        console.log('[AnyWP] [makeDraggable] mousedown - isOver:', isOver, 
+                    'dragState:', self._dragState ? 'EXISTS' : 'NULL',
+                    'mouse:', mouseX, mouseY,
+                    'bounds:', '[' + physicalLeft + ',' + physicalTop + ']-[' + physicalRight + ',' + physicalBottom + ']');
+      }
+      
       if (mouseType === 'mousedown' && isOver && !self._dragState) {
         // Start dragging
         console.log('[AnyWP] [Drag] START - Mouse at (' + mouseX + ',' + mouseY + '), Element bounds: [' + 
@@ -684,6 +708,8 @@
       }
       else if (mouseType === 'mousemove' && self._dragState && self._dragState.element === el) {
         // Continue dragging
+        console.log('[AnyWP] [Drag] MOVE - Mouse:', mouseX, mouseY);
+        
         let newPhysicalLeft = mouseX - self._dragState.offsetX;
         let newPhysicalTop = mouseY - self._dragState.offsetY;
         
@@ -744,8 +770,16 @@
       }
       else if (mouseType === 'mousedown' && !isOver) {
         // Debug: mouse down but not over element
-        self._log('[makeDraggable] mousedown not over element. Mouse: (' + mouseX + ',' + mouseY + 
+        console.log('[AnyWP] [makeDraggable] mousedown NOT over element. Mouse: (' + mouseX + ',' + mouseY + 
                   '), Element: [' + physicalLeft + ',' + physicalTop + '] - [' + physicalRight + ',' + physicalBottom + ']');
+      }
+      else if (mouseType === 'mousemove' && self._dragState && self._dragState.element !== el) {
+        // Debug: moving but not this element
+        console.log('[AnyWP] [makeDraggable] mousemove but wrong element');
+      }
+      else if (mouseType === 'mousemove' && !self._dragState) {
+        // Debug: moving but no drag state
+        // Don't log this - too noisy
       }
     }
     
