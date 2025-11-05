@@ -2,7 +2,6 @@
 
 A Flutter Windows plugin that embeds WebView2 as an interactive desktop wallpaper, displaying web content behind desktop icons.
 
-> **Note about Project Folder**: The project folder may be named `AnyWallpaper-Engine` (with dash). We recommend renaming to `AnyWP_Engine` for consistency with code naming. See [NAMING_CONVENTION.md](NAMING_CONVENTION.md) for details.
 
 ## ✨ Features
 
