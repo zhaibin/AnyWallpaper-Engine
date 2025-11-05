@@ -20,6 +20,12 @@ class _MyAppState extends State<MyApp> {
   Map<int, bool> _monitorLoading = {};  // Track loading state for each monitor
   bool _allMonitorsLoading = false;  // Track "Start All" / "Stop All" loading state
   bool _mouseTransparent = true;  // Default: wallpaper mode (transparent)
+  
+  // Power saving & optimization
+  String _powerState = 'Loading...';
+  int _memoryUsageMB = 0;
+  bool _autoPowerSaving = true;
+  int _selectedTab = 0;
 
   @override
   void initState() {
@@ -290,6 +296,279 @@ class _MyAppState extends State<MyApp> {
           SnackBar(content: Text(message)),
         );
       }
+    }
+  }
+  
+  // Power Saving & Optimization methods
+  Future<void> _refreshPowerState() async {
+    try {
+      final state = await AnyWPEngine.getPowerState();
+      final memory = await AnyWPEngine.getMemoryUsage();
+      
+      setState(() {
+        _powerState = state;
+        _memoryUsageMB = memory;
+      });
+    } catch (e) {
+      print('[APP] Error refreshing power state: $e');
+    }
+  }
+  
+  Future<void> _pauseWallpaper() async {
+    try {
+      final success = await AnyWPEngine.pauseWallpaper();
+      if (success) {
+        _showMessage('Wallpaper paused');
+        await _refreshPowerState();
+      } else {
+        _showMessage('Failed to pause wallpaper');
+      }
+    } catch (e) {
+      _showMessage('Error: $e');
+    }
+  }
+  
+  Future<void> _resumeWallpaper() async {
+    try {
+      final success = await AnyWPEngine.resumeWallpaper();
+      if (success) {
+        _showMessage('Wallpaper resumed');
+        await _refreshPowerState();
+      } else {
+        _showMessage('Failed to resume wallpaper');
+      }
+    } catch (e) {
+      _showMessage('Error: $e');
+    }
+  }
+  
+  Future<void> _toggleAutoPowerSaving() async {
+    try {
+      final newValue = !_autoPowerSaving;
+      final success = await AnyWPEngine.setAutoPowerSaving(newValue);
+      if (success) {
+        setState(() {
+          _autoPowerSaving = newValue;
+        });
+        _showMessage('Auto power saving: ${newValue ? 'Enabled' : 'Disabled'}');
+      }
+    } catch (e) {
+      _showMessage('Error: $e');
+    }
+  }
+  
+  Future<void> _optimizeMemory() async {
+    try {
+      final before = await AnyWPEngine.getMemoryUsage();
+      await AnyWPEngine.optimizeMemory();
+      await Future.delayed(Duration(seconds: 1)); // Wait for optimization
+      final after = await AnyWPEngine.getMemoryUsage();
+      
+      final freed = before - after;
+      _showMessage('Memory optimized! Freed: ${freed}MB (${before}MB → ${after}MB)');
+      
+      await _refreshPowerState();
+    } catch (e) {
+      _showMessage('Error: $e');
+    }
+  }
+  
+  Widget _buildOptimizationTab() {
+    return ListView(
+      padding: const EdgeInsets.all(24.0),
+      children: [
+        Card(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.power_settings_new, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text(
+                      'Power Saving Status',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Spacer(),
+                    ElevatedButton.icon(
+                      onPressed: _refreshPowerState,
+                      icon: Icon(Icons.refresh, size: 16),
+                      label: Text('Refresh'),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                _buildStatusRow('Power State', _powerState, _getPowerStateColor(_powerState)),
+                SizedBox(height: 8),
+                _buildStatusRow('Memory Usage', '${_memoryUsageMB}MB', Colors.blue),
+                SizedBox(height: 16),
+                CheckboxListTile(
+                  title: Text('Auto Power Saving'),
+                  subtitle: Text('Automatically pause on lock/idle/fullscreen'),
+                  value: _autoPowerSaving,
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (value) => _toggleAutoPowerSaving(),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 16),
+        Card(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.settings, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text(
+                      'Manual Controls',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _pauseWallpaper,
+                        icon: Icon(Icons.pause),
+                        label: Text('Pause Wallpaper'),
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.all(16),
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _resumeWallpaper,
+                        icon: Icon(Icons.play_arrow),
+                        label: Text('Resume Wallpaper'),
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.all(16),
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _optimizeMemory,
+                    icon: Icon(Icons.memory),
+                    label: Text('Optimize Memory'),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.all(16),
+                      backgroundColor: Colors.purple,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 16),
+        Card(
+          color: Colors.blue[50],
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text(
+                      'Optimization Features:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '🔋 Auto Power Saving:\n'
+                  '  • Pauses wallpaper when system is locked\n'
+                  '  • Detects fullscreen apps (games/videos)\n'
+                  '  • Pauses after 5 min idle\n\n'
+                  '💾 Memory Optimization:\n'
+                  '  • Clears cache and triggers GC\n'
+                  '  • Reduces memory footprint\n'
+                  '  • Automatic on pause\n\n'
+                  '⚡ Performance:\n'
+                  '  • Reduces render frequency when paused\n'
+                  '  • Optimized mouse hook\n'
+                  '  • Minimal logging overhead',
+                  style: TextStyle(color: Colors.grey[800], fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildStatusRow(String label, String value, Color color) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label + ':',
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
+        ),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Color _getPowerStateColor(String state) {
+    switch (state) {
+      case 'ACTIVE': return Colors.green;
+      case 'IDLE': return Colors.orange;
+      case 'LOCKED': return Colors.red;
+      case 'FULLSCREEN_APP': return Colors.purple;
+      case 'PAUSED': return Colors.grey;
+      default: return Colors.grey;
     }
   }
 
@@ -563,12 +842,26 @@ class _MyAppState extends State<MyApp> {
         primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('AnyWallpaper Engine - Multi-Monitor Wallpaper'),
-          backgroundColor: Colors.blue,
+      home: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('AnyWallpaper Engine'),
+            backgroundColor: Colors.blue,
+            bottom: TabBar(
+              tabs: [
+                Tab(icon: Icon(Icons.monitor), text: 'Wallpaper'),
+                Tab(icon: Icon(Icons.tune), text: 'Optimization'),
+              ],
+            ),
+          ),
+          body: TabBarView(
+            children: [
+              _buildMultiMonitorTab(),
+              _buildOptimizationTab(),
+            ],
+          ),
         ),
-        body: _buildMultiMonitorTab(),
       ),
     );
   }

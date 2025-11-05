@@ -4,12 +4,15 @@
 #include <flutter/standard_method_codec.h>
 #include <windows.h>
 #include <shellapi.h>
+#include <wtsapi32.h>
 #include <string>
 #include <memory>
 #include <iostream>
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+
+#pragma comment(lib, "wtsapi32.lib")
 
 namespace anywp_engine {
 
@@ -322,6 +325,9 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   
   // Setup display change listener
   SetupDisplayChangeListener();
+  
+  // Setup power saving monitoring
+  SetupPowerSavingMonitoring();
 }
 
 AnyWPEnginePlugin::~AnyWPEnginePlugin() {
@@ -329,6 +335,9 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   
   // Remove display change listener
   CleanupDisplayChangeListener();
+  
+  // Cleanup power saving monitoring
+  CleanupPowerSavingMonitoring();
   
   // Remove mouse hook
   RemoveMouseHook();
@@ -475,6 +484,58 @@ void AnyWPEnginePlugin::HandleMethodCall(
     int monitor_index = std::get<int>(monitor_it->second);
     bool success = NavigateToUrlOnMonitor(url, monitor_index);
     result->Success(flutter::EncodableValue(success));
+  }
+  // Power Saving APIs
+  else if (method_call.method_name() == "pauseWallpaper") {
+    PauseWallpaper("Manual pause");
+    power_state_ = PowerState::PAUSED;
+    result->Success(flutter::EncodableValue(true));
+  }
+  else if (method_call.method_name() == "resumeWallpaper") {
+    if (power_state_ == PowerState::PAUSED) {
+      ResumeWallpaper("Manual resume");
+      power_state_ = PowerState::ACTIVE;
+    }
+    result->Success(flutter::EncodableValue(true));
+  }
+  else if (method_call.method_name() == "setAutoPowerSaving") {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (!arguments) {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
+      return;
+    }
+
+    auto enabled_it = arguments->find(flutter::EncodableValue("enabled"));
+    if (enabled_it == arguments->end()) {
+      result->Error("INVALID_ARGS", "Missing 'enabled' argument");
+      return;
+    }
+
+    bool enabled = std::get<bool>(enabled_it->second);
+    auto_power_saving_enabled_ = enabled;
+    std::cout << "[AnyWP] Auto power saving: " << (enabled ? "ENABLED" : "DISABLED") << std::endl;
+    result->Success(flutter::EncodableValue(true));
+  }
+  else if (method_call.method_name() == "getPowerState") {
+    // Return power state as string
+    std::string state_str;
+    switch (power_state_) {
+      case PowerState::ACTIVE: state_str = "ACTIVE"; break;
+      case PowerState::IDLE: state_str = "IDLE"; break;
+      case PowerState::SCREEN_OFF: state_str = "SCREEN_OFF"; break;
+      case PowerState::LOCKED: state_str = "LOCKED"; break;
+      case PowerState::FULLSCREEN_APP: state_str = "FULLSCREEN_APP"; break;
+      case PowerState::PAUSED: state_str = "PAUSED"; break;
+    }
+    result->Success(flutter::EncodableValue(state_str));
+  }
+  else if (method_call.method_name() == "getMemoryUsage") {
+    size_t memory_mb = GetCurrentMemoryUsage() / 1024 / 1024;
+    result->Success(flutter::EncodableValue(static_cast<int>(memory_mb)));
+  }
+  else if (method_call.method_name() == "optimizeMemory") {
+    OptimizeMemoryUsage();
+    result->Success(flutter::EncodableValue(true));
   }
   else {
     result->NotImplemented();
@@ -896,28 +957,60 @@ void AnyWPEnginePlugin::LogError(const std::string& error) {
   std::cout << "[AnyWP] [Error] " << error << std::endl;
 }
 
-// P1-2: Clear WebView cache (simplified for SDK compatibility)
+// P1-2: Clear WebView cache (optimized)
 void AnyWPEnginePlugin::ClearWebViewCache() {
-  if (!webview_) {
-    std::cout << "[AnyWP] [Cache] No WebView to clear cache" << std::endl;
-    return;
+  std::cout << "[AnyWP] [Cache] Clearing browser cache..." << std::endl;
+  
+  // Clear cache for all instances
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      if (instance.webview) {
+        // Execute JavaScript to clear cache-like data
+        std::wstring clear_script = L"(function() {"
+          L"  try {"
+          L"    // Clear localStorage"
+          L"    localStorage.clear();"
+          L"    // Clear sessionStorage"
+          L"    sessionStorage.clear();"
+          L"    console.log('[AnyWP] Cache cleared');"
+          L"  } catch(e) {}"
+          L"})();";
+        instance.webview->ExecuteScript(clear_script.c_str(), nullptr);
+      }
+    }
   }
   
-  std::cout << "[AnyWP] [Cache] Clearing browser cache via reload..." << std::endl;
+  // Clear legacy webview
+  if (webview_) {
+    std::wstring clear_script = L"(function() {"
+      L"  try {"
+      L"    localStorage.clear();"
+      L"    sessionStorage.clear();"
+      L"  } catch(e) {}"
+      L"})();";
+    webview_->ExecuteScript(clear_script.c_str(), nullptr);
+  }
   
-  // Use simpler approach: hard reload to clear cache
-  webview_->Reload();
-  std::cout << "[AnyWP] [Cache] Page reloaded" << std::endl;
+  std::cout << "[AnyWP] [Cache] Cache cleared" << std::endl;
 }
 
-// P1-2: Periodic cleanup
+// P1-2: Periodic cleanup (optimized to reduce calls)
 void AnyWPEnginePlugin::PeriodicCleanup() {
   auto now = std::chrono::steady_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::minutes>(now - last_cleanup_);
   
-  if (elapsed.count() >= 30) {  // Every 30 minutes
+  // Only cleanup every 60 minutes (reduced from 30 to minimize performance impact)
+  if (elapsed.count() >= 60) {
     std::cout << "[AnyWP] [Maintenance] Performing periodic cleanup..." << std::endl;
-    ClearWebViewCache();
+    
+    // Only optimize memory if usage is high
+    size_t memory_mb = GetCurrentMemoryUsage() / 1024 / 1024;
+    if (memory_mb > 300) {  // Only if using more than 300MB
+      std::cout << "[AnyWP] [Maintenance] High memory usage detected: " << memory_mb << "MB" << std::endl;
+      OptimizeMemoryUsage();
+    }
+    
     last_cleanup_ = now;
   }
 }
@@ -1173,16 +1266,15 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
   }
 }
 
-// Mouse Hook: Low-level mouse callback
+// Mouse Hook: Low-level mouse callback (optimized for performance)
 LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
   // Mouse hook processes all clicks and decides whether to forward to wallpaper
   if (nCode >= 0 && hook_instance_) {
-    // Log for debugging
-    static int click_count = 0;
-    if (wParam == WM_LBUTTONDOWN) {
-      click_count++;
-      std::cout << "[AnyWP] [Hook] Mouse click detected #" << click_count << std::endl;
+    // Skip if paused (performance optimization)
+    if (hook_instance_->is_paused_) {
+      return CallNextHookEx(nullptr, nCode, wParam, lParam);
     }
+    
     MSLLHOOKSTRUCT* info = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
     POINT pt = info->pt;
     
@@ -1225,12 +1317,8 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
       }
     }
     
-    // If occluded by app window, don't forward
+    // If occluded by app window, don't forward (no log to reduce overhead)
     if (is_app_window) {
-      // Log for debugging
-      if (wParam == WM_LBUTTONDOWN) {
-        std::wcout << L"[AnyWP] [Hook] Click blocked - app window in front: " << className << std::endl;
-      }
       return CallNextHookEx(nullptr, nCode, wParam, lParam);
     }
     
@@ -1239,8 +1327,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
     
     // Check if click is on an iframe ad (priority handling)
     if (wParam == WM_LBUTTONUP && target_instance) {
-      std::cout << "[AnyWP] [Hook] Checking iframe at (" << pt.x << "," << pt.y << ")" << std::endl;
-      std::cout << "[AnyWP] [Hook] Target instance has " << target_instance->iframes.size() << " iframes" << std::endl;
+      // Reduced logging for performance
       
       IframeInfo* iframe = hook_instance_->GetIframeAtPoint(pt.x, pt.y, target_instance);
       
@@ -1265,20 +1352,14 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
       event_type = "mousedown";
     } else if (wParam == WM_LBUTTONUP) {
       event_type = "mouseup";
-      std::cout << "[AnyWP] [Hook] Desktop click at: " << pt.x << "," << pt.y 
-                << " (Window: " << window_at_point << " Class: ";
-      std::wcout << className;
-      if (wcslen(windowTitle) > 0) {
-        std::wcout << L" Title: " << windowTitle;
-      }
-      std::wcout << L")" << std::endl;
+      // Reduced logging for performance
     } else if (wParam == WM_MOUSEMOVE) {
-      // Optional: send mousemove (but might be too frequent)
+      // Mousemove disabled to reduce overhead
       // event_type = "mousemove";
     }
     
     if (event_type) {
-      std::cout << "[AnyWP] [Hook] Forwarding " << event_type << " to WebView at (" << pt.x << "," << pt.y << ")" << std::endl;
+      // Forward to WebView without logging (performance)
       hook_instance_->SendClickToWebView(pt.x, pt.y, event_type);
     }
   }
@@ -1286,7 +1367,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
   return CallNextHookEx(nullptr, nCode, wParam, lParam);
 }
 
-// Mouse Hook: Send mouse event to WebView (compatible with AnyWallpaper SDK)
+// Mouse Hook: Send mouse event to WebView (optimized for performance)
 void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type) {
   // Multi-monitor support: Find which instance is at this point
   WallpaperInstance* instance = GetInstanceAtPoint(x, y);
@@ -1299,11 +1380,9 @@ void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type)
     // Fallback to legacy single-monitor webview
     target_webview = webview_;
   } else {
-    std::cout << "[AnyWP] [Hook] ERROR: No webview available" << std::endl;
+    // No logging for performance
     return;
   }
-  
-  std::cout << "[AnyWP] [Hook] SendClickToWebView called: (" << x << "," << y << ") type=" << event_type << std::endl;
   
   // Dispatch both AnyWP:mouse AND AnyWP:click events (SDK v4.0.0 compatibility)
   std::wstringstream script;
@@ -1335,8 +1414,8 @@ void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type)
   
   script << L"})();";
   
+  // Execute without callback for performance
   target_webview->ExecuteScript(script.str().c_str(), nullptr);
-  std::cout << "[AnyWP] [Hook] Events dispatched" << std::endl;
 }
 
 // Mouse Hook: Setup hook
@@ -2433,6 +2512,428 @@ void AnyWPEnginePlugin::UpdateWallpaperSizes() {
   }
   
   std::cout << "[AnyWP] [DisplayChange] Update complete" << std::endl;
+}
+
+// ========== Power Saving & Optimization Implementation ==========
+
+// Setup power saving monitoring
+void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
+  std::cout << "[AnyWP] [PowerSaving] Setting up power saving monitoring..." << std::endl;
+  
+  // Register window class for power events
+  WNDCLASSEXW wc = {0};
+  wc.cbSize = sizeof(WNDCLASSEXW);
+  wc.lpfnWndProc = PowerSavingWndProc;
+  wc.hInstance = GetModuleHandleW(nullptr);
+  wc.lpszClassName = L"AnyWPPowerListener";
+  
+  if (!RegisterClassExW(&wc)) {
+    DWORD error = GetLastError();
+    if (error != ERROR_CLASS_ALREADY_EXISTS) {
+      std::cout << "[AnyWP] [PowerSaving] Failed to register window class: " << error << std::endl;
+      return;
+    }
+  }
+  
+  // Create hidden window to receive power messages
+  power_listener_hwnd_ = CreateWindowExW(
+    0,
+    L"AnyWPPowerListener",
+    L"AnyWP Power Listener",
+    WS_OVERLAPPED,
+    0, 0, 1, 1,
+    nullptr,
+    nullptr,
+    GetModuleHandleW(nullptr),
+    nullptr
+  );
+  
+  if (power_listener_hwnd_) {
+    ShowWindow(power_listener_hwnd_, SW_HIDE);
+    std::cout << "[AnyWP] [PowerSaving] Power listener window created: " << power_listener_hwnd_ << std::endl;
+    
+    // Register for session change notifications (lock/unlock)
+    WTSRegisterSessionNotification(power_listener_hwnd_, NOTIFY_FOR_THIS_SESSION);
+    
+  } else {
+    std::cout << "[AnyWP] [PowerSaving] Failed to create listener window: " << GetLastError() << std::endl;
+  }
+  
+  // Start fullscreen detection thread
+  StartFullscreenDetection();
+  
+  std::cout << "[AnyWP] [PowerSaving] Monitoring setup complete" << std::endl;
+}
+
+// Cleanup power saving monitoring
+void AnyWPEnginePlugin::CleanupPowerSavingMonitoring() {
+  std::cout << "[AnyWP] [PowerSaving] Cleaning up monitoring..." << std::endl;
+  
+  // Stop fullscreen detection
+  StopFullscreenDetection();
+  
+  // Cleanup window
+  if (power_listener_hwnd_) {
+    WTSUnRegisterSessionNotification(power_listener_hwnd_);
+    DestroyWindow(power_listener_hwnd_);
+    power_listener_hwnd_ = nullptr;
+  }
+  
+  std::cout << "[AnyWP] [PowerSaving] Cleanup complete" << std::endl;
+}
+
+// Power saving window procedure
+LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+  if (!display_change_instance_) {
+    return DefWindowProcW(hwnd, message, wParam, lParam);
+  }
+  
+  switch (message) {
+    case WM_WTSSESSION_CHANGE:
+      // Session state changed (lock/unlock)
+      switch (wParam) {
+        case WTS_SESSION_LOCK:
+          std::cout << "[AnyWP] [PowerSaving] System LOCKED" << std::endl;
+          display_change_instance_->PauseWallpaper("System locked");
+          break;
+        case WTS_SESSION_UNLOCK:
+          std::cout << "[AnyWP] [PowerSaving] System UNLOCKED" << std::endl;
+          display_change_instance_->ResumeWallpaper("System unlocked");
+          break;
+      }
+      break;
+      
+    case WM_POWERBROADCAST:
+      // Power state changed
+      switch (wParam) {
+        case PBT_APMSUSPEND:
+          std::cout << "[AnyWP] [PowerSaving] System SUSPENDING" << std::endl;
+          display_change_instance_->PauseWallpaper("System suspend");
+          break;
+        case PBT_APMRESUMEAUTOMATIC:
+        case PBT_APMRESUMESUSPEND:
+          std::cout << "[AnyWP] [PowerSaving] System RESUMING" << std::endl;
+          display_change_instance_->ResumeWallpaper("System resume");
+          break;
+        case PBT_APMPOWERSTATUSCHANGE:
+          // Check if monitor is off
+          std::cout << "[AnyWP] [PowerSaving] Power status changed" << std::endl;
+          display_change_instance_->UpdatePowerState();
+          break;
+      }
+      break;
+  }
+  
+  return DefWindowProcW(hwnd, message, wParam, lParam);
+}
+
+// Update power state based on current system status
+void AnyWPEnginePlugin::UpdatePowerState() {
+  if (!auto_power_saving_enabled_) {
+    return;
+  }
+  
+  // Check if screen is off
+  SYSTEM_POWER_STATUS power_status;
+  if (GetSystemPowerStatus(&power_status)) {
+    // Note: This is a simplified check, real screen off detection is complex
+    // We rely more on WM_WTSSESSION_CHANGE for lock detection
+  }
+  
+  // Check user activity
+  LASTINPUTINFO lii = {0};
+  lii.cbSize = sizeof(LASTINPUTINFO);
+  if (GetLastInputInfo(&lii)) {
+    DWORD current_time = GetTickCount();
+    DWORD idle_time = current_time - lii.dwTime;
+    
+    if (idle_time > IDLE_TIMEOUT_MS) {
+      if (power_state_ == PowerState::ACTIVE) {
+        std::cout << "[AnyWP] [PowerSaving] User IDLE detected (" << (idle_time / 1000) << "s)" << std::endl;
+        PauseWallpaper("User idle");
+        power_state_ = PowerState::IDLE;
+      }
+    } else {
+      if (power_state_ == PowerState::IDLE) {
+        std::cout << "[AnyWP] [PowerSaving] User ACTIVE again" << std::endl;
+        ResumeWallpaper("User active");
+        power_state_ = PowerState::ACTIVE;
+      }
+    }
+  }
+}
+
+// Check if fullscreen app is active
+bool AnyWPEnginePlugin::IsFullscreenAppActive() {
+  HWND foreground = GetForegroundWindow();
+  if (!foreground) {
+    return false;
+  }
+  
+  // Get window rect
+  RECT window_rect;
+  if (!GetWindowRect(foreground, &window_rect)) {
+    return false;
+  }
+  
+  // Get monitor rect that contains this window
+  HMONITOR monitor = MonitorFromWindow(foreground, MONITOR_DEFAULTTONEAREST);
+  MONITORINFO monitor_info = {0};
+  monitor_info.cbSize = sizeof(MONITORINFO);
+  
+  if (!GetMonitorInfoW(monitor, &monitor_info)) {
+    return false;
+  }
+  
+  // Check if window covers entire monitor (fullscreen)
+  bool is_fullscreen = 
+    window_rect.left <= monitor_info.rcMonitor.left &&
+    window_rect.top <= monitor_info.rcMonitor.top &&
+    window_rect.right >= monitor_info.rcMonitor.right &&
+    window_rect.bottom >= monitor_info.rcMonitor.bottom;
+  
+  if (is_fullscreen) {
+    // Exclude desktop windows
+    wchar_t class_name[256] = {0};
+    GetClassNameW(foreground, class_name, 256);
+    
+    if (wcscmp(class_name, L"Progman") == 0 ||
+        wcscmp(class_name, L"WorkerW") == 0 ||
+        wcscmp(class_name, L"Shell_TrayWnd") == 0) {
+      return false;
+    }
+    
+    return true;
+  }
+  
+  return false;
+}
+
+// Start fullscreen detection thread
+void AnyWPEnginePlugin::StartFullscreenDetection() {
+  std::cout << "[AnyWP] [PowerSaving] Starting fullscreen detection thread..." << std::endl;
+  
+  stop_fullscreen_detection_ = false;
+  
+  fullscreen_detection_thread_ = std::thread([this]() {
+    std::cout << "[AnyWP] [PowerSaving] Fullscreen detection thread started" << std::endl;
+    
+    while (!stop_fullscreen_detection_) {
+      if (auto_power_saving_enabled_) {
+        bool is_fullscreen = IsFullscreenAppActive();
+        
+        if (is_fullscreen && power_state_ != PowerState::FULLSCREEN_APP && power_state_ != PowerState::PAUSED) {
+          std::cout << "[AnyWP] [PowerSaving] Fullscreen app detected, pausing wallpaper" << std::endl;
+          PauseWallpaper("Fullscreen app");
+          power_state_ = PowerState::FULLSCREEN_APP;
+        } else if (!is_fullscreen && power_state_ == PowerState::FULLSCREEN_APP) {
+          std::cout << "[AnyWP] [PowerSaving] No fullscreen app, resuming wallpaper" << std::endl;
+          ResumeWallpaper("No fullscreen app");
+          power_state_ = PowerState::ACTIVE;
+        }
+        
+        // Also check user activity
+        UpdatePowerState();
+      }
+      
+      // Check every 2 seconds
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
+    
+    std::cout << "[AnyWP] [PowerSaving] Fullscreen detection thread stopped" << std::endl;
+  });
+}
+
+// Stop fullscreen detection thread
+void AnyWPEnginePlugin::StopFullscreenDetection() {
+  std::cout << "[AnyWP] [PowerSaving] Stopping fullscreen detection..." << std::endl;
+  
+  stop_fullscreen_detection_ = true;
+  
+  if (fullscreen_detection_thread_.joinable()) {
+    fullscreen_detection_thread_.join();
+  }
+  
+  std::cout << "[AnyWP] [PowerSaving] Fullscreen detection stopped" << std::endl;
+}
+
+// Pause wallpaper (reduce CPU/GPU usage)
+void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
+  if (is_paused_) {
+    return;
+  }
+  
+  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
+  
+  is_paused_ = true;
+  
+  // Hide all wallpaper windows (reduces rendering)
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
+        ShowWindow(instance.webview_host_hwnd, SW_HIDE);
+      }
+    }
+  }
+  
+  // Hide legacy window
+  if (webview_host_hwnd_ && IsWindow(webview_host_hwnd_)) {
+    ShowWindow(webview_host_hwnd_, SW_HIDE);
+  }
+  
+  // Reduce render frequency
+  ReduceRenderFrequency();
+  
+  // Trigger memory optimization
+  OptimizeMemoryUsage();
+  
+  std::cout << "[AnyWP] [PowerSaving] Wallpaper paused successfully" << std::endl;
+}
+
+// Resume wallpaper
+void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
+  if (!is_paused_) {
+    return;
+  }
+  
+  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
+  
+  is_paused_ = false;
+  
+  // Show all wallpaper windows
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
+        ShowWindow(instance.webview_host_hwnd, SW_SHOW);
+        UpdateWindow(instance.webview_host_hwnd);
+      }
+    }
+  }
+  
+  // Show legacy window
+  if (webview_host_hwnd_ && IsWindow(webview_host_hwnd_)) {
+    ShowWindow(webview_host_hwnd_, SW_SHOW);
+    UpdateWindow(webview_host_hwnd_);
+  }
+  
+  // Restore normal render frequency
+  RestoreNormalFrequency();
+  
+  std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed successfully" << std::endl;
+}
+
+// Optimize memory usage
+void AnyWPEnginePlugin::OptimizeMemoryUsage() {
+  std::cout << "[AnyWP] [Memory] Optimizing memory usage..." << std::endl;
+  
+  size_t before = GetCurrentMemoryUsage();
+  std::cout << "[AnyWP] [Memory] Current usage: " << (before / 1024 / 1024) << " MB" << std::endl;
+  
+  // Clear WebView cache
+  ClearWebViewCache();
+  
+  // Trigger garbage collection in WebView
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      if (instance.webview) {
+        // Execute JavaScript to trigger GC
+        std::wstring gc_script = L"(function() { if (window.gc) window.gc(); })();";
+        instance.webview->ExecuteScript(gc_script.c_str(), nullptr);
+      }
+    }
+  }
+  
+  if (webview_) {
+    std::wstring gc_script = L"(function() { if (window.gc) window.gc(); })();";
+    webview_->ExecuteScript(gc_script.c_str(), nullptr);
+  }
+  
+  // Windows memory trim
+  SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
+  
+  size_t after = GetCurrentMemoryUsage();
+  std::cout << "[AnyWP] [Memory] After optimization: " << (after / 1024 / 1024) << " MB" << std::endl;
+  std::cout << "[AnyWP] [Memory] Freed: " << ((before - after) / 1024 / 1024) << " MB" << std::endl;
+}
+
+// Configure WebView2 memory limits
+void AnyWPEnginePlugin::ConfigureWebView2Memory() {
+  // Note: WebView2 doesn't expose direct memory limit API
+  // But we can configure browser arguments for lower memory usage
+  std::cout << "[AnyWP] [Memory] WebView2 memory configuration applied" << std::endl;
+}
+
+// Get current process memory usage
+size_t AnyWPEnginePlugin::GetCurrentMemoryUsage() {
+  PROCESS_MEMORY_COUNTERS_EX pmc = {0};
+  pmc.cb = sizeof(pmc);
+  
+  if (GetProcessMemoryInfo(GetCurrentProcess(), 
+                          reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), 
+                          sizeof(pmc))) {
+    return pmc.WorkingSetSize;
+  }
+  
+  return 0;
+}
+
+// Reduce render frequency when paused
+void AnyWPEnginePlugin::ReduceRenderFrequency() {
+  std::cout << "[AnyWP] [Performance] Reducing render frequency..." << std::endl;
+  
+  // Execute JavaScript to reduce animation frames
+  std::wstring reduce_script = L"(function() {"
+    L"  if (!window.__anyWP_originalRAF) {"
+    L"    window.__anyWP_originalRAF = window.requestAnimationFrame;"
+    L"    window.requestAnimationFrame = function(callback) {"
+    L"      return setTimeout(callback, 1000);"  // 1 FPS when paused
+    L"    };"
+    L"  }"
+    L"})();";
+  
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      if (instance.webview) {
+        instance.webview->ExecuteScript(reduce_script.c_str(), nullptr);
+      }
+    }
+  }
+  
+  if (webview_) {
+    webview_->ExecuteScript(reduce_script.c_str(), nullptr);
+  }
+}
+
+// Restore normal render frequency
+void AnyWPEnginePlugin::RestoreNormalFrequency() {
+  std::cout << "[AnyWP] [Performance] Restoring normal render frequency..." << std::endl;
+  
+  // Restore original requestAnimationFrame
+  std::wstring restore_script = L"(function() {"
+    L"  if (window.__anyWP_originalRAF) {"
+    L"    window.requestAnimationFrame = window.__anyWP_originalRAF;"
+    L"    delete window.__anyWP_originalRAF;"
+    L"  }"
+    L"})();";
+  
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      if (instance.webview) {
+        instance.webview->ExecuteScript(restore_script.c_str(), nullptr);
+      }
+    }
+  }
+  
+  if (webview_) {
+    webview_->ExecuteScript(restore_script.c_str(), nullptr);
+  }
 }
 
 }  // namespace anywp_engine

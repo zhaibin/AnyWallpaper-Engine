@@ -209,5 +209,105 @@ class AnyWPEngine {
     
     return allSuccess;
   }
+
+  // ========== Power Saving & Optimization APIs ==========
+
+  /// Manually pause wallpaper (stops rendering and animations)
+  /// 
+  /// This reduces CPU/GPU usage and memory consumption.
+  /// Use this when you want to temporarily stop the wallpaper.
+  static Future<bool> pauseWallpaper() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('pauseWallpaper');
+      return result ?? false;
+    } catch (e) {
+      print('Error pausing wallpaper: $e');
+      return false;
+    }
+  }
+
+  /// Resume previously paused wallpaper
+  /// 
+  /// This restores normal rendering and animations.
+  static Future<bool> resumeWallpaper() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('resumeWallpaper');
+      return result ?? false;
+    } catch (e) {
+      print('Error resuming wallpaper: $e');
+      return false;
+    }
+  }
+
+  /// Enable or disable automatic power saving
+  /// 
+  /// When enabled (default), the engine will automatically pause wallpaper when:
+  /// - System is locked
+  /// - Screen is off
+  /// - A fullscreen application is running
+  /// - User is idle for more than 5 minutes
+  /// 
+  /// Set [enabled] to false to disable automatic power saving.
+  static Future<bool> setAutoPowerSaving(bool enabled) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('setAutoPowerSaving', {
+        'enabled': enabled,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('Error setting auto power saving: $e');
+      return false;
+    }
+  }
+
+  /// Get current power state
+  /// 
+  /// Returns one of:
+  /// - "ACTIVE": Wallpaper is running normally
+  /// - "IDLE": User is inactive, wallpaper may be paused
+  /// - "SCREEN_OFF": Screen is off
+  /// - "LOCKED": System is locked
+  /// - "FULLSCREEN_APP": A fullscreen app is running
+  /// - "PAUSED": Manually paused
+  static Future<String> getPowerState() async {
+    try {
+      final result = await _channel.invokeMethod<String>('getPowerState');
+      return result ?? 'UNKNOWN';
+    } catch (e) {
+      print('Error getting power state: $e');
+      return 'UNKNOWN';
+    }
+  }
+
+  /// Get current memory usage in MB
+  /// 
+  /// Returns the working set size of the current process.
+  static Future<int> getMemoryUsage() async {
+    try {
+      final result = await _channel.invokeMethod<int>('getMemoryUsage');
+      return result ?? 0;
+    } catch (e) {
+      print('Error getting memory usage: $e');
+      return 0;
+    }
+  }
+
+  /// Manually trigger memory optimization
+  /// 
+  /// This will:
+  /// - Clear WebView cache
+  /// - Trigger JavaScript garbage collection
+  /// - Trim process working set
+  /// 
+  /// Note: This is automatically called when wallpaper is paused.
+  static Future<bool> optimizeMemory() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('optimizeMemory');
+      return result ?? false;
+    } catch (e) {
+      print('Error optimizing memory: $e');
+      return false;
+    }
+  }
 }
 

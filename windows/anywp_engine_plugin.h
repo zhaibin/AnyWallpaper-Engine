@@ -205,6 +205,53 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // Custom window message for safe thread communication
   static constexpr UINT WM_NOTIFY_MONITOR_CHANGE = WM_USER + 100;
+  
+  // ========== Power Saving & Optimization ==========
+  
+  // Power saving state
+  enum class PowerState {
+    ACTIVE,          // 正常活跃状态
+    IDLE,            // 用户无活动（但屏幕亮着）
+    SCREEN_OFF,      // 屏幕已关闭
+    LOCKED,          // 系统已锁屏
+    FULLSCREEN_APP,  // 有全屏应用在前台
+    PAUSED           // 手动暂停
+  };
+  
+  PowerState power_state_ = PowerState::ACTIVE;
+  bool auto_power_saving_enabled_ = true;  // 自动省电开关
+  
+  // Power saving detection
+  void SetupPowerSavingMonitoring();
+  void CleanupPowerSavingMonitoring();
+  void UpdatePowerState();
+  bool IsFullscreenAppActive();
+  void PauseWallpaper(const std::string& reason);
+  void ResumeWallpaper(const std::string& reason);
+  
+  // System message handling
+  static LRESULT CALLBACK PowerSavingWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+  HWND power_listener_hwnd_ = nullptr;
+  
+  // Fullscreen detection
+  void StartFullscreenDetection();
+  void StopFullscreenDetection();
+  std::thread fullscreen_detection_thread_;
+  std::atomic<bool> stop_fullscreen_detection_{false};
+  
+  // User activity monitoring
+  DWORD last_user_input_time_ = 0;
+  static constexpr DWORD IDLE_TIMEOUT_MS = 5 * 60 * 1000;  // 5分钟无活动视为idle
+  
+  // Memory optimization
+  void OptimizeMemoryUsage();
+  void ConfigureWebView2Memory();
+  size_t GetCurrentMemoryUsage();
+  
+  // Performance optimization
+  void ReduceRenderFrequency();
+  void RestoreNormalFrequency();
+  std::atomic<bool> is_paused_{false};
 };
 
 }  // namespace anywp_engine
