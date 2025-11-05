@@ -10,10 +10,10 @@ Welcome to the AnyWP Engine documentation! This guide will help you integrate an
 - **[Project Structure](PROJECT_STRUCTURE.md)** - Understand the codebase
 
 ### API Documentation
-- **[Developer API Reference](DEVELOPER_API_REFERENCE.md)** ⭐ - Complete API documentation
+- **[Developer API Reference](DEVELOPER_API_REFERENCE.md)** ⭐ - Complete Dart/Flutter API
 - **[API Usage Examples](API_USAGE_EXAMPLES.md)** ⭐ - Practical code examples
 - **[Best Practices Guide](BEST_PRACTICES.md)** ⭐ - Optimization and guidelines
-- **[SDK API Reference](SDK_API_REFERENCE.md)** - JavaScript SDK for web developers
+- **[Web Developer Guide (中文)](WEB_DEVELOPER_GUIDE_CN.md)** ⭐ - Complete JavaScript SDK guide
 
 ### Integration Guides
 - **[Integration Architecture](INTEGRATION_ARCHITECTURE.md)** - System architecture overview

@@ -682,6 +682,16 @@ onUnmounted(() => {
 
 ---
 
-**版本**: 4.0.0  
-**更新日期**: 2025-11-03
+## 📚 相关文档
+
+- [API Bridge](API_BRIDGE.md) - 技术实现细节
+- [Web Developer Guide (English)](WEB_DEVELOPER_GUIDE.md) - English version
+- [Developer API Reference](DEVELOPER_API_REFERENCE.md) - Flutter/Dart API
+- [Best Practices](BEST_PRACTICES.md) - 最佳实践指南
+
+---
+
+**版本**: 4.1.0  
+**更新日期**: 2025-11-05  
+**SDK版本**: AnyWP SDK v4.1.0
 

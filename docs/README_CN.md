@@ -21,9 +21,8 @@ AnyWP 是一个 Flutter Windows 插件，可以将 WebView2 嵌入到 Windows �
 
 **如果你是 Web 开发者，想将网页作为交互式壁纸**，请查看：
 
-- 📖 [Web 开发者集成指南（中文）](WEB_DEVELOPER_GUIDE_CN.md)
-- 📖 [SDK API Reference](SDK_API_REFERENCE.md)
-- 📝 示例：`examples/test_react.html`, `test_vue.html`
+- 📖 [Web 开发者集成指南（中文）](WEB_DEVELOPER_GUIDE_CN.md) - 包含完整的SDK API参考和使用教程
+- 📝 示例：`examples/test_react.html`, `test_vue.html`, `test_visibility.html`
 
 **支持的技术栈**：
 - ✅ 原生 HTML/CSS/JavaScript

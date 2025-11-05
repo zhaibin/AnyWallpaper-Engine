@@ -714,7 +714,7 @@ WebView2 permissions auto-denied:
 **SDK Compatible**: AnyWP Engine SDK v4.1.0
 
 **Related Documentation**:
-- [Web Developer Guide](WEB_DEVELOPER_GUIDE.md) - Usage guide for web developers
-- [SDK API Reference](SDK_API_REFERENCE.md) - Complete SDK API documentation
+- [Web Developer Guide (English)](WEB_DEVELOPER_GUIDE.md) - Usage guide for web developers
+- [Web Developer Guide (中文)](WEB_DEVELOPER_GUIDE_CN.md) - Complete SDK guide with examples
 - [Developer API Reference](DEVELOPER_API_REFERENCE.md) - Flutter/Dart API documentation
 
