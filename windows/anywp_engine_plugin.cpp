@@ -1554,23 +1554,37 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
         wchar_t rootClassName[256] = {0};
         GetClassNameW(root_window, rootClassName, 256);
         
-        // Skip desktop-related windows first
+        // Skip desktop-related windows
         bool is_desktop_window = (
           wcscmp(rootClassName, L"Progman") == 0 ||
           wcscmp(rootClassName, L"WorkerW") == 0 ||
           wcscmp(rootClassName, L"Shell_TrayWnd") == 0 ||  // Taskbar
-          wcsstr(rootClassName, L"Xaml") != nullptr ||  // System UI
-          wcsstr(rootClassName, L"Chrome") != nullptr ||  // WebView2 windows
-          wcsstr(className, L"Chrome") != nullptr  // WebView2 render windows
+          wcsstr(rootClassName, L"Xaml") != nullptr  // System UI
         );
         
-        if (!is_desktop_window) {
-          // Check if it's a normal app window (has caption or is popup, but not transparent)
+        // Check if it's OUR WebView2 window (not other Chrome-based apps)
+        bool is_our_webview = false;
+        if (wcsstr(rootClassName, L"Chrome") != nullptr || wcsstr(className, L"Chrome") != nullptr) {
+          // Check if this is our wallpaper window by comparing with tracked windows
+          for (const auto& instance : hook_instance_->wallpaper_instances_) {
+            if (instance.webview_host_hwnd == root_window || 
+                instance.webview_host_hwnd == window_at_point) {
+              is_our_webview = true;
+              break;
+            }
+          }
+          if (!is_our_webview && hook_instance_->webview_host_hwnd_ == root_window) {
+            is_our_webview = true;
+          }
+        }
+        
+        if (!is_desktop_window && !is_our_webview) {
+          // Check if it's a normal app window (has caption or is popup)
           bool has_window_style = (style & WS_CAPTION) || (style & WS_POPUP);
-          bool is_transparent = (exStyle & WS_EX_TRANSPARENT) || (exStyle & WS_EX_LAYERED);
           
-          // It's an app window if it has window decorations and is not transparent
-          if (has_window_style && !is_transparent) {
+          // It's an app window if it has window decorations
+          // Don't check transparency here - even transparent apps should block clicks
+          if (has_window_style) {
             is_app_window = true;
           }
         }
