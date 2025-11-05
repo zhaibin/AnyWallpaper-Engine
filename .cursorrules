@@ -210,6 +210,45 @@ delete_file("commit_msg.txt")
 
 ---
 
+## 发布流程
+
+### 版本发布步骤
+
+**发布前准备**:
+1. 更新 `pubspec.yaml` 中的版本号
+2. 更新 `CHANGELOG_CN.md` 记录新功能
+3. 更新 `scripts/build_release_v2.bat` 中的版本号
+4. 运行测试确保所有功能正常
+
+**构建预编译包**:
+```bash
+.\scripts\build_release_v2.bat
+```
+
+**验证构建产物**:
+- 检查 `release/anywp_engine_v{版本号}/` 目录结构
+- 验证 DLL 文件完整性
+- 测试预编译包可用性
+
+**提交和推送**:
+```bash
+# 提交发布相关文件
+git add release/ CHANGELOG_CN.md pubspec.yaml
+# 使用 write 工具创建提交信息
+git commit -F commit_msg.txt
+# 推送到 GitHub
+.\scripts\PUSH_TO_GITHUB.bat
+```
+
+**GitHub Release**:
+1. 在 GitHub 创建新 Release
+2. 标签：`v{版本号}` (例如 v1.1.0)
+3. 标题：`AnyWP Engine v{版本号}`
+4. 上传 `release/anywp_engine_v{版本号}.zip`
+5. 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md` 内容作为发布说明
+
+---
+
 ## 参考
 - [完整中文指南](docs/README_CN.md)
 - [快速开始](docs/QUICK_START.md)
@@ -217,6 +256,7 @@ delete_file("commit_msg.txt")
 - [Web 开发者](docs/WEB_DEVELOPER_GUIDE_CN.md)
 - [API 参考](docs/DEVELOPER_API_REFERENCE.md)
 - [技术实现](docs/TECHNICAL_NOTES.md)
+- [发布指南](docs/RELEASE_GUIDE.md)
 
 **版本**: 1.1.0 (Changelog: 4.2.0) | **更新**: 2025-11-05
 

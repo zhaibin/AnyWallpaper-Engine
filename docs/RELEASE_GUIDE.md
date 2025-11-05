@@ -2,6 +2,8 @@
 
 本指南说明如何构建、打包和发布 AnyWP Engine 的预编译版本到 GitHub Releases。
 
+> 💡 **快速参考**：`.cursorrules` 文件中有简化版发布流程，本文档提供详细说明和故障排查。
+
 ---
 
 ## 📋 发布前检查清单
@@ -25,7 +27,7 @@
 确保以下文件中的版本号一致：
 - `pubspec.yaml` → `version: 1.1.0`
 - `CHANGELOG_CN.md` → 添加新版本条目
-- `scripts/build_release.bat` → `set "VERSION=1.1.0"`
+- `scripts/build_release_v2.bat` → `set "VERSION=1.1.0"`
 
 ---
 
@@ -36,7 +38,7 @@
 在项目根目录打开 PowerShell 或 CMD：
 
 ```bash
-.\scripts\build_release.bat
+.\scripts\build_release_v2.bat
 ```
 
 **脚本会自动完成以下操作：**
@@ -213,7 +215,7 @@ git push origin v1.1.0
 
 ## 🐛 发布问题排查
 
-### Q: build_release.bat 失败？
+### Q: build_release_v2.bat 失败？
 
 **检查步骤**：
 ```bash
@@ -232,7 +234,7 @@ flutter build windows --release
 
 ### Q: ZIP 文件缺少某些文件？
 
-编辑 `scripts/build_release.bat`，检查复制命令：
+编辑 `scripts/build_release_v2.bat`，检查复制命令：
 ```bat
 copy "%BUILD_DIR%\..." "%RELEASE_DIR%\..." >nul
 ```
