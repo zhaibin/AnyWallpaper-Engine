@@ -7,7 +7,7 @@
 
   // AnyWP Global Object
   window.AnyWP = {
-    version: '4.1.0',
+    version: '4.2.0',
     dpiScale: window.devicePixelRatio || 1,
     screenWidth: screen.width * (window.devicePixelRatio || 1),
     screenHeight: screen.height * (window.devicePixelRatio || 1),
@@ -23,6 +23,9 @@
     _resizeObserver: null,
     _spaMode: false,
     _autoRefreshEnabled: true,
+    _draggableElements: [],
+    _dragState: null,
+    _persistedState: {},
     
     // Initialize
     _init: function() {
@@ -560,6 +563,329 @@
           delete audio.__anyWP_wasPlaying;
         }
       });
+    }
+  },
+  
+  // ========== Drag & Drop Support ==========
+  
+  // Make element draggable
+  makeDraggable: function(element, options) {
+    const self = this;
+    options = options || {};
+    
+    const persistKey = options.persistKey || null;
+    const onDragStart = options.onDragStart || null;
+    const onDrag = options.onDrag || null;
+    const onDragEnd = options.onDragEnd || null;
+    const bounds = options.bounds || null; // {left, top, right, bottom}
+    
+    let el = element;
+    if (typeof element === 'string') {
+      el = document.querySelector(element);
+    }
+    
+    if (!el) {
+      console.error('[AnyWP] Element not found:', element);
+      return;
+    }
+    
+    // Load persisted position if available
+    if (persistKey && self._persistedState[persistKey]) {
+      const savedPos = self._persistedState[persistKey];
+      el.style.position = 'absolute';
+      el.style.left = savedPos.left + 'px';
+      el.style.top = savedPos.top + 'px';
+      self._log('Restored position for ' + persistKey + ': ' + savedPos.left + ',' + savedPos.top);
+    }
+    
+    // Register draggable element
+    const draggableData = {
+      element: el,
+      persistKey: persistKey,
+      onDragStart: onDragStart,
+      onDrag: onDrag,
+      onDragEnd: onDragEnd,
+      bounds: bounds
+    };
+    
+    self._draggableElements.push(draggableData);
+    
+    // Make element absolutely positioned if not already
+    if (window.getComputedStyle(el).position === 'static') {
+      el.style.position = 'absolute';
+    }
+    
+    // Set cursor
+    el.style.cursor = 'move';
+    el.style.userSelect = 'none';
+    
+    // Mouse event handlers
+    function onMouseDown(e) {
+      if (!self.interactionEnabled) {
+        return;
+      }
+      
+      e.preventDefault();
+      
+      const rect = el.getBoundingClientRect();
+      
+      self._dragState = {
+        element: el,
+        data: draggableData,
+        startX: e.clientX,
+        startY: e.clientY,
+        offsetX: e.clientX - rect.left,
+        offsetY: e.clientY - rect.top,
+        initialLeft: rect.left,
+        initialTop: rect.top
+      };
+      
+      if (onDragStart) {
+        onDragStart({
+          x: rect.left,
+          y: rect.top
+        });
+      }
+      
+      self._log('Drag start at: ' + e.clientX + ',' + e.clientY);
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    }
+    
+    function onMouseMove(e) {
+      if (!self._dragState) return;
+      
+      e.preventDefault();
+      
+      let newLeft = e.clientX - self._dragState.offsetX;
+      let newTop = e.clientY - self._dragState.offsetY;
+      
+      // Apply bounds if specified
+      if (bounds) {
+        if (bounds.left !== undefined) {
+          newLeft = Math.max(bounds.left, newLeft);
+        }
+        if (bounds.top !== undefined) {
+          newTop = Math.max(bounds.top, newTop);
+        }
+        if (bounds.right !== undefined) {
+          newLeft = Math.min(bounds.right - el.offsetWidth, newLeft);
+        }
+        if (bounds.bottom !== undefined) {
+          newTop = Math.min(bounds.bottom - el.offsetHeight, newTop);
+        }
+      }
+      
+      el.style.left = newLeft + 'px';
+      el.style.top = newTop + 'px';
+      
+      if (onDrag) {
+        onDrag({
+          x: newLeft,
+          y: newTop,
+          deltaX: e.clientX - self._dragState.startX,
+          deltaY: e.clientY - self._dragState.startY
+        });
+      }
+    }
+    
+    function onMouseUp(e) {
+      if (!self._dragState) return;
+      
+      e.preventDefault();
+      
+      const finalRect = el.getBoundingClientRect();
+      const finalPos = {
+        x: finalRect.left,
+        y: finalRect.top
+      };
+      
+      // Save position if persistKey is provided
+      if (persistKey) {
+        self._saveElementPosition(persistKey, finalPos.x, finalPos.y);
+      }
+      
+      if (onDragEnd) {
+        onDragEnd(finalPos);
+      }
+      
+      self._log('Drag end at: ' + finalPos.x + ',' + finalPos.y);
+      
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      
+      self._dragState = null;
+    }
+    
+    el.addEventListener('mousedown', onMouseDown);
+    
+    // Store event handler for cleanup
+    el.__anyWP_dragHandler = {
+      onMouseDown: onMouseDown
+    };
+    
+    this._log('Element made draggable: ' + (el.id || el.className));
+  },
+  
+  // Remove draggable functionality
+  removeDraggable: function(element) {
+    let el = element;
+    if (typeof element === 'string') {
+      el = document.querySelector(element);
+    }
+    
+    if (!el) {
+      console.error('[AnyWP] Element not found:', element);
+      return;
+    }
+    
+    // Remove event handlers
+    if (el.__anyWP_dragHandler) {
+      el.removeEventListener('mousedown', el.__anyWP_dragHandler.onMouseDown);
+      delete el.__anyWP_dragHandler;
+    }
+    
+    // Remove from registry
+    this._draggableElements = this._draggableElements.filter(function(d) {
+      return d.element !== el;
+    });
+    
+    // Reset cursor
+    el.style.cursor = '';
+    el.style.userSelect = '';
+    
+    this._log('Removed draggable from element: ' + (el.id || el.className));
+  },
+  
+  // Save element position to native storage
+  _saveElementPosition: function(key, x, y) {
+    const self = this;
+    const position = { left: x, top: y };
+    
+    // Update local cache
+    self._persistedState[key] = position;
+    
+    // Send to native layer
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage({
+        type: 'saveState',
+        key: key,
+        value: JSON.stringify(position)
+      });
+      
+      self._log('Saved position for ' + key + ': ' + x + ',' + y);
+    } else {
+      // Fallback to localStorage
+      try {
+        localStorage.setItem('AnyWP_' + key, JSON.stringify(position));
+        self._log('Saved position to localStorage for ' + key + ': ' + x + ',' + y);
+      } catch (e) {
+        console.warn('[AnyWP] Failed to save state:', e);
+      }
+    }
+  },
+  
+  // Load state from native storage
+  loadState: function(key, callback) {
+    const self = this;
+    
+    // Check local cache first
+    if (self._persistedState[key]) {
+      callback(self._persistedState[key]);
+      return;
+    }
+    
+    // Request from native layer
+    if (window.chrome && window.chrome.webview) {
+      // Register one-time callback
+      const handler = function(event) {
+        if (event.detail && event.detail.type === 'stateLoaded' && event.detail.key === key) {
+          window.removeEventListener('AnyWP:stateLoaded', handler);
+          
+          const value = event.detail.value ? JSON.parse(event.detail.value) : null;
+          self._persistedState[key] = value;
+          callback(value);
+        }
+      };
+      
+      window.addEventListener('AnyWP:stateLoaded', handler);
+      
+      window.chrome.webview.postMessage({
+        type: 'loadState',
+        key: key
+      });
+      
+      // Timeout after 1 second
+      setTimeout(function() {
+        window.removeEventListener('AnyWP:stateLoaded', handler);
+      }, 1000);
+    } else {
+      // Fallback to localStorage
+      try {
+        const stored = localStorage.getItem('AnyWP_' + key);
+        const value = stored ? JSON.parse(stored) : null;
+        self._persistedState[key] = value;
+        callback(value);
+      } catch (e) {
+        console.warn('[AnyWP] Failed to load state:', e);
+        callback(null);
+      }
+    }
+  },
+  
+  // Save custom state
+  saveState: function(key, value) {
+    const self = this;
+    
+    // Update local cache
+    self._persistedState[key] = value;
+    
+    // Send to native layer
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage({
+        type: 'saveState',
+        key: key,
+        value: JSON.stringify(value)
+      });
+      
+      self._log('Saved state for ' + key);
+    } else {
+      // Fallback to localStorage
+      try {
+        localStorage.setItem('AnyWP_' + key, JSON.stringify(value));
+        self._log('Saved state to localStorage for ' + key);
+      } catch (e) {
+        console.warn('[AnyWP] Failed to save state:', e);
+      }
+    }
+  },
+  
+  // Clear all saved state
+  clearState: function() {
+    const self = this;
+    
+    self._persistedState = {};
+    
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage({
+        type: 'clearState'
+      });
+      
+      self._log('Cleared all saved state');
+    } else {
+      // Clear localStorage
+      try {
+        const keys = Object.keys(localStorage);
+        keys.forEach(function(key) {
+          if (key.startsWith('AnyWP_')) {
+            localStorage.removeItem(key);
+          }
+        });
+        self._log('Cleared localStorage state');
+      } catch (e) {
+        console.warn('[AnyWP] Failed to clear state:', e);
+      }
     }
   }
   };

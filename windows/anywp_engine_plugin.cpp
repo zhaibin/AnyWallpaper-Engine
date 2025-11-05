@@ -600,6 +600,50 @@ void AnyWPEnginePlugin::HandleMethodCall(
     config[flutter::EncodableValue("autoPowerSavingEnabled")] = flutter::EncodableValue(auto_power_saving_enabled_);
     result->Success(flutter::EncodableValue(config));
   }
+  else if (method_call.method_name() == "saveState") {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (!arguments) {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
+      return;
+    }
+
+    auto key_it = arguments->find(flutter::EncodableValue("key"));
+    auto value_it = arguments->find(flutter::EncodableValue("value"));
+    
+    if (key_it == arguments->end() || value_it == arguments->end()) {
+      result->Error("INVALID_ARGS", "Missing 'key' or 'value' argument");
+      return;
+    }
+
+    std::string key = std::get<std::string>(key_it->second);
+    std::string value = std::get<std::string>(value_it->second);
+    
+    bool success = SaveState(key, value);
+    result->Success(flutter::EncodableValue(success));
+  }
+  else if (method_call.method_name() == "loadState") {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (!arguments) {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
+      return;
+    }
+
+    auto key_it = arguments->find(flutter::EncodableValue("key"));
+    
+    if (key_it == arguments->end()) {
+      result->Error("INVALID_ARGS", "Missing 'key' argument");
+      return;
+    }
+
+    std::string key = std::get<std::string>(key_it->second);
+    std::string value = LoadState(key);
+    
+    result->Success(flutter::EncodableValue(value));
+  }
+  else if (method_call.method_name() == "clearState") {
+    bool success = ClearState();
+    result->Success(flutter::EncodableValue(success));
+  }
   else {
     result->NotImplemented();
   }
@@ -1333,8 +1377,170 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
       std::cout << "[AnyWP] [WebLog] " << log_msg << std::endl;
     }
   }
+  else if (message.find("\"type\":\"saveState\"") != std::string::npos) {
+    // Extract key and value
+    size_t key_start = message.find("\"key\":\"") + 7;
+    size_t key_end = message.find("\"", key_start);
+    size_t value_start = message.find("\"value\":\"") + 9;
+    size_t value_end = message.find("\"", value_start);
+    
+    if (key_start != std::string::npos && key_end != std::string::npos &&
+        value_start != std::string::npos && value_end != std::string::npos) {
+      std::string key = message.substr(key_start, key_end - key_start);
+      std::string value = message.substr(value_start, value_end - value_start);
+      
+      SaveState(key, value);
+      std::cout << "[AnyWP] [State] Saved state for key: " << key << std::endl;
+    }
+  }
+  else if (message.find("\"type\":\"loadState\"") != std::string::npos) {
+    // Extract key
+    size_t key_start = message.find("\"key\":\"") + 7;
+    size_t key_end = message.find("\"", key_start);
+    
+    if (key_start != std::string::npos && key_end != std::string::npos) {
+      std::string key = message.substr(key_start, key_end - key_start);
+      std::string value = LoadState(key);
+      
+      std::cout << "[AnyWP] [State] Loaded state for key: " << key << std::endl;
+      
+      // Send result back to WebView
+      if (webview_) {
+        std::ostringstream js;
+        js << "window.dispatchEvent(new CustomEvent('AnyWP:stateLoaded', {"
+           << "detail: {type: 'stateLoaded', key: '" << key << "', value: '" << value << "'}"
+           << "}));";
+        
+        std::string js_code = js.str();
+        std::wstring wjs_code(js_code.begin(), js_code.end());
+        webview_->ExecuteScript(wjs_code.c_str(), nullptr);
+      }
+    }
+  }
+  else if (message.find("\"type\":\"clearState\"") != std::string::npos) {
+    ClearState();
+    std::cout << "[AnyWP] [State] Cleared all state" << std::endl;
+  }
   else {
     std::cout << "[AnyWP] [API] Unknown message type (showing raw): " << message << std::endl;
+  }
+}
+
+// State persistence: Save state
+bool AnyWPEnginePlugin::SaveState(const std::string& key, const std::string& value) {
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  
+  try {
+    persisted_state_[key] = value;
+    
+    // Write to registry for persistence
+    HKEY hKey;
+    LONG result = RegCreateKeyExA(
+      HKEY_CURRENT_USER,
+      "Software\\AnyWPEngine\\State",
+      0, nullptr, REG_OPTION_NON_VOLATILE,
+      KEY_WRITE, nullptr, &hKey, nullptr
+    );
+    
+    if (result == ERROR_SUCCESS) {
+      RegSetValueExA(
+        hKey,
+        key.c_str(),
+        0,
+        REG_SZ,
+        reinterpret_cast<const BYTE*>(value.c_str()),
+        static_cast<DWORD>(value.length() + 1)
+      );
+      RegCloseKey(hKey);
+      
+      std::cout << "[AnyWP] [State] Saved to registry: " << key << " = " << value << std::endl;
+      return true;
+    } else {
+      std::cout << "[AnyWP] [State] ERROR: Failed to create registry key: " << result << std::endl;
+      return false;
+    }
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [State] ERROR: Exception in SaveState: " << e.what() << std::endl;
+    return false;
+  }
+}
+
+// State persistence: Load state
+std::string AnyWPEnginePlugin::LoadState(const std::string& key) {
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  
+  // Check cache first
+  auto it = persisted_state_.find(key);
+  if (it != persisted_state_.end()) {
+    std::cout << "[AnyWP] [State] Loaded from cache: " << key << " = " << it->second << std::endl;
+    return it->second;
+  }
+  
+  // Read from registry
+  try {
+    HKEY hKey;
+    LONG result = RegOpenKeyExA(
+      HKEY_CURRENT_USER,
+      "Software\\AnyWPEngine\\State",
+      0,
+      KEY_READ,
+      &hKey
+    );
+    
+    if (result == ERROR_SUCCESS) {
+      char buffer[4096] = {0};
+      DWORD buffer_size = sizeof(buffer);
+      DWORD type;
+      
+      result = RegQueryValueExA(
+        hKey,
+        key.c_str(),
+        nullptr,
+        &type,
+        reinterpret_cast<BYTE*>(buffer),
+        &buffer_size
+      );
+      
+      RegCloseKey(hKey);
+      
+      if (result == ERROR_SUCCESS && type == REG_SZ) {
+        std::string value(buffer);
+        persisted_state_[key] = value;  // Update cache
+        std::cout << "[AnyWP] [State] Loaded from registry: " << key << " = " << value << std::endl;
+        return value;
+      }
+    }
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [State] ERROR: Exception in LoadState: " << e.what() << std::endl;
+  }
+  
+  std::cout << "[AnyWP] [State] Key not found: " << key << std::endl;
+  return "";
+}
+
+// State persistence: Clear all state
+bool AnyWPEnginePlugin::ClearState() {
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  
+  try {
+    persisted_state_.clear();
+    
+    // Delete registry key
+    LONG result = RegDeleteTreeA(
+      HKEY_CURRENT_USER,
+      "Software\\AnyWPEngine\\State"
+    );
+    
+    if (result == ERROR_SUCCESS || result == ERROR_FILE_NOT_FOUND) {
+      std::cout << "[AnyWP] [State] Cleared all state" << std::endl;
+      return true;
+    } else {
+      std::cout << "[AnyWP] [State] ERROR: Failed to delete registry tree: " << result << std::endl;
+      return false;
+    }
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [State] ERROR: Exception in ClearState: " << e.what() << std::endl;
+    return false;
   }
 }
 

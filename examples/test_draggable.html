@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnyWP 拖拽测试</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Microsoft YaHei', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 30px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .info-panel {
+      background: rgba(255,255,255,0.95);
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    .info-panel h2 {
+      margin-top: 0;
+      color: #667eea;
+      font-size: 20px;
+    }
+
+    .info-panel p {
+      margin: 10px 0;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .draggable-box {
+      width: 200px;
+      height: 150px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: absolute;
+      left: 100px;
+      top: 200px;
+    }
+
+    .draggable-box:hover {
+      transform: scale(1.05);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+    }
+
+    .draggable-box.dragging {
+      transform: scale(1.1) rotate(5deg);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    .widget-card {
+      width: 250px;
+      height: 180px;
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+      position: absolute;
+      cursor: move;
+    }
+
+    .widget-card h3 {
+      margin: 0 0 10px 0;
+      color: #667eea;
+      font-size: 18px;
+    }
+
+    .widget-card p {
+      margin: 5px 0;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .widget-card .time {
+      font-size: 32px;
+      font-weight: bold;
+      color: #333;
+      margin: 15px 0;
+    }
+
+    #widget1 {
+      left: 400px;
+      top: 200px;
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    }
+
+    #widget2 {
+      left: 700px;
+      top: 200px;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    }
+
+    .status {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      max-width: 300px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    }
+
+    .status div {
+      margin: 5px 0;
+    }
+
+    .button-group {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .btn {
+      padding: 12px 30px;
+      margin: 0 10px;
+      border: none;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 AnyWP 拖拽功能测试</h1>
+    
+    <div class="info-panel">
+      <h2>📌 使用说明</h2>
+      <p><strong>1. 启用交互模式：</strong>点击下方的 "启用交互模式" 按钮</p>
+      <p><strong>2. 拖拽元素：</strong>拖动彩色方块或卡片到任意位置</p>
+      <p><strong>3. 状态保存：</strong>元素位置会自动保存，重新打开壁纸后会恢复</p>
+      <p><strong>4. 清除状态：</strong>点击 "清除所有状态" 按钮重置所有位置</p>
+    </div>
+
+    <div class="button-group">
+      <button class="btn btn-primary" onclick="toggleInteraction()">启用交互模式</button>
+      <button class="btn btn-danger" onclick="clearAllState()">清除所有状态</button>
+    </div>
+  </div>
+
+  <!-- 可拖拽元素 -->
+  <div id="box1" class="draggable-box">
+    拖动我 #1<br>
+    <small>位置会自动保存</small>
+  </div>
+
+  <div id="widget1" class="widget-card">
+    <h3>📊 数据面板</h3>
+    <p>拖动我到任意位置</p>
+    <div class="time" id="time1">--:--</div>
+    <p>位置会自动保存</p>
+  </div>
+
+  <div id="widget2" class="widget-card">
+    <h3>🎵 音乐播放器</h3>
+    <p>拖动我到任意位置</p>
+    <div class="time" id="music-status">♪ 暂停</div>
+    <p>状态会自动保存</p>
+  </div>
+
+  <!-- 状态显示 -->
+  <div class="status" id="status">
+    <div>🎯 AnyWP Engine v4.2.0</div>
+    <div id="interaction-status">❌ 交互模式: 未启用</div>
+    <div id="drag-status">📍 拖拽状态: 空闲</div>
+    <div id="save-status">💾 保存状态: 就绪</div>
+  </div>
+
+  <script>
+    let interactionEnabled = false;
+    let currentTime = new Date();
+
+    // 更新时钟
+    function updateClock() {
+      currentTime = new Date();
+      const hours = String(currentTime.getHours()).padStart(2, '0');
+      const minutes = String(currentTime.getMinutes()).padStart(2, '0');
+      document.getElementById('time1').textContent = `${hours}:${minutes}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 切换交互模式
+    function toggleInteraction() {
+      interactionEnabled = !interactionEnabled;
+      
+      const btn = event.target;
+      if (interactionEnabled) {
+        btn.textContent = '禁用交互模式';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-danger');
+        document.getElementById('interaction-status').innerHTML = '✅ 交互模式: 已启用';
+      } else {
+        btn.textContent = '启用交互模式';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-primary');
+        document.getElementById('interaction-status').innerHTML = '❌ 交互模式: 未启用';
+      }
+
+      // 模拟 AnyWP.interactionEnabled
+      if (window.AnyWP) {
+        AnyWP.interactionEnabled = interactionEnabled;
+      }
+    }
+
+    // 清除所有状态
+    function clearAllState() {
+      if (window.AnyWP && window.AnyWP.clearState) {
+        AnyWP.clearState();
+        document.getElementById('save-status').innerHTML = '💾 保存状态: 已清除';
+        
+        // 重置所有元素位置
+        document.getElementById('box1').style.left = '100px';
+        document.getElementById('box1').style.top = '200px';
+        document.getElementById('widget1').style.left = '400px';
+        document.getElementById('widget1').style.top = '200px';
+        document.getElementById('widget2').style.left = '700px';
+        document.getElementById('widget2').style.top = '200px';
+        
+        setTimeout(() => {
+          document.getElementById('save-status').innerHTML = '💾 保存状态: 就绪';
+        }, 2000);
+      } else {
+        alert('AnyWP SDK 未加载或不支持状态管理');
+      }
+    }
+
+    // 等待 AnyWP SDK 加载
+    function waitForAnyWP() {
+      if (window.AnyWP) {
+        console.log('[Test] AnyWP SDK v' + AnyWP.version + ' detected');
+        console.log('[Test] Available methods:', Object.keys(AnyWP));
+        
+        // 加载保存的状态
+        loadSavedStates();
+        
+        // 设置可拖拽元素
+        setupDraggable();
+        
+        document.getElementById('interaction-status').innerHTML = 
+          '✅ AnyWP SDK 已加载 (v' + AnyWP.version + ')';
+      } else {
+        console.log('[Test] Waiting for AnyWP SDK...');
+        setTimeout(waitForAnyWP, 100);
+      }
+    }
+
+    // 加载保存的状态
+    function loadSavedStates() {
+      if (!window.AnyWP || !window.AnyWP.loadState) {
+        console.log('[Test] State management not available');
+        return;
+      }
+
+      // 加载每个元素的位置
+      ['box1', 'widget1', 'widget2'].forEach(id => {
+        AnyWP.loadState(id + '_position', function(state) {
+          if (state) {
+            console.log('[Test] Loaded state for ' + id + ':', state);
+            const element = document.getElementById(id);
+            if (element) {
+              element.style.left = state.left + 'px';
+              element.style.top = state.top + 'px';
+            }
+          }
+        });
+      });
+    }
+
+    // 设置可拖拽元素
+    function setupDraggable() {
+      if (!window.AnyWP || !window.AnyWP.makeDraggable) {
+        console.log('[Test] Drag support not available, using fallback');
+        setupFallbackDrag();
+        return;
+      }
+
+      console.log('[Test] Setting up draggable elements with AnyWP SDK');
+
+      // 设置拖拽 - Box 1
+      AnyWP.makeDraggable('#box1', {
+        persistKey: 'box1_position',
+        onDragStart: function(pos) {
+          console.log('[Test] Box1 drag start:', pos);
+          document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 拖动中 (Box1)';
+          document.getElementById('box1').classList.add('dragging');
+        },
+        onDrag: function(pos) {
+          // 实时更新位置显示
+        },
+        onDragEnd: function(pos) {
+          console.log('[Test] Box1 drag end:', pos);
+          document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 空闲';
+          document.getElementById('save-status').innerHTML = '💾 保存状态: 已保存 Box1 位置';
+          document.getElementById('box1').classList.remove('dragging');
+          
+          setTimeout(() => {
+            document.getElementById('save-status').innerHTML = '💾 保存状态: 就绪';
+          }, 2000);
+        }
+      });
+
+      // 设置拖拽 - Widget 1
+      AnyWP.makeDraggable('#widget1', {
+        persistKey: 'widget1_position',
+        onDragStart: function(pos) {
+          console.log('[Test] Widget1 drag start:', pos);
+          document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 拖动中 (Widget1)';
+        },
+        onDragEnd: function(pos) {
+          console.log('[Test] Widget1 drag end:', pos);
+          document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 空闲';
+          document.getElementById('save-status').innerHTML = '💾 保存状态: 已保存 Widget1 位置';
+          
+          setTimeout(() => {
+            document.getElementById('save-status').innerHTML = '💾 保存状态: 就绪';
+          }, 2000);
+        }
+      });
+
+      // 设置拖拽 - Widget 2
+      AnyWP.makeDraggable('#widget2', {
+        persistKey: 'widget2_position',
+        onDragStart: function(pos) {
+          console.log('[Test] Widget2 drag start:', pos);
+          document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 拖动中 (Widget2)';
+        },
+        onDragEnd: function(pos) {
+          console.log('[Test] Widget2 drag end:', pos);
+          document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 空闲';
+          document.getElementById('save-status').innerHTML = '💾 保存状态: 已保存 Widget2 位置';
+          
+          setTimeout(() => {
+            document.getElementById('save-status').innerHTML = '💾 保存状态: 就绪';
+          }, 2000);
+        }
+      });
+
+      console.log('[Test] All draggable elements initialized');
+    }
+
+    // Fallback 拖拽实现（用于测试）
+    function setupFallbackDrag() {
+      console.log('[Test] Using fallback drag implementation');
+      
+      ['box1', 'widget1', 'widget2'].forEach(id => {
+        const element = document.getElementById(id);
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        element.addEventListener('mousedown', function(e) {
+          if (!interactionEnabled) return;
+          
+          isDragging = true;
+          offsetX = e.clientX - element.offsetLeft;
+          offsetY = e.clientY - element.offsetTop;
+          element.style.cursor = 'grabbing';
+          
+          document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 拖动中 (' + id + ')';
+        });
+
+        document.addEventListener('mousemove', function(e) {
+          if (!isDragging) return;
+          
+          element.style.left = (e.clientX - offsetX) + 'px';
+          element.style.top = (e.clientY - offsetY) + 'px';
+        });
+
+        document.addEventListener('mouseup', function(e) {
+          if (!isDragging) return;
+          
+          isDragging = false;
+          element.style.cursor = 'move';
+          
+          document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 空闲';
+          document.getElementById('save-status').innerHTML = '💾 保存状态: Fallback 模式 (不保存)';
+          
+          console.log('[Test] ' + id + ' position:', element.offsetLeft, element.offsetTop);
+        });
+      });
+    }
+
+    // 页面加载完成后初始化
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', waitForAnyWP);
+    } else {
+      waitForAnyWP();
+    }
+  </script>
+</body>
+</html>
+

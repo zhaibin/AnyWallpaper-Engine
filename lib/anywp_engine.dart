@@ -465,5 +465,92 @@ class AnyWPEngine {
       return {};
     }
   }
+
+  // ========== State Persistence APIs ==========
+
+  /// Save wallpaper state
+  /// 
+  /// Saves a key-value pair to persistent storage (Windows Registry).
+  /// The state will be preserved across app restarts.
+  /// 
+  /// - [key]: The state key (used for retrieval)
+  /// - [value]: The state value (will be JSON-encoded if not a string)
+  /// - Returns: true if successful
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Save string value
+  /// await AnyWPEngine.saveState('wallpaper_url', 'https://example.com');
+  /// 
+  /// // Save JSON object
+  /// await AnyWPEngine.saveState('settings', jsonEncode({
+  ///   'volume': 0.5,
+  ///   'autoplay': true,
+  /// }));
+  /// ```
+  static Future<bool> saveState(String key, String value) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('saveState', {
+        'key': key,
+        'value': value,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('Error saving state: $e');
+      return false;
+    }
+  }
+
+  /// Load wallpaper state
+  /// 
+  /// Retrieves a previously saved state value from persistent storage.
+  /// 
+  /// - [key]: The state key
+  /// - Returns: The state value, or empty string if not found
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Load string value
+  /// final url = await AnyWPEngine.loadState('wallpaper_url');
+  /// 
+  /// // Load and parse JSON object
+  /// final settingsJson = await AnyWPEngine.loadState('settings');
+  /// if (settingsJson.isNotEmpty) {
+  ///   final settings = jsonDecode(settingsJson);
+  ///   print('Volume: ${settings['volume']}');
+  /// }
+  /// ```
+  static Future<String> loadState(String key) async {
+    try {
+      final result = await _channel.invokeMethod<String>('loadState', {
+        'key': key,
+      });
+      return result ?? '';
+    } catch (e) {
+      print('Error loading state: $e');
+      return '';
+    }
+  }
+
+  /// Clear all saved state
+  /// 
+  /// Removes all state data from persistent storage.
+  /// This operation cannot be undone.
+  /// 
+  /// - Returns: true if successful
+  /// 
+  /// Example:
+  /// ```dart
+  /// await AnyWPEngine.clearState();
+  /// ```
+  static Future<bool> clearState() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('clearState');
+      return result ?? false;
+    } catch (e) {
+      print('Error clearing state: $e');
+      return false;
+    }
+  }
 }
 

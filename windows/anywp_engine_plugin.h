@@ -143,6 +143,11 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void ConfigurePermissions();
   void SetupSecurityHandlers();
   
+  // State persistence: Save/load wallpaper state
+  bool SaveState(const std::string& key, const std::string& value);
+  std::string LoadState(const std::string& key);
+  bool ClearState();
+  
   // API Bridge: JavaScript SDK injection and message handling
   void InjectAnyWallpaperSDK();
   void SetupMessageBridge();
@@ -197,6 +202,10 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   HWND display_listener_hwnd_ = nullptr;
   static AnyWPEnginePlugin* display_change_instance_;
   std::string default_wallpaper_url_ = "";  // Default URL for auto-start on new monitors
+  
+  // State persistence
+  std::map<std::string, std::string> persisted_state_;
+  std::mutex state_mutex_;
   
   // Method channel for callbacks to Dart
   flutter::MethodChannel<flutter::EncodableValue>* method_channel_ = nullptr;

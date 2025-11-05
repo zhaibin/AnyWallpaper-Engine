@@ -105,7 +105,7 @@ class _MyAppState extends State<MyApp> {
           _monitorWallpapers[monitor.index] = false;
           _monitorLoading[monitor.index] = false;
           _monitorUrlControllers[monitor.index] = TextEditingController(
-            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_simple.html',
+            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_draggable.html',
           );
         }
       }
@@ -823,7 +823,8 @@ class _MyAppState extends State<MyApp> {
                   '💡 Tips:\n'
                   '  • Try different HTML files on different monitors\n'
                   '  • Disable mouse transparency for interactive wallpapers\n'
-                  '  • Use test_simple.html, test_api.html, or test_iframe_ads.html',
+                  '  • Try test_draggable.html for drag & drop demo\n'
+                  '  • Or use test_simple.html, test_api.html, test_iframe_ads.html',
                   style: TextStyle(color: Colors.grey[800], fontSize: 13),
                 ),
               ],
