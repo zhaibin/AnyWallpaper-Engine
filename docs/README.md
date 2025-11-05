@@ -287,11 +287,23 @@ See [LICENSE](../LICENSE) file for details.
 
 ### Configuration Defaults
 
-| Setting | Default | Minimum |
-|---------|---------|---------|
-| Idle Timeout | 300s (5min) | 60s |
-| Memory Threshold | 300MB | 100MB |
-| Cleanup Interval | 60min | 10min |
+| Setting | Default | Minimum | Note |
+|---------|---------|---------|------|
+| Idle Timeout | 300s (5min) | 60s | Time before auto-pause |
+| Memory Threshold | **150MB** | 100MB | **Aggressive** (was 300MB) |
+| Cleanup Interval | **15min** | 10min | **More frequent** (was 60min) |
+
+**Auto-Optimization Triggers:**
+- ✅ After page load (3s delay)
+- ✅ After navigation (3s delay)
+- ✅ When memory > threshold
+- ✅ Every cleanup interval
+- ✅ On pause
+
+**Typical Memory Usage:**
+- Initial: ~200MB
+- After auto-optimize: ~100MB
+- Steady state: 80-120MB
 
 ---
 

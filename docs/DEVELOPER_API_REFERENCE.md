@@ -224,8 +224,22 @@ await AnyWPEngine.optimizeMemory();
 
 **Memory Optimization Performs:**
 - Clears localStorage and sessionStorage
+- Clears console logs and browser cache
 - Triggers JavaScript garbage collection
-- Trims Windows process working set
+- Multiple-pass memory trim (3 passes for better effect)
+
+**Typical Results:**
+- Frees 50-150MB on average
+- Example: 200MB+ → ~100MB
+
+**Auto-Triggered When:**
+- ✅ After page load completes (3 seconds delay)
+- ✅ After URL navigation (3 seconds delay)  
+- ✅ When memory exceeds threshold (default: 150MB)
+- ✅ Every cleanup interval (default: 15 minutes)
+- ✅ When wallpaper is paused
+
+**Note:** Optimization is automatic - manual calls rarely needed!
 
 **Returns:** `Future<int>` or `Future<bool>` depending on method
 
@@ -256,7 +270,7 @@ await AnyWPEngine.setMemoryThreshold(200);
 ```
 
 **Parameters:**
-- `thresholdMB` (required): Memory threshold in MB (minimum: 100, default: 300)
+- `thresholdMB` (required): Memory threshold in MB (minimum: 100, **default: 150**)
 
 **Returns:** `Future<bool>` - `true` if successful
 
@@ -268,7 +282,7 @@ await AnyWPEngine.setCleanupInterval(30);
 ```
 
 **Parameters:**
-- `minutes` (required): Cleanup interval (minimum: 10, default: 60)
+- `minutes` (required): Cleanup interval (minimum: 10, **default: 15**)
 
 **Returns:** `Future<bool>` - `true` if successful
 

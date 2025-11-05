@@ -816,6 +816,9 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                             
                             if (webview_) {
                               webview_->ExecuteScript(script.str().c_str(), nullptr);
+                              
+                              // AUTO-OPTIMIZE: Schedule safe memory optimization after page loads
+                              ScheduleSafeMemoryOptimization(webview_.Get());
                             }
                           } else {
                             std::cout << "[AnyWP] [API] ERROR: Failed to manually inject SDK: " << std::hex << error << std::endl;
@@ -952,6 +955,9 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                             
                             if (webview_) {
                               webview_->ExecuteScript(script.str().c_str(), nullptr);
+                              
+                              // AUTO-OPTIMIZE: Schedule safe memory optimization after page loads
+                              ScheduleSafeMemoryOptimization(webview_.Get());
                             }
                           } else {
                             std::cout << "[AnyWP] [API] ERROR: Failed to manually inject SDK: " << std::hex << error << std::endl;
@@ -1020,36 +1026,39 @@ void AnyWPEnginePlugin::LogError(const std::string& error) {
   std::cout << "[AnyWP] [Error] " << error << std::endl;
 }
 
-// P1-2: Clear WebView cache (optimized)
+// P1-2: Clear WebView cache (optimized with safety checks)
 void AnyWPEnginePlugin::ClearWebViewCache() {
   std::cout << "[AnyWP] [Cache] Clearing browser cache..." << std::endl;
   
-  // Clear cache for all instances
+  // SAFE: Clear cache for all instances
   {
     std::lock_guard<std::mutex> lock(instances_mutex_);
     for (auto& instance : wallpaper_instances_) {
-      if (instance.webview) {
-        // Execute JavaScript to clear cache-like data
+      // SAFETY: Check webview is valid before using
+      if (instance.webview && instance.webview.Get()) {
+        // Execute JavaScript to clear cache-like data with NULL checks
         std::wstring clear_script = L"(function() {"
           L"  try {"
-          L"    // Clear localStorage"
-          L"    localStorage.clear();"
-          L"    // Clear sessionStorage"
-          L"    sessionStorage.clear();"
+          L"    // Clear localStorage with safety check"
+          L"    if (window.localStorage && localStorage.clear) localStorage.clear();"
+          L"    // Clear sessionStorage with safety check"
+          L"    if (window.sessionStorage && sessionStorage.clear) sessionStorage.clear();"
           L"    console.log('[AnyWP] Cache cleared');"
-          L"  } catch(e) {}"
+          L"  } catch(e) {"
+          L"    console.warn('[AnyWP] Cache clear error:', e);"
+          L"  }"
           L"})();";
         instance.webview->ExecuteScript(clear_script.c_str(), nullptr);
       }
     }
   }
   
-  // Clear legacy webview
-  if (webview_) {
+  // SAFETY: Clear legacy webview with NULL check
+  if (webview_ && webview_.Get()) {
     std::wstring clear_script = L"(function() {"
       L"  try {"
-      L"    localStorage.clear();"
-      L"    sessionStorage.clear();"
+      L"    if (window.localStorage && localStorage.clear) localStorage.clear();"
+      L"    if (window.sessionStorage && sessionStorage.clear) sessionStorage.clear();"
       L"  } catch(e) {}"
       L"})();";
     webview_->ExecuteScript(clear_script.c_str(), nullptr);
@@ -1893,6 +1902,12 @@ bool AnyWPEnginePlugin::NavigateToUrl(const std::string& url) {
   
   if (SUCCEEDED(hr)) {
     std::cout << "[AnyWP] Navigated to: " << url << std::endl;
+    
+    // AUTO-OPTIMIZE: Safe delayed optimization (no dangling pointers)
+    if (webview_) {
+      ScheduleSafeMemoryOptimization(webview_.Get());
+    }
+    
     return true;
   } else {
     std::cout << "[AnyWP] ERROR: Navigation failed: " << std::hex << hr << std::endl;
@@ -2215,6 +2230,12 @@ bool AnyWPEnginePlugin::NavigateToUrlOnMonitor(const std::string& url, int monit
   
   if (SUCCEEDED(hr)) {
     std::cout << "[AnyWP] Navigated to: " << url << " on monitor " << monitor_index << std::endl;
+    
+    // AUTO-OPTIMIZE: Safe delayed optimization (no dangling pointers)
+    if (instance && instance->webview) {
+      ScheduleSafeMemoryOptimization(instance->webview.Get());
+    }
+    
     return true;
   } else {
     std::cout << "[AnyWP] ERROR: Navigation failed on monitor " << monitor_index << ": " << std::hex << hr << std::endl;
@@ -2897,39 +2918,96 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
   std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed instantly (no reload)" << std::endl;
 }
 
-// Optimize memory usage
+// Optimize memory usage (aggressive for better results with safety checks)
 void AnyWPEnginePlugin::OptimizeMemoryUsage() {
-  std::cout << "[AnyWP] [Memory] Optimizing memory usage..." << std::endl;
+  std::cout << "[AnyWP] [Memory] ========== OPTIMIZING MEMORY ==========" << std::endl;
+  
+  // SAFETY: Check if process handle is valid
+  HANDLE process = GetCurrentProcess();
+  if (!process) {
+    std::cout << "[AnyWP] [Memory] ERROR: Invalid process handle" << std::endl;
+    return;
+  }
   
   size_t before = GetCurrentMemoryUsage();
+  if (before == 0) {
+    std::cout << "[AnyWP] [Memory] WARNING: Could not get memory usage" << std::endl;
+    return;
+  }
+  
   std::cout << "[AnyWP] [Memory] Current usage: " << (before / 1024 / 1024) << " MB" << std::endl;
   
-  // Clear WebView cache
+  // 1. Clear WebView cache
   ClearWebViewCache();
   
-  // Trigger garbage collection in WebView
+  // 2. Aggressive JavaScript optimization with NULL checks
+  std::wstring aggressive_gc_script = L"(function() {"
+    L"  try {"
+    L"    // Clear console logs"
+    L"    if (console && console.clear) console.clear();"
+    L"    "
+    L"    // Clear any cached data"
+    L"    if (window.caches && caches.keys) {"
+    L"      caches.keys().then(function(names) {"
+    L"        if (names && names.forEach) {"
+    L"          names.forEach(function(name) { "
+    L"            if (caches.delete) caches.delete(name); "
+    L"          });"
+    L"        }"
+    L"      }).catch(function(e) { console.warn('Cache clear failed:', e); });"
+    L"    }"
+    L"    "
+    L"    // Force garbage collection if available"
+    L"    if (window.gc) window.gc();"
+    L"    "
+    L"    console.log('[AnyWP] Memory optimization complete');"
+    L"  } catch(e) {"
+    L"    console.error('[AnyWP] Optimization error:', e);"
+    L"  }"
+    L"})();";
+  
+  // Execute with instance mutex lock for safety
   {
     std::lock_guard<std::mutex> lock(instances_mutex_);
     for (auto& instance : wallpaper_instances_) {
-      if (instance.webview) {
-        // Execute JavaScript to trigger GC
-        std::wstring gc_script = L"(function() { if (window.gc) window.gc(); })();";
-        instance.webview->ExecuteScript(gc_script.c_str(), nullptr);
+      // SAFETY: Check webview is valid before using
+      if (instance.webview && instance.webview.Get()) {
+        instance.webview->ExecuteScript(aggressive_gc_script.c_str(), nullptr);
       }
     }
   }
   
-  if (webview_) {
-    std::wstring gc_script = L"(function() { if (window.gc) window.gc(); })();";
-    webview_->ExecuteScript(gc_script.c_str(), nullptr);
+  // SAFETY: Check webview_ is valid
+  if (webview_ && webview_.Get()) {
+    webview_->ExecuteScript(aggressive_gc_script.c_str(), nullptr);
   }
   
-  // Windows memory trim
-  SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
+  // 3. Windows memory trim (multiple passes for better effect)
+  // SAFETY: Check each call succeeds
+  for (int i = 0; i < 3; i++) {
+    BOOL result = SetProcessWorkingSetSize(process, static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
+    if (!result) {
+      DWORD error = GetLastError();
+      std::cout << "[AnyWP] [Memory] WARNING: Memory trim pass " << (i+1) << " failed, error: " << error << std::endl;
+      break;  // Stop on failure
+    }
+    Sleep(100);  // Small delay between passes
+  }
+  
+  // Wait for optimization to complete
+  Sleep(500);
   
   size_t after = GetCurrentMemoryUsage();
+  
+  // SAFETY: Check for overflow
+  size_t freed = 0;
+  if (after > 0 && before > after) {
+    freed = before - after;
+  }
+  
   std::cout << "[AnyWP] [Memory] After optimization: " << (after / 1024 / 1024) << " MB" << std::endl;
-  std::cout << "[AnyWP] [Memory] Freed: " << ((before - after) / 1024 / 1024) << " MB" << std::endl;
+  std::cout << "[AnyWP] [Memory] Freed: " << (freed / 1024 / 1024) << " MB" << std::endl;
+  std::cout << "[AnyWP] [Memory] ========== OPTIMIZATION COMPLETE ==========" << std::endl;
 }
 
 // Configure WebView2 memory limits
@@ -2939,21 +3017,72 @@ void AnyWPEnginePlugin::ConfigureWebView2Memory() {
   std::cout << "[AnyWP] [Memory] WebView2 memory configuration applied" << std::endl;
 }
 
-// Get current process memory usage
+// SAFE: Schedule memory optimization using JavaScript setTimeout (no dangling pointers)
+void AnyWPEnginePlugin::ScheduleSafeMemoryOptimization(ICoreWebView2* webview) {
+  if (!webview) {
+    return;  // Safety check
+  }
+  
+  std::cout << "[AnyWP] [Memory] Scheduling safe auto-optimization..." << std::endl;
+  
+  // Use JavaScript setTimeout - runs in WebView2 context, no C++ object dependency
+  std::wstring safe_optimize_script = L"setTimeout(function() {"
+    L"  try {"
+    L"    console.log('[AnyWP] Auto-optimizing memory after navigation...');"
+    L"    "
+    L"    // Clear console to free memory"
+    L"    if (console.clear) console.clear();"
+    L"    "
+    L"    // Clear browser cache"
+    L"    if (window.caches) {"
+    L"      caches.keys().then(function(names) {"
+    L"        names.forEach(function(name) { caches.delete(name); });"
+    L"      });"
+    L"    }"
+    L"    "
+    L"    // Trigger GC if available"
+    L"    if (window.gc) window.gc();"
+    L"    "
+    L"    console.log('[AnyWP] Auto-optimization complete');"
+    L"  } catch(e) {"
+    L"    console.error('[AnyWP] Auto-optimize error:', e);"
+    L"  }"
+    L"}, 3000);";  // 3 seconds delay
+  
+  webview->ExecuteScript(safe_optimize_script.c_str(), nullptr);
+}
+
+// Get current process memory usage (with safety checks)
 size_t AnyWPEnginePlugin::GetCurrentMemoryUsage() {
+  // SAFETY: Check process handle
+  HANDLE process = GetCurrentProcess();
+  if (!process) {
+    std::cout << "[AnyWP] [Memory] ERROR: Invalid process handle in GetCurrentMemoryUsage" << std::endl;
+    return 0;
+  }
+  
   PROCESS_MEMORY_COUNTERS_EX pmc = {0};
   pmc.cb = sizeof(pmc);
   
-  if (GetProcessMemoryInfo(GetCurrentProcess(), 
+  // SAFETY: Check if GetProcessMemoryInfo succeeds
+  if (GetProcessMemoryInfo(process, 
                           reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), 
                           sizeof(pmc))) {
-    return pmc.WorkingSetSize;
+    // SAFETY: Validate returned value is reasonable (<10GB)
+    if (pmc.WorkingSetSize > 0 && pmc.WorkingSetSize < (10ULL * 1024 * 1024 * 1024)) {
+      return pmc.WorkingSetSize;
+    } else {
+      std::cout << "[AnyWP] [Memory] WARNING: Unreasonable memory value: " << pmc.WorkingSetSize << std::endl;
+      return 0;
+    }
   }
   
+  DWORD error = GetLastError();
+  std::cout << "[AnyWP] [Memory] ERROR: GetProcessMemoryInfo failed, error: " << error << std::endl;
   return 0;
 }
 
-// Notify web content about visibility change (Page Visibility API)
+// Notify web content about visibility change (Page Visibility API with safety checks)
 void AnyWPEnginePlugin::NotifyWebContentVisibility(bool visible) {
   std::cout << "[AnyWP] [PowerSaving] Notifying web content: " << (visible ? "VISIBLE" : "HIDDEN") << std::endl;
   
@@ -2961,9 +3090,15 @@ void AnyWPEnginePlugin::NotifyWebContentVisibility(bool visible) {
   // This allows web apps to pause/resume animations gracefully
   std::wstring visibility_script = L"(function() {"
     L"  try {"
+    L"    // SAFETY: Check if document exists"
+    L"    if (!document) return;"
+    L"    "
     L"    // Dispatch visibilitychange event"
     L"    var event = new Event('visibilitychange');"
     L"    document.dispatchEvent(event);"
+    L"    "
+    L"    // SAFETY: Check if window exists"
+    L"    if (!window) return;"
     L"    "
     L"    // Also dispatch custom AnyWP event for SDK users"
     L"    var customEvent = new CustomEvent('AnyWP:visibility', {"
@@ -2977,18 +3112,19 @@ void AnyWPEnginePlugin::NotifyWebContentVisibility(bool visible) {
     L"  }"
     L"})();";
   
-  // Send to all instances
+  // SAFE: Send to all instances with lock
   {
     std::lock_guard<std::mutex> lock(instances_mutex_);
     for (auto& instance : wallpaper_instances_) {
-      if (instance.webview) {
+      // SAFETY: Check webview is valid
+      if (instance.webview && instance.webview.Get()) {
         instance.webview->ExecuteScript(visibility_script.c_str(), nullptr);
       }
     }
   }
   
-  // Send to legacy instance
-  if (webview_) {
+  // SAFETY: Send to legacy instance with NULL check
+  if (webview_ && webview_.Get()) {
     webview_->ExecuteScript(visibility_script.c_str(), nullptr);
   }
 }
@@ -3048,4 +3184,5 @@ __declspec(dllexport) void AnyWPEnginePluginRegisterWithRegistrar(
 }
 
 }  // extern "C"
+
 

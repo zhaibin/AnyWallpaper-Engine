@@ -224,8 +224,8 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // Configurable parameters
   DWORD idle_timeout_ms_ = 5 * 60 * 1000;  // 5 minutes default
-  size_t memory_threshold_mb_ = 300;        // 300MB default
-  int cleanup_interval_minutes_ = 60;       // 60 minutes default
+  size_t memory_threshold_mb_ = 150;        // 150MB default (aggressive)
+  int cleanup_interval_minutes_ = 15;       // 15 minutes default (more frequent)
   
   // Power saving detection
   void SetupPowerSavingMonitoring();
@@ -255,6 +255,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void OptimizeMemoryUsage();
   void ConfigureWebView2Memory();
   size_t GetCurrentMemoryUsage();
+  void ScheduleSafeMemoryOptimization(ICoreWebView2* webview);  // Safe delayed optimization
   
   // Performance optimization
   std::atomic<bool> is_paused_{false};
