@@ -27,13 +27,11 @@
 
 **拖拽 (JavaScript)**:
 ```javascript
-AnyWP.makeDraggable('#element', {
-  persistKey: 'element_pos',  // 自动保存位置到 Registry
-  onDragStart: (pos) => console.log('开始', pos)
-});
+AnyWP.makeDraggable('#element', { persistKey: 'element_pos' });
+AnyWP.resetPosition('#element', { left: 100, top: 100 });  // 复位
 ```
 
-**状态管理 (Dart)**:
+**状态 (Dart)**:
 ```dart
 await AnyWPEngine.saveState('key', 'value');
 String value = await AnyWPEngine.loadState('key');

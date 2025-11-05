@@ -204,12 +204,13 @@
       <p><strong>🖱️ 拖拽元素：</strong>拖动彩色方块或卡片到任意位置</p>
       <p><strong>💾 自动保存：</strong>元素位置自动保存到 Windows Registry</p>
       <p><strong>🔄 自动恢复：</strong>重新打开壁纸后恢复到上次的位置</p>
+      <p><strong>↺ 复位位置：</strong>点击"复位所有位置"按钮恢复到初始位置</p>
       <p><strong>🖼️ 鼠标穿透：</strong>不在元素上时，点击会穿透到桌面图标</p>
     </div>
 
     <div class="button-group">
       <button id="toggleBtn" class="btn btn-danger">禁用交互模式</button>
-      <button id="clearBtn" class="btn btn-primary">清除所有状态</button>
+      <button id="resetBtn" class="btn btn-primary">复位所有位置</button>
     </div>
   </div>
 
@@ -285,25 +286,21 @@
       }
     }
 
-    // 清除所有状态
-    function clearAllState() {
-      if (window.AnyWP && window.AnyWP.clearState) {
-        AnyWP.clearState();
-        document.getElementById('save-status').innerHTML = '💾 保存状态: 已清除';
+    // 复位所有位置
+    function resetAllPositions() {
+      if (window.AnyWP && window.AnyWP.resetPosition) {
+        // 复位所有元素到初始位置
+        AnyWP.resetPosition('#box1', { left: 100, top: 200 });
+        AnyWP.resetPosition('#widget1', { left: 400, top: 200 });
+        AnyWP.resetPosition('#widget2', { left: 700, top: 200 });
         
-        // 重置所有元素位置
-        document.getElementById('box1').style.left = '100px';
-        document.getElementById('box1').style.top = '200px';
-        document.getElementById('widget1').style.left = '400px';
-        document.getElementById('widget1').style.top = '200px';
-        document.getElementById('widget2').style.left = '700px';
-        document.getElementById('widget2').style.top = '200px';
+        document.getElementById('save-status').innerHTML = '💾 保存状态: 已复位';
         
         setTimeout(() => {
           document.getElementById('save-status').innerHTML = '💾 保存状态: 就绪';
         }, 2000);
       } else {
-        alert('AnyWP SDK 未加载或不支持状态管理');
+        alert('AnyWP SDK 未加载或不支持复位功能');
       }
     }
 
@@ -351,9 +348,9 @@
           toggleInteraction();
         }, { immediate: true, debug: true });
         
-        AnyWP.onClick('#clearBtn', function(x, y) {
-          console.log('[Test] Clear button clicked at:', x, y);
-          clearAllState();
+        AnyWP.onClick('#resetBtn', function(x, y) {
+          console.log('[Test] Reset button clicked at:', x, y);
+          resetAllPositions();
         }, { immediate: true, debug: true });
         
         console.log('[Test] Button click handlers registered');
@@ -366,9 +363,9 @@
           toggleInteraction();
         });
         
-        document.getElementById('clearBtn').addEventListener('click', function() {
-          console.log('[Test] Clear button clicked (fallback)');
-          clearAllState();
+        document.getElementById('resetBtn').addEventListener('click', function() {
+          console.log('[Test] Reset button clicked (fallback)');
+          resetAllPositions();
         });
       }
     }

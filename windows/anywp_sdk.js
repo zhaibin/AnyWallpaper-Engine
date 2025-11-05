@@ -835,6 +835,66 @@
     this._log('Removed draggable from element: ' + (el.id || el.className));
   },
   
+  // Reset element position to initial or specified position
+  resetPosition: function(element, position) {
+    let el = element;
+    if (typeof element === 'string') {
+      el = document.querySelector(element);
+    }
+    
+    if (!el) {
+      console.error('[AnyWP] Element not found:', element);
+      return false;
+    }
+    
+    // Find the draggable data for this element
+    const draggableData = this._draggableElements.find(function(d) {
+      return d.element === el;
+    });
+    
+    // Set position
+    if (position) {
+      el.style.left = position.left + 'px';
+      el.style.top = position.top + 'px';
+    } else {
+      // Reset to initial position stored in element's inline style or default
+      el.style.left = '';
+      el.style.top = '';
+    }
+    
+    // Clear persisted state if persistKey exists
+    if (draggableData && draggableData.persistKey) {
+      const key = draggableData.persistKey;
+      
+      // Clear from cache
+      delete this._persistedState[key];
+      
+      // Clear from native storage
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage({
+          type: 'saveState',
+          key: key,
+          value: position ? JSON.stringify(position) : ''
+        });
+      } else {
+        // Clear from localStorage
+        try {
+          if (position) {
+            localStorage.setItem('AnyWP_' + key, JSON.stringify(position));
+          } else {
+            localStorage.removeItem('AnyWP_' + key);
+          }
+        } catch (e) {
+          console.warn('[AnyWP] Failed to reset position:', e);
+        }
+      }
+      
+      console.log('[AnyWP] Reset position for ' + key);
+    }
+    
+    return true;
+  },
+  
   // Save element position to native storage
   _saveElementPosition: function(key, x, y) {
     const self = this;

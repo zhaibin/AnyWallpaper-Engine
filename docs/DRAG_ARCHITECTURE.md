@@ -280,20 +280,28 @@ _saveElementPosition: function(key, x, y) {
    - 监控鼠标钩子开销
    - 自适应调整事件转发频率
 
-## 💡 快速开始
+## 💡 API 使用
 
-### HTML 中加载 SDK
+### 加载 SDK
 ```html
 <script src="../windows/anywp_sdk.js"></script>
 ```
 
-### 使元素可拖拽
+### 拖拽控制
 ```javascript
+// 使元素可拖拽
 AnyWP.makeDraggable('#element', {
-  persistKey: 'element_pos'  // 位置自动保存到 Registry
+  persistKey: 'element_pos',  // 位置自动保存
+  onDragStart: (pos) => console.log('开始', pos),
+  onDragEnd: (pos) => console.log('结束', pos)
 });
+
+// 复位位置
+AnyWP.resetPosition('#element', { left: 100, top: 100 });
+
+// 或清除保存的位置
+AnyWP.resetPosition('#element');
 ```
 
-### 测试
-运行 `examples/test_draggable.html` 查看完整演示
+参考：`examples/test_draggable.html`
 
