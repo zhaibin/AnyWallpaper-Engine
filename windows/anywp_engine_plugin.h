@@ -219,7 +219,13 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   };
   
   PowerState power_state_ = PowerState::ACTIVE;
+  PowerState last_power_state_ = PowerState::ACTIVE;  // Track state changes
   bool auto_power_saving_enabled_ = true;  // 自动省电开关
+  
+  // Configurable parameters
+  DWORD idle_timeout_ms_ = 5 * 60 * 1000;  // 5 minutes default
+  size_t memory_threshold_mb_ = 300;        // 300MB default
+  int cleanup_interval_minutes_ = 60;       // 60 minutes default
   
   // Power saving detection
   void SetupPowerSavingMonitoring();
@@ -228,6 +234,8 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   bool IsFullscreenAppActive();
   void PauseWallpaper(const std::string& reason);
   void ResumeWallpaper(const std::string& reason);
+  void NotifyPowerStateChange(PowerState newState);
+  std::string PowerStateToString(PowerState state);
   
   // System message handling
   static LRESULT CALLBACK PowerSavingWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -241,7 +249,6 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // User activity monitoring
   DWORD last_user_input_time_ = 0;
-  static constexpr DWORD IDLE_TIMEOUT_MS = 5 * 60 * 1000;  // 5分钟无活动视为idle
   
   // Memory optimization
   void OptimizeMemoryUsage();

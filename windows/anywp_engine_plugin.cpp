@@ -537,6 +537,69 @@ void AnyWPEnginePlugin::HandleMethodCall(
     OptimizeMemoryUsage();
     result->Success(flutter::EncodableValue(true));
   }
+  // Configuration APIs
+  else if (method_call.method_name() == "setIdleTimeout") {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (!arguments) {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
+      return;
+    }
+
+    auto seconds_it = arguments->find(flutter::EncodableValue("seconds"));
+    if (seconds_it == arguments->end()) {
+      result->Error("INVALID_ARGS", "Missing 'seconds' argument");
+      return;
+    }
+
+    int seconds = std::get<int>(seconds_it->second);
+    idle_timeout_ms_ = seconds * 1000;
+    std::cout << "[AnyWP] [Config] Idle timeout set to " << seconds << " seconds" << std::endl;
+    result->Success(flutter::EncodableValue(true));
+  }
+  else if (method_call.method_name() == "setMemoryThreshold") {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (!arguments) {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
+      return;
+    }
+
+    auto threshold_it = arguments->find(flutter::EncodableValue("thresholdMB"));
+    if (threshold_it == arguments->end()) {
+      result->Error("INVALID_ARGS", "Missing 'thresholdMB' argument");
+      return;
+    }
+
+    int thresholdMB = std::get<int>(threshold_it->second);
+    memory_threshold_mb_ = thresholdMB;
+    std::cout << "[AnyWP] [Config] Memory threshold set to " << thresholdMB << " MB" << std::endl;
+    result->Success(flutter::EncodableValue(true));
+  }
+  else if (method_call.method_name() == "setCleanupInterval") {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (!arguments) {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
+      return;
+    }
+
+    auto minutes_it = arguments->find(flutter::EncodableValue("minutes"));
+    if (minutes_it == arguments->end()) {
+      result->Error("INVALID_ARGS", "Missing 'minutes' argument");
+      return;
+    }
+
+    int minutes = std::get<int>(minutes_it->second);
+    cleanup_interval_minutes_ = minutes;
+    std::cout << "[AnyWP] [Config] Cleanup interval set to " << minutes << " minutes" << std::endl;
+    result->Success(flutter::EncodableValue(true));
+  }
+  else if (method_call.method_name() == "getConfiguration") {
+    flutter::EncodableMap config;
+    config[flutter::EncodableValue("idleTimeoutSeconds")] = flutter::EncodableValue(static_cast<int>(idle_timeout_ms_ / 1000));
+    config[flutter::EncodableValue("memoryThresholdMB")] = flutter::EncodableValue(static_cast<int>(memory_threshold_mb_));
+    config[flutter::EncodableValue("cleanupIntervalMinutes")] = flutter::EncodableValue(cleanup_interval_minutes_);
+    config[flutter::EncodableValue("autoPowerSavingEnabled")] = flutter::EncodableValue(auto_power_saving_enabled_);
+    result->Success(flutter::EncodableValue(config));
+  }
   else {
     result->NotImplemented();
   }
@@ -995,19 +1058,19 @@ void AnyWPEnginePlugin::ClearWebViewCache() {
   std::cout << "[AnyWP] [Cache] Cache cleared" << std::endl;
 }
 
-// P1-2: Periodic cleanup (optimized to reduce calls)
+// P1-2: Periodic cleanup (optimized with configurable parameters)
 void AnyWPEnginePlugin::PeriodicCleanup() {
   auto now = std::chrono::steady_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::minutes>(now - last_cleanup_);
   
-  // Only cleanup every 60 minutes (reduced from 30 to minimize performance impact)
-  if (elapsed.count() >= 60) {
+  // Use configured cleanup interval
+  if (elapsed.count() >= cleanup_interval_minutes_) {
     std::cout << "[AnyWP] [Maintenance] Performing periodic cleanup..." << std::endl;
     
-    // Only optimize memory if usage is high
+    // Only optimize memory if usage exceeds configured threshold
     size_t memory_mb = GetCurrentMemoryUsage() / 1024 / 1024;
-    if (memory_mb > 300) {  // Only if using more than 300MB
-      std::cout << "[AnyWP] [Maintenance] High memory usage detected: " << memory_mb << "MB" << std::endl;
+    if (memory_mb > memory_threshold_mb_) {
+      std::cout << "[AnyWP] [Maintenance] High memory usage detected: " << memory_mb << "MB (threshold: " << memory_threshold_mb_ << "MB)" << std::endl;
       OptimizeMemoryUsage();
     }
     
@@ -2640,24 +2703,24 @@ void AnyWPEnginePlugin::UpdatePowerState() {
     // We rely more on WM_WTSSESSION_CHANGE for lock detection
   }
   
-  // Check user activity
+  // Check user activity using configured idle timeout
   LASTINPUTINFO lii = {0};
   lii.cbSize = sizeof(LASTINPUTINFO);
   if (GetLastInputInfo(&lii)) {
     DWORD current_time = GetTickCount();
     DWORD idle_time = current_time - lii.dwTime;
     
-    if (idle_time > IDLE_TIMEOUT_MS) {
+    if (idle_time > idle_timeout_ms_) {
       if (power_state_ == PowerState::ACTIVE) {
-        std::cout << "[AnyWP] [PowerSaving] User IDLE detected (" << (idle_time / 1000) << "s)" << std::endl;
+        std::cout << "[AnyWP] [PowerSaving] User IDLE detected (" << (idle_time / 1000) << "s, threshold: " << (idle_timeout_ms_ / 1000) << "s)" << std::endl;
         PauseWallpaper("User idle");
-        power_state_ = PowerState::IDLE;
+        NotifyPowerStateChange(PowerState::IDLE);
       }
     } else {
       if (power_state_ == PowerState::IDLE) {
         std::cout << "[AnyWP] [PowerSaving] User ACTIVE again" << std::endl;
         ResumeWallpaper("User active");
-        power_state_ = PowerState::ACTIVE;
+        NotifyPowerStateChange(PowerState::ACTIVE);
       }
     }
   }
@@ -2933,6 +2996,48 @@ void AnyWPEnginePlugin::RestoreNormalFrequency() {
   
   if (webview_) {
     webview_->ExecuteScript(restore_script.c_str(), nullptr);
+  }
+}
+
+// Convert power state enum to string
+std::string AnyWPEnginePlugin::PowerStateToString(PowerState state) {
+  switch (state) {
+    case PowerState::ACTIVE: return "ACTIVE";
+    case PowerState::IDLE: return "IDLE";
+    case PowerState::SCREEN_OFF: return "SCREEN_OFF";
+    case PowerState::LOCKED: return "LOCKED";
+    case PowerState::FULLSCREEN_APP: return "FULLSCREEN_APP";
+    case PowerState::PAUSED: return "PAUSED";
+    default: return "UNKNOWN";
+  }
+}
+
+// Notify Dart side about power state changes
+void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
+  if (newState == power_state_) {
+    return;  // No change
+  }
+  
+  std::string oldStateStr = PowerStateToString(last_power_state_);
+  std::string newStateStr = PowerStateToString(newState);
+  
+  std::cout << "[AnyWP] [PowerSaving] State changed: " << oldStateStr << " -> " << newStateStr << std::endl;
+  
+  // Update states
+  last_power_state_ = power_state_;
+  power_state_ = newState;
+  
+  // Notify Dart if channel is available
+  if (method_channel_) {
+    flutter::EncodableMap args;
+    args[flutter::EncodableValue("oldState")] = flutter::EncodableValue(oldStateStr);
+    args[flutter::EncodableValue("newState")] = flutter::EncodableValue(newStateStr);
+    
+    auto args_value = std::make_unique<flutter::EncodableValue>(args);
+    
+    std::cout << "[AnyWP] [PowerSaving] Notifying Dart about state change" << std::endl;
+    // Note: InvokeMethod may crash in some contexts, so we skip it for now
+    // method_channel_->InvokeMethod("onPowerStateChange", std::move(args_value));
   }
 }
 

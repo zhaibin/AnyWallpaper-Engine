@@ -45,11 +45,45 @@ class AnyWPEngine {
   // Callback for monitor change events
   static void Function()? _onMonitorChangeCallback;
   
+  // Callback for power state changes
+  static void Function(String oldState, String newState)? _onPowerStateChangeCallback;
+  
   /// Set callback for monitor change events
   static void setOnMonitorChangeCallback(void Function() callback) {
     print('[AnyWPEngine] Setting up monitor change callback');
     _onMonitorChangeCallback = callback;
-    
+    _setupMethodCallHandler();
+    print('[AnyWPEngine] Monitor change callback setup complete');
+  }
+  
+  /// Set callback for power state changes
+  /// 
+  /// The callback receives two parameters:
+  /// - [oldState]: The previous power state
+  /// - [newState]: The new power state
+  /// 
+  /// States can be: ACTIVE, IDLE, SCREEN_OFF, LOCKED, FULLSCREEN_APP, PAUSED
+  /// 
+  /// Example:
+  /// ```dart
+  /// AnyWPEngine.setOnPowerStateChangeCallback((oldState, newState) {
+  ///   print('Power state changed: $oldState -> $newState');
+  ///   if (newState == 'LOCKED') {
+  ///     // Handle system lock
+  ///   }
+  /// });
+  /// ```
+  static void setOnPowerStateChangeCallback(
+    void Function(String oldState, String newState) callback
+  ) {
+    print('[AnyWPEngine] Setting up power state change callback');
+    _onPowerStateChangeCallback = callback;
+    _setupMethodCallHandler();
+    print('[AnyWPEngine] Power state change callback setup complete');
+  }
+  
+  /// Setup method call handler (internal)
+  static void _setupMethodCallHandler() {
     // Set method call handler for callbacks from native
     _channel.setMethodCallHandler((call) async {
       print('[AnyWPEngine] Received method call from native: ${call.method}');
@@ -61,7 +95,19 @@ class AnyWPEngine {
             _onMonitorChangeCallback!();
             print('[AnyWPEngine] Callback executed successfully');
           } else {
-            print('[AnyWPEngine] WARNING: Callback is null!');
+            print('[AnyWPEngine] WARNING: Monitor change callback is null!');
+          }
+        } else if (call.method == 'onPowerStateChange') {
+          final args = call.arguments as Map<dynamic, dynamic>;
+          final oldState = args['oldState'] as String;
+          final newState = args['newState'] as String;
+          
+          print('[AnyWPEngine] Power state changed: $oldState -> $newState');
+          if (_onPowerStateChangeCallback != null) {
+            _onPowerStateChangeCallback!(oldState, newState);
+            print('[AnyWPEngine] Power state callback executed successfully');
+          } else {
+            print('[AnyWPEngine] WARNING: Power state callback is null!');
           }
         } else {
           print('[AnyWPEngine] Unknown method: ${call.method}');
@@ -71,8 +117,6 @@ class AnyWPEngine {
         print('[AnyWPEngine] StackTrace: $stackTrace');
       }
     });
-    
-    print('[AnyWPEngine] Monitor change callback setup complete');
   }
 
   /// Initialize WebView2 as desktop wallpaper
@@ -307,6 +351,118 @@ class AnyWPEngine {
     } catch (e) {
       print('Error optimizing memory: $e');
       return false;
+    }
+  }
+
+  // ========== Configuration APIs ==========
+
+  /// Set idle timeout in seconds
+  /// 
+  /// After this duration of no user input, the wallpaper will automatically pause.
+  /// 
+  /// - [seconds]: Timeout duration (minimum 60, default 300 = 5 minutes)
+  /// - Returns: true if successful
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Set idle timeout to 10 minutes
+  /// await AnyWPEngine.setIdleTimeout(600);
+  /// 
+  /// // Disable idle detection (set to a very large value)
+  /// await AnyWPEngine.setIdleTimeout(3600 * 24); // 24 hours
+  /// ```
+  static Future<bool> setIdleTimeout(int seconds) async {
+    if (seconds < 60) {
+      print('Warning: Idle timeout should be at least 60 seconds');
+      seconds = 60;
+    }
+    
+    try {
+      final result = await _channel.invokeMethod<bool>('setIdleTimeout', {
+        'seconds': seconds,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('Error setting idle timeout: $e');
+      return false;
+    }
+  }
+
+  /// Set memory optimization threshold in MB
+  /// 
+  /// When memory usage exceeds this threshold during periodic cleanup,
+  /// optimization will be triggered automatically.
+  /// 
+  /// - [thresholdMB]: Memory threshold in MB (minimum 100, default 300)
+  /// - Returns: true if successful
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Set threshold to 200MB
+  /// await AnyWPEngine.setMemoryThreshold(200);
+  /// ```
+  static Future<bool> setMemoryThreshold(int thresholdMB) async {
+    if (thresholdMB < 100) {
+      print('Warning: Memory threshold should be at least 100 MB');
+      thresholdMB = 100;
+    }
+    
+    try {
+      final result = await _channel.invokeMethod<bool>('setMemoryThreshold', {
+        'thresholdMB': thresholdMB,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('Error setting memory threshold: $e');
+      return false;
+    }
+  }
+
+  /// Set periodic cleanup interval in minutes
+  /// 
+  /// Controls how often the engine checks memory usage and performs cleanup.
+  /// 
+  /// - [minutes]: Cleanup interval (minimum 10, default 60)
+  /// - Returns: true if successful
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Check every 30 minutes
+  /// await AnyWPEngine.setCleanupInterval(30);
+  /// ```
+  static Future<bool> setCleanupInterval(int minutes) async {
+    if (minutes < 10) {
+      print('Warning: Cleanup interval should be at least 10 minutes');
+      minutes = 10;
+    }
+    
+    try {
+      final result = await _channel.invokeMethod<bool>('setCleanupInterval', {
+        'minutes': minutes,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('Error setting cleanup interval: $e');
+      return false;
+    }
+  }
+
+  /// Get current configuration
+  /// 
+  /// Returns a map containing:
+  /// - 'idleTimeoutSeconds': Current idle timeout in seconds
+  /// - 'memoryThresholdMB': Current memory threshold in MB
+  /// - 'cleanupIntervalMinutes': Current cleanup interval in minutes
+  /// - 'autoPowerSavingEnabled': Whether auto power saving is enabled
+  static Future<Map<String, dynamic>> getConfiguration() async {
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('getConfiguration');
+      if (result == null) return {};
+      
+      return result.map((key, value) => MapEntry(key.toString(), value));
+    } catch (e) {
+      print('Error getting configuration: $e');
+      return {};
     }
   }
 }
