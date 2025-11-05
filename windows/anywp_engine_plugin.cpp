@@ -1,5 +1,4 @@
 ﻿#include "anywp_engine_plugin.h"
-#include "embedded_sdk.h"  // Embedded SDK v4.2.0
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
@@ -1200,14 +1199,21 @@ void AnyWPEnginePlugin::SetupSecurityHandlers() {
 
 // API Bridge: Load SDK JavaScript
 std::string AnyWPEnginePlugin::LoadSDKScript() {
-  std::cout << "[AnyWP] [API] Using embedded SDK v4.2.0..." << std::endl;
+  // NOTE: SDK is loaded via <script src> in HTML files
+  // C++ injection is kept for compatibility but not required
+  std::cout << "[AnyWP] [API] SDK should be loaded via <script src> in HTML" << std::endl;
   
-  // Use embedded SDK (from embedded_sdk.h)
-  std::string sdk_script = GetEmbeddedSDK();
-  
-  std::cout << "[AnyWP] [API] Embedded SDK loaded (" << sdk_script.length() << " bytes)" << std::endl;
-  
-  return sdk_script;
+  // Return minimal compatibility shim
+  return R"(
+console.log('[AnyWP] Note: Full SDK should be loaded via <script src="../windows/anywp_sdk.js">');
+if (!window.AnyWP) {
+  console.error('[AnyWP] ERROR: SDK not loaded! Add <script src="../windows/anywp_sdk.js"></script> to your HTML');
+  window.AnyWP = {
+    version: '0.0.0-missing',
+    error: 'SDK not loaded - add script tag to HTML'
+  };
+}
+)";
 }
 
 // API Bridge: Inject SDK into page

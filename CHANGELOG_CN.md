@@ -4,6 +4,16 @@
 
 ## [4.2.0] - 2025-11-05 - 🎨 拖拽支持与状态持久化
 
+### 📌 SDK 加载方式
+
+**重要**: 拖拽功能需要在 HTML 中添加 SDK 加载标签：
+
+```html
+<script src="../windows/anywp_sdk.js"></script>
+```
+
+参考 `examples/test_draggable.html` 或 `examples/test_iframe_ads.html`
+
 ### ✨ 核心功能
 
 #### 拖拽支持
