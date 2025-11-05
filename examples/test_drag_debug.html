@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>拖拽坐标调试</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: monospace;
+    }
+
+    #debugPanel {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.95);
+      color: #0f0;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 12px;
+      max-width: 450px;
+      max-height: 90vh;
+      overflow-y: auto;
+      z-index: 10000;
+    }
+
+    .log { margin: 2px 0; white-space: pre-wrap; }
+    .error { color: #f00; }
+    .success { color: #0f0; }
+    .warning { color: #ff0; }
+    .info { color: #0ff; }
+
+    #box {
+      position: absolute;
+      left: 100px;
+      top: 100px;
+      width: 200px;
+      height: 150px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border: 3px solid yellow;
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: move;
+      user-select: none;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    #coords {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.9);
+      color: #0ff;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="debugPanel">
+    <div class="log warning">等待初始化...</div>
+  </div>
+
+  <div id="coords">
+    鼠标: (0, 0) | 元素: [0,0] - [0,0] | 命中: NO
+  </div>
+
+  <div id="box">
+    拖动我！<br>
+    <small>(黄色边框)</small>
+  </div>
+
+  <script>
+    const panel = document.getElementById('debugPanel');
+    const coords = document.getElementById('coords');
+    const box = document.getElementById('box');
+    
+    let logNum = 0;
+    function log(msg, type = 'log') {
+      console.log('[Debug] ' + msg);
+      const div = document.createElement('div');
+      div.className = 'log ' + type;
+      div.textContent = `[${++logNum}] ${msg}`;
+      panel.appendChild(div);
+      if (panel.children.length > 80) {
+        panel.removeChild(panel.children[1]);
+      }
+      panel.scrollTop = panel.scrollHeight;
+    }
+
+    panel.innerHTML = '';
+    log('=== 坐标调试测试 ===', 'warning');
+    
+    // 获取元素初始位置
+    function getBoxBounds() {
+      const rect = box.getBoundingClientRect();
+      const dpi = window.devicePixelRatio || 1;
+      return {
+        cssLeft: rect.left,
+        cssTop: rect.top,
+        cssRight: rect.right,
+        cssBottom: rect.bottom,
+        physicalLeft: Math.round(rect.left * dpi),
+        physicalTop: Math.round(rect.top * dpi),
+        physicalRight: Math.round(rect.right * dpi),
+        physicalBottom: Math.round(rect.bottom * dpi),
+        dpi: dpi
+      };
+    }
+
+    const bounds = getBoxBounds();
+    log('DPI: ' + bounds.dpi, 'info');
+    log('CSS 位置: (' + bounds.cssLeft + ', ' + bounds.cssTop + ')', 'info');
+    log('物理位置: (' + bounds.physicalLeft + ', ' + bounds.physicalTop + ')', 'info');
+    log('CSS 尺寸: ' + (bounds.cssRight - bounds.cssLeft) + ' x ' + (bounds.cssBottom - bounds.cssTop), 'info');
+    log('物理尺寸: ' + (bounds.physicalRight - bounds.physicalLeft) + ' x ' + (bounds.physicalBottom - bounds.physicalTop), 'info');
+
+    // 监听鼠标事件
+    let lastMouseEvent = null;
+    let mouseEventCount = 0;
+    
+    window.addEventListener('AnyWP:mouse', function(e) {
+      const detail = e.detail;
+      lastMouseEvent = detail;
+      mouseEventCount++;
+      
+      // 获取当前边界
+      const bounds = getBoxBounds();
+      
+      // 检查是否命中
+      const hit = detail.x >= bounds.physicalLeft && 
+                  detail.x <= bounds.physicalRight &&
+                  detail.y >= bounds.physicalTop && 
+                  detail.y <= bounds.physicalBottom;
+      
+      // 更新坐标显示
+      coords.innerHTML = `鼠标: (${detail.x}, ${detail.y}) | ` +
+                        `元素: [${bounds.physicalLeft},${bounds.physicalTop}] - [${bounds.physicalRight},${bounds.physicalBottom}] | ` +
+                        `命中: ${hit ? '<span style="color:#0f0">YES</span>' : '<span style="color:#f00">NO</span>'}`;
+      
+      // 记录非 mousemove 事件
+      if (detail.type !== 'mousemove') {
+        log(`${detail.type} at (${detail.x}, ${detail.y}) - Hit: ${hit}`, 
+            hit ? 'success' : 'warning');
+        
+        if (hit) {
+          log(`  元素边界: [${bounds.physicalLeft},${bounds.physicalTop}] - [${bounds.physicalRight},${bounds.physicalBottom}]`, 'info');
+        }
+      }
+      
+      // 每100个事件记录一次状态
+      if (mouseEventCount % 100 === 0) {
+        log(`已接收 ${mouseEventCount} 个鼠标事件`, 'info');
+      }
+    });
+
+    // 检查 AnyWP
+    function checkSDK() {
+      if (window.AnyWP) {
+        log('✅ AnyWP 已加载', 'success');
+        log('版本: ' + window.AnyWP.version, 'info');
+        log('交互: ' + window.AnyWP.interactionEnabled, window.AnyWP.interactionEnabled ? 'success' : 'error');
+        log('DPI Scale: ' + window.AnyWP.dpiScale, 'info');
+        
+        // 检查方法
+        if (typeof window.AnyWP.makeDraggable === 'function') {
+          log('✅ makeDraggable 存在', 'success');
+          setupDrag();
+        } else {
+          log('❌ makeDraggable 不存在', 'error');
+        }
+      } else {
+        log('等待 AnyWP...', 'warning');
+        setTimeout(checkSDK, 100);
+      }
+    }
+
+    function setupDrag() {
+      log('--- 设置拖拽 ---', 'warning');
+      
+      try {
+        // 强制启用交互
+        if (!window.AnyWP.interactionEnabled) {
+          window.AnyWP.interactionEnabled = true;
+          log('已启用交互', 'warning');
+        }
+        
+        // 启用调试模式
+        window.AnyWP._debugMode = true;
+        
+        window.AnyWP.makeDraggable('#box', {
+          persistKey: 'debug_box_pos',
+          onDragStart: function(pos) {
+            log('🎯 拖拽开始！', 'success');
+            log('  位置: ' + JSON.stringify(pos), 'info');
+            box.style.boxShadow = '0 20px 50px rgba(255,0,0,0.8)';
+          },
+          onDrag: function(pos) {
+            // 每10次记录一次
+            if (Math.random() < 0.1) {
+              log('  拖拽中: (' + Math.round(pos.x) + ', ' + Math.round(pos.y) + ')', 'info');
+            }
+          },
+          onDragEnd: function(pos) {
+            log('🎯 拖拽结束！', 'success');
+            log('  最终位置: ' + JSON.stringify(pos), 'info');
+            box.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+          }
+        });
+        
+        log('✅ makeDraggable 调用成功', 'success');
+        
+        // 验证处理器
+        if (box.__anyWP_dragHandler) {
+          log('✅ 拖拽处理器已绑定', 'success');
+        } else {
+          log('❌ 拖拽处理器未绑定', 'error');
+        }
+        
+        // 显示说明
+        log('', 'info');
+        log('📌 操作说明:', 'warning');
+        log('1. 移动鼠标到黄色方块上', 'info');
+        log('2. 查看下方坐标显示 "命中: YES"', 'info');
+        log('3. 按住鼠标左键拖动', 'info');
+        log('4. 松开鼠标完成拖拽', 'info');
+        
+      } catch (err) {
+        log('❌ 错误: ' + err.message, 'error');
+        log(err.stack, 'error');
+      }
+    }
+
+    // 启动
+    log('开始检查 SDK...');
+    checkSDK();
+
+    // 定时显示拖拽状态
+    setInterval(function() {
+      if (window.AnyWP && window.AnyWP._dragState) {
+        const state = window.AnyWP._dragState;
+        log('🔵 拖拽状态: 开始(' + state.startX + ',' + state.startY + ')', 'info');
+      }
+    }, 500);
+  </script>
+</body>
+</html>
+
