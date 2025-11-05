@@ -11,7 +11,7 @@
     dpiScale: window.devicePixelRatio || 1,
     screenWidth: screen.width * (window.devicePixelRatio || 1),
     screenHeight: screen.height * (window.devicePixelRatio || 1),
-    interactionEnabled: false,
+    interactionEnabled: true,  // Default: enabled for drag support
     
     // Internal state
     _debugMode: false,
@@ -34,11 +34,16 @@
       console.log('========================================');
       console.log('Screen: ' + this.screenWidth + 'x' + this.screenHeight);
       console.log('DPI Scale: ' + this.dpiScale + 'x');
+      console.log('Interaction Enabled: ' + this.interactionEnabled);
       console.log('========================================');
       
       this._detectDebugMode();
       this._detectSPA();
       this._setupEventListeners();
+      
+      // Enable debug mode automatically for testing
+      this._debugMode = true;
+      console.log('[AnyWP] Debug mode ENABLED automatically');
     },
     
     // Detect SPA framework
@@ -625,6 +630,7 @@
     // Register global mouse handler for this element
     function handleGlobalMouse(event) {
       if (!self.interactionEnabled) {
+        self._log('[makeDraggable] Interaction disabled, ignoring event');
         return;
       }
       
@@ -632,6 +638,11 @@
       const mouseX = detail.x;
       const mouseY = detail.y;
       const mouseType = detail.type;
+      
+      // Debug log for non-mousemove events
+      if (mouseType !== 'mousemove') {
+        self._log('[makeDraggable] Mouse event: ' + mouseType + ' at (' + mouseX + ',' + mouseY + ')');
+      }
       
       const rect = el.getBoundingClientRect();
       const dpi = self.dpiScale;
@@ -648,6 +659,9 @@
       
       if (mouseType === 'mousedown' && isOver && !self._dragState) {
         // Start dragging
+        console.log('[AnyWP] [Drag] START - Mouse at (' + mouseX + ',' + mouseY + '), Element bounds: [' + 
+                    physicalLeft + ',' + physicalTop + '] - [' + physicalRight + ',' + physicalBottom + ']');
+        
         self._dragState = {
           element: el,
           data: draggableData,
@@ -666,7 +680,7 @@
           });
         }
         
-        self._log('Drag start at: ' + mouseX + ',' + mouseY + ' (element at ' + physicalLeft + ',' + physicalTop + ')');
+        self._log('Drag start at: ' + mouseX + ',' + mouseY + ' (element at ' + physicalLeft + ',' + physicalTop + ')', true);
       }
       else if (mouseType === 'mousemove' && self._dragState && self._dragState.element === el) {
         // Continue dragging
@@ -707,6 +721,8 @@
       }
       else if (mouseType === 'mouseup' && self._dragState && self._dragState.element === el) {
         // End dragging
+        console.log('[AnyWP] [Drag] END');
+        
         const finalRect = el.getBoundingClientRect();
         const finalPos = {
           x: finalRect.left,
@@ -722,9 +738,14 @@
           onDragEnd(finalPos);
         }
         
-        self._log('Drag end at: ' + finalPos.x + ',' + finalPos.y);
+        self._log('Drag end at: ' + finalPos.x + ',' + finalPos.y, true);
         
         self._dragState = null;
+      }
+      else if (mouseType === 'mousedown' && !isOver) {
+        // Debug: mouse down but not over element
+        self._log('[makeDraggable] mousedown not over element. Mouse: (' + mouseX + ',' + mouseY + 
+                  '), Element: [' + physicalLeft + ',' + physicalTop + '] - [' + physicalRight + ',' + physicalBottom + ']');
       }
     }
     
