@@ -1,35 +1,70 @@
-﻿# AnyWP Engine - Documentation
+﻿# AnyWP Engine - Documentation Center
 
-Welcome to the AnyWP Engine documentation! This guide will help you integrate and use AnyWP Engine in your Flutter applications.
+**欢迎！** 选择你的开发者类型，快速找到需要的文档。
 
-## 📚 Documentation Index
+---
 
-### Getting Started
-- **[Quick Start Guide](QUICK_START.md)** - Get up and running in 5 minutes
-- **[Package Usage Guide (中文)](PACKAGE_USAGE_GUIDE_CN.md)** - 包使用指南
-- **[Project Structure](PROJECT_STRUCTURE.md)** - Understand the codebase
+## 👥 我是哪类开发者？
 
-### API Documentation
-- **[Developer API Reference](DEVELOPER_API_REFERENCE.md)** ⭐ - Complete Dart/Flutter API
-- **[API Usage Examples](API_USAGE_EXAMPLES.md)** ⭐ - Practical code examples
-- **[Best Practices Guide](BEST_PRACTICES.md)** ⭐ - Optimization and guidelines
-- **[Web Developer Guide (中文)](WEB_DEVELOPER_GUIDE_CN.md)** ⭐ - Complete JavaScript SDK guide
+### 📱 类型 1: Flutter 应用开发者
 
-### Integration Guides
-- **[Integration Architecture](INTEGRATION_ARCHITECTURE.md)** - System architecture overview
-- **[API Bridge](API_BRIDGE.md)** - C++, Dart, and JavaScript communication
-- **[Web Developer Guide (中文)](WEB_DEVELOPER_GUIDE_CN.md)** - Web 开发者指南
-- **[Web Developer Guide](WEB_DEVELOPER_GUIDE.md)** - Web developer guide (English)
+**你的目标：** 将 AnyWP Engine 集成到你的 Flutter Windows 应用中
 
-### Technical Documentation
-- **[Technical Notes](TECHNICAL_NOTES.md)** - Implementation details
-- **[Testing Guide](TESTING_GUIDE.md)** - Testing your implementation
-- **[Troubleshooting](TROUBLESHOOTING.md)** - Common issues and solutions
+**你需要：** Dart API 文档、集成指南、最佳实践
 
-### Additional Resources
-- **[Cheat Sheet (中文)](CHEAT_SHEET_CN.md)** - Quick reference
-- **[SDK Changelog](SDK_CHANGELOG.md)** - SDK version history
-- **[Usage Examples](USAGE_EXAMPLES.md)** - More examples
+**开始 →** [📱 Flutter 开发者文档导航](FOR_FLUTTER_DEVELOPERS.md)
+
+---
+
+### 🌐 类型 2: Web 开发者
+
+**你的目标：** 开发可作为桌面壁纸的网页内容（HTML/React/Vue等）
+
+**你需要：** JavaScript SDK 文档、框架集成教程、示例代码
+
+**开始 →** [🌐 Web 开发者文档导航](FOR_WEB_DEVELOPERS.md)
+
+---
+
+## 📚 核心文档快速链接
+
+### For Flutter Developers 📱
+
+| 文档 | 用途 | 优先级 |
+|-----|------|--------|
+| [DEVELOPER_API_REFERENCE.md](DEVELOPER_API_REFERENCE.md) | Dart API 完整参考 | ⭐⭐⭐ |
+| [API_USAGE_EXAMPLES.md](API_USAGE_EXAMPLES.md) | 7个实用示例 | ⭐⭐⭐ |
+| [BEST_PRACTICES.md](BEST_PRACTICES.md) | 最佳实践指南 | ⭐⭐ |
+| [QUICK_START.md](QUICK_START.md) | 快速开始 | ⭐ |
+| [PACKAGE_USAGE_GUIDE_CN.md](PACKAGE_USAGE_GUIDE_CN.md) | 集成方式 | ⭐ |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | 故障排查 | ⭐ |
+
+### For Web Developers 🌐
+
+| 文档 | 用途 | 优先级 |
+|-----|------|--------|
+| [WEB_DEVELOPER_GUIDE_CN.md](WEB_DEVELOPER_GUIDE_CN.md) | JS SDK 完整指南 | ⭐⭐⭐ |
+| [WEB_DEVELOPER_GUIDE.md](WEB_DEVELOPER_GUIDE.md) | JS SDK Guide (EN) | ⭐⭐⭐ |
+| [API_BRIDGE.md](API_BRIDGE.md) | 技术实现原理 | ⭐ |
+| examples/*.html | 示例代码 | ⭐⭐ |
+
+### Technical & Architecture 🔧
+
+| 文档 | 用途 |
+|-----|------|
+| [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) | 系统架构 |
+| [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) | 技术细节 |
+| [API_BRIDGE.md](API_BRIDGE.md) | C++/JS 桥接 |
+| [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | 项目结构 |
+
+### General 📖
+
+| 文档 | 用途 |
+|-----|------|
+| [CHANGELOG_CN.md](../CHANGELOG_CN.md) | 更新日志 |
+| [SDK_CHANGELOG.md](SDK_CHANGELOG.md) | SDK 版本历史 |
+| [CHEAT_SHEET_CN.md](CHEAT_SHEET_CN.md) | 速查表 |
+| [TESTING_GUIDE.md](TESTING_GUIDE.md) | 测试指南 |
 
 ---
 
