@@ -12,16 +12,985 @@ namespace anywp_engine {
 inline std::string GetEmbeddedSDK() {
   std::string sdk;
   sdk += R"SDK_CHUNK(
-// AnyWP Engine SDK v4.0.0 - JavaScript Bridge\n// Auto-injected into WebView2\n// React/Vue SPA Compatible\n\n(function() {\n  'use strict';\n\n  // AnyWP Global Object\n  window.AnyWP = {\n    version: '4.2.0',\n    dpiScale: window.devicePixelRatio || 1,\n    screenWidth: screen.width * (window.devicePixelRatio || 1),\n    screenHeight: screen.height * (window.devicePixelRatio || 1),\n    interactionEnabled: true,  // Default: enabled for drag support\n    \n    // Internal state\n    _debugMode: false,\n    _clickHandlers: [],\n    _mouseCallbacks: [],\n    _keyboardCallbacks: [],\n    _visibilityCallback: null,\n    _mutationObserver: null,\n    _resizeObserver: null,\n    _spaMode: false,\n    _autoRefreshEnabled: true,\n    _draggableElements: [],\n    _dragState: null,\n    _persistedState: {},\n    \n    // Initialize\n    _init: function() {\n      console.log('========================================');\n      console.log('AnyWP Engine v' + this.version + ' (SPA Compatible)');\n      console.log('========================================');\n      console.log('Screen: ' + this.screenWidth + 'x' + this.screenHeight);\n      console.log('DPI Scale: ' + this.dpiScale + 'x');\n      console.log('Interaction Enabled: ' + this.interactionEnabled);\n      console.log('========================================');\n      \n      this._detectDebugMode();\n      this._detectSPA();\n      this._setupEventListeners();\n      \n      // Enable debug mode automatically for testing\n      this._debugMode = true;\n      console.log('[AnyWP] Debug mode ENABLED automatically');\n    },\n    \n    // Detect SPA framework\n    _detectSPA: function() {\n      const self = this;\n      \n      // Immediate check for React/Vue/Angular globals\n      const isReact = !!(window.React || window.ReactDOM);\n      const isVue = !!(window.Vue);\n      const isAngular = !!(window.angular);\n      \n      if (isReact || isVue || isAngular) {\n        self._spaMode = true;\n        const framework = isReact ? 'React' : (isVue ? 'Vue' : 'Angular');\n        console.log('[AnyWP] SPA Framework detected: ' + framework);\n        self._setupSPAMonitoring();\n      } else {\n        // Delayed check for DOM elements\n        setTimeout(function() {\n          const isReactDOM = !!document.querySelector('[data-reactroot], [data-reactid], #root');\n          const isVueDOM = !!document.querySelector('[data-v-]');\n          const isAngularDOM = !!document.querySelector('[ng-version]');\n          \n          if (isReactDOM || isVueDOM || isAngularDOM) {\n            self._spaMode = true;\n            const framework = isReactDOM ? 'React' : (isVueDOM ? 'Vue' : 'Angular');\n            console.log('[AnyWP] SPA Framework detected: ' + framework);\n            self._setupSPAMonitoring();\n          }\n        }, 500);\n      }\n    },\n    \n    // Detect debug mode from URL parameter\n    _detectDebugMode: function() {\n      const urlParams = new URLSearchParams(window.location.search);\n      if (urlParams.has('debug')) {\n        this._debugMode = true;\n        console.log('[AnyWP] Debug mode ENABLED');\n      }\n    },\n    \n    // Enable debug mode manually\n    enableDebug: function() {\n      this._debugMode = true;\n      console.log('[AnyWP] Debug mode ENABLED');\n    },\n    \n    // Enable/Disable SPA mode manually\n    setSPAMode: function(enabled) {\n      this._spaMode = enabled;\n      console.log('[AnyWP] SPA mode: ' + (enabled ? 'ENABLED' : 'DISABLED'));\n      \n      if (enabled) {\n        this._setupSPAMonitoring();\n      } else {\n        this._teardownSPAMonitoring();\n      }\n    },\n    \n    // Log with debug control\n    _log: function(message, forceLog) {\n      if (this._debugMode || forceLog) {\n        console.log('[AnyWP] ' + message);\n      }\n    },\n    \n    // Calculate element bounds in physical pixels\n    _calculateElementBounds: function(element) {\n      const rect = element.getBoundingClientRect();\n      const dpi = this.dpiScale;\n      \n      return {\n        left: Math.round(rect.left * dpi),\n        top: Math.round(rect.top * dpi),\n        right: Math.round(rect.right * dpi),\n        bottom: Math.round(rect.bottom * dpi),\n        width: Math.round(rect.width * dpi),\n        height: Math.round(rect.height * dpi)\n      };\n    },\n    \n    // Show debug border\n    _showDebugBorder: function(bounds, element) {\n      // Remove old border if exists\n      const oldBorder = element._anywpDebugBorder;\n      if (oldBorder && oldBorder.parentNode) {\n        oldBorder.parentNode.removeChild(oldBorder);\n      }\n      \n      const border = document.createElement('div');\n      border.className = 'AnyWP-debug-border';\n      border.style.cssText = \n        'position: fixed;' +\n        'left: ' + (bounds.left / this.dpiScale) + 'px;' +\n        'top: ' + (bounds.top / this.dpiScale) + 'px;' +\n        'width: ' + (bounds.width / this.dpiScale) + 'px;' +\n        'height: ' + (bounds.height / this.dpiScale) + 'px;' +\n        'border: 2px solid red;' +\n        'box-shadow: 0 0 10px red;' +\n        'pointer-events: none;' +\n        'z-index: 999999;';\n      document.body.appendChild(border);\n      \n      element._anywpDebugBorder = border;\n    },\n    \n    // Check if point is in bounds\n    _isInBounds: function(x, y, bounds) {\n      return x >= bounds.left && x <= bounds.right &&\n             y >= bounds.top && y <= bounds.bottom;\n    },\n    \n    // Handle click event from native\n    _handleClick: function(x, y) {\n      this._log('Click at: (' + x + ',' + y + ')');\n      \n      for (let i = 0; i < this._clickHandlers.length; i++) {\n        const handler = this._clickHandlers[i];\n        \n        if (this._isInBounds(x, y, handler.bounds)) {\n          this._log('HIT: ' + (handler.element.id || handler.element.className));\n          handler.callback(x, y);\n          break;\n        }\n      }\n    },\n    \n    // Wait for element to appear in DOM\n    _waitForElement: function(selector, callback, maxWait) {\n      const self = this;\n      const startTime = Date.now();\n      maxWait = maxWait || 10000;\n      \n      function check() {\n        const element = document.querySelector(selector);\n        if (element) {\n          callback(element);\n        } else if (Date.now() - startTime < maxWait) {\n          setTimeout(check, 100);\n        } else {\n          console.error('[AnyWP] Element not found: ' + selector);\n        }\n      }\n      \n      check();\n    },\n    \n    // Register click handler with SPA support\n    onClick: function(element, callback, options) {\n      const self = this;\n      options = options || {};\n      \n      const immediate = options.immediate || false;\n      const waitFor = options.waitFor !== undefined ? options.waitFor : !immediate;\n      const maxWait = options.maxWait || 10000;\n      const autoRefresh = options.autoRefresh !== undefined ? options.autoRefresh : this._autoRefreshEnabled;\n      const delay = options.delay || (immediate ? 0 : 100);\n      \n      function registerElement(el) {\n        if (!el) {\n          console.error('[AnyWP] Element not found:', element);\n          return;\n        }\n        \n        // Check if already registered\n        const existingIndex = self._clickHandlers.findIndex(function(h) {\n          return h.element === el;\n        });\n        \n        if (existingIndex !== -1) {\n          self._log('Element already registered, updating bounds...');\n          self._clickHandlers.splice(existingIndex, 1);\n        }\n        \n        // Calculate bounds\n        const bounds = self._calculateElementBounds(el);\n        \n        // Register handler\n        const handlerData = {\n          element: el,\n          callback: callback,\n          bounds: bounds,\n          selector: typeof element === 'string' ? element : null,\n          autoRefresh: autoRefresh,\n          options: options\n        };\n        \n        self._clickHandlers.push(handlerData);\n        \n        // Setup ResizeObserver\n        if (autoRefresh && window.ResizeObserver) {\n          const resizeObserver = new ResizeObserver(function() {\n            self._refreshElementBounds(handlerData);\n          });\n          resizeObserver.observe(el);\n          handlerData.resizeObserver = resizeObserver;\n        }\n        \n        // Debug output\n        const showDebug = (options.debug !== undefined) ? options.debug : self._debugMode;\n        if (showDebug) {\n          console.log('[AnyWP] Click Handler Registered:', el.id || el.className);\n          console.log('  Physical: [' + bounds.left + ',' + bounds.top + '] ~ [' + \n                      bounds.right + ',' + bounds.bottom + ']');\n          console.log('  Size: ' + bounds.width + 'x' + bounds.height);\n          \n          self._showDebugBorder(bounds, el);\n        }\n      }\n      \n      // Execute registration\n      if (immediate) {\n        let el = element;\n        if (typeof element === 'string') {\n          el = document.querySelector(element);\n        }\n        registerElement(el);\n      } else if (waitFor && typeof element === 'string') {\n        this._waitForElement(element, registerElement, maxWait);\n      } else {\n        setTimeout(function() {\n          let el = element;\n          if (typeof element === 'string') {\n            el = document.querySelector(element);\n          }\n          registerElement(el);\n        }, delay);\n      }\n    },\n    \n    // Refresh bounds for a specific handler\n    _refreshElementBounds: function(handler) {\n      if (!handler.element || !handler.element.isConnected) {\n        return;\n      }\n      \n      const newBounds = this._calculateElementBounds(handler.element);\n      \n      const changed = \n        newBounds.left !== handler.bounds.left ||\n        newBounds.top !== handler.bounds.top ||\n        newBounds.width !== handler.bounds.width ||\n        newBounds.height !== handler.bounds.height;\n      \n      if (changed) {\n        handler.bounds = newBounds;\n        \n        if (handler.element._anywpDebugBorder) {\n          this._showDebugBorder(newBounds, handler.element);\n        }\n      }\n    },\n    \n    // Refresh all registered click handle
+// AnyWP Engine SDK v4.0.0 - JavaScript Bridge
+// Auto-injected into WebView2
+// React/Vue SPA Compatible
+
+(function() {
+  'use strict';
+
+  // AnyWP Global Object
+  window.AnyWP = {
+    version: '4.2.0',
+    dpiScale: window.devicePixelRatio || 1,
+    screenWidth: screen.width * (window.devicePixelRatio || 1),
+    screenHeight: screen.height * (window.devicePixelRatio || 1),
+    interactionEnabled: true,  // Default: enabled for drag support
+    
+    // Internal state
+    _debugMode: false,
+    _clickHandlers: [],
+    _mouseCallbacks: [],
+    _keyboardCallbacks: [],
+    _visibilityCallback: null,
+    _mutationObserver: null,
+    _resizeObserver: null,
+    _spaMode: false,
+    _autoRefreshEnabled: true,
+    _draggableElements: [],
+    _dragState: null,
+    _persistedState: {},
+    
+    // Initialize
+    _init: function() {
+      console.log('========================================');
+      console.log('AnyWP Engine v' + this.version + ' (SPA Compatible)');
+      console.log('========================================');
+      console.log('Screen: ' + this.screenWidth + 'x' + this.screenHeight);
+      console.log('DPI Scale: ' + this.dpiScale + 'x');
+      console.log('Interaction Enabled: ' + this.interactionEnabled);
+      console.log('========================================');
+      
+      this._detectDebugMode();
+      this._detectSPA();
+      this._setupEventListeners();
+      
+      // Enable debug mode automatically for testing
+      this._debugMode = true;
+      console.log('[AnyWP] Debug mode ENABLED automatically');
+    },
+    
+    // Detect SPA framework
+    _detectSPA: function() {
+      const self = this;
+      
+      // Immediate check for React/Vue/Angular globals
+      const isReact = !!(window.React || window.ReactDOM);
+      const isVue = !!(window.Vue);
+      const isAngular = !!(window.angular);
+      
+      if (isReact || isVue || isAngular) {
+        self._spaMode = true;
+        const framework = isReact ? 'React' : (isVue ? 'Vue' : 'Angular');
+        console.log('[AnyWP] SPA Framework detected: ' + framework);
+        self._setupSPAMonitoring();
+      } else {
+        // Delayed check for DOM elements
+        setTimeout(function() {
+          const isReactDOM = !!document.querySelector('[data-reactroot], [data-reactid], #root');
+          const isVueDOM = !!document.querySelector('[data-v-]');
+          const isAngularDOM = !!document.querySelector('[ng-version]');
+          
+          if (isReactDOM || isVueDOM || isAngularDOM) {
+            self._spaMode = true;
+            const framework = isReactDOM ? 'React' : (isVueDOM ? 'Vue' : 'Angular');
+            console.log('[AnyWP] SPA Framework detected: ' + framework);
+            self._setupSPAMonitoring();
+          }
+        }, 500);
+      }
+    },
+    
+    // Detect debug mode from URL parameter
+    _detectDebugMode: function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('debug')) {
+        this._debugMode = true;
+        console.log('[AnyWP] Debug mode ENABLED');
+      }
+    },
+    
+    // Enable debug mode manually
+    enableDebug: function() {
+      this._debugMode = true;
+      console.log('[AnyWP] Debug mode ENABLED');
+    },
+    
+    // Enable/Disable SPA mode manually
+    setSPAMode: function(enabled) {
+      this._spaMode = enabled;
+      console.log('[AnyWP] SPA mode: ' + (enabled ? 'ENABLED' : 'DISABLED'));
+      
+      if (enabled) {
+        this._setupSPAMonitoring();
+      } else {
+        this._teardownSPAMonitoring();
+      }
+    },
+    
+    // Log with debug control
+    _log: function(message, forceLog) {
+      if (this._debugMode || forceLog) {
+        console.log('[AnyWP] ' + message);
+      }
+    },
+    
+    // Calculate element bounds in physical pixels
+    _calculateElementBounds: function(element) {
+      const rect = element.getBoundingClientRect();
+      const dpi = this.dpiScale;
+      
+      return {
+        left: Math.round(rect.left * dpi),
+        top: Math.round(rect.top * dpi),
+        right: Math.round(rect.right * dpi),
+        bottom: Math.round(rect.bottom * dpi),
+        width: Math.round(rect.width * dpi),
+        height: Math.round(rect.height * dpi)
+      };
+    },
+    
+    // Show debug border
+    _showDebugBorder: function(bounds, element) {
+      // Remove old border if exists
+      const oldBorder = element._anywpDebugBorder;
+      if (oldBorder && oldBorder.parentNode) {
+        oldBorder.parentNode.removeChild(oldBorder);
+      }
+      
+      const border = document.createElement('div');
+      border.className = 'AnyWP-debug-border';
+      border.style.cssText = 
+        'position: fixed;' +
+        'left: ' + (bounds.left / this.dpiScale) + 'px;' +
+        'top: ' + (bounds.top / this.dpiScale) + 'px;' +
+        'width: ' + (bounds.width / this.dpiScale) + 'px;' +
+        'height: ' + (bounds.height / this.dpiScale) + 'px;' +
+        'border: 2px solid red;' +
+        'box-shadow: 0 0 10px red;' +
+        'pointer-events: none;' +
+        'z-index: 999999;';
+      document.body.appendChild(border);
+      
+      element._anywpDebugBorder = border;
+    },
+    
+    // Check if point is in bounds
+    _isInBounds: function(x, y, bounds) {
+      return x >= bounds.left && x <= bounds.right &&
+             y >= bounds.top && y <= bounds.bottom;
+    },
+    
+    // Handle click event from native
+    _handleClick: function(x, y) {
+      this._log('Click at: (' + x + ',' + y + ')');
+      
+      for (let i = 0; i < this._clickHandlers.length; i++) {
+        const handler = this._clickHandlers[i];
+        
+        if (this._isInBounds(x, y, handler.bounds)) {
+          this._log('HIT: ' + (handler.element.id || handler.element.className));
+          handler.callback(x, y);
+          break;
+        }
+      }
+    },
+    
+    // Wait for element to appear in DOM
+    _waitForElement: function(selector, callback, maxWait) {
+      const self = this;
+      const startTime = Date.now();
+      maxWait = maxWait || 10000;
+      
+      function check() {
+        const element = document.querySelector(selector);
+        if (element) {
+          callback(element);
+        } else if (Date.now() - startTime < maxWait) {
+          setTimeout(check, 100);
+        } else {
+          console.error('[AnyWP] Element not found: ' + selector);
+        }
+      }
+      
+      check();
+    },
+    
+    // Register click handler with SPA support
+    onClick: function(element, callback, options) {
+      const self = this;
+      options = options || {};
+      
+      const immediate = options.immediate || false;
+      const waitFor = options.waitFor !== undefined ? options.waitFor : !immediate;
+      const maxWait = options.maxWait || 10000;
+      const autoRefresh = options.autoRefresh !== undefined ? options.autoRefresh : this._autoRefreshEnabled;
+      const delay = options.delay || (immediate ? 0 : 100);
+      
+      function registerElement(el) {
+        if (!el) {
+          console.error('[AnyWP] Element not found:', element);
+          return;
+        }
+        
+        // Check if already registered
+        const existingIndex = self._clickHandlers.findIndex(function(h) {
+          return h.element === el;
+        });
+        
+        if (existingIndex !== -1) {
+          self._log('Element already registered, updating bounds...');
+          self._clickHandlers.splice(existingIndex, 1);
+        }
+        
+        // Calculate bounds
+        const bounds = self._calculateElementBounds(el);
+        
+        // Register handler
+        const handlerData = {
+          element: el,
+          callback: callback,
+          bounds: bounds,
+          selector: typeof element === 'string' ? element : null,
+          autoRefresh: autoRefresh,
+          options: options
+        };
+        
+        self._clickHandlers.push(handlerData);
+        
+        // Setup ResizeObserver
+        if (autoRefresh && window.ResizeObserver) {
+          const resizeObserver = new ResizeObserver(function() {
+            self._refreshElementBounds(handlerData);
+          });
+          resizeObserver.observe(el);
+          handlerData.resizeObserver = resizeObserver;
+        }
+        
+        // Debug output
+        const showDebug = (options.debug !== undefined) ? options.debug : self._debugMode;
+        if (showDebug) {
+          console.log('[AnyWP] Click Handler Registered:', el.id || el.className);
+          console.log('  Physical: [' + bounds.left + ',' + bounds.top + '] ~ [' + 
+                      bounds.right + ',' + bounds.bottom + ']');
+          console.log('  Size: ' + bounds.width + 'x' + bounds.height);
+          
+          self._showDebugBorder(bounds, el);
+        }
+      }
+      
+      // Execute registration
+      if (immediate) {
+        let el = element;
+        if (typeof element === 'string') {
+          el = document.querySelector(element);
+        }
+        registerElement(el);
+      } else if (waitFor && typeof element === 'string') {
+        this._waitForElement(element, registerElement, maxWait);
+      } else {
+        setTimeout(function() {
+          let el = element;
+          if (typeof element === 'string') {
+            el = document.querySelector(element);
+          }
+          registerElement(el);
+        }, delay);
+      }
+    },
+    
+    // Refresh bounds for a specific handler
+    _refreshElementBounds: function(handler) {
+      if (!handler.element || !handler.element.isConnected) {
+        return;
+      }
+      
+      const newBounds = this._calculateElementBounds(handler.element);
+      
+      const changed = 
+        newBounds.left !== handler.bounds.left ||
+        newBounds.top !== handler.bounds.top ||
+        newBounds.width !== handler.bounds.width ||
+        newBounds.height !== handler.bounds.height;
+      
+      if (changed) {
+        handler.bounds = newBounds;
+        
+        if (handler.element._anywpDebugBorder) {
+          this._showDebugBorder(newBounds, handler.element);
+        }
+      }
+    },
+    
+    // Refresh all registered click handle
 )SDK_CHUNK";
   sdk += R"SDK_CHUNK(
-rs' bounds\n    refreshBounds: function() {\n      const self = this;\n      let refreshed = 0;\n      \n      this._clickHandlers.forEach(function(handler) {\n        if (handler.element && handler.element.isConnected) {\n          self._refreshElementBounds(handler);\n          refreshed++;\n        }\n      });\n      \n      this._log('Refreshed ' + refreshed + ' elements', true);\n      return refreshed;\n    },\n    \n    // Clear all registered handlers\n    clearHandlers: function() {\n      this._clickHandlers.forEach(function(handler) {\n        if (handler.resizeObserver) {\n          handler.resizeObserver.disconnect();\n        }\n        if (handler.element && handler.element._anywpDebugBorder) {\n          const border = handler.element._anywpDebugBorder;\n          if (border.parentNode) {\n            border.parentNode.removeChild(border);\n          }\n        }\n      });\n      \n      this._clickHandlers = [];\n      this._log('All handlers cleared', true);\n    },\n    \n    // Setup SPA monitoring\n    _setupSPAMonitoring: function() {\n      const self = this;\n      \n      // Monitor history changes\n      const originalPushState = history.pushState;\n      const originalReplaceState = history.replaceState;\n      \n      history.pushState = function() {\n        originalPushState.apply(history, arguments);\n        self._onRouteChange();\n      };\n      \n      history.replaceState = function() {\n        originalReplaceState.apply(history, arguments);\n        self._onRouteChange();\n      };\n      \n      window.addEventListener('popstate', function() {\n        self._onRouteChange();\n      });\n      \n      // Monitor DOM mutations\n      if (window.MutationObserver) {\n        this._mutationObserver = new MutationObserver(function(mutations) {\n          let shouldRefresh = false;\n          \n          mutations.forEach(function(mutation) {\n            if (mutation.type === 'childList' || mutation.type === 'attributes') {\n              self._clickHandlers.forEach(function(handler) {\n                if (mutation.target === handler.element || \n                    mutation.target.contains(handler.element)) {\n                  shouldRefresh = true;\n                }\n              });\n            }\n          });\n          \n          if (shouldRefresh) {\n            self.refreshBounds();\n          }\n        });\n        \n        this._mutationObserver.observe(document.body, {\n          childList: true,\n          subtree: true,\n          attributes: true,\n          attributeFilter: ['class', 'style']\n        });\n      }\n    },\n    \n    // Teardown SPA monitoring\n    _teardownSPAMonitoring: function() {\n      if (this._mutationObserver) {\n        this._mutationObserver.disconnect();\n        this._mutationObserver = null;\n      }\n    },\n    \n    // Handle SPA route change\n    _onRouteChange: function() {\n      const self = this;\n      this._log('Route changed, refreshing...');\n      \n      setTimeout(function() {\n        self._clickHandlers.forEach(function(handler) {\n          if (handler.selector && handler.autoRefresh) {\n            const newElement = document.querySelector(handler.selector);\n            if (newElement && newElement !== handler.element) {\n              handler.element = newElement;\n              self._refreshElementBounds(handler);\n              \n              if (handler.resizeObserver) {\n                handler.resizeObserver.disconnect();\n              }\n              if (window.ResizeObserver) {\n                const resizeObserver = new ResizeObserver(function() {\n                  self._refreshElementBounds(handler);\n                });\n                resizeObserver.observe(newElement);\n                handler.resizeObserver = resizeObserver;\n              }\n            }\n          }\n        });\n        \n        self.refreshBounds();\n      }, 500);\n    },\n    \n    // Open URL in default browser\n    openURL: function(url) {\n      this._log('Opening URL: ' + url);\n      \n      if (window.chrome && window.chrome.webview) {\n        window.chrome.webview.postMessage({\n          type: 'openURL',\n          url: url\n        });\n      } else {\n        console.warn('[AnyWP] Native bridge not available');\n        window.open(url, '_blank');\n      }\n    },\n    \n    // Notify wallpaper is ready\n    ready: function(name) {\n      this._log('Wallpaper ready: ' + name, true);\n      \n      if (window.chrome && window.chrome.webview) {\n        window.chrome.webview.postMessage({\n          type: 'ready',\n          name: name\n        });\n      }\n    },\n    \n    // Register mouse event callback\n    onMouse: function(callback) {\n      this._mouseCallbacks.push(callback);\n      this._log('Mouse callback registered');\n    },\n    \n    // Register keyboard event callback\n    onKeyboard: function(callback) {\n      this._keyboardCallbacks.push(callback);\n      this._log('Keyboard callback registered');\n    },\n    \n  // Setup event listeners\n  _setupEventListeners: function() {\n    const self = this;\n    \n    window.addEventListener('AnyWP:mouse', function(event) {\n      self._mouseCallbacks.forEach(function(cb) {\n        cb(event.detail);\n      });\n    });\n    \n    window.addEventListener('AnyWP:keyboard', function(event) {\n      self._keyboardCallbacks.forEach(function(cb) {\n        cb(event.detail);\n      });\n    });\n    \n    window.addEventListener('AnyWP:click', function(event) {\n      self._handleClick(event.detail.x, event.detail.y);\n    });\n    \n    window.addEventListener('AnyWP:interactionMode', function(event) {\n      self.interactionEnabled = event.detail.enabled;\n      self._log('Interaction mode: ' + (self.interactionEnabled ? 'ON' : 'OFF'), true);\n    });\n    \n    // NEW: Handle visibility changes for power saving\n    window.addEventListener('AnyWP:visibility', function(event) {\n      const visible = event.detail.visible;\n      self._log('Visibility changed: ' + (visible ? 'visible' : 'hidden'), true);\n      \n      // Notify user callback if set\n      if (self._visibilityCallback) {\n        self._visibilityCallback(visible);\n      }\n      \n      // Auto-pause animations when hidden (for better power saving)\n      if (!visible) {\n        self._autoPauseAnimations();\n      } else {\n        self._autoResumeAnimations();\n      }\n    });\n    \n    window.addEventListener('resize', function() {\n      self._log('Window resized, refreshing...');\n      setTimeout(function() {\n        self.refreshBounds();\n      }, 200);\n    });\n  },\n  \n  // NEW: Register visibility callback\n  onVisibilityChange: function(callback) {\n    this._visibilityCallback = callback;\n    this._log('Visibility callback registered');\n  },\n  \n  // NEW: Auto-pause animations when hidden\n  _autoPauseAnimations: function() {\n    if (!window.__anyWP_animationsPaused) {\n      this._log('Auto-pausing animations for power saving');\n      window.__anyWP_animationsPaused = true;\n      \n      // Pause videos\n      const videos = document.querySelectorAll('video');\n      videos.forEach(function(video) {\n        if (!video.paused) {\n          video.__anyWP_wasPlaying = true;\n          video.pause();\n        }\n      });\n      \n      // Pause audio\n      const audios = document.querySelectorAll('audio');\n      audios.forEach(function(audio) {\n        if (!audio.paused) {\n          audio.__anyWP_wasPlaying = true;\n          audio.pause();\n        }\n      });\n    }\n  },\n  \n  // NEW: Auto-resume animations when visible\n  _autoResumeAnimations: function() {\n    if (window.__anyWP_animationsPaused) {\n      this._log('Auto-resuming animations');\n      window.__anyWP_animationsPaused = false;\n      \n      // Resume videos\n      const videos = document.querySelectorAll('video');\n      videos.forEach(function(video) {\n        if (video.__anyWP_wasPlaying) {\n          video.play();\n          delete video.__anyWP_wasPlaying;\n        }\n      });\n      \n      // Resume audio\n      const audios = document.querySelectorAll('audio');\n      audios.forEach(function(audio) {\n        if (audio.__anyWP_wasPlaying) {\n          audio.play();\n          delete audio.__anyWP_wasPlaying;\n        }\n      });\n    }\n  },\n  \n  // ========== Drag & Drop Support ==========\n  \n  // Make element draggable\n  makeDraggable: function(element, options) {\n    const self = this;\n    options = options || {};\n    \n    const persistKey = options.persistKey || null;\n    const onDragStart = options.onDragStart || null;\n    const onDrag = options.onDrag || null;\n    const onDragEnd = options.onDragEnd || null;\n    const bounds = options.bounds || null; // {left, top, right, bottom}\n    \n    let el = element;\n    if (typeof element === 'string') {\n      el = document.querySelector(element);\n    }\n    \n    if (!el) {\n      console.error('[AnyWP] Element not found:', element);\n      return;\n    }\n    \n    // Load persisted position if available\n    if (persistKey && self._persistedState[persistKey]) {\n      const savedPos = self._persistedState[persistKey];\n      el.style.position = 'absolute';\n      el.style.left = savedPos.left + 'px';\n      el.style.top = savedPos.top + 'px';\n      self._log('Restored position for ' + persistKey + ': ' + savedPos.left + ',' + savedPos.top);\n    }\n    \n    // Register draggable element\n    const draggableData = {\n      element: el,\n      persistKey: persistKey,\n      onDragStart: onDragStart,\n      onDrag: onDrag,\n      onDragEnd: onDragEnd,\n      bounds: bounds\n    };\n    \n    self._draggableElements.push(draggableData);\n    \n    // Make element absolutely positioned if not already\n    if (window.getComputedStyle(el).position === 'static') {\n      el.style.position = 'absolute';\n    }\n    \n    // Set cursor and disable system drag behaviors\n    el.style.cursor = 'move';\n    el.style.userSelect = 'none';\n    el.style.webkitUserSelect = 'none';\n    el.style.mozUserSelect = 'none';\n    el.style.msUserSelect = 'none';\n    \n    // Prevent system drag/drop\n    el.draggable = false;\n    el.ondragstart = function(e) { \n      e.preventDefault(); \n      return false; \n    };\n    \n    // Prevent text selectio
+rs' bounds
+    refreshBounds: function() {
+      const self = this;
+      let refreshed = 0;
+      
+      this._clickHandlers.forEach(function(handler) {
+        if (handler.element && handler.element.isConnected) {
+          self._refreshElementBounds(handler);
+          refreshed++;
+        }
+      });
+      
+      this._log('Refreshed ' + refreshed + ' elements', true);
+      return refreshed;
+    },
+    
+    // Clear all registered handlers
+    clearHandlers: function() {
+      this._clickHandlers.forEach(function(handler) {
+        if (handler.resizeObserver) {
+          handler.resizeObserver.disconnect();
+        }
+        if (handler.element && handler.element._anywpDebugBorder) {
+          const border = handler.element._anywpDebugBorder;
+          if (border.parentNode) {
+            border.parentNode.removeChild(border);
+          }
+        }
+      });
+      
+      this._clickHandlers = [];
+      this._log('All handlers cleared', true);
+    },
+    
+    // Setup SPA monitoring
+    _setupSPAMonitoring: function() {
+      const self = this;
+      
+      // Monitor history changes
+      const originalPushState = history.pushState;
+      const originalReplaceState = history.replaceState;
+      
+      history.pushState = function() {
+        originalPushState.apply(history, arguments);
+        self._onRouteChange();
+      };
+      
+      history.replaceState = function() {
+        originalReplaceState.apply(history, arguments);
+        self._onRouteChange();
+      };
+      
+      window.addEventListener('popstate', function() {
+        self._onRouteChange();
+      });
+      
+      // Monitor DOM mutations
+      if (window.MutationObserver) {
+        this._mutationObserver = new MutationObserver(function(mutations) {
+          let shouldRefresh = false;
+          
+          mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' || mutation.type === 'attributes') {
+              self._clickHandlers.forEach(function(handler) {
+                if (mutation.target === handler.element || 
+                    mutation.target.contains(handler.element)) {
+                  shouldRefresh = true;
+                }
+              });
+            }
+          });
+          
+          if (shouldRefresh) {
+            self.refreshBounds();
+          }
+        });
+        
+        this._mutationObserver.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['class', 'style']
+        });
+      }
+    },
+    
+    // Teardown SPA monitoring
+    _teardownSPAMonitoring: function() {
+      if (this._mutationObserver) {
+        this._mutationObserver.disconnect();
+        this._mutationObserver = null;
+      }
+    },
+    
+    // Handle SPA route change
+    _onRouteChange: function() {
+      const self = this;
+      this._log('Route changed, refreshing...');
+      
+      setTimeout(function() {
+        self._clickHandlers.forEach(function(handler) {
+          if (handler.selector && handler.autoRefresh) {
+            const newElement = document.querySelector(handler.selector);
+            if (newElement && newElement !== handler.element) {
+              handler.element = newElement;
+              self._refreshElementBounds(handler);
+              
+              if (handler.resizeObserver) {
+                handler.resizeObserver.disconnect();
+              }
+              if (window.ResizeObserver) {
+                const resizeObserver = new ResizeObserver(function() {
+                  self._refreshElementBounds(handler);
+                });
+                resizeObserver.observe(newElement);
+                handler.resizeObserver = resizeObserver;
+              }
+            }
+          }
+        });
+        
+        self.refreshBounds();
+      }, 500);
+    },
+    
+    // Open URL in default browser
+    openURL: function(url) {
+      this._log('Opening URL: ' + url);
+      
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage({
+          type: 'openURL',
+          url: url
+        });
+      } else {
+        console.warn('[AnyWP] Native bridge not available');
+        window.open(url, '_blank');
+      }
+    },
+    
+    // Notify wallpaper is ready
+    ready: function(name) {
+      this._log('Wallpaper ready: ' + name, true);
+      
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage({
+          type: 'ready',
+          name: name
+        });
+      }
+    },
+    
+    // Register mouse event callback
+    onMouse: function(callback) {
+      this._mouseCallbacks.push(callback);
+      this._log('Mouse callback registered');
+    },
+    
+    // Register keyboard event callback
+    onKeyboard: function(callback) {
+      this._keyboardCallbacks.push(callback);
+      this._log('Keyboard callback registered');
+    },
+    
+  // Setup event listeners
+  _setupEventListeners: function() {
+    const self = this;
+    
+    window.addEventListener('AnyWP:mouse', function(event) {
+      self._mouseCallbacks.forEach(function(cb) {
+        cb(event.detail);
+      });
+    });
+    
+    window.addEventListener('AnyWP:keyboard', function(event) {
+      self._keyboardCallbacks.forEach(function(cb) {
+        cb(event.detail);
+      });
+    });
+    
+    window.addEventListener('AnyWP:click', function(event) {
+      self._handleClick(event.detail.x, event.detail.y);
+    });
+    
+    window.addEventListener('AnyWP:interactionMode', function(event) {
+      self.interactionEnabled = event.detail.enabled;
+      self._log('Interaction mode: ' + (self.interactionEnabled ? 'ON' : 'OFF'), true);
+    });
+    
+    // NEW: Handle visibility changes for power saving
+    window.addEventListener('AnyWP:visibility', function(event) {
+      const visible = event.detail.visible;
+      self._log('Visibility changed: ' + (visible ? 'visible' : 'hidden'), true);
+      
+      // Notify user callback if set
+      if (self._visibilityCallback) {
+        self._visibilityCallback(visible);
+      }
+      
+      // Auto-pause animations when hidden (for better power saving)
+      if (!visible) {
+        self._autoPauseAnimations();
+      } else {
+        self._autoResumeAnimations();
+      }
+    });
+    
+    window.addEventListener('resize', function() {
+      self._log('Window resized, refreshing...');
+      setTimeout(function() {
+        self.refreshBounds();
+      }, 200);
+    });
+  },
+  
+  // NEW: Register visibility callback
+  onVisibilityChange: function(callback) {
+    this._visibilityCallback = callback;
+    this._log('Visibility callback registered');
+  },
+  
+  // NEW: Auto-pause animations when hidden
+  _autoPauseAnimations: function() {
+    if (!window.__anyWP_animationsPaused) {
+      this._log('Auto-pausing animations for power saving');
+      window.__anyWP_animationsPaused = true;
+      
+      // Pause videos
+      const videos = document.querySelectorAll('video');
+      videos.forEach(function(video) {
+        if (!video.paused) {
+          video.__anyWP_wasPlaying = true;
+          video.pause();
+        }
+      });
+      
+      // Pause audio
+      const audios = document.querySelectorAll('audio');
+      audios.forEach(function(audio) {
+        if (!audio.paused) {
+          audio.__anyWP_wasPlaying = true;
+          audio.pause();
+        }
+      });
+    }
+  },
+  
+  // NEW: Auto-resume animations when visible
+  _autoResumeAnimations: function() {
+    if (window.__anyWP_animationsPaused) {
+      this._log('Auto-resuming animations');
+      window.__anyWP_animationsPaused = false;
+      
+      // Resume videos
+      const videos = document.querySelectorAll('video');
+      videos.forEach(function(video) {
+        if (video.__anyWP_wasPlaying) {
+          video.play();
+          delete video.__anyWP_wasPlaying;
+        }
+      });
+      
+      // Resume audio
+      const audios = document.querySelectorAll('audio');
+      audios.forEach(function(audio) {
+        if (audio.__anyWP_wasPlaying) {
+          audio.play();
+          delete audio.__anyWP_wasPlaying;
+        }
+      });
+    }
+  },
+  
+  // ========== Drag & Drop Support ==========
+  
+  // Make element draggable
+  makeDraggable: function(element, options) {
+    const self = this;
+    options = options || {};
+    
+    const persistKey = options.persistKey || null;
+    const onDragStart = options.onDragStart || null;
+    const onDrag = options.onDrag || null;
+    const onDragEnd = options.onDragEnd || null;
+    const bounds = options.bounds || null; // {left, top, right, bottom}
+    
+    let el = element;
+    if (typeof element === 'string') {
+      el = document.querySelector(element);
+    }
+    
+    if (!el) {
+      console.error('[AnyWP] Element not found:', element);
+      return;
+    }
+    
+    // Load persisted position if available
+    if (persistKey && self._persistedState[persistKey]) {
+      const savedPos = self._persistedState[persistKey];
+      el.style.position = 'absolute';
+      el.style.left = savedPos.left + 'px';
+      el.style.top = savedPos.top + 'px';
+      self._log('Restored position for ' + persistKey + ': ' + savedPos.left + ',' + savedPos.top);
+    }
+    
+    // Register draggable element
+    const draggableData = {
+      element: el,
+      persistKey: persistKey,
+      onDragStart: onDragStart,
+      onDrag: onDrag,
+      onDragEnd: onDragEnd,
+      bounds: bounds
+    };
+    
+    self._draggableElements.push(draggableData);
+    
+    // Make element absolutely positioned if not already
+    if (window.getComputedStyle(el).position === 'static') {
+      el.style.position = 'absolute';
+    }
+    
+    // Set cursor and disable system drag behaviors
+    el.style.cursor = 'move';
+    el.style.userSelect = 'none';
+    el.style.webkitUserSelect = 'none';
+    el.style.mozUserSelect = 'none';
+    el.style.msUserSelect = 'none';
+    
+    // Prevent system drag/drop
+    el.draggable = false;
+    el.ondragstart = function(e) { 
+      e.preventDefault(); 
+      return false; 
+    };
+    
+    // Prevent text selectio
 )SDK_CHUNK";
   sdk += R"SDK_CHUNK(
-n during drag\n    el.onselectstart = function(e) {\n      e.preventDefault();\n      return false;\n    };\n    \n    // IMPORTANT: Use AnyWP:mouse events instead of DOM events\n    // This allows dragging even with transparent windows (mouse hook architecture)\n    \n    // Register global mouse handler for this element\n    function handleGlobalMouse(event) {\n      if (!self.interactionEnabled) {\n        self._log('[makeDraggable] Interaction disabled, ignoring event');\n        return;\n      }\n      \n      const detail = event.detail;\n      const mouseX = detail.x;\n      const mouseY = detail.y;\n      const mouseType = detail.type;\n      \n      // Debug log for non-mousemove events\n      if (mouseType !== 'mousemove') {\n        self._log('[makeDraggable] Mouse event: ' + mouseType + ' at (' + mouseX + ',' + mouseY + ')');\n      }\n      \n      const rect = el.getBoundingClientRect();\n      const dpi = self.dpiScale;\n      \n      // Convert to physical pixels\n      const physicalLeft = Math.round(rect.left * dpi);\n      const physicalTop = Math.round(rect.top * dpi);\n      const physicalRight = Math.round(rect.right * dpi);\n      const physicalBottom = Math.round(rect.bottom * dpi);\n      \n      // Check if mouse is over this element\n      const isOver = mouseX >= physicalLeft && mouseX <= physicalRight &&\n                     mouseY >= physicalTop && mouseY <= physicalBottom;\n      \n      // Debug: log mousedown events\n      if (mouseType === 'mousedown') {\n        console.log('[AnyWP] [makeDraggable] mousedown - isOver:', isOver, \n                    'dragState:', self._dragState ? 'EXISTS' : 'NULL',\n                    'mouse:', mouseX, mouseY,\n                    'bounds:', '[' + physicalLeft + ',' + physicalTop + ']-[' + physicalRight + ',' + physicalBottom + ']');\n      }\n      \n      if (mouseType === 'mousedown' && isOver && !self._dragState) {\n        // Start dragging\n        console.log('[AnyWP] [Drag] START - Mouse at (' + mouseX + ',' + mouseY + '), Element bounds: [' + \n                    physicalLeft + ',' + physicalTop + '] - [' + physicalRight + ',' + physicalBottom + ']');\n        \n        self._dragState = {\n          element: el,\n          data: draggableData,\n          startX: mouseX,\n          startY: mouseY,\n          offsetX: mouseX - physicalLeft,\n          offsetY: mouseY - physicalTop,\n          initialLeft: physicalLeft,\n          initialTop: physicalTop\n        };\n        \n        if (onDragStart) {\n          onDragStart({\n            x: physicalLeft / dpi,\n            y: physicalTop / dpi\n          });\n        }\n        \n        self._log('Drag start at: ' + mouseX + ',' + mouseY + ' (element at ' + physicalLeft + ',' + physicalTop + ')', true);\n      }\n      else if (mouseType === 'mousemove' && self._dragState && self._dragState.element === el) {\n        // Continue dragging\n        console.log('[AnyWP] [Drag] MOVE - Mouse:', mouseX, mouseY);\n        \n        let newPhysicalLeft = mouseX - self._dragState.offsetX;\n        let newPhysicalTop = mouseY - self._dragState.offsetY;\n        \n        // Apply bounds if specified (convert to physical pixels)\n        if (bounds) {\n          if (bounds.left !== undefined) {\n            newPhysicalLeft = Math.max(bounds.left * dpi, newPhysicalLeft);\n          }\n          if (bounds.top !== undefined) {\n            newPhysicalTop = Math.max(bounds.top * dpi, newPhysicalTop);\n          }\n          if (bounds.right !== undefined) {\n            newPhysicalLeft = Math.min((bounds.right - el.offsetWidth) * dpi, newPhysicalLeft);\n          }\n          if (bounds.bottom !== undefined) {\n            newPhysicalTop = Math.min((bounds.bottom - el.offsetHeight) * dpi, newPhysicalTop);\n          }\n        }\n        \n        // Convert back to CSS pixels\n        const newLeft = newPhysicalLeft / dpi;\n        const newTop = newPhysicalTop / dpi;\n        \n        el.style.left = newLeft + 'px';\n        el.style.top = newTop + 'px';\n        \n        if (onDrag) {\n          onDrag({\n            x: newLeft,\n            y: newTop,\n            deltaX: (mouseX - self._dragState.startX) / dpi,\n            deltaY: (mouseY - self._dragState.startY) / dpi\n          });\n        }\n      }\n      else if (mouseType === 'mouseup' && self._dragState && self._dragState.element === el) {\n        // End dragging\n        console.log('[AnyWP] [Drag] END');\n        \n        const finalRect = el.getBoundingClientRect();\n        const finalPos = {\n          x: finalRect.left,\n          y: finalRect.top\n        };\n        \n        // Save position if persistKey is provided\n        if (persistKey) {\n          self._saveElementPosition(persistKey, finalPos.x, finalPos.y);\n        }\n        \n        if (onDragEnd) {\n          onDragEnd(finalPos);\n        }\n        \n        self._log('Drag end at: ' + finalPos.x + ',' + finalPos.y, true);\n        \n        self._dragState = null;\n      }\n      else if (mouseType === 'mousedown' && !isOver) {\n        // Debug: mouse down but not over element\n        console.log('[AnyWP] [makeDraggable] mousedown NOT over element. Mouse: (' + mouseX + ',' + mouseY + \n                  '), Element: [' + physicalLeft + ',' + physicalTop + '] - [' + physicalRight + ',' + physicalBottom + ']');\n      }\n      else if (mouseType === 'mousemove' && self._dragState && self._dragState.element !== el) {\n        // Debug: moving but not this element\n        console.log('[AnyWP] [makeDraggable] mousemove but wrong element');\n      }\n      else if (mouseType === 'mousemove' && !self._dragState) {\n        // Debug: moving but no drag state\n        // Don't log this - too noisy\n      }\n    }\n    \n    // Listen to global mouse events from native layer\n    window.addEventListener('AnyWP:mouse', handleGlobalMouse);\n    \n    // Store event handler for cleanup\n    el.__anyWP_dragHandler = {\n      handleGlobalMouse: handleGlobalMouse\n    };\n    \n    this._log('Element made draggable (via mouse hook): ' + (el.id || el.className));\n  },\n  \n  // Remove draggable functionality\n  removeDraggable: function(element) {\n    let el = element;\n    if (typeof element === 'string') {\n      el = document.querySelector(element);\n    }\n    \n    if (!el) {\n      console.error('[AnyWP] Element not found:', element);\n      return;\n    }\n    \n    // Remove event handlers\n    if (el.__anyWP_dragHandler) {\n      window.removeEventListener('AnyWP:mouse', el.__anyWP_dragHandler.handleGlobalMouse);\n      delete el.__anyWP_dragHandler;\n    }\n    \n    // Remove from registry\n    this._draggableElements = this._draggableElements.filter(function(d) {\n      return d.element !== el;\n    });\n    \n    // Reset cursor\n    el.style.cursor = '';\n    el.style.userSelect = '';\n    \n    this._log('Removed draggable from element: ' + (el.id || el.className));\n  },\n  \n  // Save element position to native storage\n  _saveElementPosition: function(key, x, y) {\n    const self = this;\n    const position = { left: x, top: y };\n    \n    // Update local cache\n    self._persistedState[key] = position;\n    \n    // Send to native layer\n    if (window.chrome && window.chrome.webview) {\n      window.chrome.webview.postMessage({\n        type: 'saveState',\n        key: key,\n        value: JSON.stringify(position)\n      });\n      \n      self._log('Saved position for ' + key + ': ' + x + ',' + y);\n    } else {\n      // Fallback to localStorage\n      try {\n        localStorage.setItem('AnyWP_' + key, JSON.stringify(position));\n        self._log('Saved position to localStorage for ' + key + ': ' + x + ',' + y);\n      } catch (e) {\n        console.warn('[AnyWP] Failed to save state:', e);\n      }\n    }\n  },\n  \n  // Load state from native storage\n  loadState: function(key, callback) {\n    const self = this;\n    \n    // Check local cache first\n    if (self._persistedState[key]) {\n      callback(self._persistedState[key]);\n      return;\n    }\n    \n    // Request from native layer\n    if (window.chrome && window.chrome.webview) {\n      // Register one-time callback\n      const handler = function(event) {\n        if (event.detail && event.detail.type === 'stateLoaded' && event.detail.key === key) {\n          window.removeEventListener('AnyWP:stateLoaded', handler);\n          \n          const value = event.detail.value ? JSON.parse(event.detail.value) : null;\n          self._persistedState[key] = value;\n          callback(value);\n        }\n      };\n      \n      window.addEventListener('AnyWP:stateLoaded', handler);\n      \n      window.chrome.webview.postMessage({\n        type: 'loadState',\n        key: key\n      });\n      \n      // Timeout after 1 second\n      setTimeout(function() {\n        window.removeEventListener('AnyWP:stateLoaded', handler);\n      }, 1000);\n    } else {\n      // Fallback to localStorage\n      try {\n        const stored = localStorage.getItem('AnyWP_' + key);\n        const value = stored ? JSON.parse(stored) : null;\n        self._persistedState[key] = value;\n        callback(value);\n      } catch (e) {\n        console.warn('[AnyWP] Failed to load state:', e);\n        callback(null);\n      }\n    }\n  },\n  \n  // Save custom state\n  saveState: function(key, value) {\n    const self = this;\n    \n    // Update local cache\n    self._persistedState[key] = value;\n    \n    // Send to native layer\n    if (window.chrome && window.chrome.webview) {\n      window.chrome.webview.postMessage({\n        type: 'saveState',\n        key: key,\n        value: JSON.stringify(value)\n      });\n      \n      self._log('Saved state for ' + key);\n    } else {\n      // Fallback to localStorage\n      try {\n        localStorage.setItem('AnyWP_' + key, JSON.stringify(value));\n        self._log('Saved state to localStorage for ' + key);\n      } catch (e) {\n        console.warn('[AnyWP] Failed to save state:', e);\n      }\n    }\n  },\n  \n  // Clear all saved state\n  clearState: function() {\n    const self = this;\n    \n    self._persistedState = {};\n    \n    if (window.chrome && window.chrome.webview) {\n      window.chrome.webview.postMessage({\n        type: 'clear
+n during drag
+    el.onselectstart = function(e) {
+      e.preventDefault();
+      return false;
+    };
+    
+    // IMPORTANT: Use AnyWP:mouse events instead of DOM events
+    // This allows dragging even with transparent windows (mouse hook architecture)
+    
+    // Register global mouse handler for this element
+    function handleGlobalMouse(event) {
+      if (!self.interactionEnabled) {
+        self._log('[makeDraggable] Interaction disabled, ignoring event');
+        return;
+      }
+      
+      const detail = event.detail;
+      const mouseX = detail.x;
+      const mouseY = detail.y;
+      const mouseType = detail.type;
+      
+      // Debug log for non-mousemove events
+      if (mouseType !== 'mousemove') {
+        self._log('[makeDraggable] Mouse event: ' + mouseType + ' at (' + mouseX + ',' + mouseY + ')');
+      }
+      
+      const rect = el.getBoundingClientRect();
+      const dpi = self.dpiScale;
+      
+      // Convert to physical pixels
+      const physicalLeft = Math.round(rect.left * dpi);
+      const physicalTop = Math.round(rect.top * dpi);
+      const physicalRight = Math.round(rect.right * dpi);
+      const physicalBottom = Math.round(rect.bottom * dpi);
+      
+      // Check if mouse is over this element
+      const isOver = mouseX >= physicalLeft && mouseX <= physicalRight &&
+                     mouseY >= physicalTop && mouseY <= physicalBottom;
+      
+      // Debug: log mousedown events
+      if (mouseType === 'mousedown') {
+        console.log('[AnyWP] [makeDraggable] mousedown - isOver:', isOver, 
+                    'dragState:', self._dragState ? 'EXISTS' : 'NULL',
+                    'mouse:', mouseX, mouseY,
+                    'bounds:', '[' + physicalLeft + ',' + physicalTop + ']-[' + physicalRight + ',' + physicalBottom + ']');
+      }
+      
+      if (mouseType === 'mousedown' && isOver && !self._dragState) {
+        // Start dragging
+        console.log('[AnyWP] [Drag] START - Mouse at (' + mouseX + ',' + mouseY + '), Element bounds: [' + 
+                    physicalLeft + ',' + physicalTop + '] - [' + physicalRight + ',' + physicalBottom + ']');
+        
+        self._dragState = {
+          element: el,
+          data: draggableData,
+          startX: mouseX,
+          startY: mouseY,
+          offsetX: mouseX - physicalLeft,
+          offsetY: mouseY - physicalTop,
+          initialLeft: physicalLeft,
+          initialTop: physicalTop
+        };
+        
+        if (onDragStart) {
+          onDragStart({
+            x: physicalLeft / dpi,
+            y: physicalTop / dpi
+          });
+        }
+        
+        self._log('Drag start at: ' + mouseX + ',' + mouseY + ' (element at ' + physicalLeft + ',' + physicalTop + ')', true);
+      }
+      else if (mouseType === 'mousemove' && self._dragState && self._dragState.element === el) {
+        // Continue dragging
+        console.log('[AnyWP] [Drag] MOVE - Mouse:', mouseX, mouseY);
+        
+        let newPhysicalLeft = mouseX - self._dragState.offsetX;
+        let newPhysicalTop = mouseY - self._dragState.offsetY;
+        
+        // Apply bounds if specified (convert to physical pixels)
+        if (bounds) {
+          if (bounds.left !== undefined) {
+            newPhysicalLeft = Math.max(bounds.left * dpi, newPhysicalLeft);
+          }
+          if (bounds.top !== undefined) {
+            newPhysicalTop = Math.max(bounds.top * dpi, newPhysicalTop);
+          }
+          if (bounds.right !== undefined) {
+            newPhysicalLeft = Math.min((bounds.right - el.offsetWidth) * dpi, newPhysicalLeft);
+          }
+          if (bounds.bottom !== undefined) {
+            newPhysicalTop = Math.min((bounds.bottom - el.offsetHeight) * dpi, newPhysicalTop);
+          }
+        }
+        
+        // Convert back to CSS pixels
+        const newLeft = newPhysicalLeft / dpi;
+        const newTop = newPhysicalTop / dpi;
+        
+        el.style.left = newLeft + 'px';
+        el.style.top = newTop + 'px';
+        
+        if (onDrag) {
+          onDrag({
+            x: newLeft,
+            y: newTop,
+            deltaX: (mouseX - self._dragState.startX) / dpi,
+            deltaY: (mouseY - self._dragState.startY) / dpi
+          });
+        }
+      }
+      else if (mouseType === 'mouseup' && self._dragState && self._dragState.element === el) {
+        // End dragging
+        console.log('[AnyWP] [Drag] END');
+        
+        const finalRect = el.getBoundingClientRect();
+        const finalPos = {
+          x: finalRect.left,
+          y: finalRect.top
+        };
+        
+        // Save position if persistKey is provided
+        if (persistKey) {
+          self._saveElementPosition(persistKey, finalPos.x, finalPos.y);
+        }
+        
+        if (onDragEnd) {
+          onDragEnd(finalPos);
+        }
+        
+        self._log('Drag end at: ' + finalPos.x + ',' + finalPos.y, true);
+        
+        self._dragState = null;
+      }
+      else if (mouseType === 'mousedown' && !isOver) {
+        // Debug: mouse down but not over element
+        console.log('[AnyWP] [makeDraggable] mousedown NOT over element. Mouse: (' + mouseX + ',' + mouseY + 
+                  '), Element: [' + physicalLeft + ',' + physicalTop + '] - [' + physicalRight + ',' + physicalBottom + ']');
+      }
+      else if (mouseType === 'mousemove' && self._dragState && self._dragState.element !== el) {
+        // Debug: moving but not this element
+        console.log('[AnyWP] [makeDraggable] mousemove but wrong element');
+      }
+      else if (mouseType === 'mousemove' && !self._dragState) {
+        // Debug: moving but no drag state
+        // Don't log this - too noisy
+      }
+    }
+    
+    // Listen to global mouse events from native layer
+    window.addEventListener('AnyWP:mouse', handleGlobalMouse);
+    
+    // Store event handler for cleanup
+    el.__anyWP_dragHandler = {
+      handleGlobalMouse: handleGlobalMouse
+    };
+    
+    this._log('Element made draggable (via mouse hook): ' + (el.id || el.className));
+  },
+  
+  // Remove draggable functionality
+  removeDraggable: function(element) {
+    let el = element;
+    if (typeof element === 'string') {
+      el = document.querySelector(element);
+    }
+    
+    if (!el) {
+      console.error('[AnyWP] Element not found:', element);
+      return;
+    }
+    
+    // Remove event handlers
+    if (el.__anyWP_dragHandler) {
+      window.removeEventListener('AnyWP:mouse', el.__anyWP_dragHandler.handleGlobalMouse);
+      delete el.__anyWP_dragHandler;
+    }
+    
+    // Remove from registry
+    this._draggableElements = this._draggableElements.filter(function(d) {
+      return d.element !== el;
+    });
+    
+    // Reset cursor
+    el.style.cursor = '';
+    el.style.userSelect = '';
+    
+    this._log('Removed draggable from element: ' + (el.id || el.className));
+  },
+  
+  // Save element position to native storage
+  _saveElementPosition: function(key, x, y) {
+    const self = this;
+    const position = { left: x, top: y };
+    
+    // Update local cache
+    self._persistedState[key] = position;
+    
+    // Send to native layer
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage({
+        type: 'saveState',
+        key: key,
+        value: JSON.stringify(position)
+      });
+      
+      self._log('Saved position for ' + key + ': ' + x + ',' + y);
+    } else {
+      // Fallback to localStorage
+      try {
+        localStorage.setItem('AnyWP_' + key, JSON.stringify(position));
+        self._log('Saved position to localStorage for ' + key + ': ' + x + ',' + y);
+      } catch (e) {
+        console.warn('[AnyWP] Failed to save state:', e);
+      }
+    }
+  },
+  
+  // Load state from native storage
+  loadState: function(key, callback) {
+    const self = this;
+    
+    // Check local cache first
+    if (self._persistedState[key]) {
+      callback(self._persistedState[key]);
+      return;
+    }
+    
+    // Request from native layer
+    if (window.chrome && window.chrome.webview) {
+      // Register one-time callback
+      const handler = function(event) {
+        if (event.detail && event.detail.type === 'stateLoaded' && event.detail.key === key) {
+          window.removeEventListener('AnyWP:stateLoaded', handler);
+          
+          const value = event.detail.value ? JSON.parse(event.detail.value) : null;
+          self._persistedState[key] = value;
+          callback(value);
+        }
+      };
+      
+      window.addEventListener('AnyWP:stateLoaded', handler);
+      
+      window.chrome.webview.postMessage({
+        type: 'loadState',
+        key: key
+      });
+      
+      // Timeout after 1 second
+      setTimeout(function() {
+        window.removeEventListener('AnyWP:stateLoaded', handler);
+      }, 1000);
+    } else {
+      // Fallback to localStorage
+      try {
+        const stored = localStorage.getItem('AnyWP_' + key);
+        const value = stored ? JSON.parse(stored) : null;
+        self._persistedState[key] = value;
+        callback(value);
+      } catch (e) {
+        console.warn('[AnyWP] Failed to load state:', e);
+        callback(null);
+      }
+    }
+  },
+  
+  // Save custom state
+  saveState: function(key, value) {
+    const self = this;
+    
+    // Update local cache
+    self._persistedState[key] = value;
+    
+    // Send to native layer
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage({
+        type: 'saveState',
+        key: key,
+        value: JSON.stringify(value)
+      });
+      
+      self._log('Saved state for ' + key);
+    } else {
+      // Fallback to localStorage
+      try {
+        localStorage.setItem('AnyWP_' + key, JSON.stringify(value));
+        self._log('Saved state to localStorage for ' + key);
+      } catch (e) {
+        console.warn('[AnyWP] Failed to save state:', e);
+      }
+    }
+  },
+  
+  // Clear all saved state
+  clearState: function() {
+    const self = this;
+    
+    self._persistedState = {};
+    
+    if (window.chrome && window.chrome.webview) {
+      window.chrome.webview.postMessage({
+        type: 'clear
 )SDK_CHUNK";
   sdk += R"SDK_CHUNK(
-State'\n      });\n      \n      self._log('Cleared all saved state');\n    } else {\n      // Clear localStorage\n      try {\n        const keys = Object.keys(localStorage);\n        keys.forEach(function(key) {\n          if (key.startsWith('AnyWP_')) {\n            localStorage.removeItem(key);\n          }\n        });\n        self._log('Cleared localStorage state');\n      } catch (e) {\n        console.warn('[AnyWP] Failed to clear state:', e);\n      }\n    }\n  }\n  };\n  \n  // Auto initialize\n  if (document.readyState === 'loading') {\n    document.addEventListener('DOMContentLoaded', function() {\n      AnyWP._init();\n    });\n  } else {\n    AnyWP._init();\n  }\n  \n  console.log('[AnyWP] SDK loaded successfully');\n})();\n
+State'
+      });
+      
+      self._log('Cleared all saved state');
+    } else {
+      // Clear localStorage
+      try {
+        const keys = Object.keys(localStorage);
+        keys.forEach(function(key) {
+          if (key.startsWith('AnyWP_')) {
+            localStorage.removeItem(key);
+          }
+        });
+        self._log('Cleared localStorage state');
+      } catch (e) {
+        console.warn('[AnyWP] Failed to clear state:', e);
+      }
+    }
+  }
+  };
+  
+  // Auto initialize
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      AnyWP._init();
+    });
+  } else {
+    AnyWP._init();
+  }
+  
+  console.log('[AnyWP] SDK loaded successfully');
+})();
+
 )SDK_CHUNK";
 
   return sdk;

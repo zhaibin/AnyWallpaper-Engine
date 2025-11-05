@@ -39,11 +39,8 @@ inline std::string GetEmbeddedSDK() {
 '''
     
     for i, chunk in enumerate(chunks):
-        # 转义字符
-        chunk = chunk.replace('\\', '\\\\')
-        chunk = chunk.replace('"', '\\"')
-        chunk = chunk.replace('\n', '\\n')
-        
+        # 不转义，直接使用原始字符串字面量
+        # R"(...)" 已经支持所有字符包括换行
         cpp_code += f'  sdk += R"SDK_CHUNK(\n{chunk}\n)SDK_CHUNK";\n'
     
     cpp_code += '''
