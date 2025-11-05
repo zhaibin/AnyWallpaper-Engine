@@ -1246,7 +1246,7 @@ std::string AnyWPEnginePlugin::LoadSDKScript() {
       std::string script = buffer.str();
       try_file.close();
       
-      std::cout << "[AnyWP] [API] ✅ SDK loaded from: " << try_path << " (" << script.length() << " bytes)" << std::endl;
+      std::cout << "[AnyWP] [API] SUCCESS: SDK loaded from: " << try_path << " (" << script.length() << " bytes)" << std::endl;
       return script;
     }
   }
