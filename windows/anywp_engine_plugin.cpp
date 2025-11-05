@@ -1545,22 +1545,32 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
       // Get the root owner window
       HWND root_window = GetAncestor(window_at_point, GA_ROOT);
       
-      // Check if it's a visible top-level window with WS_OVERLAPPEDWINDOW style
+      // Check if it's a visible top-level window
       if (root_window && IsWindowVisible(root_window)) {
         LONG style = GetWindowLongW(root_window, GWL_STYLE);
+        LONG exStyle = GetWindowLongW(root_window, GWL_EXSTYLE);
         
-        // If it has title bar or is a popup window, it's likely an app window
-        if ((style & WS_CAPTION) || (style & WS_POPUP)) {
-          // But exclude desktop-related windows
-          wchar_t rootClassName[256] = {0};
-          GetClassNameW(root_window, rootClassName, 256);
+        // Get root window class name
+        wchar_t rootClassName[256] = {0};
+        GetClassNameW(root_window, rootClassName, 256);
+        
+        // Skip desktop-related windows first
+        bool is_desktop_window = (
+          wcscmp(rootClassName, L"Progman") == 0 ||
+          wcscmp(rootClassName, L"WorkerW") == 0 ||
+          wcscmp(rootClassName, L"Shell_TrayWnd") == 0 ||  // Taskbar
+          wcsstr(rootClassName, L"Xaml") != nullptr ||  // System UI
+          wcsstr(rootClassName, L"Chrome") != nullptr ||  // WebView2 windows
+          wcsstr(className, L"Chrome") != nullptr  // WebView2 render windows
+        );
+        
+        if (!is_desktop_window) {
+          // Check if it's a normal app window (has caption or is popup, but not transparent)
+          bool has_window_style = (style & WS_CAPTION) || (style & WS_POPUP);
+          bool is_transparent = (exStyle & WS_EX_TRANSPARENT) || (exStyle & WS_EX_LAYERED);
           
-          if (wcscmp(rootClassName, L"Progman") != 0 &&
-              wcscmp(rootClassName, L"WorkerW") != 0 &&
-              wcscmp(rootClassName, L"Shell_TrayWnd") != 0 &&  // Taskbar
-              wcsstr(rootClassName, L"Xaml") == nullptr &&  // System UI
-              wcsstr(rootClassName, L"Chrome") == nullptr &&  // WebView2 windows
-              wcsstr(className, L"Chrome") == nullptr) {  // WebView2 render windows
+          // It's an app window if it has window decorations and is not transparent
+          if (has_window_style && !is_transparent) {
             is_app_window = true;
           }
         }
