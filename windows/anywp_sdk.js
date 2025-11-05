@@ -18,6 +18,7 @@
     _clickHandlers: [],
     _mouseCallbacks: [],
     _keyboardCallbacks: [],
+    _visibilityCallback: null,
     _mutationObserver: null,
     _resizeObserver: null,
     _spaMode: false,
@@ -453,38 +454,114 @@
       this._log('Keyboard callback registered');
     },
     
-    // Setup event listeners
-    _setupEventListeners: function() {
-      const self = this;
+  // Setup event listeners
+  _setupEventListeners: function() {
+    const self = this;
+    
+    window.addEventListener('AnyWP:mouse', function(event) {
+      self._mouseCallbacks.forEach(function(cb) {
+        cb(event.detail);
+      });
+    });
+    
+    window.addEventListener('AnyWP:keyboard', function(event) {
+      self._keyboardCallbacks.forEach(function(cb) {
+        cb(event.detail);
+      });
+    });
+    
+    window.addEventListener('AnyWP:click', function(event) {
+      self._handleClick(event.detail.x, event.detail.y);
+    });
+    
+    window.addEventListener('AnyWP:interactionMode', function(event) {
+      self.interactionEnabled = event.detail.enabled;
+      self._log('Interaction mode: ' + (self.interactionEnabled ? 'ON' : 'OFF'), true);
+    });
+    
+    // NEW: Handle visibility changes for power saving
+    window.addEventListener('AnyWP:visibility', function(event) {
+      const visible = event.detail.visible;
+      self._log('Visibility changed: ' + (visible ? 'visible' : 'hidden'), true);
       
-      window.addEventListener('AnyWP:mouse', function(event) {
-        self._mouseCallbacks.forEach(function(cb) {
-          cb(event.detail);
-        });
+      // Notify user callback if set
+      if (self._visibilityCallback) {
+        self._visibilityCallback(visible);
+      }
+      
+      // Auto-pause animations when hidden (for better power saving)
+      if (!visible) {
+        self._autoPauseAnimations();
+      } else {
+        self._autoResumeAnimations();
+      }
+    });
+    
+    window.addEventListener('resize', function() {
+      self._log('Window resized, refreshing...');
+      setTimeout(function() {
+        self.refreshBounds();
+      }, 200);
+    });
+  },
+  
+  // NEW: Register visibility callback
+  onVisibilityChange: function(callback) {
+    this._visibilityCallback = callback;
+    this._log('Visibility callback registered');
+  },
+  
+  // NEW: Auto-pause animations when hidden
+  _autoPauseAnimations: function() {
+    if (!window.__anyWP_animationsPaused) {
+      this._log('Auto-pausing animations for power saving');
+      window.__anyWP_animationsPaused = true;
+      
+      // Pause videos
+      const videos = document.querySelectorAll('video');
+      videos.forEach(function(video) {
+        if (!video.paused) {
+          video.__anyWP_wasPlaying = true;
+          video.pause();
+        }
       });
       
-      window.addEventListener('AnyWP:keyboard', function(event) {
-        self._keyboardCallbacks.forEach(function(cb) {
-          cb(event.detail);
-        });
-      });
-      
-      window.addEventListener('AnyWP:click', function(event) {
-        self._handleClick(event.detail.x, event.detail.y);
-      });
-      
-      window.addEventListener('AnyWP:interactionMode', function(event) {
-        self.interactionEnabled = event.detail.enabled;
-        self._log('Interaction mode: ' + (self.interactionEnabled ? 'ON' : 'OFF'), true);
-      });
-      
-      window.addEventListener('resize', function() {
-        self._log('Window resized, refreshing...');
-        setTimeout(function() {
-          self.refreshBounds();
-        }, 200);
+      // Pause audio
+      const audios = document.querySelectorAll('audio');
+      audios.forEach(function(audio) {
+        if (!audio.paused) {
+          audio.__anyWP_wasPlaying = true;
+          audio.pause();
+        }
       });
     }
+  },
+  
+  // NEW: Auto-resume animations when visible
+  _autoResumeAnimations: function() {
+    if (window.__anyWP_animationsPaused) {
+      this._log('Auto-resuming animations');
+      window.__anyWP_animationsPaused = false;
+      
+      // Resume videos
+      const videos = document.querySelectorAll('video');
+      videos.forEach(function(video) {
+        if (video.__anyWP_wasPlaying) {
+          video.play();
+          delete video.__anyWP_wasPlaying;
+        }
+      });
+      
+      // Resume audio
+      const audios = document.querySelectorAll('audio');
+      audios.forEach(function(audio) {
+        if (audio.__anyWP_wasPlaying) {
+          audio.play();
+          delete audio.__anyWP_wasPlaying;
+        }
+      });
+    }
+  }
   };
   
   // Auto initialize

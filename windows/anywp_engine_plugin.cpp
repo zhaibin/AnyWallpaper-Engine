@@ -2820,73 +2820,81 @@ void AnyWPEnginePlugin::StopFullscreenDetection() {
   std::cout << "[AnyWP] [PowerSaving] Fullscreen detection stopped" << std::endl;
 }
 
-// Pause wallpaper (reduce CPU/GPU usage)
+// Pause wallpaper (reduce CPU/GPU usage) - Improved for fast resume
 void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   if (is_paused_) {
     return;
   }
   
-  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER (LIGHTWEIGHT) ==========" << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
   is_paused_ = true;
   
-  // Hide all wallpaper windows (reduces rendering)
+  // IMPROVED: Use lightweight pause - don't hide windows, keep DOM state
+  // This allows instant resume without reloading
+  
+  // 1. Set WebView visibility to false (stops rendering but keeps state)
   {
     std::lock_guard<std::mutex> lock(instances_mutex_);
     for (auto& instance : wallpaper_instances_) {
-      if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
-        ShowWindow(instance.webview_host_hwnd, SW_HIDE);
+      if (instance.webview_controller) {
+        // WebView2 stops rendering but keeps memory state
+        instance.webview_controller->put_IsVisible(FALSE);
+        std::cout << "[AnyWP] [PowerSaving] Set WebView invisible (keeps state)" << std::endl;
       }
     }
   }
   
-  // Hide legacy window
-  if (webview_host_hwnd_ && IsWindow(webview_host_hwnd_)) {
-    ShowWindow(webview_host_hwnd_, SW_HIDE);
+  if (webview_controller_) {
+    webview_controller_->put_IsVisible(FALSE);
   }
   
-  // Reduce render frequency
-  ReduceRenderFrequency();
+  // 2. Notify web content using Page Visibility API
+  //    This allows web apps to pause animations gracefully
+  NotifyWebContentVisibility(false);
   
-  // Trigger memory optimization
-  OptimizeMemoryUsage();
+  // 3. Light memory optimization (not aggressive)
+  //    Only trim working set, don't clear cache
+  SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper paused successfully" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Wallpaper paused (state preserved for fast resume)" << std::endl;
 }
 
-// Resume wallpaper
+// Resume wallpaper - Instant resume from lightweight pause
 void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
   if (!is_paused_) {
     return;
   }
   
-  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER (INSTANT) ==========" << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
   is_paused_ = false;
   
-  // Show all wallpaper windows
+  // IMPROVED: Instant resume - just re-enable WebView visibility
+  // DOM state is preserved, no reloading needed
+  
+  // 1. Restore WebView visibility (instant - no reload)
   {
     std::lock_guard<std::mutex> lock(instances_mutex_);
     for (auto& instance : wallpaper_instances_) {
-      if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
-        ShowWindow(instance.webview_host_hwnd, SW_SHOW);
-        UpdateWindow(instance.webview_host_hwnd);
+      if (instance.webview_controller) {
+        // Instant resume - rendering continues from where it stopped
+        instance.webview_controller->put_IsVisible(TRUE);
+        std::cout << "[AnyWP] [PowerSaving] WebView visible restored (instant)" << std::endl;
       }
     }
   }
   
-  // Show legacy window
-  if (webview_host_hwnd_ && IsWindow(webview_host_hwnd_)) {
-    ShowWindow(webview_host_hwnd_, SW_SHOW);
-    UpdateWindow(webview_host_hwnd_);
+  if (webview_controller_) {
+    webview_controller_->put_IsVisible(TRUE);
   }
   
-  // Restore normal render frequency
-  RestoreNormalFrequency();
+  // 2. Notify web content to resume animations
+  NotifyWebContentVisibility(true);
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed successfully" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed instantly (no reload)" << std::endl;
 }
 
 // Optimize memory usage
@@ -2945,57 +2953,43 @@ size_t AnyWPEnginePlugin::GetCurrentMemoryUsage() {
   return 0;
 }
 
-// Reduce render frequency when paused
-void AnyWPEnginePlugin::ReduceRenderFrequency() {
-  std::cout << "[AnyWP] [Performance] Reducing render frequency..." << std::endl;
+// Notify web content about visibility change (Page Visibility API)
+void AnyWPEnginePlugin::NotifyWebContentVisibility(bool visible) {
+  std::cout << "[AnyWP] [PowerSaving] Notifying web content: " << (visible ? "VISIBLE" : "HIDDEN") << std::endl;
   
-  // Execute JavaScript to reduce animation frames
-  std::wstring reduce_script = L"(function() {"
-    L"  if (!window.__anyWP_originalRAF) {"
-    L"    window.__anyWP_originalRAF = window.requestAnimationFrame;"
-    L"    window.requestAnimationFrame = function(callback) {"
-    L"      return setTimeout(callback, 1000);"  // 1 FPS when paused
-    L"    };"
+  // Use Page Visibility API to notify web content
+  // This allows web apps to pause/resume animations gracefully
+  std::wstring visibility_script = L"(function() {"
+    L"  try {"
+    L"    // Dispatch visibilitychange event"
+    L"    var event = new Event('visibilitychange');"
+    L"    document.dispatchEvent(event);"
+    L"    "
+    L"    // Also dispatch custom AnyWP event for SDK users"
+    L"    var customEvent = new CustomEvent('AnyWP:visibility', {"
+    L"      detail: { visible: " + std::wstring(visible ? L"true" : L"false") + L" }"
+    L"    });"
+    L"    window.dispatchEvent(customEvent);"
+    L"    "
+    L"    console.log('[AnyWP] Visibility changed: " + std::wstring(visible ? L"visible" : L"hidden") + L"');"
+    L"  } catch(e) {"
+    L"    console.error('[AnyWP] Error notifying visibility:', e);"
     L"  }"
     L"})();";
   
+  // Send to all instances
   {
     std::lock_guard<std::mutex> lock(instances_mutex_);
     for (auto& instance : wallpaper_instances_) {
       if (instance.webview) {
-        instance.webview->ExecuteScript(reduce_script.c_str(), nullptr);
+        instance.webview->ExecuteScript(visibility_script.c_str(), nullptr);
       }
     }
   }
   
+  // Send to legacy instance
   if (webview_) {
-    webview_->ExecuteScript(reduce_script.c_str(), nullptr);
-  }
-}
-
-// Restore normal render frequency
-void AnyWPEnginePlugin::RestoreNormalFrequency() {
-  std::cout << "[AnyWP] [Performance] Restoring normal render frequency..." << std::endl;
-  
-  // Restore original requestAnimationFrame
-  std::wstring restore_script = L"(function() {"
-    L"  if (window.__anyWP_originalRAF) {"
-    L"    window.requestAnimationFrame = window.__anyWP_originalRAF;"
-    L"    delete window.__anyWP_originalRAF;"
-    L"  }"
-    L"})();";
-  
-  {
-    std::lock_guard<std::mutex> lock(instances_mutex_);
-    for (auto& instance : wallpaper_instances_) {
-      if (instance.webview) {
-        instance.webview->ExecuteScript(restore_script.c_str(), nullptr);
-      }
-    }
-  }
-  
-  if (webview_) {
-    webview_->ExecuteScript(restore_script.c_str(), nullptr);
+    webview_->ExecuteScript(visibility_script.c_str(), nullptr);
   }
 }
 

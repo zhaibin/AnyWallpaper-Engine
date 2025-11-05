@@ -236,6 +236,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void ResumeWallpaper(const std::string& reason);
   void NotifyPowerStateChange(PowerState newState);
   std::string PowerStateToString(PowerState state);
+  void NotifyWebContentVisibility(bool visible);
   
   // System message handling
   static LRESULT CALLBACK PowerSavingWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -256,8 +257,6 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   size_t GetCurrentMemoryUsage();
   
   // Performance optimization
-  void ReduceRenderFrequency();
-  void RestoreNormalFrequency();
   std::atomic<bool> is_paused_{false};
 };
 
