@@ -619,113 +619,124 @@
     el.style.cursor = 'move';
     el.style.userSelect = 'none';
     
-    // Mouse event handlers
-    function onMouseDown(e) {
+    // IMPORTANT: Use AnyWP:mouse events instead of DOM events
+    // This allows dragging even with transparent windows (mouse hook architecture)
+    
+    // Register global mouse handler for this element
+    function handleGlobalMouse(event) {
       if (!self.interactionEnabled) {
         return;
       }
       
-      e.preventDefault();
+      const detail = event.detail;
+      const mouseX = detail.x;
+      const mouseY = detail.y;
+      const mouseType = detail.type;
       
       const rect = el.getBoundingClientRect();
+      const dpi = self.dpiScale;
       
-      self._dragState = {
-        element: el,
-        data: draggableData,
-        startX: e.clientX,
-        startY: e.clientY,
-        offsetX: e.clientX - rect.left,
-        offsetY: e.clientY - rect.top,
-        initialLeft: rect.left,
-        initialTop: rect.top
-      };
+      // Convert to physical pixels
+      const physicalLeft = Math.round(rect.left * dpi);
+      const physicalTop = Math.round(rect.top * dpi);
+      const physicalRight = Math.round(rect.right * dpi);
+      const physicalBottom = Math.round(rect.bottom * dpi);
       
-      if (onDragStart) {
-        onDragStart({
-          x: rect.left,
-          y: rect.top
-        });
+      // Check if mouse is over this element
+      const isOver = mouseX >= physicalLeft && mouseX <= physicalRight &&
+                     mouseY >= physicalTop && mouseY <= physicalBottom;
+      
+      if (mouseType === 'mousedown' && isOver && !self._dragState) {
+        // Start dragging
+        self._dragState = {
+          element: el,
+          data: draggableData,
+          startX: mouseX,
+          startY: mouseY,
+          offsetX: mouseX - physicalLeft,
+          offsetY: mouseY - physicalTop,
+          initialLeft: physicalLeft,
+          initialTop: physicalTop
+        };
+        
+        if (onDragStart) {
+          onDragStart({
+            x: physicalLeft / dpi,
+            y: physicalTop / dpi
+          });
+        }
+        
+        self._log('Drag start at: ' + mouseX + ',' + mouseY + ' (element at ' + physicalLeft + ',' + physicalTop + ')');
       }
-      
-      self._log('Drag start at: ' + e.clientX + ',' + e.clientY);
-      
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+      else if (mouseType === 'mousemove' && self._dragState && self._dragState.element === el) {
+        // Continue dragging
+        let newPhysicalLeft = mouseX - self._dragState.offsetX;
+        let newPhysicalTop = mouseY - self._dragState.offsetY;
+        
+        // Apply bounds if specified (convert to physical pixels)
+        if (bounds) {
+          if (bounds.left !== undefined) {
+            newPhysicalLeft = Math.max(bounds.left * dpi, newPhysicalLeft);
+          }
+          if (bounds.top !== undefined) {
+            newPhysicalTop = Math.max(bounds.top * dpi, newPhysicalTop);
+          }
+          if (bounds.right !== undefined) {
+            newPhysicalLeft = Math.min((bounds.right - el.offsetWidth) * dpi, newPhysicalLeft);
+          }
+          if (bounds.bottom !== undefined) {
+            newPhysicalTop = Math.min((bounds.bottom - el.offsetHeight) * dpi, newPhysicalTop);
+          }
+        }
+        
+        // Convert back to CSS pixels
+        const newLeft = newPhysicalLeft / dpi;
+        const newTop = newPhysicalTop / dpi;
+        
+        el.style.left = newLeft + 'px';
+        el.style.top = newTop + 'px';
+        
+        if (onDrag) {
+          onDrag({
+            x: newLeft,
+            y: newTop,
+            deltaX: (mouseX - self._dragState.startX) / dpi,
+            deltaY: (mouseY - self._dragState.startY) / dpi
+          });
+        }
+      }
+      else if (mouseType === 'mouseup' && self._dragState && self._dragState.element === el) {
+        // End dragging
+        const finalRect = el.getBoundingClientRect();
+        const finalPos = {
+          x: finalRect.left,
+          y: finalRect.top
+        };
+        
+        // Save position if persistKey is provided
+        if (persistKey) {
+          self._saveElementPosition(persistKey, finalPos.x, finalPos.y);
+        }
+        
+        if (onDragEnd) {
+          onDragEnd(finalPos);
+        }
+        
+        self._log('Drag end at: ' + finalPos.x + ',' + finalPos.y);
+        
+        self._dragState = null;
+      }
     }
     
-    function onMouseMove(e) {
-      if (!self._dragState) return;
-      
-      e.preventDefault();
-      
-      let newLeft = e.clientX - self._dragState.offsetX;
-      let newTop = e.clientY - self._dragState.offsetY;
-      
-      // Apply bounds if specified
-      if (bounds) {
-        if (bounds.left !== undefined) {
-          newLeft = Math.max(bounds.left, newLeft);
-        }
-        if (bounds.top !== undefined) {
-          newTop = Math.max(bounds.top, newTop);
-        }
-        if (bounds.right !== undefined) {
-          newLeft = Math.min(bounds.right - el.offsetWidth, newLeft);
-        }
-        if (bounds.bottom !== undefined) {
-          newTop = Math.min(bounds.bottom - el.offsetHeight, newTop);
-        }
-      }
-      
-      el.style.left = newLeft + 'px';
-      el.style.top = newTop + 'px';
-      
-      if (onDrag) {
-        onDrag({
-          x: newLeft,
-          y: newTop,
-          deltaX: e.clientX - self._dragState.startX,
-          deltaY: e.clientY - self._dragState.startY
-        });
-      }
-    }
-    
-    function onMouseUp(e) {
-      if (!self._dragState) return;
-      
-      e.preventDefault();
-      
-      const finalRect = el.getBoundingClientRect();
-      const finalPos = {
-        x: finalRect.left,
-        y: finalRect.top
-      };
-      
-      // Save position if persistKey is provided
-      if (persistKey) {
-        self._saveElementPosition(persistKey, finalPos.x, finalPos.y);
-      }
-      
-      if (onDragEnd) {
-        onDragEnd(finalPos);
-      }
-      
-      self._log('Drag end at: ' + finalPos.x + ',' + finalPos.y);
-      
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      
-      self._dragState = null;
-    }
-    
-    el.addEventListener('mousedown', onMouseDown);
+    // Listen to global mouse events from native layer
+    window.addEventListener('AnyWP:mouse', handleGlobalMouse);
     
     // Store event handler for cleanup
     el.__anyWP_dragHandler = {
-      onMouseDown: onMouseDown
+      handleGlobalMouse: handleGlobalMouse
     };
     
-    this._log('Element made draggable: ' + (el.id || el.className));
+    this._log('Element made draggable (via mouse hook): ' + (el.id || el.className));
   },
   
   // Remove draggable functionality
@@ -742,7 +753,7 @@
     
     // Remove event handlers
     if (el.__anyWP_dragHandler) {
-      el.removeEventListener('mousedown', el.__anyWP_dragHandler.onMouseDown);
+      window.removeEventListener('AnyWP:mouse', el.__anyWP_dragHandler.handleGlobalMouse);
       delete el.__anyWP_dragHandler;
     }
     

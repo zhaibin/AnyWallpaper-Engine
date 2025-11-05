@@ -186,20 +186,20 @@
   <div class="container">
     <h1>🎨 AnyWP 拖拽功能测试</h1>
     
-    <div class="info-panel" style="background: rgba(255,200,200,0.95);">
-      <h2>⚠️ 重要：使用拖拽功能的步骤</h2>
-      <p><strong>第1步：</strong>在 Flutter 应用中取消勾选 "Enable Mouse Transparency"</p>
-      <p><strong>第2步：</strong>点击 "Start" 按钮启动壁纸</p>
-      <p><strong>第3步：</strong>直接拖动下方的彩色方块或卡片！</p>
-      <p style="color: #d32f2f; font-weight: bold;">⚠️ 如果不禁用鼠标透明，点击和拖拽将无法工作！</p>
+    <div class="info-panel" style="background: rgba(200,255,200,0.95);">
+      <h2>✨ 互动壁纸拖拽测试</h2>
+      <p><strong>🎯 架构特性：</strong>基于鼠标钩子实现，<strong style="color: #4CAF50;">保持鼠标透明</strong>的同时支持拖拽！</p>
+      <p><strong>📍 使用方法：</strong>在 Flutter 应用中点击 "Start" 启动壁纸，然后直接拖动下方元素</p>
+      <p><strong>💡 技术亮点：</strong>壁纸在桌面图标下方，通过 C++ 鼠标钩子捕获事件并转发到 WebView2</p>
     </div>
 
     <div class="info-panel">
       <h2>📌 功能说明</h2>
-      <p><strong>✅ 交互模式：</strong>默认已启用（可点击按钮切换）</p>
+      <p><strong>✅ 交互模式：</strong>默认已启用</p>
       <p><strong>🖱️ 拖拽元素：</strong>拖动彩色方块或卡片到任意位置</p>
-      <p><strong>💾 自动保存：</strong>元素位置会自动保存到注册表</p>
-      <p><strong>🔄 自动恢复：</strong>重新打开壁纸后会恢复到上次的位置</p>
+      <p><strong>💾 自动保存：</strong>元素位置自动保存到 Windows Registry</p>
+      <p><strong>🔄 自动恢复：</strong>重新打开壁纸后恢复到上次的位置</p>
+      <p><strong>🖼️ 鼠标穿透：</strong>不在元素上时，点击会穿透到桌面图标</p>
     </div>
 
     <div class="button-group">
@@ -328,7 +328,7 @@
         document.getElementById('drag-status').innerHTML = 
           '📍 拖拽状态: 就绪（可以拖拽）';
         document.getElementById('mouse-status').innerHTML = 
-          '🖱️ 鼠标透明: 请确保已禁用';
+          '🖱️ 鼠标钩子: 已激活（支持透明窗口）';
       } else {
         console.log('[Test] Waiting for AnyWP SDK...');
         setTimeout(waitForAnyWP, 100);

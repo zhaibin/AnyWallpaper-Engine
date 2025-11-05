@@ -105,7 +105,7 @@ class _MyAppState extends State<MyApp> {
           _monitorWallpapers[monitor.index] = false;
           _monitorLoading[monitor.index] = false;
           _monitorUrlControllers[monitor.index] = TextEditingController(
-            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_draggable.html',
+            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_simple.html',
           );
         }
       }
@@ -822,9 +822,9 @@ class _MyAppState extends State<MyApp> {
                   '5. Each monitor displays its own independent content!\n\n'
                   '💡 Tips:\n'
                   '  • Try different HTML files on different monitors\n'
-                  '  • Disable mouse transparency for interactive wallpapers\n'
-                  '  • Try test_draggable.html for drag & drop demo\n'
-                  '  • Or use test_simple.html, test_api.html, test_iframe_ads.html',
+                  '  • test_draggable.html - 拖拽演示（支持鼠标透明）\n'
+                  '  • test_simple.html, test_api.html - 基础测试\n'
+                  '  • Mouse transparency works with drag & drop via hook!',
                   style: TextStyle(color: Colors.grey[800], fontSize: 13),
                 ),
               ],

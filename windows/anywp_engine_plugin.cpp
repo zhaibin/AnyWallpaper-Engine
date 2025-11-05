@@ -1632,8 +1632,8 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
       event_type = "mouseup";
       // Reduced logging for performance
     } else if (wParam == WM_MOUSEMOVE) {
-      // Mousemove disabled to reduce overhead
-      // event_type = "mousemove";
+      // Enable mousemove for drag support (but only forward when needed)
+      event_type = "mousemove";
     }
     
     if (event_type) {
