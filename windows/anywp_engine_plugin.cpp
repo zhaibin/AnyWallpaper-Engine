@@ -1285,15 +1285,31 @@ void AnyWPEnginePlugin::InjectAnyWallpaperSDK() {
   std::string sdk_script = LoadSDKScript();
   std::wstring wsdk_script(sdk_script.begin(), sdk_script.end());
   
-  // Inject on every navigation
+  std::cout << "[AnyWP] [API] SDK script size: " << sdk_script.length() << " bytes" << std::endl;
+  
+  // Inject on every navigation (for future navigations)
   webview_->AddScriptToExecuteOnDocumentCreated(
     wsdk_script.c_str(),
     Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
       [](HRESULT result, LPCWSTR id) -> HRESULT {
         if (SUCCEEDED(result)) {
-          std::wcout << L"[AnyWP] [API] SDK injected successfully, ID: " << id << std::endl;
+          std::wcout << L"[AnyWP] [API] SDK registered for future pages, ID: " << id << std::endl;
         } else {
-          std::cout << "[AnyWP] [API] ERROR: Failed to inject SDK: " << std::hex << result << std::endl;
+          std::cout << "[AnyWP] [API] ERROR: Failed to register SDK: " << std::hex << result << std::endl;
+        }
+        return S_OK;
+      }).Get());
+  
+  // IMPORTANT: Also inject immediately for current page
+  std::cout << "[AnyWP] [API] Injecting SDK into current page..." << std::endl;
+  webview_->ExecuteScript(
+    wsdk_script.c_str(),
+    Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+      [](HRESULT result, LPCWSTR resultObjectAsJson) -> HRESULT {
+        if (SUCCEEDED(result)) {
+          std::cout << "[AnyWP] [API] SDK executed successfully on current page" << std::endl;
+        } else {
+          std::cout << "[AnyWP] [API] ERROR: Failed to execute SDK: " << std::hex << result << std::endl;
         }
         return S_OK;
       }).Get());
