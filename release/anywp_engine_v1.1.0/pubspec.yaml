@@ -17,6 +17,3 @@ flutter:
     platforms:
       windows:
         pluginClass: AnyWPEnginePlugin
-        fileName: anywp_engine_plugin.cpp
-        dartPluginClass: AnyWPEngine
-
