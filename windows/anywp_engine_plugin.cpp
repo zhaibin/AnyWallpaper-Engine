@@ -1363,19 +1363,30 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
       std::string key = message.substr(key_start, key_end - key_start);
       std::string value = LoadState(key);
       
-      std::cout << "[AnyWP] [State] Loaded state for key: " << key << std::endl;
+      std::cout << "[AnyWP] [State] Loaded via WebMessage: " << key << " = " << value << std::endl;
       
-      // Send result back to WebView
+      // Send result back to ALL webviews (to ensure it reaches the right one)
+      std::ostringstream js;
+      js << "window.dispatchEvent(new CustomEvent('AnyWP:stateLoaded', {"
+         << "detail: {type: 'stateLoaded', key: '" << key << "', value: '" << value << "'}"
+         << "}));";
+      
+      std::string js_code = js.str();
+      std::wstring wjs_code(js_code.begin(), js_code.end());
+      
+      // Send to legacy webview if exists
       if (webview_) {
-        std::ostringstream js;
-        js << "window.dispatchEvent(new CustomEvent('AnyWP:stateLoaded', {"
-           << "detail: {type: 'stateLoaded', key: '" << key << "', value: '" << value << "'}"
-           << "}));";
-        
-        std::string js_code = js.str();
-        std::wstring wjs_code(js_code.begin(), js_code.end());
         webview_->ExecuteScript(wjs_code.c_str(), nullptr);
+        std::cout << "[AnyWP] [State] Sent stateLoaded event to legacy webview" << std::endl;
       }
+      
+      // Send to all multi-monitor instances
+      for (auto& instance : wallpaper_instances_) {
+        if (instance.webview) {
+          instance.webview->ExecuteScript(wjs_code.c_str(), nullptr);
+        }
+      }
+      std::cout << "[AnyWP] [State] Sent stateLoaded event to all instances" << std::endl;
     }
   }
   else if (message.find("\"type\":\"clearState\"") != std::string::npos) {

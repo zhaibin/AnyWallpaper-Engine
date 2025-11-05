@@ -157,6 +157,20 @@
              y >= bounds.top && y <= bounds.bottom;
     },
     
+    // Check if mouse (in physical pixels) is over element
+    _isMouseOverElement: function(mouseX, mouseY, element) {
+      const rect = element.getBoundingClientRect();
+      const dpi = this.dpiScale;
+      
+      const physicalLeft = Math.round(rect.left * dpi);
+      const physicalTop = Math.round(rect.top * dpi);
+      const physicalRight = Math.round(rect.right * dpi);
+      const physicalBottom = Math.round(rect.bottom * dpi);
+      
+      return mouseX >= physicalLeft && mouseX <= physicalRight &&
+             mouseY >= physicalTop && mouseY <= physicalBottom;
+    },
+    
     // Handle click event from native
     _handleClick: function(x, y) {
       this._log('Click at: (' + x + ',' + y + ')');
@@ -663,31 +677,24 @@
         self._log('[makeDraggable] Mouse event: ' + mouseType + ' at (' + mouseX + ',' + mouseY + ')');
       }
       
-      const rect = el.getBoundingClientRect();
-      const dpi = self.dpiScale;
-      
-      // Convert to physical pixels
-      const physicalLeft = Math.round(rect.left * dpi);
-      const physicalTop = Math.round(rect.top * dpi);
-      const physicalRight = Math.round(rect.right * dpi);
-      const physicalBottom = Math.round(rect.bottom * dpi);
-      
-      // Check if mouse is over this element
-      const isOver = mouseX >= physicalLeft && mouseX <= physicalRight &&
-                     mouseY >= physicalTop && mouseY <= physicalBottom;
+      // Check if mouse is over this element (reuse common function)
+      const isOver = self._isMouseOverElement(mouseX, mouseY, el);
       
       // Debug: log mousedown events
       if (mouseType === 'mousedown') {
         console.log('[AnyWP] [makeDraggable] mousedown - isOver:', isOver, 
-                    'dragState:', self._dragState ? 'EXISTS' : 'NULL',
-                    'mouse:', mouseX, mouseY,
-                    'bounds:', '[' + physicalLeft + ',' + physicalTop + ']-[' + physicalRight + ',' + physicalBottom + ']');
+                    'dragState:', self._dragState ? 'EXISTS' : 'NULL');
       }
       
       if (mouseType === 'mousedown' && isOver && !self._dragState) {
         // Start dragging
-        console.log('[AnyWP] [Drag] START - Mouse at (' + mouseX + ',' + mouseY + '), Element bounds: [' + 
-                    physicalLeft + ',' + physicalTop + '] - [' + physicalRight + ',' + physicalBottom + ']');
+        console.log('[AnyWP] [Drag] START - Mouse at (' + mouseX + ',' + mouseY + ')');
+        
+        // Get element bounds for offset calculation
+        const rect = el.getBoundingClientRect();
+        const dpi = self.dpiScale;
+        const physicalLeft = Math.round(rect.left * dpi);
+        const physicalTop = Math.round(rect.top * dpi);
         
         self._dragState = {
           element: el,
@@ -772,9 +779,7 @@
         self._dragState = null;
       }
       else if (mouseType === 'mousedown' && !isOver) {
-        // Debug: mouse down but not over element
-        console.log('[AnyWP] [makeDraggable] mousedown NOT over element. Mouse: (' + mouseX + ',' + mouseY + 
-                  '), Element: [' + physicalLeft + ',' + physicalTop + '] - [' + physicalRight + ',' + physicalBottom + ']');
+        // Debug: mouse down but not over element (don't log - too noisy)
       }
       else if (mouseType === 'mousemove' && self._dragState && self._dragState.element !== el) {
         // Debug: moving but not this element
