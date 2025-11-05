@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>拖拽自动测试</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: monospace;
+    }
+
+    #report {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.95);
+      color: #0f0;
+      padding: 40px;
+      border-radius: 15px;
+      font-size: 18px;
+      text-align: center;
+      min-width: 600px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+      z-index: 10000;
+    }
+
+    .title {
+      color: #ff0;
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #444;
+    }
+
+    .status-item {
+      margin: 15px 0;
+      padding: 12px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      text-align: left;
+    }
+
+    .label {
+      color: #0ff;
+      font-weight: bold;
+      display: inline-block;
+      width: 250px;
+    }
+
+    .value {
+      color: #0f0;
+      font-weight: bold;
+    }
+
+    .value.fail {
+      color: #f00;
+    }
+
+    .value.warn {
+      color: #ff0;
+    }
+
+    #box {
+      position: absolute;
+      left: 100px;
+      top: 400px;
+      width: 200px;
+      height: 150px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border: 4px solid #ffff00;
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: move;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .test-result {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 2px solid #444;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="report">
+    <div class="title">拖拽功能自动测试报告</div>
+    <div id="results">
+      <div class="status-item">
+        <span class="label">测试状态:</span>
+        <span class="value" id="testStatus">初始化中...</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="box">测试元素</div>
+
+  <script>
+    const results = document.getElementById('results');
+    const testStatus = document.getElementById('testStatus');
+    
+    function addResult(label, value, status = 'ok') {
+      const div = document.createElement('div');
+      div.className = 'status-item';
+      div.innerHTML = `<span class="label">${label}:</span><span class="value ${status === 'fail' ? 'fail' : (status === 'warn' ? 'warn' : '')}">${value}</span>`;
+      results.appendChild(div);
+    }
+
+    console.log('='.repeat(50));
+    console.log('拖拽功能自动测试');
+    console.log('='.repeat(50));
+
+    // 测试结果
+    const testResults = {
+      sdkLoaded: false,
+      sdkVersion: 'N/A',
+      interactionEnabled: false,
+      makeDraggableExists: false,
+      dragHandlerRegistered: false,
+      mouseEventsReceived: false,
+      sdkFileSize: 0
+    };
+
+    // 监听鼠标事件
+    let mouseEventReceived = false;
+    window.addEventListener('AnyWP:mouse', function(e) {
+      if (!mouseEventReceived) {
+        mouseEventReceived = true;
+        testResults.mouseEventsReceived = true;
+        console.log('[Test] First mouse event received:', e.detail.type);
+      }
+    });
+
+    // 等待1秒后检查 SDK
+    setTimeout(function() {
+      console.log('');
+      console.log('--- 检查 SDK 状态 ---');
+      
+      if (window.AnyWP) {
+        testResults.sdkLoaded = true;
+        testResults.sdkVersion = window.AnyWP.version || 'unknown';
+        testResults.interactionEnabled = window.AnyWP.interactionEnabled || false;
+        testResults.makeDraggableExists = typeof window.AnyWP.makeDraggable === 'function';
+        
+        console.log('SDK 已加载: YES');
+        console.log('SDK 版本: ' + testResults.sdkVersion);
+        console.log('交互启用: ' + testResults.interactionEnabled);
+        console.log('makeDraggable 存在: ' + testResults.makeDraggableExists);
+        
+        // 尝试设置拖拽
+        if (testResults.makeDraggableExists) {
+          try {
+            window.AnyWP.makeDraggable('#box', {
+              persistKey: 'auto_test_box',
+              onDragStart: function(pos) {
+                console.log('[Test] 拖拽开始回调被触发！');
+              }
+            });
+            
+            const box = document.getElementById('box');
+            testResults.dragHandlerRegistered = !!box.__anyWP_dragHandler;
+            console.log('拖拽处理器注册: ' + testResults.dragHandlerRegistered);
+          } catch (err) {
+            console.error('[Test] makeDraggable 出错:', err);
+          }
+        }
+      } else {
+        testResults.sdkLoaded = false;
+        console.log('SDK 已加载: NO');
+      }
+      
+      console.log('');
+      console.log('--- 生成测试报告 ---');
+      
+      // 生成报告
+      testStatus.textContent = '测试完成';
+      
+      addResult('SDK 加载状态', 
+                testResults.sdkLoaded ? 'SUCCESS' : 'FAILED',
+                testResults.sdkLoaded ? 'ok' : 'fail');
+      
+      addResult('SDK 版本', 
+                testResults.sdkVersion,
+                testResults.sdkVersion.startsWith('4.2') ? 'ok' : 
+                (testResults.sdkVersion.includes('embedded') ? 'fail' : 'warn'));
+      
+      addResult('交互模式', 
+                testResults.interactionEnabled ? 'ENABLED' : 'DISABLED',
+                testResults.interactionEnabled ? 'ok' : 'fail');
+      
+      addResult('makeDraggable 方法', 
+                testResults.makeDraggableExists ? 'EXISTS' : 'NOT FOUND',
+                testResults.makeDraggableExists ? 'ok' : 'fail');
+      
+      addResult('拖拽处理器注册', 
+                testResults.dragHandlerRegistered ? 'SUCCESS' : 'FAILED',
+                testResults.dragHandlerRegistered ? 'ok' : 'fail');
+      
+      // 等待2秒后检查鼠标事件
+      setTimeout(function() {
+        addResult('鼠标事件接收', 
+                  testResults.mouseEventsReceived ? 'YES' : 'NO',
+                  testResults.mouseEventsReceived ? 'ok' : 'warn');
+        
+        // 最终结论
+        const allPassed = testResults.sdkLoaded && 
+                         testResults.sdkVersion.startsWith('4.2') &&
+                         testResults.interactionEnabled &&
+                         testResults.makeDraggableExists &&
+                         testResults.dragHandlerRegistered;
+        
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'test-result';
+        
+        if (allPassed) {
+          resultDiv.innerHTML = '<div style="color:#0f0; font-size:24px; font-weight:bold;">✓ 所有检查通过</div>' +
+                               '<div style="color:#0ff; margin-top:10px;">拖拽功能应该可以工作！</div>' +
+                               '<div style="color:#aaa; margin-top:10px; font-size:14px;">请尝试拖动下方的黄色边框元素</div>';
+          console.log('');
+          console.log('=== 测试结果: PASS ===');
+          console.log('拖拽功能已就绪，请测试拖动黄色方块');
+        } else {
+          let failReasons = [];
+          if (!testResults.sdkLoaded) failReasons.push('SDK 未加载');
+          if (!testResults.sdkVersion.startsWith('4.2')) failReasons.push('SDK 版本错误: ' + testResults.sdkVersion);
+          if (!testResults.interactionEnabled) failReasons.push('交互未启用');
+          if (!testResults.makeDraggableExists) failReasons.push('makeDraggable 不存在');
+          if (!testResults.dragHandlerRegistered) failReasons.push('拖拽处理器未注册');
+          
+          resultDiv.innerHTML = '<div style="color:#f00; font-size:24px; font-weight:bold;">× 测试失败</div>' +
+                               '<div style="color:#ff0; margin-top:10px;">失败原因:</div>' +
+                               '<div style="color:#f00; margin-top:5px; font-size:14px;">' + failReasons.join('<br>') + '</div>';
+          console.log('');
+          console.log('=== 测试结果: FAIL ===');
+          console.log('失败原因:');
+          failReasons.forEach(r => console.log('  - ' + r));
+        }
+        
+        results.appendChild(resultDiv);
+        console.log('');
+        console.log('='.repeat(50));
+      }, 2000);
+    }, 1000);
+  </script>
+</body>
+</html>
+
