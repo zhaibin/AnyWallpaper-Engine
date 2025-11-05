@@ -832,25 +832,29 @@
     const self = this;
     const position = { left: x, top: y };
     
+    console.log('[AnyWP] Saving position for ' + key + ': ', position);
+    
     // Update local cache
     self._persistedState[key] = position;
     
     // Send to native layer
     if (window.chrome && window.chrome.webview) {
-      window.chrome.webview.postMessage({
+      const msg = {
         type: 'saveState',
         key: key,
         value: JSON.stringify(position)
-      });
-      
-      self._log('Saved position for ' + key + ': ' + x + ',' + y);
+      };
+      console.log('[AnyWP] Sending saveState message:', msg);
+      window.chrome.webview.postMessage(msg);
+      console.log('[AnyWP] Message sent successfully');
     } else {
+      console.warn('[AnyWP] chrome.webview not available, using localStorage');
       // Fallback to localStorage
       try {
         localStorage.setItem('AnyWP_' + key, JSON.stringify(position));
-        self._log('Saved position to localStorage for ' + key + ': ' + x + ',' + y);
+        console.log('[AnyWP] Saved to localStorage for ' + key);
       } catch (e) {
-        console.warn('[AnyWP] Failed to save state:', e);
+        console.error('[AnyWP] Failed to save state:', e);
       }
     }
   },
@@ -859,21 +863,28 @@
   loadState: function(key, callback) {
     const self = this;
     
+    console.log('[AnyWP] Loading state for key:', key);
+    
     // Check local cache first
     if (self._persistedState[key]) {
+      console.log('[AnyWP] Found in cache:', self._persistedState[key]);
       callback(self._persistedState[key]);
       return;
     }
     
     // Request from native layer
     if (window.chrome && window.chrome.webview) {
+      console.log('[AnyWP] Requesting state from native layer...');
+      
       // Register one-time callback
       const handler = function(event) {
         if (event.detail && event.detail.type === 'stateLoaded' && event.detail.key === key) {
+          console.log('[AnyWP] Received stateLoaded event:', event.detail);
           window.removeEventListener('AnyWP:stateLoaded', handler);
           
           const value = event.detail.value ? JSON.parse(event.detail.value) : null;
           self._persistedState[key] = value;
+          console.log('[AnyWP] State loaded successfully:', value);
           callback(value);
         }
       };
@@ -888,16 +899,20 @@
       // Timeout after 1 second
       setTimeout(function() {
         window.removeEventListener('AnyWP:stateLoaded', handler);
+        console.log('[AnyWP] loadState timeout for key:', key);
+        callback(null);
       }, 1000);
     } else {
+      console.warn('[AnyWP] chrome.webview not available, using localStorage');
       // Fallback to localStorage
       try {
         const stored = localStorage.getItem('AnyWP_' + key);
         const value = stored ? JSON.parse(stored) : null;
         self._persistedState[key] = value;
+        console.log('[AnyWP] Loaded from localStorage:', value);
         callback(value);
       } catch (e) {
-        console.warn('[AnyWP] Failed to load state:', e);
+        console.error('[AnyWP] Failed to load state:', e);
         callback(null);
       }
     }

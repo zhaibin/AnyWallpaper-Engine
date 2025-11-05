@@ -1558,6 +1558,10 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
     
     // If occluded by app window, don't forward (no log to reduce overhead)
     if (is_app_window) {
+      // CRITICAL: Also clear any active drag state in JavaScript
+      if (wParam == WM_LBUTTONUP || wParam == WM_MOUSEMOVE) {
+        hook_instance_->CancelActiveDrag();
+      }
       return CallNextHookEx(nullptr, nCode, wParam, lParam);
     }
     
@@ -1685,6 +1689,28 @@ void AnyWPEnginePlugin::RemoveMouseHook() {
     UnhookWindowsHookEx(mouse_hook_);
     mouse_hook_ = nullptr;
     std::cout << "[AnyWP] [Hook] Mouse hook removed" << std::endl;
+  }
+}
+
+// Cancel active drag operation
+void AnyWPEnginePlugin::CancelActiveDrag() {
+  // Send command to JavaScript to cancel any active drag
+  if (webview_) {
+    std::wstring script = L"if (window.AnyWP && window.AnyWP._dragState) { "
+                          L"console.log('[AnyWP] Canceling drag (mouse left wallpaper area)'); "
+                          L"window.AnyWP._dragState = null; "
+                          L"}";
+    webview_->ExecuteScript(script.c_str(), nullptr);
+  }
+  
+  // Also check wallpaper instances
+  for (auto& instance : wallpaper_instances_) {
+    if (instance.webview) {
+      std::wstring script = L"if (window.AnyWP && window.AnyWP._dragState) { "
+                            L"window.AnyWP._dragState = null; "
+                            L"}";
+      instance.webview->ExecuteScript(script.c_str(), nullptr);
+    }
   }
 }
 

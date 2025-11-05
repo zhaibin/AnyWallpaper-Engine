@@ -159,6 +159,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void RemoveMouseHook();
   static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
   void SendClickToWebView(int x, int y, const char* event_type = "mouseup");
+  void CancelActiveDrag();  // Cancel drag when mouse leaves wallpaper area
   
   // iframe Ad Detection: Handle iframe click regions
   void HandleIframeDataMessage(const std::string& json_data, WallpaperInstance* instance);
