@@ -1,7 +1,14 @@
 @echo off
 chcp 65001 >nul 2>&1
+REM ============================================================
+REM 用途：安装 WebView2 SDK（首次必须运行）
+REM 功能：下载 NuGet → 安装 Microsoft.Web.WebView2 包
+REM 位置：windows/packages/Microsoft.Web.WebView2.1.0.2592.51
+REM 适用：首次开发或 SDK 丢失时
+REM ============================================================
+
 echo ================================
-echo  AnyWP - WebView2 SDK Setup
+echo  AnyWP - WebView2 SDK 安装
 echo ================================
 echo.
 

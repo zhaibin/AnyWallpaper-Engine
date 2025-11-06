@@ -1,13 +1,16 @@
 @echo off
+chcp 65001 >nul 2>&1
 REM ============================================================
-REM AnyWP Engine - 构建 Release 版本 v2.0
-REM 用于生成可发布的预编译 DLL 包
+REM 用途：构建可发布的预编译 DLL 包（发版必用）
+REM 功能：编译 Release → 打包 DLL/头文件/文档 → 生成 ZIP
+REM 产物：release/anywp_engine_v{版本号}.zip
+REM 适用：准备发布新版本时使用
 REM ============================================================
 
 setlocal enabledelayedexpansion
 
 echo ============================================
-echo AnyWP Engine - 构建 Release 版本 v2.0
+echo AnyWP Engine - 构建 Release 包 v2.0
 echo ============================================
 echo.
 

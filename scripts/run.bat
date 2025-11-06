@@ -1,9 +1,15 @@
 @echo off
 chcp 65001 >nul 2>&1
 setlocal
+REM ============================================================
+REM 用途：灵活运行工具（支持参数选项）
+REM 参数：-d/--debug (Debug版) -r/--release (Release版)
+REM       -f/--flutter (使用 Flutter 运行，支持热重载)
+REM 适用：需要不同运行模式时使用
+REM ============================================================
 
 echo ================================
-echo  AnyWP Engine - Run Tool
+echo  AnyWP Engine - 运行工具
 echo ================================
 echo.
 
