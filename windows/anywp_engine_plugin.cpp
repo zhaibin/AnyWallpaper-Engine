@@ -5,12 +5,16 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <wtsapi32.h>
+#include <ShlObj.h>
 #include <string>
 #include <memory>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <algorithm>
 #include <cctype>
+#include <direct.h>
+#include <sys/stat.h>
 
 #pragma comment(lib, "wtsapi32.lib")
 
@@ -1398,39 +1402,226 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
   }
 }
 
+// ========== State Persistence Helper Functions ==========
+
+// Get application data directory path
+std::string GetAppDataPath() {
+  wchar_t* path = nullptr;
+  HRESULT hr = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &path);
+  
+  if (SUCCEEDED(hr)) {
+    // Convert wchar_t* to std::string
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, path, -1, nullptr, 0, nullptr, nullptr);
+    std::string result(size_needed - 1, 0);
+    WideCharToMultiByte(CP_UTF8, 0, path, -1, &result[0], size_needed, nullptr, nullptr);
+    CoTaskMemFree(path);
+    
+    // Append AnyWPEngine directory
+    result += "\\AnyWPEngine";
+    return result;
+  }
+  
+  return "";
+}
+
+// Ensure directory exists
+bool EnsureDirectoryExists(const std::string& path) {
+  struct stat info;
+  if (stat(path.c_str(), &info) != 0) {
+    // Directory doesn't exist, create it
+    return _mkdir(path.c_str()) == 0;
+  }
+  return (info.st_mode & S_IFDIR) != 0;
+}
+
+// Simple JSON escape function
+std::string EscapeJson(const std::string& str) {
+  std::string result;
+  result.reserve(str.size());
+  
+  for (char c : str) {
+    switch (c) {
+      case '"':  result += "\\\""; break;
+      case '\\': result += "\\\\"; break;
+      case '\b': result += "\\b"; break;
+      case '\f': result += "\\f"; break;
+      case '\n': result += "\\n"; break;
+      case '\r': result += "\\r"; break;
+      case '\t': result += "\\t"; break;
+      default:
+        if (c < 0x20) {
+          // Control character - encode as \uXXXX
+          char buf[7];
+          sprintf_s(buf, "\\u%04x", static_cast<unsigned char>(c));
+          result += buf;
+        } else {
+          result += c;
+        }
+    }
+  }
+  
+  return result;
+}
+
+// Simple JSON unescape function
+std::string UnescapeJson(const std::string& str) {
+  std::string result;
+  result.reserve(str.size());
+  
+  for (size_t i = 0; i < str.size(); ++i) {
+    if (str[i] == '\\' && i + 1 < str.size()) {
+      switch (str[i + 1]) {
+        case '"':  result += '"'; i++; break;
+        case '\\': result += '\\'; i++; break;
+        case 'b':  result += '\b'; i++; break;
+        case 'f':  result += '\f'; i++; break;
+        case 'n':  result += '\n'; i++; break;
+        case 'r':  result += '\r'; i++; break;
+        case 't':  result += '\t'; i++; break;
+        case 'u':  // Unicode escape sequence
+          if (i + 5 < str.size()) {
+            // Simple implementation - just skip it for now
+            i += 5;
+          }
+          break;
+        default:
+          result += str[i];
+      }
+    } else {
+      result += str[i];
+    }
+  }
+  
+  return result;
+}
+
+// Load all state from JSON file
+std::map<std::string, std::string> LoadStateFile() {
+  std::map<std::string, std::string> state;
+  
+  std::string app_data = GetAppDataPath();
+  if (app_data.empty()) {
+    std::cout << "[AnyWP] [State] ERROR: Failed to get app data path" << std::endl;
+    return state;
+  }
+  
+  std::string state_file = app_data + "\\state.json";
+  std::ifstream file(state_file);
+  
+  if (!file.is_open()) {
+    std::cout << "[AnyWP] [State] State file not found (first run): " << state_file << std::endl;
+    return state;
+  }
+  
+  // Read entire file
+  std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  file.close();
+  
+  if (content.empty() || content == "{}") {
+    return state;
+  }
+  
+  // Simple JSON parser for key-value pairs
+  // Format: {"key1": "value1", "key2": "value2"}
+  size_t pos = 0;
+  while (pos < content.size()) {
+    // Find key start
+    size_t key_start = content.find('"', pos);
+    if (key_start == std::string::npos) break;
+    key_start++;
+    
+    // Find key end
+    size_t key_end = content.find('"', key_start);
+    if (key_end == std::string::npos) break;
+    
+    std::string key = content.substr(key_start, key_end - key_start);
+    
+    // Find value start
+    size_t value_start = content.find('"', key_end + 1);
+    if (value_start == std::string::npos) break;
+    value_start++;
+    
+    // Find value end (handle escaped quotes)
+    size_t value_end = value_start;
+    while (value_end < content.size()) {
+      if (content[value_end] == '"' && (value_end == 0 || content[value_end - 1] != '\\')) {
+        break;
+      }
+      value_end++;
+    }
+    
+    if (value_end == std::string::npos) break;
+    
+    std::string value = content.substr(value_start, value_end - value_start);
+    value = UnescapeJson(value);
+    
+    state[key] = value;
+    pos = value_end + 1;
+  }
+  
+  std::cout << "[AnyWP] [State] Loaded " << state.size() << " entries from file" << std::endl;
+  return state;
+}
+
+// Save all state to JSON file
+bool SaveStateFile(const std::map<std::string, std::string>& state) {
+  std::string app_data = GetAppDataPath();
+  if (app_data.empty()) {
+    std::cout << "[AnyWP] [State] ERROR: Failed to get app data path" << std::endl;
+    return false;
+  }
+  
+  // Ensure directory exists
+  if (!EnsureDirectoryExists(app_data)) {
+    std::cout << "[AnyWP] [State] ERROR: Failed to create directory: " << app_data << std::endl;
+    return false;
+  }
+  
+  std::string state_file = app_data + "\\state.json";
+  std::ofstream file(state_file);
+  
+  if (!file.is_open()) {
+    std::cout << "[AnyWP] [State] ERROR: Failed to open file: " << state_file << std::endl;
+    return false;
+  }
+  
+  // Write JSON
+  file << "{\n";
+  
+  size_t count = 0;
+  for (const auto& pair : state) {
+    if (count > 0) file << ",\n";
+    file << "  \"" << EscapeJson(pair.first) << "\": \"" << EscapeJson(pair.second) << "\"";
+    count++;
+  }
+  
+  file << "\n}\n";
+  file.close();
+  
+  std::cout << "[AnyWP] [State] Saved " << state.size() << " entries to file: " << state_file << std::endl;
+  return true;
+}
+
+// ========== State Persistence Functions ==========
+
 // State persistence: Save state
 bool AnyWPEnginePlugin::SaveState(const std::string& key, const std::string& value) {
   std::lock_guard<std::mutex> lock(state_mutex_);
   
   try {
+    // Update in-memory cache
     persisted_state_[key] = value;
     
-    // Write to registry for persistence
-    HKEY hKey;
-    LONG result = RegCreateKeyExA(
-      HKEY_CURRENT_USER,
-      "Software\\AnyWPEngine\\State",
-      0, nullptr, REG_OPTION_NON_VOLATILE,
-      KEY_WRITE, nullptr, &hKey, nullptr
-    );
+    // Save to file
+    bool success = SaveStateFile(persisted_state_);
     
-    if (result == ERROR_SUCCESS) {
-      RegSetValueExA(
-        hKey,
-        key.c_str(),
-        0,
-        REG_SZ,
-        reinterpret_cast<const BYTE*>(value.c_str()),
-        static_cast<DWORD>(value.length() + 1)
-      );
-      RegCloseKey(hKey);
-      
-      std::cout << "[AnyWP] [State] Saved to registry: " << key << " = " << value << std::endl;
-      return true;
+    if (success) {
+      std::cout << "[AnyWP] [State] Saved to file: " << key << " = " << value << std::endl;
     } else {
-      std::cout << "[AnyWP] [State] ERROR: Failed to create registry key: " << result << std::endl;
-      return false;
+      std::cout << "[AnyWP] [State] ERROR: Failed to save state to file" << std::endl;
     }
+    
+    return success;
   } catch (const std::exception& e) {
     std::cout << "[AnyWP] [State] ERROR: Exception in SaveState: " << e.what() << std::endl;
     return false;
@@ -1448,42 +1639,20 @@ std::string AnyWPEnginePlugin::LoadState(const std::string& key) {
     return it->second;
   }
   
-  // Read from registry
-  try {
-    HKEY hKey;
-    LONG result = RegOpenKeyExA(
-      HKEY_CURRENT_USER,
-      "Software\\AnyWPEngine\\State",
-      0,
-      KEY_READ,
-      &hKey
-    );
-    
-    if (result == ERROR_SUCCESS) {
-      char buffer[4096] = {0};
-      DWORD buffer_size = sizeof(buffer);
-      DWORD type;
-      
-      result = RegQueryValueExA(
-        hKey,
-        key.c_str(),
-        nullptr,
-        &type,
-        reinterpret_cast<BYTE*>(buffer),
-        &buffer_size
-      );
-      
-      RegCloseKey(hKey);
-      
-      if (result == ERROR_SUCCESS && type == REG_SZ) {
-        std::string value(buffer);
-        persisted_state_[key] = value;  // Update cache
-        std::cout << "[AnyWP] [State] Loaded from registry: " << key << " = " << value << std::endl;
-        return value;
-      }
+  // Load all state from file if cache is empty
+  if (persisted_state_.empty()) {
+    try {
+      persisted_state_ = LoadStateFile();
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [State] ERROR: Exception in LoadStateFile: " << e.what() << std::endl;
     }
-  } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [State] ERROR: Exception in LoadState: " << e.what() << std::endl;
+  }
+  
+  // Check cache again after loading
+  it = persisted_state_.find(key);
+  if (it != persisted_state_.end()) {
+    std::cout << "[AnyWP] [State] Loaded from file: " << key << " = " << it->second << std::endl;
+    return it->second;
   }
   
   std::cout << "[AnyWP] [State] Key not found: " << key << std::endl;
@@ -1495,19 +1664,24 @@ bool AnyWPEnginePlugin::ClearState() {
   std::lock_guard<std::mutex> lock(state_mutex_);
   
   try {
+    // Clear in-memory cache
     persisted_state_.clear();
     
-    // Delete registry key
-    LONG result = RegDeleteTreeA(
-      HKEY_CURRENT_USER,
-      "Software\\AnyWPEngine\\State"
-    );
+    // Delete state file
+    std::string app_data = GetAppDataPath();
+    if (app_data.empty()) {
+      std::cout << "[AnyWP] [State] ERROR: Failed to get app data path" << std::endl;
+      return false;
+    }
     
-    if (result == ERROR_SUCCESS || result == ERROR_FILE_NOT_FOUND) {
-      std::cout << "[AnyWP] [State] Cleared all state" << std::endl;
+    std::string state_file = app_data + "\\state.json";
+    
+    // Delete file if exists
+    if (DeleteFileA(state_file.c_str()) || GetLastError() == ERROR_FILE_NOT_FOUND) {
+      std::cout << "[AnyWP] [State] Cleared all state (deleted file: " << state_file << ")" << std::endl;
       return true;
     } else {
-      std::cout << "[AnyWP] [State] ERROR: Failed to delete registry tree: " << result << std::endl;
+      std::cout << "[AnyWP] [State] ERROR: Failed to delete state file: " << GetLastError() << std::endl;
       return false;
     }
   } catch (const std::exception& e) {
