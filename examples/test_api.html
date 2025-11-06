@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AnyWP API Test</title>
     
-    <!-- SDK 由引擎自动注入，无需手动加载 -->
+    <!-- 手动加载 SDK（用于浏览器直接打开测试） -->
+    <!-- 引擎运行时会自动注入，手动加载会被覆盖 -->
+    <script src="../windows/anywp_sdk.js"></script>
     
     <style>
         * {
@@ -108,9 +110,9 @@
     </style>
 </head>
 <body>
-    <!-- SDK 由引擎自动注入 -->
+    <!-- SDK 已手动加载或由引擎自动注入 -->
     <script>
-        console.log('等待 AnyWP SDK 自动注入...');
+        console.log('等待 AnyWP SDK 加载...');
     </script>
     <div class="container">
         <h1>🎮 AnyWallpaper API 测试</h1>
