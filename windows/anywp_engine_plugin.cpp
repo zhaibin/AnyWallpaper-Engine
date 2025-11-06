@@ -1432,6 +1432,12 @@ void AnyWPEnginePlugin::SetupMessageBridge() {
           if (c < 128) msg.push_back(static_cast<char>(c));
         }
         
+        // Check if this is a pause/resume result message
+        if (msg.find("\"type\":\"pauseResult\"") != std::string::npos || 
+            msg.find("\"type\":\"resumeResult\"") != std::string::npos) {
+          std::cout << "[AnyWP] [Script Result] " << msg << std::endl;
+        }
+        
         HandleWebMessage(msg);
         
         CoTaskMemFree(message);
@@ -3292,10 +3298,12 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
       switch (wParam) {
         case WTS_SESSION_LOCK:
           std::cout << "[AnyWP] [PowerSaving] System LOCKED" << std::endl;
+          // Always pause on lock (system event takes priority)
           display_change_instance_->PauseWallpaper("System locked");
           break;
         case WTS_SESSION_UNLOCK:
           std::cout << "[AnyWP] [PowerSaving] System UNLOCKED" << std::endl;
+          // Always resume on unlock (system event)
           display_change_instance_->ResumeWallpaper("System unlocked");
           break;
       }
@@ -3345,7 +3353,7 @@ void AnyWPEnginePlugin::UpdatePowerState() {
     DWORD current_time = GetTickCount();
     DWORD idle_time = current_time - lii.dwTime;
     
-    if (idle_time > idle_timeout_ms_) {
+      if (idle_time > idle_timeout_ms_) {
       if (power_state_ == PowerState::ACTIVE) {
         std::cout << "[AnyWP] [PowerSaving] User IDLE detected (" << (idle_time / 1000) << "s, threshold: " << (idle_timeout_ms_ / 1000) << "s)" << std::endl;
         PauseWallpaper("User idle");
@@ -3455,192 +3463,134 @@ void AnyWPEnginePlugin::StopFullscreenDetection() {
   std::cout << "[AnyWP] [PowerSaving] Fullscreen detection stopped" << std::endl;
 }
 
-// Pause wallpaper (reduce CPU/GPU usage) - Keep WebView visible, force pause all content
+// Pause wallpaper - GOAL: Reduce CPU/GPU usage while keeping wallpaper visible
 void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
-  if (is_paused_) {
-    return;
+  // Guard: Avoid duplicate pause
+  if (is_paused_.exchange(true)) {
+    return;  // Already paused
   }
   
-  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER (FORCE PAUSE) ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER ==========" << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
-  is_paused_ = true;
+  // Strategy: Freeze last frame + stop animations (keeps wallpaper visible, no flicker)
+  // This provides best balance between power saving and user experience
   
-  // ENHANCED: Force pause all content (videos, animations, requestAnimationFrame)
-  // Keep WebView visible but stop all rendering activity
+  // 1. Inject CSS to pause all animations and freeze the current state
+  //    This stops GPU rendering while keeping the last frame visible
+  std::wstring freeze_script = LR"(
+    (function() {
+      try {
+        // Create or update freeze overlay
+        var freezeStyle = document.getElementById('__anywp_freeze_style');
+        if (!freezeStyle) {
+          freezeStyle = document.createElement('style');
+          freezeStyle.id = '__anywp_freeze_style';
+          freezeStyle.textContent = 
+            '* { ' +
+            '  animation-play-state: paused !important; ' +
+            '  transition: none !important; ' +
+            '  animation: none !important; ' +
+            '} ' +
+            '*::before, *::after { ' +
+            '  animation-play-state: paused !important; ' +
+            '  transition: none !important; ' +
+            '  animation: none !important; ' +
+            '}';
+          (document.head || document.documentElement).appendChild(freezeStyle);
+        }
+        
+        // Pause all videos
+        document.querySelectorAll('video').forEach(function(v) {
+          if (!v.paused) {
+            v.__anyWP_wasPlaying = true;
+            v.pause();
+          }
+        });
+        
+        // Pause all audio
+        document.querySelectorAll('audio').forEach(function(a) {
+          if (!a.paused) {
+            a.__anyWP_wasPlaying = true;
+            a.pause();
+          }
+        });
+        
+        // Stop requestAnimationFrame loops
+        if (!window.__anyWP_rafPaused) {
+          window.__anyWP_rafPaused = true;
+          window.__anyWP_originalRAF = window.requestAnimationFrame;
+          window.requestAnimationFrame = function() { return 0; };
+        }
+        
+        return 'PAUSED';
+      } catch(e) {
+        return 'ERROR: ' + e.message;
+      }
+    })();
+  )";
   
-  // 1. Force pause all content via JavaScript (wait for DOM ready)
-  std::wstring pause_script = L"(function() {"
-    L"  function doPause() {"
-    L"    try {"
-    L"      console.log('[AnyWP] Starting pause operation...');"
-    L"      "
-    L"      // Pause all videos"
-    L"      const videos = document.querySelectorAll('video');"
-    L"      console.log('[AnyWP] Found ' + videos.length + ' video(s)');"
-    L"      videos.forEach(function(video) {"
-    L"        if (!video.paused) {"
-    L"          video.__anyWP_wasPlaying = true;"
-    L"          video.pause();"
-    L"          console.log('[AnyWP] Video paused');"
-    L"        }"
-    L"      });"
-    L"      "
-    L"      // Pause all audio"
-    L"      const audios = document.querySelectorAll('audio');"
-    L"      console.log('[AnyWP] Found ' + audios.length + ' audio(s)');"
-    L"      audios.forEach(function(audio) {"
-    L"        if (!audio.paused) {"
-    L"          audio.__anyWP_wasPlaying = true;"
-    L"          audio.pause();"
-    L"          console.log('[AnyWP] Audio paused');"
-    L"        }"
-    L"      });"
-    L"      "
-    L"      // Pause all CSS animations"
-    L"      let pauseStyle = document.getElementById('__anywp_pause_style');"
-    L"      if (!pauseStyle) {"
-    L"        pauseStyle = document.createElement('style');"
-    L"        pauseStyle.id = '__anywp_pause_style';"
-    L"        pauseStyle.textContent = '* { animation-play-state: paused !important; transition-play-state: paused !important; }';"
-    L"        document.head.appendChild(pauseStyle);"
-    L"        console.log('[AnyWP] CSS animations paused');"
-    L"      }"
-    L"      "
-    L"      // Stop all requestAnimationFrame loops"
-    L"      if (!window.__anyWP_rafPaused) {"
-    L"        window.__anyWP_rafPaused = true;"
-    L"        window.__anyWP_originalRAF = window.requestAnimationFrame;"
-    L"        window.requestAnimationFrame = function() { return 0; };"
-    L"        console.log('[AnyWP] requestAnimationFrame disabled');"
-    L"      }"
-    L"      "
-    L"      // Notify SDK if available"
-    L"      if (window.AnyWP && window.AnyWP._autoPauseAnimations) {"
-    L"        window.AnyWP._autoPauseAnimations();"
-    L"        console.log('[AnyWP] SDK pause called');"
-    L"      }"
-    L"      "
-    L"      // Dispatch visibility events"
-    L"      document.dispatchEvent(new Event('visibilitychange'));"
-    L"      window.dispatchEvent(new CustomEvent('AnyWP:visibility', { detail: { visible: false } }));"
-    L"      "
-    L"      console.log('[AnyWP] All content paused successfully');"
-    L"      return true;"
-    L"    } catch(e) {"
-    L"      console.error('[AnyWP] Error pausing content:', e);"
-    L"      return false;"
-    L"    }"
-    L"  }"
-    L"  "
-    L"  // Wait for DOM ready if needed"
-    L"  if (document.readyState === 'loading') {"
-    L"    document.addEventListener('DOMContentLoaded', doPause);"
-    L"  } else {"
-    L"    doPause();"
-    L"  }"
-    L"})();";
+  ExecuteScriptToAllInstances(freeze_script);
   
-  ExecuteScriptToAllInstances(pause_script);
-  
-  // 2. Light memory optimization (don't clear cache to avoid reload)
+  // 2. Light memory trim (avoid aggressive trim to prevent performance impact)
   SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
   
-  // 3. Reduce WebView rendering priority (don't clear cache - it causes reload)
-  // Note: Clearing cache causes resources to reload, increasing memory again
-  
-  std::cout << "[AnyWP] [PowerSaving] Pause script executed (check console for results)" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Wallpaper paused - last frame frozen" << std::endl;
 }
 
-// Resume wallpaper - Resume all content (videos, animations, requestAnimationFrame)
+// Resume wallpaper - Restore animations and rendering
 void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
-  if (!is_paused_) {
-    return;
+  // Guard: Avoid duplicate resume
+  if (!is_paused_.exchange(false)) {
+    return;  // Already resumed
   }
   
-  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER (FORCE RESUME) ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER ==========" << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
-  is_paused_ = false;
+  // Remove freeze and restore animations
+  std::wstring unfreeze_script = LR"(
+    (function() {
+      try {
+        // Remove freeze style
+        var freezeStyle = document.getElementById('__anywp_freeze_style');
+        if (freezeStyle) {
+          freezeStyle.remove();
+        }
+        
+        // Resume videos
+        document.querySelectorAll('video').forEach(function(v) {
+          if (v.__anyWP_wasPlaying) {
+            v.play().catch(function() {});
+            delete v.__anyWP_wasPlaying;
+          }
+        });
+        
+        // Resume audio
+        document.querySelectorAll('audio').forEach(function(a) {
+          if (a.__anyWP_wasPlaying) {
+            a.play().catch(function() {});
+            delete a.__anyWP_wasPlaying;
+          }
+        });
+        
+        // Restore requestAnimationFrame
+        if (window.__anyWP_rafPaused && window.__anyWP_originalRAF) {
+          window.requestAnimationFrame = window.__anyWP_originalRAF;
+          delete window.__anyWP_originalRAF;
+          window.__anyWP_rafPaused = false;
+        }
+        
+        return 'RESUMED';
+      } catch(e) {
+        return 'ERROR: ' + e.message;
+      }
+    })();
+  )";
   
-  // ENHANCED: Force resume all content (videos, animations, requestAnimationFrame)
+  ExecuteScriptToAllInstances(unfreeze_script);
   
-  // 1. Force resume all content via JavaScript
-  std::wstring resume_script = L"(function() {"
-    L"  function doResume() {"
-    L"    try {"
-    L"      console.log('[AnyWP] Starting resume operation...');"
-    L"      "
-    L"      // Remove CSS animation pause style"
-    L"      const pauseStyle = document.getElementById('__anywp_pause_style');"
-    L"      if (pauseStyle) {"
-    L"        pauseStyle.remove();"
-    L"        console.log('[AnyWP] CSS animations resumed');"
-    L"      }"
-    L"      "
-    L"      // Restore requestAnimationFrame"
-    L"      if (window.__anyWP_rafPaused && window.__anyWP_originalRAF) {"
-    L"        window.requestAnimationFrame = window.__anyWP_originalRAF;"
-    L"        window.__anyWP_rafPaused = false;"
-    L"        delete window.__anyWP_originalRAF;"
-    L"        console.log('[AnyWP] requestAnimationFrame restored');"
-    L"      }"
-    L"      "
-    L"      // Resume all videos"
-    L"      const videos = document.querySelectorAll('video');"
-    L"      console.log('[AnyWP] Found ' + videos.length + ' video(s)');"
-    L"      videos.forEach(function(video) {"
-    L"        if (video.__anyWP_wasPlaying) {"
-    L"          video.play().catch(function(e) {"
-    L"            console.log('[AnyWP] Video play failed:', e);"
-    L"          });"
-    L"          delete video.__anyWP_wasPlaying;"
-    L"          console.log('[AnyWP] Video resumed');"
-    L"        }"
-    L"      });"
-    L"      "
-    L"      // Resume all audio"
-    L"      const audios = document.querySelectorAll('audio');"
-    L"      console.log('[AnyWP] Found ' + audios.length + ' audio(s)');"
-    L"      audios.forEach(function(audio) {"
-    L"        if (audio.__anyWP_wasPlaying) {"
-    L"          audio.play().catch(function(e) {"
-    L"            console.log('[AnyWP] Audio play failed:', e);"
-    L"          });"
-    L"          delete audio.__anyWP_wasPlaying;"
-    L"          console.log('[AnyWP] Audio resumed');"
-    L"        }"
-    L"      });"
-    L"      "
-    L"      // Notify SDK if available"
-    L"      if (window.AnyWP && window.AnyWP._autoResumeAnimations) {"
-    L"        window.AnyWP._autoResumeAnimations();"
-    L"        console.log('[AnyWP] SDK resume called');"
-    L"      }"
-    L"      "
-    L"      // Dispatch visibility events"
-    L"      document.dispatchEvent(new Event('visibilitychange'));"
-    L"      window.dispatchEvent(new CustomEvent('AnyWP:visibility', { detail: { visible: true } }));"
-    L"      "
-    L"      console.log('[AnyWP] All content resumed successfully');"
-    L"      return true;"
-    L"    } catch(e) {"
-    L"      console.error('[AnyWP] Error resuming content:', e);"
-    L"      return false;"
-    L"    }"
-    L"  }"
-    L"  "
-    L"  // Wait for DOM ready if needed"
-    L"  if (document.readyState === 'loading') {"
-    L"    document.addEventListener('DOMContentLoaded', doResume);"
-    L"  } else {"
-    L"    doResume();"
-    L"  }"
-    L"})();";
-  
-  ExecuteScriptToAllInstances(resume_script);
-  
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed (all content restarted)" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed - animations restarted" << std::endl;
 }
 
 // Optimize memory usage (aggressive for better results with safety checks)
@@ -3820,7 +3770,11 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
           Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
             [](HRESULT error, LPCWSTR result) -> HRESULT {
               if (SUCCEEDED(error)) {
-                std::cout << "[AnyWP] Script executed successfully" << std::endl;
+                if (result && wcslen(result) > 0) {
+                  std::wcout << L"[AnyWP] Script executed successfully, result: " << result << std::endl;
+                } else {
+                  std::cout << "[AnyWP] Script executed successfully, but returned null/empty" << std::endl;
+                }
               } else {
                 std::cout << "[AnyWP] ERROR: Script execution failed: " << std::hex << error << std::endl;
               }
@@ -3837,7 +3791,7 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
       Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
         [](HRESULT error, LPCWSTR result) -> HRESULT {
           if (SUCCEEDED(error)) {
-            std::cout << "[AnyWP] Script executed successfully (legacy)" << std::endl;
+            std::wcout << L"[AnyWP] Script executed successfully (legacy), result: " << (result ? result : L"null") << std::endl;
           } else {
             std::cout << "[AnyWP] ERROR: Script execution failed (legacy): " << std::hex << error << std::endl;
           }

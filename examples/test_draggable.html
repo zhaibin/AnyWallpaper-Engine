@@ -310,10 +310,7 @@
         console.log('[Test] AnyWP SDK v' + AnyWP.version + ' detected');
         console.log('[Test] Available methods:', Object.keys(AnyWP));
         
-        // 加载保存的状态
-        loadSavedStates();
-        
-        // 设置可拖拽元素
+        // 设置可拖拽元素（makeDraggable 内部会加载位置，不需要单独调用 loadSavedStates）
         setupDraggable();
         
         // 设置按钮点击处理
@@ -408,14 +405,18 @@
         onDragStart: function(pos) {
           console.log('[Test] Box1 drag start:', pos);
           document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 拖动中 (Box1)';
+          document.getElementById('drag-status').style.color = '#4CAF50';
           document.getElementById('box1').classList.add('dragging');
         },
         onDrag: function(pos) {
-          // 实时更新位置显示
+          // 实时更新拖拽状态显示
+          document.getElementById('drag-status').innerHTML = 
+            '📍 拖拽中 (Box1) - 位置: (' + Math.round(pos.x) + ', ' + Math.round(pos.y) + ')';
         },
         onDragEnd: function(pos) {
           console.log('[Test] Box1 drag end:', pos);
           document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 空闲';
+          document.getElementById('drag-status').style.color = '';
           document.getElementById('save-status').innerHTML = '💾 保存状态: 已保存 Box1 位置';
           document.getElementById('box1').classList.remove('dragging');
           
@@ -431,10 +432,17 @@
         onDragStart: function(pos) {
           console.log('[Test] Widget1 drag start:', pos);
           document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 拖动中 (Widget1)';
+          document.getElementById('drag-status').style.color = '#4CAF50';
+        },
+        onDrag: function(pos) {
+          // 实时更新拖拽状态显示
+          document.getElementById('drag-status').innerHTML = 
+            '📍 拖拽中 (Widget1) - 位置: (' + Math.round(pos.x) + ', ' + Math.round(pos.y) + ')';
         },
         onDragEnd: function(pos) {
           console.log('[Test] Widget1 drag end:', pos);
           document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 空闲';
+          document.getElementById('drag-status').style.color = '';
           document.getElementById('save-status').innerHTML = '💾 保存状态: 已保存 Widget1 位置';
           
           setTimeout(() => {
@@ -449,10 +457,17 @@
         onDragStart: function(pos) {
           console.log('[Test] Widget2 drag start:', pos);
           document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 拖动中 (Widget2)';
+          document.getElementById('drag-status').style.color = '#4CAF50';
+        },
+        onDrag: function(pos) {
+          // 实时更新拖拽状态显示
+          document.getElementById('drag-status').innerHTML = 
+            '📍 拖拽中 (Widget2) - 位置: (' + Math.round(pos.x) + ', ' + Math.round(pos.y) + ')';
         },
         onDragEnd: function(pos) {
           console.log('[Test] Widget2 drag end:', pos);
           document.getElementById('drag-status').innerHTML = '📍 拖拽状态: 空闲';
+          document.getElementById('drag-status').style.color = '';
           document.getElementById('save-status').innerHTML = '💾 保存状态: 已保存 Widget2 位置';
           
           setTimeout(() => {

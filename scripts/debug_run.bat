@@ -20,11 +20,23 @@ echo Starting application with logging...
 echo Log file: %CD%\debug_run.log
 echo.
 
-echo Running from: %CD%\example\build\windows\x64\runner\Release\
-echo.
-
-REM Run and capture output to log file
-example\build\windows\x64\runner\Release\anywallpaper_engine_example.exe > debug_run.log 2>&1
+REM Check if Debug or Release exists
+if exist "example\build\windows\x64\runner\Debug\anywallpaper_engine_example.exe" (
+    echo Running from: %CD%\example\build\windows\x64\runner\Debug\
+    echo.
+    REM Run and capture output to log file
+    start /B example\build\windows\x64\runner\Debug\anywallpaper_engine_example.exe > debug_run.log 2>&1
+) else if exist "example\build\windows\x64\runner\Release\anywallpaper_engine_example.exe" (
+    echo Running from: %CD%\example\build\windows\x64\runner\Release\
+    echo.
+    REM Run and capture output to log file
+    start /B example\build\windows\x64\runner\Release\anywallpaper_engine_example.exe > debug_run.log 2>&1
+) else (
+    echo ERROR: Executable not found in Debug or Release folder!
+    echo Please build the project first.
+    pause
+    exit /b 1
+)
 
 echo.
 echo Application exited. Check debug_run.log for details.

@@ -533,55 +533,135 @@
     this._log('Visibility callback registered');
   },
   
-  // NEW: Auto-pause animations when hidden
+  // ENHANCED: Comprehensive auto-pause for power saving
   _autoPauseAnimations: function() {
-    if (!window.__anyWP_animationsPaused) {
-      this._log('Auto-pausing animations for power saving');
-      window.__anyWP_animationsPaused = true;
-      
-      // Pause videos
-      const videos = document.querySelectorAll('video');
+    // Guard: Prevent duplicate pause
+    if (window.__anyWP_animationsPaused) {
+      return;
+    }
+    
+    console.log('[AnyWP] Auto-pausing all animations for power saving...');
+    window.__anyWP_animationsPaused = true;
+    
+    try {
+      // 1. Pause all videos
+      var videos = document.querySelectorAll('video');
+      console.log('[AnyWP] Found ' + videos.length + ' video(s)');
       videos.forEach(function(video) {
-        if (!video.paused) {
-          video.__anyWP_wasPlaying = true;
-          video.pause();
+        try {
+          if (!video.paused) {
+            video.__anyWP_wasPlaying = true;
+            video.pause();
+          }
+        } catch(e) {
+          console.warn('[AnyWP] Failed to pause video:', e);
         }
       });
       
-      // Pause audio
-      const audios = document.querySelectorAll('audio');
+      // 2. Pause all audio
+      var audios = document.querySelectorAll('audio');
+      console.log('[AnyWP] Found ' + audios.length + ' audio(s)');
       audios.forEach(function(audio) {
-        if (!audio.paused) {
-          audio.__anyWP_wasPlaying = true;
-          audio.pause();
+        try {
+          if (!audio.paused) {
+            audio.__anyWP_wasPlaying = true;
+            audio.pause();
+          }
+        } catch(e) {
+          console.warn('[AnyWP] Failed to pause audio:', e);
         }
       });
+      
+      // 3. Pause CSS animations
+      var pauseStyle = document.getElementById('__anywp_pause_style');
+      if (!pauseStyle) {
+        pauseStyle = document.createElement('style');
+        pauseStyle.id = '__anywp_pause_style';
+        pauseStyle.textContent = '* { animation-play-state: paused !important; } *::before, *::after { animation-play-state: paused !important; }';
+        if (document.head) {
+          document.head.appendChild(pauseStyle);
+          console.log('[AnyWP] CSS animations paused');
+        }
+      }
+      
+      // 4. Intercept requestAnimationFrame
+      if (!window.__anyWP_originalRAF) {
+        window.__anyWP_originalRAF = window.requestAnimationFrame;
+        window.__anyWP_originalCancelRAF = window.cancelAnimationFrame;
+        
+        // Override to no-op
+        window.requestAnimationFrame = function(callback) { return 0; };
+        window.cancelAnimationFrame = function(id) {};
+        
+        console.log('[AnyWP] requestAnimationFrame disabled');
+      }
+      
+      console.log('[AnyWP] Auto-pause complete');
+    } catch(e) {
+      console.error('[AnyWP] Error during auto-pause:', e);
     }
   },
   
-  // NEW: Auto-resume animations when visible
+  // ENHANCED: Comprehensive auto-resume
   _autoResumeAnimations: function() {
-    if (window.__anyWP_animationsPaused) {
-      this._log('Auto-resuming animations');
-      window.__anyWP_animationsPaused = false;
+    // Guard: Prevent duplicate resume
+    if (!window.__anyWP_animationsPaused) {
+      return;
+    }
+    
+    console.log('[AnyWP] Auto-resuming all animations...');
+    window.__anyWP_animationsPaused = false;
+    
+    try {
+      // 1. Remove CSS pause style
+      var pauseStyle = document.getElementById('__anywp_pause_style');
+      if (pauseStyle) {
+        pauseStyle.remove();
+        console.log('[AnyWP] CSS animations resumed');
+      }
       
-      // Resume videos
-      const videos = document.querySelectorAll('video');
+      // 2. Restore requestAnimationFrame
+      if (window.__anyWP_originalRAF) {
+        window.requestAnimationFrame = window.__anyWP_originalRAF;
+        window.cancelAnimationFrame = window.__anyWP_originalCancelRAF;
+        delete window.__anyWP_originalRAF;
+        delete window.__anyWP_originalCancelRAF;
+        console.log('[AnyWP] requestAnimationFrame restored');
+      }
+      
+      // 3. Resume videos
+      var videos = document.querySelectorAll('video');
       videos.forEach(function(video) {
-        if (video.__anyWP_wasPlaying) {
-          video.play();
-          delete video.__anyWP_wasPlaying;
+        try {
+          if (video.__anyWP_wasPlaying) {
+            video.play().catch(function(e) {
+              console.warn('[AnyWP] Failed to resume video:', e);
+            });
+            delete video.__anyWP_wasPlaying;
+          }
+        } catch(e) {
+          console.warn('[AnyWP] Error resuming video:', e);
         }
       });
       
-      // Resume audio
-      const audios = document.querySelectorAll('audio');
+      // 4. Resume audio
+      var audios = document.querySelectorAll('audio');
       audios.forEach(function(audio) {
-        if (audio.__anyWP_wasPlaying) {
-          audio.play();
-          delete audio.__anyWP_wasPlaying;
+        try {
+          if (audio.__anyWP_wasPlaying) {
+            audio.play().catch(function(e) {
+              console.warn('[AnyWP] Failed to resume audio:', e);
+            });
+            delete audio.__anyWP_wasPlaying;
+          }
+        } catch(e) {
+          console.warn('[AnyWP] Error resuming audio:', e);
         }
       });
+      
+      console.log('[AnyWP] Auto-resume complete');
+    } catch(e) {
+      console.error('[AnyWP] Error during auto-resume:', e);
     }
   },
   
@@ -672,80 +752,127 @@
       const mouseY = detail.y;
       const mouseType = detail.type;
       
-      // Debug log for non-mousemove events
-      if (mouseType !== 'mousemove') {
-        self._log('[makeDraggable] Mouse event: ' + mouseType + ' at (' + mouseX + ',' + mouseY + ')');
-      }
-      
       // Get element bounds (needed for both detection and drag offset)
       const rect = el.getBoundingClientRect();
       const dpi = self.dpiScale;
-      const physicalLeft = Math.round(rect.left * dpi);
-      const physicalTop = Math.round(rect.top * dpi);
-      const physicalRight = Math.round(rect.right * dpi);
-      const physicalBottom = Math.round(rect.bottom * dpi);
       
-      // Check if mouse is over this element
-      const isOver = mouseX >= physicalLeft && mouseX <= physicalRight &&
-                     mouseY >= physicalTop && mouseY <= physicalBottom;
+      // SIMPLIFIED: In wallpaper scenario, window is fullscreen
+      // Mouse coordinates are screen-relative (physical pixels)
+      // Element bounds are viewport-relative (CSS pixels)
+      // Convert both to same coordinate system for comparison
       
-      // Debug: log mousedown events
+      // Get window position (in CSS pixels, may be monitor offset in multi-monitor setup)
+      // In fullscreen wallpaper, this should be 0 for primary monitor or monitor offset
+      const windowLeft = (typeof window.screenX !== 'undefined') ? window.screenX : 0;
+      const windowTop = (typeof window.screenY !== 'undefined') ? window.screenY : 0;
+      
+      // Get document element position to account for any scroll/offset
+      const docRect = document.documentElement.getBoundingClientRect();
+      
+      // Convert mouse screen coordinates to viewport CSS coordinates
+      // Mouse is in physical pixels, convert to CSS pixels first, then subtract window and document offsets
+      const viewportMouseX = (mouseX / dpi) - windowLeft - docRect.left;
+      const viewportMouseY = (mouseY / dpi) - windowTop - docRect.top;
+      
+      // Element bounds are already in CSS pixels (viewport-relative)
+      const elementLeft = rect.left;
+      const elementTop = rect.top;
+      const elementRight = rect.right;
+      const elementBottom = rect.bottom;
+      
+      // Check if mouse is over this element (both in CSS pixels, viewport-relative)
+      const isOver = viewportMouseX >= elementLeft && viewportMouseX <= elementRight &&
+                     viewportMouseY >= elementTop && viewportMouseY <= elementBottom;
+      
+      // Debug: log ALL mousedown events with detailed info (even if not over element)
       if (mouseType === 'mousedown') {
-        console.log('[AnyWP] [makeDraggable] mousedown - isOver:', isOver, 
-                    'dragState:', self._dragState ? 'EXISTS' : 'NULL');
+        const elementId = el.id || el.className || 'unknown';
+        console.log('[AnyWP] [makeDraggable] mousedown on ' + elementId + ' - Mouse (screen):', mouseX, mouseY,
+                    'Mouse (viewport CSS):', viewportMouseX.toFixed(1), viewportMouseY.toFixed(1),
+                    'Element (viewport CSS):', elementLeft.toFixed(1), elementTop.toFixed(1), elementRight.toFixed(1), elementBottom.toFixed(1),
+                    'isOver:', isOver,
+                    'dragState:', self._dragState ? 'EXISTS' : 'NULL',
+                    'Window offset:', windowLeft, windowTop,
+                    'Doc offset:', docRect.left.toFixed(1), docRect.top.toFixed(1),
+                    'DPI:', dpi);
+        
+        // Also update status panel for debugging (if exists)
+        const statusEl = document.getElementById('drag-status');
+        if (statusEl) {
+          if (isOver) {
+            statusEl.innerHTML = 
+              '📍 检测到点击在 ' + elementId + ' 上 - 准备拖拽';
+            statusEl.style.color = '#4CAF50';
+          } else {
+            statusEl.innerHTML = 
+              '📍 点击不在 ' + elementId + ' 上 (鼠标: ' + viewportMouseX.toFixed(0) + ',' + viewportMouseY.toFixed(0) + 
+              ' | 元素: ' + elementLeft.toFixed(0) + ',' + elementTop.toFixed(0) + '-' + elementRight.toFixed(0) + ',' + elementBottom.toFixed(0) + ')';
+            statusEl.style.color = '#ff9800';
+          }
+        }
+      }
+      
+      // Debug log for non-mousemove events
+      if (mouseType !== 'mousemove') {
+        self._log('[makeDraggable] Mouse event: ' + mouseType + ' at screen (' + mouseX + ',' + mouseY + ') -> viewport CSS (' + viewportMouseX.toFixed(1) + ',' + viewportMouseY.toFixed(1) + ')');
       }
       
       if (mouseType === 'mousedown' && isOver && !self._dragState) {
         // Start dragging
-        console.log('[AnyWP] [Drag] START - Mouse at (' + mouseX + ',' + mouseY + ')');
+        console.log('[AnyWP] [Drag] START - Mouse at viewport CSS (' + viewportMouseX.toFixed(1) + ',' + viewportMouseY.toFixed(1) + ')');
         
         self._dragState = {
           element: el,
           data: draggableData,
-          startX: mouseX,
-          startY: mouseY,
-          offsetX: mouseX - physicalLeft,
-          offsetY: mouseY - physicalTop,
-          initialLeft: physicalLeft,
-          initialTop: physicalTop
+          startX: viewportMouseX,
+          startY: viewportMouseY,
+          offsetX: viewportMouseX - elementLeft,
+          offsetY: viewportMouseY - elementTop,
+          initialLeft: elementLeft,
+          initialTop: elementTop,
+          windowLeft: windowLeft,
+          windowTop: windowTop,
+          docLeft: docRect.left,
+          docTop: docRect.top,
+          dpi: dpi
         };
         
         if (onDragStart) {
           onDragStart({
-            x: physicalLeft / dpi,
-            y: physicalTop / dpi
+            x: elementLeft,
+            y: elementTop
           });
         }
         
-        self._log('Drag start at: ' + mouseX + ',' + mouseY + ' (element at ' + physicalLeft + ',' + physicalTop + ')', true);
+        self._log('Drag start at: ' + viewportMouseX.toFixed(1) + ',' + viewportMouseY.toFixed(1) + ' (element at ' + elementLeft.toFixed(1) + ',' + elementTop.toFixed(1) + ')', true);
       }
       else if (mouseType === 'mousemove' && self._dragState && self._dragState.element === el) {
-        // Continue dragging
-        console.log('[AnyWP] [Drag] MOVE - Mouse:', mouseX, mouseY);
+        // Continue dragging - convert current mouse position to viewport CSS coordinates
+        // Use saved document offset for consistency during drag
+        const currentViewportX = (mouseX / self._dragState.dpi) - self._dragState.windowLeft - self._dragState.docLeft;
+        const currentViewportY = (mouseY / self._dragState.dpi) - self._dragState.windowTop - self._dragState.docTop;
         
-        let newPhysicalLeft = mouseX - self._dragState.offsetX;
-        let newPhysicalTop = mouseY - self._dragState.offsetY;
+        // Calculate new position in CSS pixels
+        let newLeft = currentViewportX - self._dragState.offsetX;
+        let newTop = currentViewportY - self._dragState.offsetY;
         
-        // Apply bounds if specified (convert to physical pixels)
+        // Apply bounds if specified (bounds are in CSS pixels)
         if (bounds) {
           if (bounds.left !== undefined) {
-            newPhysicalLeft = Math.max(bounds.left * dpi, newPhysicalLeft);
+            newLeft = Math.max(bounds.left, newLeft);
           }
           if (bounds.top !== undefined) {
-            newPhysicalTop = Math.max(bounds.top * dpi, newPhysicalTop);
+            newTop = Math.max(bounds.top, newTop);
           }
           if (bounds.right !== undefined) {
-            newPhysicalLeft = Math.min((bounds.right - el.offsetWidth) * dpi, newPhysicalLeft);
+            newLeft = Math.min(bounds.right - el.offsetWidth, newLeft);
           }
           if (bounds.bottom !== undefined) {
-            newPhysicalTop = Math.min((bounds.bottom - el.offsetHeight) * dpi, newPhysicalTop);
+            newTop = Math.min(bounds.bottom - el.offsetHeight, newTop);
           }
         }
         
-        // Convert back to CSS pixels
-        const newLeft = newPhysicalLeft / dpi;
-        const newTop = newPhysicalTop / dpi;
-        
+        // Update element position (already in CSS pixels)
         el.style.left = newLeft + 'px';
         el.style.top = newTop + 'px';
         
@@ -753,8 +880,8 @@
           onDrag({
             x: newLeft,
             y: newTop,
-            deltaX: (mouseX - self._dragState.startX) / dpi,
-            deltaY: (mouseY - self._dragState.startY) / dpi
+            deltaX: currentViewportX - self._dragState.startX,
+            deltaY: currentViewportY - self._dragState.startY
           });
         }
       }
