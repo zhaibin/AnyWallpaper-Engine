@@ -3455,49 +3455,161 @@ void AnyWPEnginePlugin::StopFullscreenDetection() {
   std::cout << "[AnyWP] [PowerSaving] Fullscreen detection stopped" << std::endl;
 }
 
-// Pause wallpaper (reduce CPU/GPU usage) - Keep WebView visible, only pause content
+// Pause wallpaper (reduce CPU/GPU usage) - Keep WebView visible, force pause all content
 void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   if (is_paused_) {
     return;
   }
   
-  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER (CONTENT ONLY) ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER (FORCE PAUSE) ==========" << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
   is_paused_ = true;
   
-  // FIXED: Keep WebView visible, only notify web content to pause animations/videos
-  // This allows web content to pause gracefully while keeping the wallpaper visible
+  // ENHANCED: Force pause all content (videos, animations, requestAnimationFrame)
+  // Keep WebView visible but stop all rendering activity
   
-  // 1. Notify web content using Page Visibility API
-  //    This allows web apps to pause animations and videos gracefully
-  NotifyWebContentVisibility(false);
+  // 1. Force pause all content via JavaScript
+  std::wstring pause_script = L"(function() {"
+    L"  try {"
+    L"    // Pause all videos"
+    L"    const videos = document.querySelectorAll('video');"
+    L"    videos.forEach(function(video) {"
+    L"      if (!video.paused) {"
+    L"        video.__anyWP_wasPlaying = true;"
+    L"        video.pause();"
+    L"      }"
+    L"    });"
+    L"    "
+    L"    // Pause all audio"
+    L"    const audios = document.querySelectorAll('audio');"
+    L"    audios.forEach(function(audio) {"
+    L"      if (!audio.paused) {"
+    L"        audio.__anyWP_wasPlaying = true;"
+    L"        audio.pause();"
+    L"      }"
+    L"    });"
+    L"    "
+    L"    // Pause all CSS animations"
+    L"    const style = document.createElement('style');"
+    L"    style.id = '__anywp_pause_style';"
+    L"    style.textContent = '* { animation-play-state: paused !important; }';"
+    L"    document.head.appendChild(style);"
+    L"    "
+    L"    // Stop all requestAnimationFrame loops"
+    L"    if (!window.__anyWP_rafPaused) {"
+    L"      window.__anyWP_rafPaused = true;"
+    L"      const originalRAF = window.requestAnimationFrame;"
+    L"      window.requestAnimationFrame = function() { return 0; };"
+    L"      window.__anyWP_originalRAF = originalRAF;"
+    L"    }"
+    L"    "
+    L"    // Notify SDK if available"
+    L"    if (window.AnyWP && window.AnyWP._autoPauseAnimations) {"
+    L"      window.AnyWP._autoPauseAnimations();"
+    L"    }"
+    L"    "
+    L"    // Dispatch visibility events"
+    L"    document.dispatchEvent(new Event('visibilitychange'));"
+    L"    window.dispatchEvent(new CustomEvent('AnyWP:visibility', { detail: { visible: false } }));"
+    L"    "
+    L"    console.log('[AnyWP] All content paused (videos, animations, RAF)');"
+    L"  } catch(e) {"
+    L"    console.error('[AnyWP] Error pausing content:', e);"
+    L"  }"
+    L"})();";
   
-  // 2. Light memory optimization (not aggressive)
-  //    Only trim working set, don't clear cache
+  ExecuteScriptToAllInstances(pause_script);
+  
+  // 2. Aggressive memory optimization
   SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper content paused (WebView remains visible)" << std::endl;
+  // 3. Clear WebView cache to reduce memory
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      if (instance.webview && instance.webview.Get()) {
+        instance.webview->CallDevToolsProtocolMethod(L"Network.clearBrowserCache", L"{}", nullptr);
+      }
+    }
+  }
+  
+  if (webview_ && webview_.Get()) {
+    webview_->CallDevToolsProtocolMethod(L"Network.clearBrowserCache", L"{}", nullptr);
+  }
+  
+  std::cout << "[AnyWP] [PowerSaving] Wallpaper paused (all content stopped, memory optimized)" << std::endl;
 }
 
-// Resume wallpaper - Instant resume, notify web content to resume animations
+// Resume wallpaper - Resume all content (videos, animations, requestAnimationFrame)
 void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
   if (!is_paused_) {
     return;
   }
   
-  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER (CONTENT ONLY) ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER (FORCE RESUME) ==========" << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
   is_paused_ = false;
   
-  // FIXED: WebView was always visible, just notify web content to resume animations/videos
-  // DOM state is preserved, no reloading needed
+  // ENHANCED: Force resume all content (videos, animations, requestAnimationFrame)
   
-  // 1. Notify web content to resume animations and videos
-  NotifyWebContentVisibility(true);
+  // 1. Force resume all content via JavaScript
+  std::wstring resume_script = L"(function() {"
+    L"  try {"
+    L"    // Remove CSS animation pause style"
+    L"    const pauseStyle = document.getElementById('__anywp_pause_style');"
+    L"    if (pauseStyle) {"
+    L"      pauseStyle.remove();"
+    L"    }"
+    L"    "
+    L"    // Restore requestAnimationFrame"
+    L"    if (window.__anyWP_rafPaused && window.__anyWP_originalRAF) {"
+    L"      window.requestAnimationFrame = window.__anyWP_originalRAF;"
+    L"      window.__anyWP_rafPaused = false;"
+    L"      delete window.__anyWP_originalRAF;"
+    L"    }"
+    L"    "
+    L"    // Resume all videos"
+    L"    const videos = document.querySelectorAll('video');"
+    L"    videos.forEach(function(video) {"
+    L"      if (video.__anyWP_wasPlaying) {"
+    L"        video.play().catch(function(e) {"
+    L"          console.log('[AnyWP] Video play failed:', e);"
+    L"        });"
+    L"        delete video.__anyWP_wasPlaying;"
+    L"      }"
+    L"    });"
+    L"    "
+    L"    // Resume all audio"
+    L"    const audios = document.querySelectorAll('audio');"
+    L"    audios.forEach(function(audio) {"
+    L"      if (audio.__anyWP_wasPlaying) {"
+    L"        audio.play().catch(function(e) {"
+    L"          console.log('[AnyWP] Audio play failed:', e);"
+    L"        });"
+    L"        delete audio.__anyWP_wasPlaying;"
+    L"      }"
+    L"    });"
+    L"    "
+    L"    // Notify SDK if available"
+    L"    if (window.AnyWP && window.AnyWP._autoResumeAnimations) {"
+    L"      window.AnyWP._autoResumeAnimations();"
+    L"    }"
+    L"    "
+    L"    // Dispatch visibility events"
+    L"    document.dispatchEvent(new Event('visibilitychange'));"
+    L"    window.dispatchEvent(new CustomEvent('AnyWP:visibility', { detail: { visible: true } }));"
+    L"    "
+    L"    console.log('[AnyWP] All content resumed (videos, animations, RAF)');"
+    L"  } catch(e) {"
+    L"    console.error('[AnyWP] Error resuming content:', e);"
+    L"  }"
+    L"})();";
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper content resumed (WebView was always visible)" << std::endl;
+  ExecuteScriptToAllInstances(resume_script);
+  
+  std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed (all content restarted)" << std::endl;
 }
 
 // Optimize memory usage (aggressive for better results with safety checks)
@@ -3664,6 +3776,25 @@ size_t AnyWPEnginePlugin::GetCurrentMemoryUsage() {
   return 0;
 }
 
+// Execute JavaScript script to all WebView instances (helper function)
+void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) {
+  // SAFE: Send to all instances with lock
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      // SAFETY: Check webview is valid
+      if (instance.webview && instance.webview.Get()) {
+        instance.webview->ExecuteScript(script.c_str(), nullptr);
+      }
+    }
+  }
+  
+  // SAFETY: Send to legacy instance with NULL check
+  if (webview_ && webview_.Get()) {
+    webview_->ExecuteScript(script.c_str(), nullptr);
+  }
+}
+
 // Notify web content about visibility change (Page Visibility API with safety checks)
 void AnyWPEnginePlugin::NotifyWebContentVisibility(bool visible) {
   std::cout << "[AnyWP] [PowerSaving] Notifying web content: " << (visible ? "VISIBLE" : "HIDDEN") << std::endl;
@@ -3694,21 +3825,7 @@ void AnyWPEnginePlugin::NotifyWebContentVisibility(bool visible) {
     L"  }"
     L"})();";
   
-  // SAFE: Send to all instances with lock
-  {
-    std::lock_guard<std::mutex> lock(instances_mutex_);
-    for (auto& instance : wallpaper_instances_) {
-      // SAFETY: Check webview is valid
-      if (instance.webview && instance.webview.Get()) {
-        instance.webview->ExecuteScript(visibility_script.c_str(), nullptr);
-      }
-    }
-  }
-  
-  // SAFETY: Send to legacy instance with NULL check
-  if (webview_ && webview_.Get()) {
-    webview_->ExecuteScript(visibility_script.c_str(), nullptr);
-  }
+  ExecuteScriptToAllInstances(visibility_script);
 }
 
 // Convert power state enum to string

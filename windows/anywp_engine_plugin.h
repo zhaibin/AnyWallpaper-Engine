@@ -252,6 +252,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void NotifyPowerStateChange(PowerState newState);
   std::string PowerStateToString(PowerState state);
   void NotifyWebContentVisibility(bool visible);
+  void ExecuteScriptToAllInstances(const std::wstring& script);  // Helper to execute script to all WebView instances
   
   // System message handling
   static LRESULT CALLBACK PowerSavingWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
