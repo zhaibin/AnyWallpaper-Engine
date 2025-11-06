@@ -1,13 +1,12 @@
 @echo off
-chcp 65001 >nul 2>&1
 REM ============================================================
-REM 用途：调试模式运行，捕获所有日志到文件
-REM 日志：debug_run.log（项目根目录）
-REM 适用：问题排查、功能调试
+REM Purpose: run demo in debug mode and capture logs to file
+REM Log file: debug_run.log (project root)
+REM Usage: troubleshooting and feature debugging
 REM ============================================================
 
 echo ========================================
-echo AnyWP Engine - 调试模式（带日志）
+echo AnyWP Engine - Debug Mode with Logging
 echo ========================================
 echo.
 
