@@ -816,8 +816,16 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
           Microsoft::WRL::ComPtr<ICoreWebView2> webview;
 
           if (use_legacy) {
+            if (!controller) {
+              std::cout << "[AnyWP] ERROR: controller is null" << std::endl;
+              return E_FAIL;
+            }
             webview_controller_ = controller;
-            webview_controller_->get_CoreWebView2(&webview_);
+            HRESULT hr_get = webview_controller_->get_CoreWebView2(&webview_);
+            if (FAILED(hr_get) || !webview_) {
+              std::cout << "[AnyWP] ERROR: Failed to get CoreWebView2: " << std::hex << hr_get << std::endl;
+              return hr_get;
+            }
             webview_ctrl = webview_controller_;
             webview = webview_;
           } else {
@@ -828,22 +836,49 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
               return E_FAIL;
             }
             
+            if (!controller) {
+              std::cout << "[AnyWP] ERROR: controller is null for multi-monitor instance" << std::endl;
+              return E_FAIL;
+            }
             instance->webview_controller = controller;
-            instance->webview_controller->get_CoreWebView2(&instance->webview);
+            HRESULT hr_get = instance->webview_controller->get_CoreWebView2(&instance->webview);
+            if (FAILED(hr_get) || !instance->webview) {
+              std::cout << "[AnyWP] ERROR: Failed to get CoreWebView2 for instance: " << std::hex << hr_get << std::endl;
+              return hr_get;
+            }
             
             // Store in local COM pointers (thread-safe, reference-counted)
             webview_ctrl = instance->webview_controller;
             webview = instance->webview;
           }
 
-          // Set bounds
+          // Set bounds - with null checks to prevent abort
+          if (!webview_ctrl) {
+            std::cout << "[AnyWP] ERROR: webview_ctrl is null, cannot set bounds" << std::endl;
+            return E_FAIL;
+          }
+          
+          if (!webview) {
+            std::cout << "[AnyWP] ERROR: webview is null, cannot configure" << std::endl;
+            return E_FAIL;
+          }
+          
           RECT bounds;
           GetClientRect(hwnd, &bounds);
           std::cout << "[AnyWP] Setting WebView bounds: " << bounds.left << "," << bounds.top 
                     << " " << (bounds.right - bounds.left) << "x" << (bounds.bottom - bounds.top) << std::endl;
           
-          webview_ctrl->put_Bounds(bounds);
-          webview_ctrl->put_IsVisible(TRUE);
+          HRESULT hr_bounds = webview_ctrl->put_Bounds(bounds);
+          if (FAILED(hr_bounds)) {
+            std::cout << "[AnyWP] ERROR: Failed to set bounds: " << std::hex << hr_bounds << std::endl;
+            return hr_bounds;
+          }
+          
+          HRESULT hr_visible = webview_ctrl->put_IsVisible(TRUE);
+          if (FAILED(hr_visible)) {
+            std::cout << "[AnyWP] ERROR: Failed to set visibility: " << std::hex << hr_visible << std::endl;
+            return hr_visible;
+          }
 
               // P1-3: Configure permissions and security (use temp pointers)
               if (use_legacy) {
@@ -864,8 +899,12 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                 webview_ = old_webview;
               }
 
-              // Navigate
-              webview->Navigate(wurl.c_str());
+              // Navigate - with error handling
+              HRESULT hr_nav = webview->Navigate(wurl.c_str());
+              if (FAILED(hr_nav)) {
+                std::cout << "[AnyWP] ERROR: Failed to navigate: " << std::hex << hr_nav << std::endl;
+                return hr_nav;
+              }
               
               // After navigation completes, manually inject SDK and send interaction mode
               webview->add_NavigationCompleted(
@@ -875,37 +914,59 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                     
                     // CRITICAL FIX: Manually inject SDK script after navigation completes
                     // This ensures SDK is available before page scripts run
-                    std::string sdk_script = LoadSDKScript();
-                    std::wstring wsdk_script(sdk_script.begin(), sdk_script.end());
+                    if (!sender) {
+                      std::cout << "[AnyWP] [API] ERROR: sender is null, cannot inject SDK" << std::endl;
+                      return E_FAIL;
+                    }
                     
-                    sender->ExecuteScript(wsdk_script.c_str(),
-                      Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
-                        [this](HRESULT error, LPCWSTR result) -> HRESULT {
-                          if (SUCCEEDED(error)) {
-                            std::cout << "[AnyWP] [API] SDK manually injected successfully" << std::endl;
-                            
-                            // Send interaction mode after SDK is loaded
-                            std::wstringstream script;
-                            script << L"(function() {"
-                                   << L"  if (window.AnyWP) {"
-                                   << L"    var event = new CustomEvent('AnyWP:interactionMode', {"
-                                   << L"      detail: { enabled: " << (enable_interaction_ ? L"true" : L"false") << L" }"
-                                   << L"    });"
-                                   << L"    window.dispatchEvent(event);"
-                                   << L"  }"
-                                   << L"})();";
-                            
-                            if (webview_) {
-                              webview_->ExecuteScript(script.str().c_str(), nullptr);
+                    try {
+                      std::string sdk_script = LoadSDKScript();
+                      std::wstring wsdk_script(sdk_script.begin(), sdk_script.end());
+                      
+                      HRESULT hr_exec = sender->ExecuteScript(wsdk_script.c_str(),
+                        Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+                          [this](HRESULT error, LPCWSTR result) -> HRESULT {
+                            if (SUCCEEDED(error)) {
+                              std::cout << "[AnyWP] [API] SDK manually injected successfully" << std::endl;
                               
-                              // AUTO-OPTIMIZE: Schedule safe memory optimization after page loads
-                              ScheduleSafeMemoryOptimization(webview_.Get());
+                              // Send interaction mode after SDK is loaded - with null check and exception handling
+                              try {
+                                if (webview_) {
+                                  std::wstringstream script;
+                                  script << L"(function() {"
+                                         << L"  if (window.AnyWP) {"
+                                         << L"    var event = new CustomEvent('AnyWP:interactionMode', {"
+                                         << L"      detail: { enabled: " << (enable_interaction_ ? L"true" : L"false") << L" }"
+                                         << L"    });"
+                                         << L"    window.dispatchEvent(event);"
+                                         << L"  }"
+                                         << L"})();";
+                                  
+                                  HRESULT hr_script = webview_->ExecuteScript(script.str().c_str(), nullptr);
+                                  if (FAILED(hr_script)) {
+                                    std::cout << "[AnyWP] [API] WARNING: Failed to send interaction mode: " << std::hex << hr_script << std::endl;
+                                  }
+                                  
+                                  // AUTO-OPTIMIZE: Schedule safe memory optimization after page loads
+                                  ScheduleSafeMemoryOptimization(webview_.Get());
+                                }
+                              } catch (...) {
+                                std::cout << "[AnyWP] [API] EXCEPTION: Error sending interaction mode" << std::endl;
+                              }
+                            } else {
+                              std::cout << "[AnyWP] [API] ERROR: Failed to manually inject SDK: " << std::hex << error << std::endl;
                             }
-                          } else {
-                            std::cout << "[AnyWP] [API] ERROR: Failed to manually inject SDK: " << std::hex << error << std::endl;
-                          }
-                          return S_OK;
-                        }).Get());
+                            return S_OK;
+                          }).Get());
+                      
+                      if (FAILED(hr_exec)) {
+                        std::cout << "[AnyWP] [API] ERROR: Failed to execute SDK injection script: " << std::hex << hr_exec << std::endl;
+                        return hr_exec;
+                      }
+                    } catch (...) {
+                      std::cout << "[AnyWP] [API] EXCEPTION: Error in SDK injection" << std::endl;
+                      return E_FAIL;
+                    }
                     
                     std::cout << "[AnyWP] [API] Sent interaction mode to JS: " << enable_interaction_ << std::endl;
                     return S_OK;
@@ -952,8 +1013,16 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
               Microsoft::WRL::ComPtr<ICoreWebView2> webview;
 
               if (use_legacy) {
+                if (!controller) {
+                  std::cout << "[AnyWP] ERROR: controller is null" << std::endl;
+                  return E_FAIL;
+                }
                 webview_controller_ = controller;
-                webview_controller_->get_CoreWebView2(&webview_);
+                HRESULT hr_get = webview_controller_->get_CoreWebView2(&webview_);
+                if (FAILED(hr_get) || !webview_) {
+                  std::cout << "[AnyWP] ERROR: Failed to get CoreWebView2: " << std::hex << hr_get << std::endl;
+                  return hr_get;
+                }
                 webview_ctrl = webview_controller_;
                 webview = webview_;
               } else {
@@ -964,15 +1033,33 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                   return E_FAIL;
                 }
                 
+                if (!controller) {
+                  std::cout << "[AnyWP] ERROR: controller is null for multi-monitor instance" << std::endl;
+                  return E_FAIL;
+                }
                 instance->webview_controller = controller;
-                instance->webview_controller->get_CoreWebView2(&instance->webview);
+                HRESULT hr_get = instance->webview_controller->get_CoreWebView2(&instance->webview);
+                if (FAILED(hr_get) || !instance->webview) {
+                  std::cout << "[AnyWP] ERROR: Failed to get CoreWebView2 for instance: " << std::hex << hr_get << std::endl;
+                  return hr_get;
+                }
                 
                 // Store in local COM pointers (thread-safe, reference-counted)
                 webview_ctrl = instance->webview_controller;
                 webview = instance->webview;
               }
 
-              // Set bounds to match window
+              // Set bounds to match window - with null checks to prevent abort
+              if (!webview_ctrl) {
+                std::cout << "[AnyWP] ERROR: webview_ctrl is null, cannot set bounds" << std::endl;
+                return E_FAIL;
+              }
+              
+              if (!webview) {
+                std::cout << "[AnyWP] ERROR: webview is null, cannot configure" << std::endl;
+                return E_FAIL;
+              }
+              
               RECT bounds;
               GetClientRect(hwnd, &bounds);
               std::cout << "[AnyWP] Setting WebView bounds: " << bounds.left << "," << bounds.top 
@@ -981,10 +1068,15 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
               HRESULT hr = webview_ctrl->put_Bounds(bounds);
               if (FAILED(hr)) {
                 std::cout << "[AnyWP] ERROR: Failed to set bounds: " << std::hex << hr << std::endl;
+                return hr;
               }
               
               // Make sure WebView is visible
-              webview_ctrl->put_IsVisible(TRUE);
+              HRESULT hr_visible = webview_ctrl->put_IsVisible(TRUE);
+              if (FAILED(hr_visible)) {
+                std::cout << "[AnyWP] ERROR: Failed to set visibility: " << std::hex << hr_visible << std::endl;
+                return hr_visible;
+              }
               std::cout << "[AnyWP] WebView2 visibility set to TRUE" << std::endl;
 
               // P1-3: Configure permissions and security
@@ -1004,8 +1096,12 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                 webview_ = old_webview;
               }
 
-              // Navigate to URL
-              webview->Navigate(wurl.c_str());
+              // Navigate to URL - with error handling
+              HRESULT hr_nav = webview->Navigate(wurl.c_str());
+              if (FAILED(hr_nav)) {
+                std::cout << "[AnyWP] ERROR: Failed to navigate: " << std::hex << hr_nav << std::endl;
+                return hr_nav;
+              }
               
               // After navigation completes, manually inject SDK and send interaction mode
               webview->add_NavigationCompleted(
@@ -1014,37 +1110,59 @@ void AnyWPEnginePlugin::SetupWebView2(HWND hwnd, const std::string& url, int mon
                     std::cout << "[AnyWP] [API] NavigationCompleted - manually injecting SDK" << std::endl;
                     
                     // CRITICAL FIX: Manually inject SDK script after navigation completes
-                    std::string sdk_script = LoadSDKScript();
-                    std::wstring wsdk_script(sdk_script.begin(), sdk_script.end());
+                    if (!sender) {
+                      std::cout << "[AnyWP] [API] ERROR: sender is null, cannot inject SDK" << std::endl;
+                      return E_FAIL;
+                    }
                     
-                    sender->ExecuteScript(wsdk_script.c_str(),
-                      Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
-                        [this](HRESULT error, LPCWSTR result) -> HRESULT {
-                          if (SUCCEEDED(error)) {
-                            std::cout << "[AnyWP] [API] SDK manually injected successfully" << std::endl;
-                            
-                            // Send interaction mode after SDK is loaded
-                            std::wstringstream script;
-                            script << L"(function() {"
-                                   << L"  if (window.AnyWP) {"
-                                   << L"    var event = new CustomEvent('AnyWP:interactionMode', {"
-                                   << L"      detail: { enabled: " << (enable_interaction_ ? L"true" : L"false") << L" }"
-                                   << L"    });"
-                                   << L"    window.dispatchEvent(event);"
-                                   << L"  }"
-                                   << L"})();";
-                            
-                            if (webview_) {
-                              webview_->ExecuteScript(script.str().c_str(), nullptr);
+                    try {
+                      std::string sdk_script = LoadSDKScript();
+                      std::wstring wsdk_script(sdk_script.begin(), sdk_script.end());
+                      
+                      HRESULT hr_exec = sender->ExecuteScript(wsdk_script.c_str(),
+                        Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+                          [this](HRESULT error, LPCWSTR result) -> HRESULT {
+                            if (SUCCEEDED(error)) {
+                              std::cout << "[AnyWP] [API] SDK manually injected successfully" << std::endl;
                               
-                              // AUTO-OPTIMIZE: Schedule safe memory optimization after page loads
-                              ScheduleSafeMemoryOptimization(webview_.Get());
+                              // Send interaction mode after SDK is loaded - with null check and exception handling
+                              try {
+                                if (webview_) {
+                                  std::wstringstream script;
+                                  script << L"(function() {"
+                                         << L"  if (window.AnyWP) {"
+                                         << L"    var event = new CustomEvent('AnyWP:interactionMode', {"
+                                         << L"      detail: { enabled: " << (enable_interaction_ ? L"true" : L"false") << L" }"
+                                         << L"    });"
+                                         << L"    window.dispatchEvent(event);"
+                                         << L"  }"
+                                         << L"})();";
+                                  
+                                  HRESULT hr_script = webview_->ExecuteScript(script.str().c_str(), nullptr);
+                                  if (FAILED(hr_script)) {
+                                    std::cout << "[AnyWP] [API] WARNING: Failed to send interaction mode: " << std::hex << hr_script << std::endl;
+                                  }
+                                  
+                                  // AUTO-OPTIMIZE: Schedule safe memory optimization after page loads
+                                  ScheduleSafeMemoryOptimization(webview_.Get());
+                                }
+                              } catch (...) {
+                                std::cout << "[AnyWP] [API] EXCEPTION: Error sending interaction mode" << std::endl;
+                              }
+                            } else {
+                              std::cout << "[AnyWP] [API] ERROR: Failed to manually inject SDK: " << std::hex << error << std::endl;
                             }
-                          } else {
-                            std::cout << "[AnyWP] [API] ERROR: Failed to manually inject SDK: " << std::hex << error << std::endl;
-                          }
-                          return S_OK;
-                        }).Get());
+                            return S_OK;
+                          }).Get());
+                      
+                      if (FAILED(hr_exec)) {
+                        std::cout << "[AnyWP] [API] ERROR: Failed to execute SDK injection script: " << std::hex << hr_exec << std::endl;
+                        return hr_exec;
+                      }
+                    } catch (...) {
+                      std::cout << "[AnyWP] [API] EXCEPTION: Error in SDK injection" << std::endl;
+                      return E_FAIL;
+                    }
                     
                     std::cout << "[AnyWP] [API] Sent interaction mode to JS: " << enable_interaction_ << std::endl;
                     return S_OK;
@@ -1948,8 +2066,20 @@ void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type)
   
   script << L"})();";
   
-  // Execute without callback for performance
-  target_webview->ExecuteScript(script.str().c_str(), nullptr);
+  // Execute with error handling to prevent abort
+  if (!target_webview) {
+    std::cout << "[AnyWP] [Click] ERROR: target_webview is null, cannot send click" << std::endl;
+    return;
+  }
+  
+  try {
+    HRESULT hr = target_webview->ExecuteScript(script.str().c_str(), nullptr);
+    if (FAILED(hr)) {
+      std::cout << "[AnyWP] [Click] WARNING: Failed to execute script: " << std::hex << hr << std::endl;
+    }
+  } catch (...) {
+    std::cout << "[AnyWP] [Click] EXCEPTION: Error executing click script" << std::endl;
+  }
 }
 
 // Mouse Hook: Setup hook
