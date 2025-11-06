@@ -367,25 +367,28 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
-### ✅ Completed (v1.1.0)
-- ✅ Multi-monitor support
-- ✅ Smart power saving & instant resume
+### ✅ Completed (v1.2.0)
+- ✅ Multi-monitor support with independent content
+- ✅ Smart power saving & instant resume (<50ms)
 - ✅ JavaScript SDK with drag & drop
-- ✅ State persistence (Registry)
+- ✅ **Application-level storage isolation** (v1.2.0)
+- ✅ **File-based state persistence** (Registry → JSON)
 - ✅ Visibility API for animations
+- ✅ Quick test pages UI (8 test shortcuts)
+- ✅ Clean uninstall support (no residual data)
 
 ### 🚧 In Progress
-- [ ] Performance profiling tools
-- [ ] Custom transparency levels (0-100%)
-- [ ] Audio visualization support
+- [ ] Performance profiling and monitoring tools
+- [ ] Advanced memory optimization strategies
+- [ ] Enhanced WebView2 configuration options
 
 ### 📋 Planned
-- [ ] Video wallpaper presets library
-- [ ] Configuration file support (JSON/YAML)
+- [ ] Custom transparency levels (0-100%)
+- [ ] Audio visualization support
+- [ ] Video wallpaper effects library
 - [ ] System tray integration
-- [ ] Wallpaper marketplace/gallery
+- [ ] Wallpaper gallery/marketplace
 - [ ] Plugin system for custom effects
-- [ ] Touch gesture support
 
 ---
 
