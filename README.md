@@ -41,7 +41,7 @@ Download from [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/r
 ```yaml
 dependencies:
   anywp_engine:
-    path: ./anywp_engine_v1.1.0
+    path: ./anywp_engine_v1.2.0
 ```
 
 👉 See **[Precompiled DLL Integration Guide](docs/PRECOMPILED_DLL_INTEGRATION.md)** for details
@@ -68,6 +68,15 @@ dependencies:
 ```dart
 import 'package:anywp_engine/anywp_engine.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set application name for isolated storage (v1.2.0+)
+  await AnyWPEngine.setApplicationName('MyAwesomeApp');
+  
+  runApp(MyApp());
+}
+
 // Start wallpaper (with mouse transparency)
 await AnyWPEngine.initializeWallpaper(
   url: 'https://www.bing.com',
@@ -89,6 +98,9 @@ await AnyWPEngine.navigateToUrl('https://new-url.com');
 // Save/Load state
 await AnyWPEngine.saveState('my_key', 'my_value');
 String value = await AnyWPEngine.loadState('my_key');
+
+// Get storage path
+String path = await AnyWPEngine.getStoragePath();
 ```
 
 ### JavaScript SDK Usage (NEW ✨)

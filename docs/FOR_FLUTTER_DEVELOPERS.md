@@ -43,10 +43,33 @@ dependencies:
 ```dart
 import 'package:anywp_engine/anywp_engine.dart';
 
-// 启动壁纸
-await AnyWPEngine.initializeWallpaper(
-  url: 'https://example.com/wallpaper.html',
-);
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 推荐：设置应用名称以隔离存储 (v1.2.0+)
+  await AnyWPEngine.setApplicationName('MyAwesomeApp');
+  
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: ElevatedButton(
+          onPressed: () async {
+            // 启动壁纸
+            await AnyWPEngine.initializeWallpaper(
+              url: 'https://example.com/wallpaper.html',
+            );
+          },
+          child: Text('Start Wallpaper'),
+        ),
+      ),
+    );
+  }
+}
 
 // 停止壁纸
 await AnyWPEngine.stopWallpaper();
@@ -97,6 +120,15 @@ setIdleTimeout(seconds)             // 空闲超时
 setMemoryThreshold(thresholdMB)     // 内存阈值
 setCleanupInterval(minutes)         // 清理间隔
 getConfiguration() -> Map           // 获取配置
+
+// 状态持久化
+saveState(key, value)               // 保存状态
+loadState(key) -> String            // 加载状态
+clearState()                        // 清空状态
+
+// 存储隔离 (v1.2.0+)
+setApplicationName(name)            // 设置应用标识
+getStoragePath() -> String          // 获取存储路径
 
 // 回调机制
 setOnMonitorChangeCallback(callback)      // 显示器变化
@@ -150,6 +182,31 @@ setOnPowerStateChangeCallback(callback)   // 电源状态变化
 - [ ] 安全性清单
 
 **立即阅读** → [BEST_PRACTICES.md](BEST_PRACTICES.md)
+
+---
+
+### 4️⃣ 存储隔离指南 🆕 v1.2.0+
+
+**[STORAGE_ISOLATION.md](STORAGE_ISOLATION.md)**
+
+**包含内容：**
+- 🗂️ **应用级存储隔离** - 多应用数据隔离
+- 🧹 **无残留卸载** - 清理数据目录指南
+- 📦 **备份和迁移** - 配置文件管理
+- 🔄 **从旧版本迁移** - 升级指南
+- ❓ **常见问题** - FAQ
+
+**核心功能：**
+```dart
+// 设置应用唯一标识
+await AnyWPEngine.setApplicationName('MyApp');
+
+// 获取存储路径
+final path = await AnyWPEngine.getStoragePath();
+// 输出: C:\Users\...\AppData\Local\AnyWPEngine\MyApp
+```
+
+**立即阅读** → [STORAGE_ISOLATION.md](STORAGE_ISOLATION.md)
 
 ---
 

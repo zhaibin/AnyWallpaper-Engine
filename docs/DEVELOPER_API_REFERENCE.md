@@ -302,6 +302,105 @@ print('Auto power saving: ${config['autoPowerSavingEnabled']}');
 
 ---
 
+## State Persistence
+
+### Save State
+
+```dart
+// Save custom state data
+bool success = await AnyWPEngine.saveState(
+  'wallpaper_url',
+  'https://example.com/my-wallpaper.html'
+);
+
+// Save JSON object
+import 'dart:convert';
+Map<String, dynamic> settings = {'volume': 80, 'autoplay': true};
+await AnyWPEngine.saveState('settings', jsonEncode(settings));
+```
+
+**Parameters:**
+- `key` (required): Unique identifier for the state
+- `value` (required): String value to save
+
+**Returns:** `Future<bool>` - `true` if successful
+
+### Load State
+
+```dart
+// Load saved state
+String url = await AnyWPEngine.loadState('wallpaper_url');
+
+// Load and parse JSON object
+String settingsJson = await AnyWPEngine.loadState('settings');
+if (settingsJson.isNotEmpty) {
+  Map<String, dynamic> settings = jsonDecode(settingsJson);
+  print('Volume: ${settings['volume']}');
+}
+```
+
+**Parameters:**
+- `key` (required): State identifier
+
+**Returns:** `Future<String>` - Saved value, or empty string if not found
+
+### Clear State
+
+```dart
+// Clear all saved state (cannot be undone)
+bool success = await AnyWPEngine.clearState();
+```
+
+**Returns:** `Future<bool>` - `true` if successful
+
+---
+
+## Storage Isolation
+
+### Set Application Name
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set unique application identifier for isolated storage
+  await AnyWPEngine.setApplicationName('MyAwesomeApp');
+  
+  runApp(MyApp());
+}
+```
+
+**Parameters:**
+- `name` (required): Application identifier (alphanumeric, spaces converted to underscores)
+
+**Returns:** `Future<bool>` - `true` if successful
+
+**Storage Path:** `%LOCALAPPDATA%\AnyWPEngine\[AppName]\state.json`
+
+**Benefits:**
+- ✅ Multiple apps can use the engine without data conflicts
+- ✅ Clean uninstall - just delete the app's directory
+- ✅ Easy backup and migration
+- ✅ Backward compatible (defaults to "Default" if not set)
+
+### Get Storage Path
+
+```dart
+// Get application-specific storage path
+String path = await AnyWPEngine.getStoragePath();
+print('Data stored at: $path');
+// Output: C:\Users\...\AppData\Local\AnyWPEngine\MyAwesomeApp
+```
+
+**Returns:** `Future<String>` - Full path to storage directory
+
+**Use Cases:**
+- Documentation and user support
+- Debugging and verification
+- Backup instructions
+
+---
+
 ## Callbacks
 
 ### Monitor Change Callback
