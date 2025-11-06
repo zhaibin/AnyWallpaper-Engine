@@ -3455,81 +3455,49 @@ void AnyWPEnginePlugin::StopFullscreenDetection() {
   std::cout << "[AnyWP] [PowerSaving] Fullscreen detection stopped" << std::endl;
 }
 
-// Pause wallpaper (reduce CPU/GPU usage) - Improved for fast resume
+// Pause wallpaper (reduce CPU/GPU usage) - Keep WebView visible, only pause content
 void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   if (is_paused_) {
     return;
   }
   
-  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER (LIGHTWEIGHT) ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER (CONTENT ONLY) ==========" << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
   is_paused_ = true;
   
-  // IMPROVED: Use lightweight pause - don't hide windows, keep DOM state
-  // This allows instant resume without reloading
+  // FIXED: Keep WebView visible, only notify web content to pause animations/videos
+  // This allows web content to pause gracefully while keeping the wallpaper visible
   
-  // 1. Set WebView visibility to false (stops rendering but keeps state)
-  {
-    std::lock_guard<std::mutex> lock(instances_mutex_);
-    for (auto& instance : wallpaper_instances_) {
-      if (instance.webview_controller) {
-        // WebView2 stops rendering but keeps memory state
-        instance.webview_controller->put_IsVisible(FALSE);
-        std::cout << "[AnyWP] [PowerSaving] Set WebView invisible (keeps state)" << std::endl;
-      }
-    }
-  }
-  
-  if (webview_controller_) {
-    webview_controller_->put_IsVisible(FALSE);
-  }
-  
-  // 2. Notify web content using Page Visibility API
-  //    This allows web apps to pause animations gracefully
+  // 1. Notify web content using Page Visibility API
+  //    This allows web apps to pause animations and videos gracefully
   NotifyWebContentVisibility(false);
   
-  // 3. Light memory optimization (not aggressive)
+  // 2. Light memory optimization (not aggressive)
   //    Only trim working set, don't clear cache
   SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper paused (state preserved for fast resume)" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Wallpaper content paused (WebView remains visible)" << std::endl;
 }
 
-// Resume wallpaper - Instant resume from lightweight pause
+// Resume wallpaper - Instant resume, notify web content to resume animations
 void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
   if (!is_paused_) {
     return;
   }
   
-  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER (INSTANT) ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER (CONTENT ONLY) ==========" << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
   is_paused_ = false;
   
-  // IMPROVED: Instant resume - just re-enable WebView visibility
+  // FIXED: WebView was always visible, just notify web content to resume animations/videos
   // DOM state is preserved, no reloading needed
   
-  // 1. Restore WebView visibility (instant - no reload)
-  {
-    std::lock_guard<std::mutex> lock(instances_mutex_);
-    for (auto& instance : wallpaper_instances_) {
-      if (instance.webview_controller) {
-        // Instant resume - rendering continues from where it stopped
-        instance.webview_controller->put_IsVisible(TRUE);
-        std::cout << "[AnyWP] [PowerSaving] WebView visible restored (instant)" << std::endl;
-      }
-    }
-  }
-  
-  if (webview_controller_) {
-    webview_controller_->put_IsVisible(TRUE);
-  }
-  
-  // 2. Notify web content to resume animations
+  // 1. Notify web content to resume animations and videos
   NotifyWebContentVisibility(true);
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed instantly (no reload)" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Wallpaper content resumed (WebView was always visible)" << std::endl;
 }
 
 // Optimize memory usage (aggressive for better results with safety checks)
