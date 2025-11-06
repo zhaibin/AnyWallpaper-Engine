@@ -510,10 +510,36 @@ delete_file("commit_msg.txt")
 
 #### Step 9: 推送到 GitHub
 ```bash
+# 推送代码
 git push origin main
 ```
 - [ ] 推送成功
 - [ ] GitHub 可见最新提交
+
+#### Step 9.5: 创建并推送 Git Tag（重要！）
+```bash
+# 创建 annotated tag
+git tag -a v{版本号} -m "AnyWP Engine v{版本号} - 功能描述"
+
+# 验证 tag 创建
+git tag -l
+
+# 推送 tag 到 GitHub
+git push origin v{版本号}
+```
+
+**示例**（v1.2.0）:
+```bash
+git tag -a v1.2.0 -m "AnyWP Engine v1.2.0 - 应用级存储隔离 + 测试UI优化"
+git push origin v1.2.0
+```
+
+**检查**:
+- [ ] Tag 创建成功（`git tag -l` 可见）
+- [ ] Tag 推送成功（显示 `[new tag]`）
+- [ ] GitHub Tags 页面可见新 tag
+
+**注意**: ⚠️ **必须先推送 tag，GitHub Release 才能基于 tag 创建**
 
 #### Step 10: 创建 GitHub Release
 1. [ ] 访问 GitHub Releases 页面
