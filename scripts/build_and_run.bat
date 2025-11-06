@@ -1,13 +1,12 @@
 @echo off
-chcp 65001 >nul 2>&1
 REM ============================================================
-REM 用途：构建并运行示例应用（开发常用）
-REM 功能：自动检查 WebView2 SDK → 构建 Debug 版本 → 启动应用
-REM 适用：日常开发测试
+REM Purpose: Build and run example application (common for development)
+REM Function: Auto-check WebView2 SDK -> Build Debug version -> Launch app
+REM Usage: Daily development testing
 REM ============================================================
 
 echo ================================
-echo  AnyWP Engine - 构建并运行
+echo  AnyWP Engine - Build and Run
 echo ================================
 echo.
 

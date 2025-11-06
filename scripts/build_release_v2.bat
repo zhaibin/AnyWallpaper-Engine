@@ -1,28 +1,27 @@
 @echo off
-chcp 65001 >nul 2>&1
 REM ============================================================
-REM 用途：构建可发布的预编译 DLL 包（发版必用）
-REM 功能：编译 Release → 打包 DLL/头文件/文档 → 生成 ZIP
-REM 产物：release/anywp_engine_v{版本号}.zip
-REM 适用：准备发布新版本时使用
+REM Purpose: Build publishable precompiled DLL package (required for release)
+REM Function: Compile Release -> Package DLL/headers/docs -> Generate ZIP
+REM Output: release/anywp_engine_v{version}.zip
+REM Usage: Use when preparing to release a new version
 REM ============================================================
 
 setlocal enabledelayedexpansion
 
 echo ============================================
-echo AnyWP Engine - 构建 Release 包 v2.0
+echo AnyWP Engine - Build Release Package v2.0
 echo ============================================
 echo.
 
-REM 检查是否在正确的目录
+REM Check if running from correct directory
 if not exist "scripts\build_release_v2.bat" (
-    echo [错误] 请在项目根目录运行此脚本
+    echo [ERROR] Please run this script from project root directory
     echo.
     pause
     exit /b 1
 )
 
-REM 设置变量
+REM Set variables
 set "EXAMPLE_DIR=%cd%\example"
 set "BUILD_DIR=%EXAMPLE_DIR%\build\windows\x64"
 set "RELEASE_DIR=%cd%\release"
@@ -31,51 +30,51 @@ set "VERSION=1.2.1"
 set "RELEASE_NAME=anywp_engine_v%VERSION%"
 set "ERROR_COUNT=0"
 
-echo [1/16] 清理旧的构建...
+echo [1/16] Cleaning old build...
 if exist "%EXAMPLE_DIR%\build" (
     rmdir /s /q "%EXAMPLE_DIR%\build" 2>nul
     if errorlevel 1 (
-        echo [警告] 无法完全清理 build 目录
+        echo [WARNING] Cannot fully clean build directory
     )
 )
 
-echo [2/16] 运行 flutter clean...
+echo [2/16] Running flutter clean...
 cd "%EXAMPLE_DIR%"
 flutter clean >nul 2>&1
 if errorlevel 1 (
-    echo [错误] flutter clean 失败
+    echo [ERROR] flutter clean failed
     set /a ERROR_COUNT+=1
 )
 
-echo [3/16] 获取依赖...
+echo [3/16] Getting dependencies...
 flutter pub get >nul 2>&1
 if errorlevel 1 (
-    echo [错误] flutter pub get 失败
+    echo [ERROR] flutter pub get failed
     set /a ERROR_COUNT+=1
     cd ..
     pause
     exit /b 1
 )
 
-echo [4/16] 构建 Release 版本...
-echo       这可能需要几分钟，请耐心等待...
+echo [4/16] Building Release version...
+echo        This may take a few minutes, please wait...
 flutter build windows --release
 if errorlevel 1 (
-    echo [错误] Release 构建失败
+    echo [ERROR] Release build failed
     cd ..
     pause
     exit /b 1
 )
 
-REM 检查构建产物
+REM Check build artifacts
 if not exist "%BUILD_DIR%\runner\Release\anywallpaper_engine_example.exe" (
-    echo [错误] 找不到构建产物
+    echo [ERROR] Build artifacts not found
     cd ..
     pause
     exit /b 1
 )
 
-echo [5/16] 创建 Release 目录结构...
+echo [5/16] Creating Release directory structure...
 cd ..
 if not exist "%RELEASE_DIR%" (
     mkdir "%RELEASE_DIR%" 2>nul
@@ -83,7 +82,7 @@ if not exist "%RELEASE_DIR%" (
 if exist "%RELEASE_DIR%\%RELEASE_NAME%" (
     rmdir /s /q "%RELEASE_DIR%\%RELEASE_NAME%" 2>nul
     if errorlevel 1 (
-        echo [错误] 无法清理旧的 Release 目录
+        echo [ERROR] Cannot clean old Release directory
         pause
         exit /b 1
     )
@@ -96,17 +95,17 @@ mkdir "%RELEASE_DIR%\%RELEASE_NAME%\include" 2>nul
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\windows" 2>nul
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\windows\src" 2>nul
 
-echo [6/16] 复制 DLL 和相关文件...
-REM 插件 DLL
+echo [6/16] Copying DLL and related files...
+REM Plugin DLL
 copy "%BUILD_DIR%\plugins\anywp_engine\Release\anywp_engine_plugin.dll" "%RELEASE_DIR%\%RELEASE_NAME%\bin\" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制插件 DLL
+    echo [ERROR] Cannot copy plugin DLL
     set /a ERROR_COUNT+=1
 )
 
 copy "%BUILD_DIR%\plugins\anywp_engine\Release\anywp_engine_plugin.lib" "%RELEASE_DIR%\%RELEASE_NAME%\lib\" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制插件 LIB - 这是链接器必需的文件
+    echo [ERROR] Cannot copy plugin LIB - This is required for linker
     set /a ERROR_COUNT+=1
     cd ..
     pause
@@ -116,39 +115,39 @@ if errorlevel 1 (
 REM WebView2Loader DLL
 copy "windows\packages\Microsoft.Web.WebView2.1.0.2592.51\build\native\x64\WebView2Loader.dll" "%RELEASE_DIR%\%RELEASE_NAME%\bin\" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制 WebView2Loader.dll
+    echo [ERROR] Cannot copy WebView2Loader.dll
     set /a ERROR_COUNT+=1
 )
 
-echo [7/16] 复制 Dart 源代码...
-REM Dart 库 - 直接复制到 lib/ （标准位置）
+echo [7/16] Copying Dart source code...
+REM Dart library - Copy directly to lib/ (standard location)
 copy "lib\anywp_engine.dart" "%RELEASE_DIR%\%RELEASE_NAME%\lib\" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制 Dart 源代码到 lib/
+    echo [ERROR] Cannot copy Dart source code to lib/
     set /a ERROR_COUNT+=1
     cd ..
     pause
     exit /b 1
 )
 
-REM 同时复制到 lib/dart/ （向后兼容）
+REM Also copy to lib/dart/ (backward compatibility)
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\lib\dart" 2>nul
 copy "lib\anywp_engine.dart" "%RELEASE_DIR%\%RELEASE_NAME%\lib\dart\" >nul 2>&1
 
-echo [8/16] 复制 C++ 头文件...
+echo [8/16] Copying C++ header files...
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\include\anywp_engine" 2>nul
 powershell -Command "Copy-Item -Path 'windows\include\anywp_engine\*' -Destination '%RELEASE_DIR%\%RELEASE_NAME%\include\anywp_engine' -Recurse -Force" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制 C++ 头文件
+    echo [ERROR] Cannot copy C++ header files
     set /a ERROR_COUNT+=1
     pause
     exit /b 1
 )
 
-echo [9/16] 同步原生源文件和 SDK...
+echo [9/16] Syncing native source files and SDK...
 copy "windows\anywp_sdk.js" "%RELEASE_DIR%\%RELEASE_NAME%\windows\" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制 SDK 文件 (windows\\anywp_sdk.js)
+    echo [ERROR] Cannot copy SDK file (windows\\anywp_sdk.js)
     set /a ERROR_COUNT+=1
     pause
     exit /b 1
@@ -156,7 +155,7 @@ if errorlevel 1 (
 
 copy "windows\anywp_engine_plugin.cpp" "%RELEASE_DIR%\%RELEASE_NAME%\windows\src\" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制 C++ 源文件 anywp_engine_plugin.cpp
+    echo [ERROR] Cannot copy C++ source file anywp_engine_plugin.cpp
     set /a ERROR_COUNT+=1
     pause
     exit /b 1
@@ -164,7 +163,7 @@ if errorlevel 1 (
 
 copy "windows\anywp_engine_plugin.h" "%RELEASE_DIR%\%RELEASE_NAME%\windows\src\" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制 C++ 头文件 anywp_engine_plugin.h
+    echo [ERROR] Cannot copy C++ header file anywp_engine_plugin.h
     set /a ERROR_COUNT+=1
     pause
     exit /b 1
@@ -173,7 +172,7 @@ if errorlevel 1 (
 if exist "windows\packages" (
     powershell -Command "Copy-Item -Path 'windows\packages' -Destination '%RELEASE_DIR%\%RELEASE_NAME%\windows' -Recurse -Force" >nul 2>&1
     if errorlevel 1 (
-        echo [错误] 无法复制 WebView2 packages 目录
+        echo [ERROR] Cannot copy WebView2 packages directory
         set /a ERROR_COUNT+=1
         pause
         exit /b 1
@@ -184,7 +183,7 @@ if exist "windows\packages.config" (
     copy "windows\packages.config" "%RELEASE_DIR%\%RELEASE_NAME%\windows\" >nul 2>&1
 )
 
-echo [10/16] 创建 CMake 配置...
+echo [10/16] Creating CMake configuration...
 (
 echo cmake_minimum_required^(VERSION 3.14^)
 echo project^(anywp_engine LANGUAGES CXX^)
@@ -196,7 +195,7 @@ echo set^(PRECOMPILED_LIB "${PRECOMPILED_DIR}/lib/anywp_engine_plugin.lib"^)
 echo set^(SOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/src/anywp_engine_plugin.cpp"^)
 echo.
 echo if^(EXISTS ${PRECOMPILED_DLL} AND EXISTS ${PRECOMPILED_LIB}^)
-echo   message^(STATUS "AnyWP Engine: ✅ 使用预编译 DLL (${PRECOMPILED_DLL})"^)
+echo   message^(STATUS "AnyWP Engine: Using precompiled DLL (${PRECOMPILED_DLL})"^)
 echo   add_library^(${PLUGIN_NAME} SHARED IMPORTED GLOBAL^)
 echo   set_target_properties^(${PLUGIN_NAME} PROPERTIES
 echo     IMPORTED_LOCATION "${PRECOMPILED_DLL}"
@@ -206,9 +205,9 @@ echo   target_include_directories^(${PLUGIN_NAME} INTERFACE
 echo     "${PRECOMPILED_DIR}/include"
 echo   ^)
 echo else()
-echo   message^(STATUS "AnyWP Engine: 🔧 未找到预编译 DLL，转为源码构建"^)
+echo   message^(STATUS "AnyWP Engine: Precompiled DLL not found, building from source"^)
 echo   if^(NOT EXISTS ${SOURCE_FILE}^)
-echo     message^(FATAL_ERROR "AnyWP Engine: 源码文件不存在: ${SOURCE_FILE}"^)
+echo     message^(FATAL_ERROR "AnyWP Engine: Source file not found: ${SOURCE_FILE}"^)
 echo   endif()
 echo   add_library^(${PLUGIN_NAME} SHARED
 echo     "${SOURCE_FILE}"
@@ -236,7 +235,7 @@ echo     else()
 echo       target_link_libraries^(${PLUGIN_NAME} PRIVATE "${WEBVIEW2_PACKAGE_DIR}/build/native/x86/WebView2LoaderStatic.lib"^)
 echo     endif()
 echo   else()
-echo     message^(WARNING "AnyWP Engine: 未找到 WebView2 NuGet 包，请先执行 nuget restore"^)
+echo     message^(WARNING "AnyWP Engine: WebView2 NuGet package not found, please run nuget restore"^)
 echo   endif()
 echo endif()
 echo.
@@ -247,12 +246,12 @@ echo   PARENT_SCOPE
 echo ^)
 ) > "%RELEASE_DIR%\%RELEASE_NAME%\windows\CMakeLists.txt"
 
-echo [11/16] 复制文档...
+echo [11/16] Copying documentation...
 copy "README.md" "%RELEASE_DIR%\%RELEASE_NAME%\" >nul 2>&1
 copy "LICENSE" "%RELEASE_DIR%\%RELEASE_NAME%\" >nul 2>&1
 copy "CHANGELOG_CN.md" "%RELEASE_DIR%\%RELEASE_NAME%\" >nul 2>&1
 
-echo [12/16] 生成 PRECOMPILED_README...
+echo [12/16] Generating PRECOMPILED_README...
 (
 echo # AnyWP Engine v%VERSION% - 预编译版本
 echo.
@@ -301,10 +300,10 @@ echo.
 echo 更多信息请访问：https://github.com/zhaibin/AnyWallpaper-Engine
 ) > "%RELEASE_DIR%\%RELEASE_NAME%\PRECOMPILED_README.md"
 
-echo [13/16] 生成自动化辅助脚本...
+echo [13/16] Generating automation helper scripts...
 powershell -Command "(Get-Content '%TEMPLATE_DIR%\precompiled\setup_precompiled.template.bat') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\setup_precompiled.bat'" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法生成 setup_precompiled.bat
+    echo [ERROR] Cannot generate setup_precompiled.bat
     set /a ERROR_COUNT+=1
     pause
     exit /b 1
@@ -312,7 +311,7 @@ if errorlevel 1 (
 
 powershell -Command "(Get-Content '%TEMPLATE_DIR%\precompiled\verify_precompiled.template.bat') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\verify_precompiled.bat'" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法生成 verify_precompiled.bat
+    echo [ERROR] Cannot generate verify_precompiled.bat
     set /a ERROR_COUNT+=1
     pause
     exit /b 1
@@ -320,16 +319,16 @@ if errorlevel 1 (
 
 powershell -Command "(Get-Content '%TEMPLATE_DIR%\precompiled\generate_pubspec_snippet.template.bat') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\generate_pubspec_snippet.bat'" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法生成 generate_pubspec_snippet.bat
+    echo [ERROR] Cannot generate generate_pubspec_snippet.bat
     set /a ERROR_COUNT+=1
     pause
     exit /b 1
 )
 
-echo [14/16] 复制最小示例项目...
+echo [14/16] Copying minimal example project...
 powershell -Command "Copy-Item -Path '%TEMPLATE_DIR%\example_minimal' -Destination '%RELEASE_DIR%\%RELEASE_NAME%' -Recurse -Force" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制示例项目
+    echo [ERROR] Cannot copy example project
     set /a ERROR_COUNT+=1
     pause
     exit /b 1
@@ -338,8 +337,8 @@ if errorlevel 1 (
 powershell -Command "(Get-Content '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\pubspec.yaml') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\pubspec.yaml'" >nul 2>&1
 powershell -Command "(Get-Content '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\README.md') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\README.md'" >nul 2>&1
 
-echo [15/16] 生成 pubspec.yaml...
-REM 创建 pubspec.yaml（注意：移除 dartPluginClass）
+echo [15/16] Generating pubspec.yaml...
+REM Create pubspec.yaml (Note: removed dartPluginClass)
 (
 echo name: anywp_engine
 echo description: AnyWP - Flutter plugin for WebView2 desktop wallpaper engine with power saving and instant resume ^(Precompiled^)
@@ -364,14 +363,14 @@ echo   assets:
 echo     - windows/anywp_sdk.js
 ) > "%RELEASE_DIR%\%RELEASE_NAME%\pubspec.yaml"
 
-echo [16/16] 打包 ZIP...
+echo [16/16] Creating ZIP archive...
 cd "%RELEASE_DIR%"
 powershell -Command "Compress-Archive -Path '%RELEASE_NAME%' -DestinationPath '%RELEASE_NAME%.zip' -Force" 2>nul
 if errorlevel 1 (
-    echo [错误] 无法创建 ZIP 文件
+    echo [ERROR] Cannot create ZIP file
     set /a ERROR_COUNT+=1
 ) else (
-    REM 获取文件大小
+    REM Get file size
     for %%I in ("%RELEASE_NAME%.zip") do set "FILE_SIZE=%%~zI"
     set /a FILE_SIZE_KB=!FILE_SIZE! / 1024
 )
@@ -381,31 +380,31 @@ cd ..
 echo.
 echo ============================================
 if !ERROR_COUNT! EQU 0 (
-    echo ✅ 构建完成！
+    echo Build completed successfully!
 ) else (
-    echo ⚠️ 构建完成但有 !ERROR_COUNT! 个警告/错误
+    echo Build completed with !ERROR_COUNT! warning(s)/error(s)
 )
 echo ============================================
 echo.
-echo 📦 Release 包位置：
+echo Release package location:
 echo    %RELEASE_DIR%\%RELEASE_NAME%.zip
 if defined FILE_SIZE_KB (
-    echo    大小：!FILE_SIZE_KB! KB
+    echo    Size: !FILE_SIZE_KB! KB
 )
 echo.
-echo 📁 解压后的文件位置：
+echo Extracted files location:
 echo    %RELEASE_DIR%\%RELEASE_NAME%\
 echo.
-echo 📝 下一步：
-echo    1. 测试预编译包是否可用
-echo    2. 访问 https://github.com/zhaibin/AnyWallpaper-Engine/releases/new
-echo    3. 选择标签 v%VERSION%
-echo    4. 上传 %RELEASE_NAME%.zip
-echo    5. 复制 release\GITHUB_RELEASE_NOTES_v%VERSION%.md 的内容作为说明
+echo Next steps:
+echo    1. Test if the precompiled package works
+echo    2. Visit https://github.com/zhaibin/AnyWallpaper-Engine/releases/new
+echo    3. Select tag v%VERSION%
+echo    4. Upload %RELEASE_NAME%.zip
+echo    5. Copy content from release\GITHUB_RELEASE_NOTES_v%VERSION%.md as description
 echo.
 
 if !ERROR_COUNT! GTR 0 (
-    echo ⚠️ 请检查上述错误后再发布
+    echo Please check the errors above before publishing
     echo.
 )
 

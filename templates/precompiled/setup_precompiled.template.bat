@@ -1,57 +1,56 @@
 @echo off
-chcp 65001 >nul 2>&1
 setlocal enabledelayedexpansion
 
 echo ==============================================
-echo  AnyWP Engine v__VERSION__ 预编译包安装助手
+echo  AnyWP Engine v__VERSION__ Precompiled Package Installer
 echo ==============================================
 echo.
 
-REM 检查是否在 Flutter 项目根目录执行
+REM Check if running from Flutter project root directory
 if not exist "pubspec.yaml" (
-    echo ❌ 错误：请在 Flutter 项目根目录运行此脚本
-    echo    例如：flutter_project\packages\anywp_engine_v__VERSION__\setup_precompiled.bat
+    echo ERROR: Please run this script from Flutter project root directory
+    echo    Example: flutter_project\packages\anywp_engine_v__VERSION__\setup_precompiled.bat
     echo.
     pause
     exit /b 1
 )
 
-REM 解析目标 packages 目录
+REM Parse target packages directory
 set "PACKAGES_DIR=%cd%\packages"
 if not exist "%PACKAGES_DIR%" (
-    echo [1/4] 创建 packages 目录...
+    echo [1/4] Creating packages directory...
     mkdir "%PACKAGES_DIR%" >nul 2>&1
     if errorlevel 1 (
-        echo ❌ 错误：无法创建 packages 目录：%PACKAGES_DIR%
+        echo ERROR: Cannot create packages directory: %PACKAGES_DIR%
         pause
         exit /b 1
     )
 )
 
-REM 定位预编译包目录（脚本所在位置）
+REM Locate precompiled package directory (where script is located)
 set "SOURCE_DIR=%~dp0"
 set "SOURCE_DIR=%SOURCE_DIR:~0,-1%"
 set "TARGET_DIR=%PACKAGES_DIR%\anywp_engine_v__VERSION__"
 
-echo [2/4] 同步预编译包到 packages/anywp_engine_v__VERSION__ ...
+echo [2/4] Syncing precompiled package to packages/anywp_engine_v__VERSION__ ...
 if exist "%TARGET_DIR%" (
     rmdir /s /q "%TARGET_DIR%" >nul 2>&1
 )
 mkdir "%TARGET_DIR%" >nul 2>&1
 if errorlevel 1 (
-    echo ❌ 错误：无法创建目标目录：%TARGET_DIR%
+    echo ERROR: Cannot create target directory: %TARGET_DIR%
     pause
     exit /b 1
 )
 
 robocopy "%SOURCE_DIR%" "%TARGET_DIR%" /E /NFL /NDL /NJH /NJS /NC /NS /XD ".git" >nul
 if errorlevel 8 (
-    echo ❌ 错误：复制预编译包失败
+    echo ERROR: Failed to copy precompiled package
     pause
     exit /b 1
 )
 
-echo [3/4] 验证关键文件...
+echo [3/4] Verifying critical files...
 set "ERROR_COUNT=0"
 
 for %%F in ("
@@ -64,41 +63,41 @@ for %%F in ("
     "windows\CMakeLists.txt"
 ) do (
     if not exist "%TARGET_DIR%%%F" (
-        echo    ❌ 缺少文件：%TARGET_DIR%%%F
+        echo    ERROR: Missing file: %TARGET_DIR%%%F
         set /a ERROR_COUNT+=1
     ) else (
-        echo    ✅ %TARGET_DIR%%%F
+        echo    OK: %TARGET_DIR%%%F
     )
 )
 
 if %ERROR_COUNT% NEQ 0 (
-    echo ❌ 验证失败：共有 %ERROR_COUNT% 个关键文件缺失
-    echo    请重新解压预编译包后再试
+    echo ERROR: Verification failed: %ERROR_COUNT% critical file(s) missing
+    echo    Please re-extract the precompiled package and try again
     pause
     exit /b 1
 )
 
-echo [4/4] 更新依赖（flutter pub get）...
+echo [4/4] Updating dependencies (flutter pub get)...
 flutter pub get
 if errorlevel 1 (
-    echo ❌ 错误：flutter pub get 执行失败
+    echo ERROR: flutter pub get failed
     pause
     exit /b 1
 )
 
 echo.
 echo ==============================================
-echo ✅ AnyWP Engine v__VERSION__ 预编译包已安装完成
+echo AnyWP Engine v__VERSION__ precompiled package installed successfully
 echo ==============================================
 echo.
-echo 使用方法：
-echo 1. 打开 pubspec.yaml，添加依赖：
+echo Usage:
+echo 1. Open pubspec.yaml and add dependency:
 echo.
 echo    dependencies:
 echo      anywp_engine:
 echo        path: ./packages/anywp_engine_v__VERSION__
 echo.
-echo 2. 重新运行 flutter build windows --release
+echo 2. Run flutter build windows --release again
 echo.
 pause
 endlocal

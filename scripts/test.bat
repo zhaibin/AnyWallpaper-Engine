@@ -1,13 +1,12 @@
 @echo off
-chcp 65001 >nul 2>&1
 REM ============================================================
-REM 用途：快速测试（无需重新构建）
-REM 功能：自动检测已编译版本（Release > Debug）并运行
-REM 适用：快速验证功能，无需等待编译
+REM Purpose: Quick test (no rebuild required)
+REM Function: Auto-detect compiled version (Release > Debug) and run
+REM Usage: Quick feature verification without waiting for compilation
 REM ============================================================
 
 echo ================================
-echo  AnyWP Engine - 快速测试
+echo  AnyWP Engine - Quick Test
 echo ================================
 echo.
 
