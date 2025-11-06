@@ -355,7 +355,7 @@ bool success = await AnyWPEngine.clearState();
 
 ---
 
-## Storage Isolation
+## Storage Isolation (v1.2.0+)
 
 ### Set Application Name
 
@@ -377,27 +377,16 @@ void main() async {
 
 **Storage Path:** `%LOCALAPPDATA%\AnyWPEngine\[AppName]\state.json`
 
-**Benefits:**
-- ✅ Multiple apps can use the engine without data conflicts
-- ✅ Clean uninstall - just delete the app's directory
-- ✅ Easy backup and migration
-- ✅ Backward compatible (defaults to "Default" if not set)
-
 ### Get Storage Path
 
 ```dart
-// Get application-specific storage path
 String path = await AnyWPEngine.getStoragePath();
 print('Data stored at: $path');
-// Output: C:\Users\...\AppData\Local\AnyWPEngine\MyAwesomeApp
 ```
 
 **Returns:** `Future<String>` - Full path to storage directory
 
-**Use Cases:**
-- Documentation and user support
-- Debugging and verification
-- Backup instructions
+💡 **See [README.md](../README.md#-storage-isolation-v120) for complete storage isolation guide, including uninstall cleanup and migration.**
 
 ---
 

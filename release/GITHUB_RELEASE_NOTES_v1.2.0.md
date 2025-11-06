@@ -148,14 +148,14 @@ rmdir /s /q "%LOCALAPPDATA%\AnyWPEngine\MyApp"
 
 ## 📚 文档更新
 
-### 新增文档
+### 文档优化
 
-- **`docs/STORAGE_ISOLATION.md`** - 完整的存储隔离指南
+- **README.md** - 整合存储隔离完整指南
   - 配置说明和 API 参考
   - 多应用隔离优势详解
-  - 卸载清理最佳实践
-  - 从旧版本迁移指南
-  - 常见问题解答
+  - 卸载清理最佳实践（批处理、PowerShell、NSIS 等多种方案）
+  - 从旧版本迁移说明
+- **所有核心文档同步更新** - API 参考、开发者指南等
 
 ---
 

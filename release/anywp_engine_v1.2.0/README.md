@@ -139,6 +139,73 @@ AnyWP.onClick('#button', (x, y) => {
 });
 ```
 
+## 🗂️ Storage Isolation (v1.2.0+)
+
+### Why Storage Isolation?
+
+When multiple applications use AnyWP Engine, they need isolated storage to avoid data conflicts and ensure clean uninstallation.
+
+**Storage Path**: `%LOCALAPPDATA%\AnyWPEngine\[AppName]\state.json`
+
+### Setup Application Identifier
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // ⚠️ Important: Set before initializing wallpaper
+  await AnyWPEngine.setApplicationName('MyAwesomeApp');
+  
+  runApp(MyApp());
+}
+```
+
+**Storage location**:
+```
+C:\Users\YourName\AppData\Local\AnyWPEngine\MyAwesomeApp\state.json
+```
+
+### Benefits
+
+✅ **Multi-app Isolation** - Each app has its own storage directory  
+✅ **Clean Uninstall** - Just delete the app's directory  
+✅ **Easy Backup** - Simple file-based configuration  
+✅ **Backward Compatible** - Defaults to "Default" if not set
+
+### Uninstall Cleanup
+
+**Manual cleanup**:
+```powershell
+Remove-Item -Recurse "$env:LOCALAPPDATA\AnyWPEngine\MyAwesomeApp"
+```
+
+**Integrate into installer** (Windows Batch):
+```bat
+@echo off
+REM uninstall.bat
+echo Cleaning up application data...
+rmdir /s /q "%LOCALAPPDATA%\AnyWPEngine\MyAwesomeApp"
+echo Done!
+```
+
+**NSIS Installer**:
+```nsis
+Function un.onUninstSuccess
+  MessageBox MB_YESNO "Delete application data?" IDYES DeleteData IDNO Done
+  DeleteData:
+    RMDir /r "$LOCALAPPDATA\AnyWPEngine\MyAwesomeApp"
+  Done:
+FunctionEnd
+```
+
+### Migration from Older Versions
+
+**Old storage** (v1.0): Registry → ❌ Leaves garbage  
+**Old storage** (v1.1): Shared JSON file → ⚠️ Data conflicts  
+**New storage** (v1.2): Isolated directories → ✅ Perfect solution
+
+**No code changes needed** - Backward compatible! If you don't call `setApplicationName()`, it uses "Default" directory.
+
 ## 🛠️ Setup
 
 ### Prerequisites

@@ -185,31 +185,6 @@ setOnPowerStateChangeCallback(callback)   // 电源状态变化
 
 ---
 
-### 4️⃣ 存储隔离指南 🆕 v1.2.0+
-
-**[STORAGE_ISOLATION.md](STORAGE_ISOLATION.md)**
-
-**包含内容：**
-- 🗂️ **应用级存储隔离** - 多应用数据隔离
-- 🧹 **无残留卸载** - 清理数据目录指南
-- 📦 **备份和迁移** - 配置文件管理
-- 🔄 **从旧版本迁移** - 升级指南
-- ❓ **常见问题** - FAQ
-
-**核心功能：**
-```dart
-// 设置应用唯一标识
-await AnyWPEngine.setApplicationName('MyApp');
-
-// 获取存储路径
-final path = await AnyWPEngine.getStoragePath();
-// 输出: C:\Users\...\AppData\Local\AnyWPEngine\MyApp
-```
-
-**立即阅读** → [STORAGE_ISOLATION.md](STORAGE_ISOLATION.md)
-
----
-
 ## 🔧 进阶文档
 
 ### 集成方式详解
