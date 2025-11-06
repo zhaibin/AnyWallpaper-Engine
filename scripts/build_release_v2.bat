@@ -95,7 +95,11 @@ if errorlevel 1 (
 
 copy "%BUILD_DIR%\plugins\anywp_engine\Release\anywp_engine_plugin.lib" "%RELEASE_DIR%\%RELEASE_NAME%\lib\" >nul 2>&1
 if errorlevel 1 (
-    echo [警告] 无法复制插件 LIB
+    echo [错误] 无法复制插件 LIB - 这是链接器必需的文件
+    set /a ERROR_COUNT+=1
+    cd ..
+    pause
+    exit /b 1
 )
 
 REM WebView2Loader DLL
@@ -106,12 +110,19 @@ if errorlevel 1 (
 )
 
 echo [7/12] 复制 Dart 源代码...
-REM Dart 库 - 直接复制到 lib/ 而不是 lib/dart/
+REM Dart 库 - 直接复制到 lib/ （标准位置）
 copy "lib\anywp_engine.dart" "%RELEASE_DIR%\%RELEASE_NAME%\lib\" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制 Dart 源代码
+    echo [错误] 无法复制 Dart 源代码到 lib/
     set /a ERROR_COUNT+=1
+    cd ..
+    pause
+    exit /b 1
 )
+
+REM 同时复制到 lib/dart/ （向后兼容）
+mkdir "%RELEASE_DIR%\%RELEASE_NAME%\lib\dart" 2>nul
+copy "lib\anywp_engine.dart" "%RELEASE_DIR%\%RELEASE_NAME%\lib\dart\" >nul 2>&1
 
 echo [8/12] 创建简化的头文件...
 REM 创建简化的头文件（不依赖 WebView2 SDK）
