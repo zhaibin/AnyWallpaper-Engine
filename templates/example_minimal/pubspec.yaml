@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   anywp_engine:
-    path: ../anywp_engine_v__VERSION__
+    path: ..
 
 dev_dependencies:
   flutter_test:

@@ -173,6 +173,7 @@ grep -r "newAPIName" docs/ README.md lib/
 - 立即停止，检查构建日志
 - 所有关键文件的复制失败都应该是错误，而非警告
 - 修复 `build_release_v2.bat` 中的错误处理逻辑
+- 如需无人值守执行，可先设置 `NO_PAUSE=1`：`cmd /c "set NO_PAUSE=1 && .\scripts\build_release_v2.bat"`
 
 #### 3.4 发布包验证
 
@@ -206,6 +207,9 @@ Test-Path "release/anywp_engine_v{版本号}/bin/WebView2Loader.dll"
 Test-Path "release/anywp_engine_v{版本号}/lib/anywp_engine_plugin.lib"  # 最易遗漏
 Test-Path "release/anywp_engine_v{版本号}/lib/anywp_engine.dart"        # 标准位置
 Test-Path "release/anywp_engine_v{版本号}/lib/dart/anywp_engine.dart"   # 向后兼容
+
+# 运行发布包自检脚本（推荐）
+cmd /c "cd release\anywp_engine_v{版本号} && verify_precompiled.bat"
 ```
 
 **❌ 如果缺少任何关键文件**：
@@ -213,6 +217,10 @@ Test-Path "release/anywp_engine_v{版本号}/lib/dart/anywp_engine.dart"   # 向
 2. 重新运行 `.\scripts\build_release_v2.bat`
 3. 如果仍然缺少，手动复制并调查原因
 4. 确保 `build_release_v2.bat` 中所有复制操作都是 **错误级别** 而非警告
+
+**额外验收（强烈建议）**：
+- 在全新 Flutter 工程中执行 `release/anywp_engine_v{版本号}/setup_precompiled.bat`
+- 运行 `release/anywp_engine_v{版本号}/example_minimal`，确认壁纸可启动/停止
 
 #### 3.5 创建 GitHub Release Notes
 - [ ] 复制 `docs/RELEASE_TEMPLATE.md`
@@ -425,6 +433,7 @@ Get-ChildItem | Where-Object Name -like "*.dll"
 - ✅ 优先使用批处理脚本（.bat）处理复杂逻辑
 - ✅ PowerShell 只用于简单命令（Get-ChildItem, Test-Path, Copy-Item）
 - ✅ 验证流程使用 grep 工具代替 PowerShell 脚本
+- ✅ 生成脚本/模板时使用 `Get-Content -Raw` + `[System.Text.UTF8Encoding]::new($false)`，避免 BOM 和换行丢失
 
 ---
 
