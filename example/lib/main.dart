@@ -1,7 +1,16 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:anywp_engine/anywp_engine.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set application name for storage isolation
+  await AnyWPEngine.setApplicationName('AnyWallpaperDemo');
+  
+  // Print storage path for verification
+  final storagePath = await AnyWPEngine.getStoragePath();
+  print('[APP] Storage path: $storagePath');
+  
   runApp(const MyApp());
 }
 

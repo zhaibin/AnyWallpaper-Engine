@@ -648,6 +648,29 @@ void AnyWPEnginePlugin::HandleMethodCall(
     bool success = ClearState();
     result->Success(flutter::EncodableValue(success));
   }
+  else if (method_call.method_name() == "setApplicationName") {
+    const auto* arguments = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (!arguments) {
+      result->Error("INVALID_ARGS", "Arguments must be a map");
+      return;
+    }
+
+    auto name_it = arguments->find(flutter::EncodableValue("name"));
+    
+    if (name_it == arguments->end()) {
+      result->Error("INVALID_ARGS", "Missing 'name' argument");
+      return;
+    }
+
+    std::string name = std::get<std::string>(name_it->second);
+    SetApplicationName(name);
+    
+    result->Success(flutter::EncodableValue(true));
+  }
+  else if (method_call.method_name() == "getStoragePath") {
+    std::string path = GetStoragePath();
+    result->Success(flutter::EncodableValue(path));
+  }
   else {
     result->NotImplemented();
   }
@@ -1404,8 +1427,8 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
 
 // ========== State Persistence Helper Functions ==========
 
-// Get application data directory path
-std::string GetAppDataPath() {
+// Get application data directory path with app-specific subdirectory
+std::string GetAppDataPath(const std::string& app_name = "Default") {
   wchar_t* path = nullptr;
   HRESULT hr = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &path);
   
@@ -1416,8 +1439,9 @@ std::string GetAppDataPath() {
     WideCharToMultiByte(CP_UTF8, 0, path, -1, &result[0], size_needed, nullptr, nullptr);
     CoTaskMemFree(path);
     
-    // Append AnyWPEngine directory
-    result += "\\AnyWPEngine";
+    // Append AnyWPEngine directory and app-specific subdirectory
+    // Path: %LOCALAPPDATA%\AnyWPEngine\[AppName]
+    result += "\\AnyWPEngine\\" + app_name;
     return result;
   }
   
@@ -1496,10 +1520,10 @@ std::string UnescapeJson(const std::string& str) {
 }
 
 // Load all state from JSON file
-std::map<std::string, std::string> LoadStateFile() {
+std::map<std::string, std::string> LoadStateFile(const std::string& app_name) {
   std::map<std::string, std::string> state;
   
-  std::string app_data = GetAppDataPath();
+  std::string app_data = GetAppDataPath(app_name);
   if (app_data.empty()) {
     std::cout << "[AnyWP] [State] ERROR: Failed to get app data path" << std::endl;
     return state;
@@ -1564,8 +1588,8 @@ std::map<std::string, std::string> LoadStateFile() {
 }
 
 // Save all state to JSON file
-bool SaveStateFile(const std::map<std::string, std::string>& state) {
-  std::string app_data = GetAppDataPath();
+bool SaveStateFile(const std::map<std::string, std::string>& state, const std::string& app_name) {
+  std::string app_data = GetAppDataPath(app_name);
   if (app_data.empty()) {
     std::cout << "[AnyWP] [State] ERROR: Failed to get app data path" << std::endl;
     return false;
@@ -1612,11 +1636,11 @@ bool AnyWPEnginePlugin::SaveState(const std::string& key, const std::string& val
     // Update in-memory cache
     persisted_state_[key] = value;
     
-    // Save to file
-    bool success = SaveStateFile(persisted_state_);
+    // Save to file with application name
+    bool success = SaveStateFile(persisted_state_, application_name_);
     
     if (success) {
-      std::cout << "[AnyWP] [State] Saved to file: " << key << " = " << value << std::endl;
+      std::cout << "[AnyWP] [State] Saved to file (" << application_name_ << "): " << key << " = " << value << std::endl;
     } else {
       std::cout << "[AnyWP] [State] ERROR: Failed to save state to file" << std::endl;
     }
@@ -1635,14 +1659,14 @@ std::string AnyWPEnginePlugin::LoadState(const std::string& key) {
   // Check cache first
   auto it = persisted_state_.find(key);
   if (it != persisted_state_.end()) {
-    std::cout << "[AnyWP] [State] Loaded from cache: " << key << " = " << it->second << std::endl;
+    std::cout << "[AnyWP] [State] Loaded from cache (" << application_name_ << "): " << key << " = " << it->second << std::endl;
     return it->second;
   }
   
   // Load all state from file if cache is empty
   if (persisted_state_.empty()) {
     try {
-      persisted_state_ = LoadStateFile();
+      persisted_state_ = LoadStateFile(application_name_);
     } catch (const std::exception& e) {
       std::cout << "[AnyWP] [State] ERROR: Exception in LoadStateFile: " << e.what() << std::endl;
     }
@@ -1651,11 +1675,11 @@ std::string AnyWPEnginePlugin::LoadState(const std::string& key) {
   // Check cache again after loading
   it = persisted_state_.find(key);
   if (it != persisted_state_.end()) {
-    std::cout << "[AnyWP] [State] Loaded from file: " << key << " = " << it->second << std::endl;
+    std::cout << "[AnyWP] [State] Loaded from file (" << application_name_ << "): " << key << " = " << it->second << std::endl;
     return it->second;
   }
   
-  std::cout << "[AnyWP] [State] Key not found: " << key << std::endl;
+  std::cout << "[AnyWP] [State] Key not found (" << application_name_ << "): " << key << std::endl;
   return "";
 }
 
@@ -1668,7 +1692,7 @@ bool AnyWPEnginePlugin::ClearState() {
     persisted_state_.clear();
     
     // Delete state file
-    std::string app_data = GetAppDataPath();
+    std::string app_data = GetAppDataPath(application_name_);
     if (app_data.empty()) {
       std::cout << "[AnyWP] [State] ERROR: Failed to get app data path" << std::endl;
       return false;
@@ -1678,7 +1702,7 @@ bool AnyWPEnginePlugin::ClearState() {
     
     // Delete file if exists
     if (DeleteFileA(state_file.c_str()) || GetLastError() == ERROR_FILE_NOT_FOUND) {
-      std::cout << "[AnyWP] [State] Cleared all state (deleted file: " << state_file << ")" << std::endl;
+      std::cout << "[AnyWP] [State] Cleared all state (" << application_name_ << ") (deleted file: " << state_file << ")" << std::endl;
       return true;
     } else {
       std::cout << "[AnyWP] [State] ERROR: Failed to delete state file: " << GetLastError() << std::endl;
@@ -1688,6 +1712,48 @@ bool AnyWPEnginePlugin::ClearState() {
     std::cout << "[AnyWP] [State] ERROR: Exception in ClearState: " << e.what() << std::endl;
     return false;
   }
+}
+
+// Set application name for storage isolation
+void AnyWPEnginePlugin::SetApplicationName(const std::string& name) {
+  std::lock_guard<std::mutex> lock(state_mutex_);
+  
+  if (name.empty()) {
+    std::cout << "[AnyWP] [State] WARNING: Empty application name, using 'Default'" << std::endl;
+    application_name_ = "Default";
+    return;
+  }
+  
+  // Sanitize application name (remove invalid filename characters)
+  std::string sanitized_name;
+  for (char c : name) {
+    if (isalnum(c) || c == '_' || c == '-') {
+      sanitized_name += c;
+    } else if (c == ' ') {
+      sanitized_name += '_';
+    }
+  }
+  
+  if (sanitized_name.empty()) {
+    std::cout << "[AnyWP] [State] WARNING: Invalid application name, using 'Default'" << std::endl;
+    application_name_ = "Default";
+    return;
+  }
+  
+  // Clear cache when switching applications
+  if (application_name_ != sanitized_name && !persisted_state_.empty()) {
+    std::cout << "[AnyWP] [State] Switching from '" << application_name_ << "' to '" << sanitized_name << "', clearing cache" << std::endl;
+    persisted_state_.clear();
+  }
+  
+  application_name_ = sanitized_name;
+  std::cout << "[AnyWP] [State] Application name set to: " << application_name_ << std::endl;
+}
+
+// Get application-specific storage path
+std::string AnyWPEnginePlugin::GetStoragePath() {
+  std::string path = GetAppDataPath(application_name_);
+  return path;
 }
 
 // Mouse Hook: Low-level mouse callback (optimized for performance)

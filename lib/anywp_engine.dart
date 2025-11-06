@@ -552,5 +552,59 @@ class AnyWPEngine {
       return false;
     }
   }
+
+  /// Set application name for storage isolation
+  /// 
+  /// Sets a unique identifier for this application to isolate its storage
+  /// from other applications using the AnyWP Engine. This should be called
+  /// before any wallpaper initialization.
+  /// 
+  /// Storage path: %LOCALAPPDATA%\AnyWPEngine\[appName]\state.json
+  /// 
+  /// - [name]: Application identifier (alphanumeric, spaces converted to underscores)
+  /// - Returns: true if successful
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Set early in main()
+  /// void main() async {
+  ///   WidgetsFlutterBinding.ensureInitialized();
+  ///   await AnyWPEngine.setApplicationName('MyAwesomeApp');
+  ///   runApp(MyApp());
+  /// }
+  /// ```
+  static Future<bool> setApplicationName(String name) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('setApplicationName', {
+        'name': name,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('Error setting application name: $e');
+      return false;
+    }
+  }
+
+  /// Get application-specific storage path
+  /// 
+  /// Returns the full path to this application's isolated storage directory.
+  /// Useful for documentation or debugging purposes.
+  /// 
+  /// - Returns: The storage path (e.g., C:\Users\...\AppData\Local\AnyWPEngine\MyApp)
+  /// 
+  /// Example:
+  /// ```dart
+  /// final path = await AnyWPEngine.getStoragePath();
+  /// print('State stored at: $path');
+  /// ```
+  static Future<String> getStoragePath() async {
+    try {
+      final result = await _channel.invokeMethod<String>('getStoragePath');
+      return result ?? '';
+    } catch (e) {
+      print('Error getting storage path: $e');
+      return '';
+    }
+  }
 }
 

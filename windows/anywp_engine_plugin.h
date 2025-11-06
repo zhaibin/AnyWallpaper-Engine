@@ -147,6 +147,8 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   bool SaveState(const std::string& key, const std::string& value);
   std::string LoadState(const std::string& key);
   bool ClearState();
+  void SetApplicationName(const std::string& name);  // Set app identifier for storage isolation
+  std::string GetStoragePath();  // Get application-specific storage path
   
   // API Bridge: JavaScript SDK injection and message handling
   void InjectAnyWallpaperSDK();
@@ -207,6 +209,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // State persistence
   std::map<std::string, std::string> persisted_state_;
   std::mutex state_mutex_;
+  std::string application_name_ = "Default";  // Application identifier for isolated storage
   
   // Method channel for callbacks to Dart
   flutter::MethodChannel<flutter::EncodableValue>* method_channel_ = nullptr;
