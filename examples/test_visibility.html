@@ -20,50 +20,87 @@
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
     
     .container {
-      padding: 40px;
-      max-width: 1200px;
-      margin: 0 auto;
+      padding: 20px;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
     
     h1 {
-      font-size: 48px;
-      margin-bottom: 20px;
+      font-size: clamp(24px, 4vw, 48px);
+      margin-bottom: 15px;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
     
     .status-panel {
       background: rgba(255,255,255,0.1);
       backdrop-filter: blur(10px);
-      border-radius: 20px;
-      padding: 30px;
-      margin-bottom: 30px;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 15px;
       border: 2px solid rgba(255,255,255,0.2);
+      flex-shrink: 0;
+    }
+    
+    .status-panel h2 {
+      font-size: clamp(16px, 2.5vw, 20px);
+      margin-bottom: 10px;
+      margin-top: 0;
+    }
+    
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    
+    @media (max-width: 768px) {
+      .status-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
     }
     
     .status-item {
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
       align-items: center;
-      padding: 15px;
-      margin: 10px 0;
+      justify-content: center;
+      padding: 8px;
       background: rgba(0,0,0,0.2);
-      border-radius: 10px;
+      border-radius: 8px;
+      gap: 6px;
     }
     
     .status-label {
-      font-size: 18px;
+      font-size: clamp(11px, 1.5vw, 14px);
       font-weight: 500;
+      text-align: center;
     }
     
     .status-value {
-      font-size: 24px;
+      font-size: clamp(12px, 2vw, 18px);
       font-weight: bold;
-      padding: 10px 20px;
-      border-radius: 8px;
+      padding: 4px 12px;
+      border-radius: 6px;
       background: rgba(255,255,255,0.2);
+      text-align: center;
+      white-space: nowrap;
     }
     
     .status-value.active {
@@ -83,24 +120,25 @@
     .test-section {
       background: rgba(255,255,255,0.1);
       backdrop-filter: blur(10px);
-      border-radius: 20px;
-      padding: 30px;
-      margin-bottom: 30px;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      flex-shrink: 0;
     }
     
     h2 {
-      font-size: 28px;
-      margin-bottom: 20px;
+      font-size: clamp(18px, 3vw, 28px);
+      margin-bottom: 15px;
     }
     
     .animation-demo {
       width: 100%;
-      height: 200px;
+      height: clamp(150px, 20vh, 250px);
       background: rgba(0,0,0,0.3);
       border-radius: 10px;
       position: relative;
       overflow: hidden;
-      margin: 20px 0;
+      margin: 15px 0;
     }
     
     .moving-circle {
@@ -115,20 +153,25 @@
     
     video {
       width: 100%;
-      max-width: 600px;
+      max-width: 100%;
+      height: auto;
+      max-height: 50vh;
       border-radius: 10px;
-      margin: 20px 0;
+      margin: 15px 0;
+      object-fit: contain;
     }
     
     .log {
       background: rgba(0,0,0,0.5);
       border-radius: 10px;
-      padding: 20px;
-      max-height: 300px;
+      padding: 15px;
+      max-height: clamp(200px, 25vh, 300px);
       overflow-y: auto;
       font-family: 'Consolas', monospace;
-      font-size: 14px;
-      margin-top: 20px;
+      font-size: clamp(12px, 1.5vw, 14px);
+      margin-top: 15px;
+      flex: 1;
+      min-height: 150px;
     }
     
     .log-entry {
@@ -168,30 +211,31 @@
     
     <div class="status-panel">
       <h2>实时状态</h2>
-      
-      <div class="status-item">
-        <span class="status-label">可见性状态</span>
-        <span class="status-value" id="visibility-status">可见</span>
-      </div>
-      
-      <div class="status-item">
-        <span class="status-label">动画状态</span>
-        <span class="status-value" id="animation-status">运行中</span>
-      </div>
-      
-      <div class="status-item">
-        <span class="status-label">视频状态</span>
-        <span class="status-value" id="video-status">未加载</span>
-      </div>
-      
-      <div class="status-item">
-        <span class="status-label">暂停次数</span>
-        <span class="status-value" id="pause-count">0</span>
-      </div>
-      
-      <div class="status-item">
-        <span class="status-label">恢复次数</span>
-        <span class="status-value" id="resume-count">0</span>
+      <div class="status-grid">
+        <div class="status-item">
+          <span class="status-label">可见性状态</span>
+          <span class="status-value" id="visibility-status">可见</span>
+        </div>
+        
+        <div class="status-item">
+          <span class="status-label">动画状态</span>
+          <span class="status-value" id="animation-status">运行中</span>
+        </div>
+        
+        <div class="status-item">
+          <span class="status-label">视频状态</span>
+          <span class="status-value" id="video-status">未加载</span>
+        </div>
+        
+        <div class="status-item">
+          <span class="status-label">暂停次数</span>
+          <span class="status-value" id="pause-count">0</span>
+        </div>
+        
+        <div class="status-item">
+          <span class="status-label">恢复次数</span>
+          <span class="status-value" id="resume-count">0</span>
+        </div>
       </div>
     </div>
     
@@ -200,7 +244,7 @@
       <div class="info-box">
         💡 <strong>测试方法</strong>：锁屏（Win+L）时视频会自动暂停，解锁后自动恢复播放
       </div>
-      <video id="test-video" controls>
+      <video id="test-video" controls loop autoplay muted>
         <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
         Your browser does not support the video tag.
       </video>
@@ -227,6 +271,7 @@
     const logContainer = document.getElementById('event-log');
     let pauseCount = 0;
     let resumeCount = 0;
+    let currentVisibilityState = true; // Track current state to avoid duplicate counting
     
     function addLog(message, type) {
       const time = new Date().toLocaleTimeString();
@@ -242,8 +287,18 @@
     }
     
     function updateStatus(visible) {
+      // Only count when state actually changes
+      if (currentVisibilityState === visible) {
+        // State hasn't changed, just update UI without counting
+        console.log('[Test] Visibility state unchanged, skipping count');
+        return;
+      }
+      
       const visibilityEl = document.getElementById('visibility-status');
       const animationEl = document.getElementById('animation-status');
+      
+      // Update state
+      currentVisibilityState = visible;
       
       if (visible) {
         visibilityEl.textContent = '可见';
@@ -252,6 +307,20 @@
         animationEl.className = 'status-value active';
         resumeCount++;
         document.getElementById('resume-count').textContent = resumeCount;
+        console.log('[Test] Resume count:', resumeCount);
+        
+        // Resume video if it was playing or if it ended
+        if (video.readyState >= 2) {
+          if (video.ended) {
+            // Restart video if it ended
+            video.currentTime = 0;
+          }
+          if (video.paused || video.ended) {
+            video.play().catch(err => {
+              console.log('[Test] Video play failed:', err);
+            });
+          }
+        }
       } else {
         visibilityEl.textContent = '隐藏';
         visibilityEl.className = 'status-value paused';
@@ -259,6 +328,12 @@
         animationEl.className = 'status-value paused';
         pauseCount++;
         document.getElementById('pause-count').textContent = pauseCount;
+        console.log('[Test] Pause count:', pauseCount);
+        
+        // Pause video if it's playing
+        if (!video.paused) {
+          video.pause();
+        }
       }
     }
     
@@ -279,8 +354,23 @@
     });
     
     video.addEventListener('ended', () => {
-      videoStatus.textContent = '已结束';
-      videoStatus.className = 'status-value';
+      // With loop attribute, video should restart automatically
+      // But we'll ensure it restarts as a backup
+      console.log('[Test] Video ended, restarting...');
+      video.currentTime = 0;
+      video.play().catch(err => {
+        console.log('[Test] Video restart failed:', err);
+      });
+    });
+    
+    // Ensure video plays when loaded
+    video.addEventListener('loadeddata', () => {
+      console.log('[Test] Video loaded, attempting autoplay...');
+      if (video.paused && currentVisibilityState) {
+        video.play().catch(err => {
+          console.log('[Test] Video autoplay failed (may require user interaction):', err);
+        });
+      }
     });
     
     // CSS animation for the circle
@@ -307,14 +397,34 @@
       
       // Register visibility callback
       AnyWP.onVisibilityChange(function(visible) {
-        console.log('[Test] Visibility changed:', visible);
+        console.log('[Test] Visibility changed:', visible, 'Current state:', currentVisibilityState);
         addLog(visible ? '壁纸恢复可见 ⚡' : '壁纸已隐藏（省电模式）', visible ? 'visible' : 'hidden');
         updateStatus(visible);
+      });
+      
+      // Also listen to native Page Visibility API as backup
+      document.addEventListener('visibilitychange', function() {
+        const isVisible = !document.hidden;
+        console.log('[Test] Native visibilitychange:', isVisible);
+        if (isVisible !== currentVisibilityState) {
+          updateStatus(isVisible);
+        }
       });
       
       // Notify ready
       AnyWP.ready('Visibility API Test Page');
       addLog('壁纸已就绪', 'visible');
+      
+      // Try to start video playback after SDK is ready
+      setTimeout(() => {
+        if (video.readyState >= 2 && video.paused && currentVisibilityState) {
+          console.log('[Test] Attempting to start video after SDK ready...');
+          video.play().catch(err => {
+            console.log('[Test] Video autoplay failed:', err);
+            addLog('视频自动播放需要用户交互（浏览器限制）', 'hidden');
+          });
+        }
+      }, 500);
     }
     
     // Initialize on DOMContentLoaded
