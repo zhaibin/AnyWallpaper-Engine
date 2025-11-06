@@ -30,13 +30,479 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 ```
 lib/                    # Dart API
 windows/                # C++ 实现 + anywp_sdk.js
-  ├── include/anywp_engine/  # 公共头文件
 example/                # 示例应用
-examples/               # 测试 HTML (8个测试页面)
-docs/                   # 文档（面向 Flutter/Web 开发者）
+examples/               # 测试 HTML (8个)
+docs/                   # 核心文档 (22个)
 scripts/                # 构建脚本
 release/                # 发布包
 ```
+
+---
+
+## 核心文档
+
+### 面向开发者（必读）
+- **Flutter**: `docs/FOR_FLUTTER_DEVELOPERS.md` (导航) + `docs/DEVELOPER_API_REFERENCE.md` (API)
+- **Web**: `docs/WEB_DEVELOPER_GUIDE_CN.md`
+- **集成**: `docs/PRECOMPILED_DLL_INTEGRATION.md`
+- **存储**: `README.md` 存储隔离章节 (v1.2.0+)
+
+### 技术文档
+- `docs/TECHNICAL_NOTES.md` | `docs/API_BRIDGE.md` | `docs/INTEGRATION_ARCHITECTURE.md`
+
+### 用户文档
+- `README.md` | `docs/QUICK_START.md` | `docs/TROUBLESHOOTING.md`
+
+---
+
+## 开发流程
+
+### 功能开发
+1. 实现功能 + 错误处理
+2. 运行测试验证（`.\scripts\test.bat`）
+3. 自动提交代码
+
+### 调试流程
+1. 编译运行：`.\scripts\debug_run.bat`
+2. 查看日志：`debug_run.log` 或 `example/test_output.log`
+3. 分析优化，重复测试
+
+---
+
+## 测试、上线、发版流程（必须遵守）
+
+### 阶段 1️⃣：功能开发与测试
+
+#### 1.1 开发阶段
+- [ ] 实现功能代码（Dart + C++ + JavaScript）
+- [ ] 添加完整的文档注释
+- [ ] 错误处理和边界情况
+- [ ] 自动提交代码
+
+#### 1.2 编译测试
+```bash
+cd example
+flutter clean
+flutter build windows --debug
+```
+- [ ] 无编译错误
+- [ ] 无 Linter 警告
+- [ ] DLL 正确生成
+
+#### 1.3 功能测试
+```bash
+.\scripts\test.bat  # 或 debug_run.bat
+```
+**必测项目**:
+- [ ] 基础功能正常（启动/停止壁纸）
+- [ ] 新功能工作正常
+- [ ] 无崩溃或异常
+- [ ] 内存占用合理（< 300 MB）
+- [ ] 测试至少 2 个测试页面（examples/）
+
+#### 1.4 集成测试
+- [ ] 多显示器支持（如有多显示器）
+- [ ] 拖拽功能（test_draggable.html）
+- [ ] 状态持久化（拖拽位置保存/加载）
+- [ ] 应用隔离（检查存储目录 `%LOCALAPPDATA%\AnyWPEngine\`）
+
+---
+
+### 阶段 2️⃣：文档更新（发布前必须）
+
+#### 2.1 核心文档同步
+**新增 API 必须更新**:
+- [ ] `README.md` - 快速开始示例
+- [ ] `lib/anywp_engine.dart` - Dart 文档注释
+- [ ] `docs/DEVELOPER_API_REFERENCE.md` - API 参考章节
+- [ ] `docs/FOR_FLUTTER_DEVELOPERS.md` - API 列表
+
+**新增功能必须更新**:
+- [ ] `README.md` - Features 章节
+- [ ] `CHANGELOG_CN.md` - 新增更新日志条目
+
+#### 2.2 示例代码更新
+- [ ] `README.md` 快速开始代码可运行
+- [ ] `docs/DEVELOPER_API_REFERENCE.md` 示例代码完整
+- [ ] 版本标注清晰（如 `v1.2.0+`）
+
+#### 2.3 文档验证
+```bash
+# 验证新 API 是否覆盖
+grep -r "newAPIName" docs/ README.md lib/
+```
+- [ ] 所有核心文档包含新功能
+- [ ] 示例代码可直接复制使用
+- [ ] 无过时信息
+
+---
+
+### 阶段 3️⃣：发布准备
+
+#### 3.1 版本号更新
+**必须同步更新**:
+- [ ] `pubspec.yaml` - version: `1.x.0`
+- [ ] `scripts/build_release_v2.bat` - VERSION=`1.x.0`
+- [ ] `CHANGELOG_CN.md` - 添加新版本条目
+- [ ] `.cursorrules` 底部版本号
+
+#### 3.2 CHANGELOG 完整性
+**必须包含**:
+- [ ] 版本号和日期：`## [4.x.0] - YYYY-MM-DD - 标题`
+- [ ] 新增功能：`### ✨ 新增功能`
+- [ ] 重构改进：`### 🔄 重构改进`（如有）
+- [ ] 文档更新：`### 📚 文档更新`
+- [ ] 使用示例：`### 🎯 使用示例`
+- [ ] 技术细节：`### 🔧 技术细节`（如有重大改动）
+
+#### 3.3 Release 构建
+```bash
+.\scripts\build_release_v2.bat
+```
+- [ ] 构建成功无错误
+- [ ] DLL 文件生成（`release/anywp_engine_v{版本号}/bin/`）
+- [ ] 目录结构完整（bin, lib, include, sdk, windows）
+- [ ] 文档文件齐全（README, CHANGELOG, LICENSE, PRECOMPILED_README, pubspec.yaml）
+
+#### 3.4 发布包验证
+**必须检查**:
+- [ ] `release/anywp_engine_v{版本号}/README.md` 包含新功能
+- [ ] `release/anywp_engine_v{版本号}/CHANGELOG_CN.md` 包含新版本
+- [ ] `release/anywp_engine_v{版本号}/pubspec.yaml` 版本号正确
+- [ ] `release/anywp_engine_v{版本号}/lib/dart/anywp_engine.dart` 包含新 API
+- [ ] 验证新 API 在发布包文档中的覆盖度
+
+```bash
+# 验证命令
+grep -r "newAPIName" release/anywp_engine_v{版本号}/
+```
+
+#### 3.5 创建 GitHub Release Notes
+- [ ] 复制 `docs/RELEASE_TEMPLATE.md`
+- [ ] 修改为 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
+- [ ] 填写完整的功能说明、示例、测试结果
+- [ ] 包含升级指南和注意事项
+
+---
+
+### 阶段 4️⃣：Git 提交与推送
+
+#### 4.1 Git 提交
+```bash
+git add release/ CHANGELOG_CN.md pubspec.yaml docs/ README.md .cursorrules
+
+# 中文提交信息使用文件方式（避免乱码）
+write("commit_msg.txt", "release: 发布 v1.x.0 - 功能描述")
+git commit -F commit_msg.txt
+delete_file("commit_msg.txt")
+```
+
+**检查**:
+- [ ] 所有发布相关文件已添加
+- [ ] 提交信息清晰描述版本和功能
+- [ ] 工作区干净（`git status` 无未提交）
+
+#### 4.2 推送到 GitHub
+```bash
+# 推送所有提交
+git push origin main
+```
+
+**注意**: 
+- ❌ 不使用 `.\scripts\PUSH_TO_GITHUB.bat`（已废弃）
+- ✅ 直接使用 `git push origin main`
+- ⚠️ 中文提交信息已通过 `-F commit_msg.txt` 正确处理
+
+**验证**:
+- [ ] 推送成功无错误
+- [ ] GitHub 网页可见最新提交
+
+---
+
+### 阶段 5️⃣：GitHub Release 发布
+
+#### 5.1 创建 Release
+1. 访问: `https://github.com/zhaibin/AnyWallpaper-Engine/releases/new`
+2. 填写信息:
+   - **Tag**: `v{版本号}` (例如 v1.2.0)
+   - **Target**: `main` branch
+   - **Title**: `AnyWP Engine v{版本号} - 功能描述`
+   - **Description**: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md` 内容
+3. 上传文件:
+   - `release/anywp_engine_v{版本号}.zip`
+4. 勾选 "Set as the latest release"
+5. 点击 "Publish release"
+
+#### 5.2 发布后验证
+- [ ] Release 页面显示正常
+- [ ] ZIP 文件可下载
+- [ ] 发布说明格式正确
+- [ ] 标签创建成功
+
+---
+
+### 阶段 6️⃣：发布后清理（可选）
+
+#### 6.1 清理临时文件
+```bash
+# 清理构建日志
+Remove-Item build_release.log -ErrorAction SilentlyContinue
+Remove-Item example/test_output.log -ErrorAction SilentlyContinue
+Remove-Item debug_run.log -ErrorAction SilentlyContinue
+```
+
+#### 6.2 通知用户（可选）
+- 在相关社区/论坛发布更新通知
+- 更新 pub.dev 包（如果发布到 pub.dev）
+
+---
+
+## 文档完整性检查清单
+
+### 新增 API 发布前检查
+
+当新增任何 Dart API 方法时，**必须**在以下文档中添加：
+
+1. **Dart 源码文档**:
+   - [ ] `lib/anywp_engine.dart` - 完整文档注释
+   - [ ] 参数说明、返回值、使用示例
+
+2. **README.md**:
+   - [ ] Quick Start 示例代码中使用（如适用）
+   - [ ] 或在相关章节中说明
+
+3. **API 参考**:
+   - [ ] `docs/DEVELOPER_API_REFERENCE.md` - 新增章节或更新现有章节
+   - [ ] 完整的参数说明、返回值、示例代码
+
+4. **开发者导航**:
+   - [ ] `docs/FOR_FLUTTER_DEVELOPERS.md` - 在 API 列表中添加
+   - [ ] 如有重大功能，添加快速上手示例
+
+5. **CHANGELOG**:
+   - [ ] `CHANGELOG_CN.md` - 在新版本条目中说明
+   - [ ] 包含使用示例
+
+**验证命令**:
+```bash
+# 搜索新 API 是否在核心文档中
+grep -r "新API名称" README.md lib/ docs/DEVELOPER_API_REFERENCE.md docs/FOR_FLUTTER_DEVELOPERS.md
+```
+
+### 新增功能发布前检查
+
+当新增重大功能时，**必须**：
+
+1. **README.md**:
+   - [ ] Features 章节新增条目
+   - [ ] 如需要，新增专题章节（如 Storage Isolation）
+   - [ ] 快速开始示例更新（如适用）
+
+2. **CHANGELOG_CN.md**:
+   - [ ] 详细的功能说明
+   - [ ] 完整的使用示例
+   - [ ] 优势和技术细节
+
+3. **发布包文档**:
+   - [ ] 更新后的 README.md 复制到发布包
+   - [ ] 更新后的 CHANGELOG_CN.md 复制到发布包
+
+4. **测试验证**:
+   - [ ] 新功能在示例应用中可演示
+   - [ ] 相关测试页面可用（examples/）
+
+---
+
+## AI 工作流规范
+
+### 基本原则
+- **默认中文回复**（技术术语保留英文）
+- **直接实现**，避免冗长解释
+- **自动调试**：编译、运行、读日志、优化
+- **自动提交**：功能完成后自动 git commit
+- **不创建过程性文档**（测试报告、验证报告等）
+
+### Git 提交规范
+
+**提交信息格式**:
+```
+<type>(<scope>): <subject>
+
+<body>
+```
+
+**Type**:
+- `feat` - 新功能
+- `fix` - Bug 修复
+- `docs` - 文档更新
+- `refactor` - 重构
+- `chore` - 杂项（清理、配置等）
+- `release` - 发布版本
+
+**中文提交（必须使用文件方式）**:
+```bash
+write("commit_msg.txt", "feat: 添加新功能\n\n详细说明...")
+git commit -F commit_msg.txt
+delete_file("commit_msg.txt")
+```
+
+**禁止**: `git commit -m "中文信息"` ❌ 会乱码
+
+### PowerShell 注意
+- **禁止** `&&` 操作符
+- **使用** `;` 分隔多命令
+
+---
+
+## 完整发版流程（严格遵守）
+
+### 📋 发版检查清单
+
+#### Step 1: 版本号更新
+- [ ] `pubspec.yaml`: `version: 1.x.0`
+- [ ] `scripts/build_release_v2.bat`: `VERSION=1.x.0`
+- [ ] `.cursorrules` 底部: `版本: 1.x.0`
+
+#### Step 2: CHANGELOG 更新
+- [ ] 添加新版本条目：`## [4.x.0] - YYYY-MM-DD - 标题`
+- [ ] ✨ 新增功能（详细说明 + 示例）
+- [ ] 🔄 重构改进（如有）
+- [ ] 📚 文档更新
+- [ ] 🎯 使用示例
+- [ ] 🔧 技术细节（重大改动）
+
+#### Step 3: 核心文档同步
+**新增 API**:
+- [ ] `lib/anywp_engine.dart` - 文档注释
+- [ ] `README.md` - 示例代码
+- [ ] `docs/DEVELOPER_API_REFERENCE.md` - API 章节
+- [ ] `docs/FOR_FLUTTER_DEVELOPERS.md` - API 列表
+
+**新增功能**:
+- [ ] `README.md` - Features 章节
+- [ ] `README.md` - 专题章节（如需要）
+
+**验证**:
+```bash
+grep -r "新API" README.md lib/ docs/DEVELOPER_API_REFERENCE.md
+```
+
+#### Step 4: 编译测试
+```bash
+# Debug 测试
+cd example
+flutter clean
+flutter build windows --debug
+# 运行测试验证功能
+
+# Release 构建
+flutter build windows --release
+```
+- [ ] Debug 构建成功
+- [ ] Release 构建成功
+- [ ] 功能测试通过
+- [ ] 无内存泄漏
+
+#### Step 5: 构建发布包
+```bash
+.\scripts\build_release_v2.bat
+```
+- [ ] 构建成功
+- [ ] 目录结构完整
+- [ ] DLL 文件正确
+
+#### Step 6: 发布包文档验证
+**必须检查**:
+- [ ] `release/anywp_engine_v{版本号}/README.md` 包含新功能
+- [ ] `release/anywp_engine_v{版本号}/CHANGELOG_CN.md` 包含新版本
+- [ ] `release/anywp_engine_v{版本号}/pubspec.yaml` 版本号正确
+- [ ] `release/anywp_engine_v{版本号}/lib/dart/anywp_engine.dart` 包含新 API
+
+**验证命令**:
+```bash
+# 检查新 API 是否在发布包中
+grep -r "新API名称" release/anywp_engine_v{版本号}/
+```
+
+**新 API 必须出现在**:
+- README.md（示例代码）
+- CHANGELOG_CN.md（功能说明）
+- lib/dart/anywp_engine.dart（源码注释）
+
+#### Step 7: 创建 Release Notes
+- [ ] 复制 `docs/RELEASE_TEMPLATE.md`
+- [ ] 另存为 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
+- [ ] 填写完整内容：
+  - 发布亮点
+  - 新增功能（详细说明 + 代码示例）
+  - 重构改进
+  - 使用示例
+  - 升级指南
+  - 测试结果
+
+#### Step 8: Git 提交
+```bash
+git add release/ CHANGELOG_CN.md pubspec.yaml docs/ README.md .cursorrules
+
+write("commit_msg.txt", "release: 发布 v1.x.0 - 功能描述")
+git commit -F commit_msg.txt
+delete_file("commit_msg.txt")
+```
+- [ ] 提交成功
+- [ ] 工作区干净
+
+#### Step 9: 推送到 GitHub
+```bash
+git push origin main
+```
+- [ ] 推送成功
+- [ ] GitHub 可见最新提交
+
+#### Step 10: 创建 GitHub Release
+1. [ ] 访问 GitHub Releases 页面
+2. [ ] 创建新 Release
+   - Tag: `v{版本号}`
+   - Title: `AnyWP Engine v{版本号} - 功能描述`
+   - Description: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
+3. [ ] 上传 ZIP: `release/anywp_engine_v{版本号}.zip`
+4. [ ] 勾选 "Set as the latest release"
+5. [ ] 发布成功
+
+#### Step 11: 发布后验证
+- [ ] Release 页面可访问
+- [ ] ZIP 文件可下载
+- [ ] 文档格式正确
+- [ ] 标签创建成功
+
+---
+
+## 文档维护原则
+
+### ✅ 必须保留的文档
+
+**根目录** (3个):
+- `README.md` - 项目主页 + 完整指南
+- `CHANGELOG_CN.md` - 更新日志
+- `QUICK_INTEGRATION.md` - 快速集成
+
+**docs/** (22个):
+- Flutter 开发者文档
+- Web 开发者文档
+- 技术文档
+- 最佳实践
+
+**发布相关**:
+- `release/GITHUB_RELEASE_NOTES_v{版本号}.md` - 每个版本的发布说明
+
+### ❌ 禁止创建的文档
+
+**过程性文档**:
+- ❌ `TEST_REPORT.md`
+- ❌ `VERIFICATION_REPORT.md`
+- ❌ `CHECKLIST.md`
+- ❌ `SUMMARY.md`
+
+**原则**: 测试、验证等过程在代码中完成，不生成报告文档
 
 ---
 
@@ -45,110 +511,19 @@ release/                # 发布包
 ```bash
 # 开发
 .\scripts\build_and_run.bat       # 构建并运行
-.\scripts\debug_run.bat           # 调试模式（保留日志）
+.\scripts\debug_run.bat           # 调试模式
 .\scripts\test.bat                # 快速测试
 
 # 发布
 .\scripts\build_release_v2.bat    # 构建 Release 包
-git push origin main              # 推送到 GitHub（不使用脚本）
+git push origin main              # 推送到 GitHub
 ```
-
----
-
-## 核心文档
-
-### 面向开发者
-- **Flutter 开发者**: `docs/FOR_FLUTTER_DEVELOPERS.md` (导航) + `docs/DEVELOPER_API_REFERENCE.md` (API)
-- **Web 开发者**: `docs/WEB_DEVELOPER_GUIDE_CN.md` + `docs/FOR_WEB_DEVELOPERS.md`
-- **集成指南**: `docs/PACKAGE_USAGE_GUIDE_CN.md` + `docs/PRECOMPILED_DLL_INTEGRATION.md`
-- **最佳实践**: `docs/BEST_PRACTICES.md` + `docs/API_USAGE_EXAMPLES.md`
-- **存储隔离**: `README.md` 存储隔离章节 (v1.2.0+)
-
-### 技术文档
-- `docs/TECHNICAL_NOTES.md` - 技术实现细节
-- `docs/API_BRIDGE.md` - API 桥接机制
-- `docs/INTEGRATION_ARCHITECTURE.md` - 集成架构
-
-### 用户文档
-- `README.md` - 项目主页
-- `docs/QUICK_START.md` - 快速开始
-- `docs/TROUBLESHOOTING.md` - 故障排除
-
----
-
-## AI 工作流
-
-### 基本原则
-- **默认中文回复**（技术术语保留英文）
-- **直接实现**，避免冗长解释
-- **自动调试**：自己编译、运行、读日志、优化
-- **自动提交**：功能完成后自动 git commit
-
-### 文档更新
-- 修改功能 → 同步更新相关文档 + `CHANGELOG_CN.md`
-- 发布前 → 确保所有核心文档包含新功能
-- **不创建过程性文档**（测试报告、验证报告等）
-
-### Git 提交
-```bash
-# 中文提交信息使用文件方式（避免乱码）
-write("commit_msg.txt", "提交信息")
-git commit -F commit_msg.txt
-delete_file("commit_msg.txt")
-```
-
-### PowerShell 注意
-- **禁止** `&&` 操作符
-- **使用** `;` 分隔多命令
-
----
-
-## 发布流程
-
-### 发布前准备
-1. 更新版本号：`pubspec.yaml` + `scripts/build_release_v2.bat`
-2. 更新 `CHANGELOG_CN.md`
-3. **同步核心文档**：README.md, API 参考等
-4. 测试功能
-
-### 构建发布
-```bash
-.\scripts\build_release_v2.bat
-```
-
-### 提交
-```bash
-git add release/ CHANGELOG_CN.md pubspec.yaml docs/ README.md
-# 使用文件方式提交（避免中文乱码）
-write("commit_msg.txt", "提交信息")
-git commit -F commit_msg.txt
-delete_file("commit_msg.txt")
-```
-
-### 推送到 GitHub
-```bash
-# 推送所有提交（避免直接使用脚本）
-git push origin main
-
-# 如果需要强制推送（慎用）
-# git push origin main --force
-```
-
-**注意**: 
-- ❌ 不使用 `.\scripts\PUSH_TO_GITHUB.bat`（已废弃）
-- ✅ 直接使用 `git push origin main`
-- ⚠️ 中文提交信息已通过 `-F commit_msg.txt` 正确处理
-
-### GitHub Release
-1. 标签: `v{版本号}` (如 v1.2.0)
-2. 上传: `release/anywp_engine_v{版本号}.zip`
-3. 说明: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
 
 ---
 
 ## 核心特性
 
-### 存储系统
+### 存储系统 (v1.2.0+)
 - **应用级隔离**: 每个应用独立目录 `%LOCALAPPDATA%\AnyWPEngine\[AppName]\`
 - **无残留卸载**: 删除应用目录即可
 - **向后兼容**: 默认使用 "Default" 应用名
