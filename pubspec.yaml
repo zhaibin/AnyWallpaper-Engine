@@ -1,6 +1,6 @@
 ﻿name: anywp_engine
 description: AnyWP - Flutter plugin for WebView2 desktop wallpaper engine with power saving and instant resume
-version: 1.2.0
+version: 1.2.1
 homepage: https://github.com/zhaibin/AnyWallpaper-Engine
 
 environment:

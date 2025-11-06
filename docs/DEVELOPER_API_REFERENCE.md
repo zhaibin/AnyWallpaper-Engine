@@ -388,6 +388,30 @@ print('Data stored at: $path');
 
 💡 **See [README.md](../README.md#-storage-isolation-v120) for complete storage isolation guide, including uninstall cleanup and migration.**
 
+### Get Plugin Version (v1.2.1+)
+
+```dart
+final version = await AnyWPEngine.getPluginVersion();
+print('AnyWP Engine plugin version: $version');
+```
+
+**Returns:** `Future<String>` - Semantic version string（例如 `1.2.1`）
+
+### Check Compatibility (v1.2.1+)
+
+```dart
+final compatible = await AnyWPEngine.isCompatible(expectedPrefix: '1.2.');
+if (!compatible) {
+  final version = await AnyWPEngine.getPluginVersion();
+  throw Exception('AnyWP Engine version mismatch: $version');
+}
+```
+
+**Parameters:**
+- `expectedPrefix` *(optional)*：默认 `1.2.`，匹配同一主/次版本的所有补丁
+
+**Returns:** `Future<bool>` - `true` 表示版本满足要求
+
 ---
 
 ## Callbacks

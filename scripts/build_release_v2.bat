@@ -26,11 +26,12 @@ REM 设置变量
 set "EXAMPLE_DIR=%cd%\example"
 set "BUILD_DIR=%EXAMPLE_DIR%\build\windows\x64"
 set "RELEASE_DIR=%cd%\release"
-set "VERSION=1.2.0"
+set "TEMPLATE_DIR=%cd%\templates"
+set "VERSION=1.2.1"
 set "RELEASE_NAME=anywp_engine_v%VERSION%"
 set "ERROR_COUNT=0"
 
-echo [1/12] 清理旧的构建...
+echo [1/16] 清理旧的构建...
 if exist "%EXAMPLE_DIR%\build" (
     rmdir /s /q "%EXAMPLE_DIR%\build" 2>nul
     if errorlevel 1 (
@@ -38,7 +39,7 @@ if exist "%EXAMPLE_DIR%\build" (
     )
 )
 
-echo [2/12] 运行 flutter clean...
+echo [2/16] 运行 flutter clean...
 cd "%EXAMPLE_DIR%"
 flutter clean >nul 2>&1
 if errorlevel 1 (
@@ -46,7 +47,7 @@ if errorlevel 1 (
     set /a ERROR_COUNT+=1
 )
 
-echo [3/12] 获取依赖...
+echo [3/16] 获取依赖...
 flutter pub get >nul 2>&1
 if errorlevel 1 (
     echo [错误] flutter pub get 失败
@@ -56,7 +57,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [4/12] 构建 Release 版本...
+echo [4/16] 构建 Release 版本...
 echo       这可能需要几分钟，请耐心等待...
 flutter build windows --release
 if errorlevel 1 (
@@ -74,18 +75,28 @@ if not exist "%BUILD_DIR%\runner\Release\anywallpaper_engine_example.exe" (
     exit /b 1
 )
 
-echo [5/12] 创建 Release 目录结构...
+echo [5/16] 创建 Release 目录结构...
 cd ..
-if exist "%RELEASE_DIR%" (
-    rmdir /s /q "%RELEASE_DIR%" 2>nul
+if not exist "%RELEASE_DIR%" (
+    mkdir "%RELEASE_DIR%" 2>nul
 )
+if exist "%RELEASE_DIR%\%RELEASE_NAME%" (
+    rmdir /s /q "%RELEASE_DIR%\%RELEASE_NAME%" 2>nul
+    if errorlevel 1 (
+        echo [错误] 无法清理旧的 Release 目录
+        pause
+        exit /b 1
+    )
+)
+mkdir "%RELEASE_DIR%\%RELEASE_NAME%" 2>nul
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\bin" 2>nul
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\lib" 2>nul
-mkdir "%RELEASE_DIR%\%RELEASE_NAME%\include\anywp_engine" 2>nul
-mkdir "%RELEASE_DIR%\%RELEASE_NAME%\sdk" 2>nul
+mkdir "%RELEASE_DIR%\%RELEASE_NAME%\lib\dart" 2>nul
+mkdir "%RELEASE_DIR%\%RELEASE_NAME%\include" 2>nul
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\windows" 2>nul
+mkdir "%RELEASE_DIR%\%RELEASE_NAME%\windows\src" 2>nul
 
-echo [6/12] 复制 DLL 和相关文件...
+echo [6/16] 复制 DLL 和相关文件...
 REM 插件 DLL
 copy "%BUILD_DIR%\plugins\anywp_engine\Release\anywp_engine_plugin.dll" "%RELEASE_DIR%\%RELEASE_NAME%\bin\" >nul 2>&1
 if errorlevel 1 (
@@ -109,7 +120,7 @@ if errorlevel 1 (
     set /a ERROR_COUNT+=1
 )
 
-echo [7/12] 复制 Dart 源代码...
+echo [7/16] 复制 Dart 源代码...
 REM Dart 库 - 直接复制到 lib/ （标准位置）
 copy "lib\anywp_engine.dart" "%RELEASE_DIR%\%RELEASE_NAME%\lib\" >nul 2>&1
 if errorlevel 1 (
@@ -124,71 +135,111 @@ REM 同时复制到 lib/dart/ （向后兼容）
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\lib\dart" 2>nul
 copy "lib\anywp_engine.dart" "%RELEASE_DIR%\%RELEASE_NAME%\lib\dart\" >nul 2>&1
 
-echo [8/12] 创建简化的头文件...
-REM 创建简化的头文件（不依赖 WebView2 SDK）
-(
-echo // Precompiled plugin stub header
-echo // This file is required by Flutter's plugin registration system
-echo.
-echo #ifndef FLUTTER_PLUGIN_ANY_W_P_ENGINE_PLUGIN_H_
-echo #define FLUTTER_PLUGIN_ANY_W_P_ENGINE_PLUGIN_H_
-echo.
-echo #include ^<flutter/plugin_registrar_windows.h^>
-echo.
-echo #ifdef FLUTTER_PLUGIN_IMPL
-echo #define FLUTTER_PLUGIN_EXPORT __declspec^(dllexport^)
-echo #else
-echo #define FLUTTER_PLUGIN_EXPORT __declspec^(dllimport^)
-echo #endif
-echo.
-echo #if defined^(__cplusplus^)
-echo extern "C" {
-echo #endif
-echo.
-echo FLUTTER_PLUGIN_EXPORT void AnyWPEnginePluginRegisterWithRegistrar^(
-echo     FlutterDesktopPluginRegistrarRef registrar^);
-echo.
-echo #if defined^(__cplusplus^)
-echo }  // extern "C"
-echo #endif
-echo.
-echo #endif  // FLUTTER_PLUGIN_ANY_W_P_ENGINE_PLUGIN_H_
-) > "%RELEASE_DIR%\%RELEASE_NAME%\include\anywp_engine\any_w_p_engine_plugin.h"
-
-echo [9/12] 复制 SDK 文件...
-copy "windows\anywp_sdk.js" "%RELEASE_DIR%\%RELEASE_NAME%\sdk\" >nul 2>&1
+echo [8/16] 复制 C++ 头文件...
+mkdir "%RELEASE_DIR%\%RELEASE_NAME%\include\anywp_engine" 2>nul
+powershell -Command "Copy-Item -Path 'windows\include\anywp_engine\*' -Destination '%RELEASE_DIR%\%RELEASE_NAME%\include\anywp_engine' -Recurse -Force" >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 无法复制 SDK 文件
+    echo [错误] 无法复制 C++ 头文件
     set /a ERROR_COUNT+=1
+    pause
+    exit /b 1
 )
 
-echo [10/12] 创建 CMakeLists.txt...
+echo [9/16] 同步原生源文件和 SDK...
+copy "windows\anywp_sdk.js" "%RELEASE_DIR%\%RELEASE_NAME%\windows\" >nul 2>&1
+if errorlevel 1 (
+    echo [错误] 无法复制 SDK 文件 (windows\\anywp_sdk.js)
+    set /a ERROR_COUNT+=1
+    pause
+    exit /b 1
+)
+
+copy "windows\anywp_engine_plugin.cpp" "%RELEASE_DIR%\%RELEASE_NAME%\windows\src\" >nul 2>&1
+if errorlevel 1 (
+    echo [错误] 无法复制 C++ 源文件 anywp_engine_plugin.cpp
+    set /a ERROR_COUNT+=1
+    pause
+    exit /b 1
+)
+
+copy "windows\anywp_engine_plugin.h" "%RELEASE_DIR%\%RELEASE_NAME%\windows\src\" >nul 2>&1
+if errorlevel 1 (
+    echo [错误] 无法复制 C++ 头文件 anywp_engine_plugin.h
+    set /a ERROR_COUNT+=1
+    pause
+    exit /b 1
+)
+
+if exist "windows\packages" (
+    powershell -Command "Copy-Item -Path 'windows\packages' -Destination '%RELEASE_DIR%\%RELEASE_NAME%\windows' -Recurse -Force" >nul 2>&1
+    if errorlevel 1 (
+        echo [错误] 无法复制 WebView2 packages 目录
+        set /a ERROR_COUNT+=1
+        pause
+        exit /b 1
+    )
+)
+
+if exist "windows\packages.config" (
+    copy "windows\packages.config" "%RELEASE_DIR%\%RELEASE_NAME%\windows\" >nul 2>&1
+)
+
+echo [10/16] 创建 CMake 配置...
 (
 echo cmake_minimum_required^(VERSION 3.14^)
-echo set^(PROJECT_NAME "anywp_engine"^)
-echo project^(${PROJECT_NAME} LANGUAGES CXX^)
+echo project^(anywp_engine LANGUAGES CXX^)
 echo.
-echo # This value is used when generating builds using this plugin
 echo set^(PLUGIN_NAME "anywp_engine_plugin"^)
-echo.
-echo # Use precompiled library
 echo set^(PRECOMPILED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.."^)
+echo set^(PRECOMPILED_DLL "${PRECOMPILED_DIR}/bin/anywp_engine_plugin.dll"^)
+echo set^(PRECOMPILED_LIB "${PRECOMPILED_DIR}/lib/anywp_engine_plugin.lib"^)
+echo set^(SOURCE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/src/anywp_engine_plugin.cpp"^)
 echo.
-echo # Create an IMPORTED library that points to the precompiled DLL
-echo add_library^(${PLUGIN_NAME} SHARED IMPORTED GLOBAL^)
+echo if^(EXISTS ${PRECOMPILED_DLL} AND EXISTS ${PRECOMPILED_LIB}^)
+echo   message^(STATUS "AnyWP Engine: ✅ 使用预编译 DLL (${PRECOMPILED_DLL})"^)
+echo   add_library^(${PLUGIN_NAME} SHARED IMPORTED GLOBAL^)
+echo   set_target_properties^(${PLUGIN_NAME} PROPERTIES
+echo     IMPORTED_LOCATION "${PRECOMPILED_DLL}"
+echo     IMPORTED_IMPLIB "${PRECOMPILED_LIB}"
+echo   ^)
+echo   target_include_directories^(${PLUGIN_NAME} INTERFACE
+echo     "${PRECOMPILED_DIR}/include"
+echo   ^)
+echo else()
+echo   message^(STATUS "AnyWP Engine: 🔧 未找到预编译 DLL，转为源码构建"^)
+echo   if^(NOT EXISTS ${SOURCE_FILE}^)
+echo     message^(FATAL_ERROR "AnyWP Engine: 源码文件不存在: ${SOURCE_FILE}"^)
+echo   endif()
+echo   add_library^(${PLUGIN_NAME} SHARED
+echo     "${SOURCE_FILE}"
+echo   ^)
+echo   apply_standard_settings^(${PLUGIN_NAME}^)
+echo   set_target_properties^(${PLUGIN_NAME} PROPERTIES
+echo     CXX_STANDARD 17
+echo     CXX_STANDARD_REQUIRED ON
+echo     CXX_VISIBILITY_PRESET hidden
+echo   ^)
+echo   target_compile_definitions^(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL^)
+echo   target_include_directories^(${PLUGIN_NAME} PRIVATE
+echo     "${PRECOMPILED_DIR}/include"
+echo   ^)
+echo   target_include_directories^(${PLUGIN_NAME} INTERFACE
+echo     "${PRECOMPILED_DIR}/include"
+echo   ^)
+echo   target_link_libraries^(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin^)
+echo   set^(WEBVIEW2_PACKAGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/packages/Microsoft.Web.WebView2.1.0.2592.51"^)
+echo   if^(EXISTS ${WEBVIEW2_PACKAGE_DIR}^)
+echo     target_include_directories^(${PLUGIN_NAME} PRIVATE "${WEBVIEW2_PACKAGE_DIR}/build/native/include"^)
+echo     if^(CMAKE_SIZEOF_VOID_P EQUAL 8^)
+echo       target_link_libraries^(${PLUGIN_NAME} PRIVATE "${WEBVIEW2_PACKAGE_DIR}/build/native/x64/WebView2LoaderStatic.lib"^)
+echo     else()
+echo       target_link_libraries^(${PLUGIN_NAME} PRIVATE "${WEBVIEW2_PACKAGE_DIR}/build/native/x86/WebView2LoaderStatic.lib"^)
+echo     endif()
+echo   else()
+echo     message^(WARNING "AnyWP Engine: 未找到 WebView2 NuGet 包，请先执行 nuget restore"^)
+echo   endif()
+echo endif()
 echo.
-echo # Set the DLL location
-echo set_target_properties^(${PLUGIN_NAME} PROPERTIES
-echo   IMPORTED_LOCATION "${PRECOMPILED_DIR}/bin/anywp_engine_plugin.dll"
-echo   IMPORTED_IMPLIB "${PRECOMPILED_DIR}/lib/anywp_engine_plugin.lib"
-echo ^)
-echo.
-echo # Set include directories
-echo target_include_directories^(${PLUGIN_NAME} INTERFACE
-echo   "${PRECOMPILED_DIR}/include"
-echo ^)
-echo.
-echo # List of absolute paths to libraries that should be bundled
 echo set^(anywp_engine_bundled_libraries
 echo   "${PRECOMPILED_DIR}/bin/anywp_engine_plugin.dll"
 echo   "${PRECOMPILED_DIR}/bin/WebView2Loader.dll"
@@ -196,52 +247,98 @@ echo   PARENT_SCOPE
 echo ^)
 ) > "%RELEASE_DIR%\%RELEASE_NAME%\windows\CMakeLists.txt"
 
-echo [11/12] 复制文档...
+echo [11/16] 复制文档...
 copy "README.md" "%RELEASE_DIR%\%RELEASE_NAME%\" >nul 2>&1
 copy "LICENSE" "%RELEASE_DIR%\%RELEASE_NAME%\" >nul 2>&1
 copy "CHANGELOG_CN.md" "%RELEASE_DIR%\%RELEASE_NAME%\" >nul 2>&1
 
-REM 创建快速开始文档
+echo [12/16] 生成 PRECOMPILED_README...
 (
 echo # AnyWP Engine v%VERSION% - 预编译版本
 echo.
 echo ## 📦 包含内容
 echo.
-echo - `bin/` - 预编译的 DLL 文件
-echo - `lib/` - Dart 源代码
-echo - `include/` - C++ 头文件
-echo - `sdk/` - JavaScript SDK
-echo - `windows/` - CMake 配置
+echo - `bin/` - 运行时 DLL（anywp_engine_plugin.dll）与 WebView2Loader
+echo - `lib/` - Dart 源码与链接库（anywp_engine_plugin.lib）
+echo - `include/` - C++ 公开头文件
+echo - `windows/anywp_sdk.js` - JavaScript SDK
+echo - `windows/src/` - C++ 实现源码（可选择自行编译）
+echo - `windows/CMakeLists.txt` - 自动检测预编译/源码模式
 echo.
 echo ## 🚀 快速集成
 echo.
-echo ### 1. 在你的 Flutter 项目 `pubspec.yaml` 中添加：
+echo ### 1. 推荐：运行安装脚本
+echo ```powershell
+echo .\setup_precompiled.bat
+echo ```
+echo.
+echo ### 2. 或手动在 `pubspec.yaml` 中添加：
 echo ```yaml
 echo dependencies:
 echo   anywp_engine:
-echo     path: ./anywp_engine_v%VERSION%
+echo     path: ./packages/anywp_engine_v%VERSION%
 echo ```
 echo.
-echo ### 2. 获取依赖并构建
+echo ### 3. 安装后运行
 echo ```bash
 echo flutter pub get
 echo flutter build windows
 echo ```
 echo.
-echo ### 3. 开始使用：
-echo ```dart
-echo import 'package:anywp_engine/anywp_engine.dart';
-echo.
-echo await AnyWPEngine.initializeWallpaper^(url: 'https://example.com'^);
+echo ### 4. 启动示例
+echo ```bash
+echo cd example_minimal
+echo flutter run -d windows
 echo ```
 echo.
 echo ## 📚 完整文档
 echo.
-echo 请参阅 README.md 和 CHANGELOG_CN.md
+echo - README.md / CHANGELOG_CN.md
+echo - setup_precompiled.bat（自动安装）
+echo - verify_precompiled.bat（快速验证）
+echo - generate_pubspec_snippet.bat（pubspec 片段）
 echo.
-echo 或访问：https://github.com/zhaibin/AnyWallpaper-Engine
+echo 更多信息请访问：https://github.com/zhaibin/AnyWallpaper-Engine
 ) > "%RELEASE_DIR%\%RELEASE_NAME%\PRECOMPILED_README.md"
 
+echo [13/16] 生成自动化辅助脚本...
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\precompiled\setup_precompiled.template.bat') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\setup_precompiled.bat'" >nul 2>&1
+if errorlevel 1 (
+    echo [错误] 无法生成 setup_precompiled.bat
+    set /a ERROR_COUNT+=1
+    pause
+    exit /b 1
+)
+
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\precompiled\verify_precompiled.template.bat') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\verify_precompiled.bat'" >nul 2>&1
+if errorlevel 1 (
+    echo [错误] 无法生成 verify_precompiled.bat
+    set /a ERROR_COUNT+=1
+    pause
+    exit /b 1
+)
+
+powershell -Command "(Get-Content '%TEMPLATE_DIR%\precompiled\generate_pubspec_snippet.template.bat') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\generate_pubspec_snippet.bat'" >nul 2>&1
+if errorlevel 1 (
+    echo [错误] 无法生成 generate_pubspec_snippet.bat
+    set /a ERROR_COUNT+=1
+    pause
+    exit /b 1
+)
+
+echo [14/16] 复制最小示例项目...
+powershell -Command "Copy-Item -Path '%TEMPLATE_DIR%\example_minimal' -Destination '%RELEASE_DIR%\%RELEASE_NAME%' -Recurse -Force" >nul 2>&1
+if errorlevel 1 (
+    echo [错误] 无法复制示例项目
+    set /a ERROR_COUNT+=1
+    pause
+    exit /b 1
+)
+
+powershell -Command "(Get-Content '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\pubspec.yaml') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\pubspec.yaml'" >nul 2>&1
+powershell -Command "(Get-Content '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\README.md') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\README.md'" >nul 2>&1
+
+echo [15/16] 生成 pubspec.yaml...
 REM 创建 pubspec.yaml（注意：移除 dartPluginClass）
 (
 echo name: anywp_engine
@@ -263,9 +360,11 @@ echo   plugin:
 echo     platforms:
 echo       windows:
 echo         pluginClass: AnyWPEnginePlugin
+echo   assets:
+echo     - windows/anywp_sdk.js
 ) > "%RELEASE_DIR%\%RELEASE_NAME%\pubspec.yaml"
 
-echo [12/12] 打包 ZIP...
+echo [16/16] 打包 ZIP...
 cd "%RELEASE_DIR%"
 powershell -Command "Compress-Archive -Path '%RELEASE_NAME%' -DestinationPath '%RELEASE_NAME%.zip' -Force" 2>nul
 if errorlevel 1 (
@@ -310,6 +409,10 @@ if !ERROR_COUNT! GTR 0 (
     echo.
 )
 
+if defined NO_PAUSE goto end
+
 pause
+
+:end
 endlocal
 

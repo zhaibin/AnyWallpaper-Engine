@@ -130,6 +130,10 @@ clearState()                        // 清空状态
 setApplicationName(name)            // 设置应用标识
 getStoragePath() -> String          // 获取存储路径
 
+// 版本信息 (v1.2.1+)
+getPluginVersion() -> String        // 获取插件版本号
+isCompatible(expectedPrefix) -> bool // 检查是否满足版本前缀
+
 // 回调机制
 setOnMonitorChangeCallback(callback)      // 显示器变化
 setOnPowerStateChangeCallback(callback)   // 电源状态变化
