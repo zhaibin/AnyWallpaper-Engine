@@ -35,6 +35,18 @@ class _MyAppState extends State<MyApp> {
   int _memoryUsageMB = 0;
   bool _autoPowerSaving = true;
   int _selectedTab = 0;
+  
+  // Quick test pages
+  final List<Map<String, String>> _testPages = [
+    {'name': 'Simple', 'file': 'test_simple.html', 'icon': '🎨'},
+    {'name': 'Draggable', 'file': 'test_draggable.html', 'icon': '🖱️'},
+    {'name': 'API Test', 'file': 'test_api.html', 'icon': '⚙️'},
+    {'name': 'Click Test', 'file': 'test_basic_click.html', 'icon': '👆'},
+    {'name': 'Visibility', 'file': 'test_visibility.html', 'icon': '👁️'},
+    {'name': 'React', 'file': 'test_react.html', 'icon': '⚛️'},
+    {'name': 'Vue', 'file': 'test_vue.html', 'icon': '💚'},
+    {'name': 'iFrame Ads', 'file': 'test_iframe_ads.html', 'icon': '📺'},
+  ];
 
   @override
   void initState() {
@@ -305,6 +317,15 @@ class _MyAppState extends State<MyApp> {
           SnackBar(content: Text(message)),
         );
       }
+    }
+  }
+  
+  // Load quick test page URL
+  void _loadTestPage(int monitorIndex, String filename) {
+    final controller = _monitorUrlControllers[monitorIndex];
+    if (controller != null) {
+      controller.text = 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/$filename';
+      _showMessage('Loaded: $filename');
     }
   }
   
@@ -738,19 +759,76 @@ class _MyAppState extends State<MyApp> {
                     ],
                   ),
                   SizedBox(height: 12),
+                  // Quick test pages section
+                  Text(
+                    '🚀 Quick Test Pages:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _testPages.map((page) {
+                      return InkWell(
+                        onTap: () => _loadTestPage(monitor.index, page['file']!),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[50],
+                            border: Border.all(color: Colors.blue[200]!),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                page['icon']!,
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                page['name']!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.blue[900],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  SizedBox(height: 12),
+                  // Custom URL input
+                  Text(
+                    '🔗 Custom URL:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  SizedBox(height: 8),
                   if (controller != null)
                     TextField(
                       controller: controller,
                       decoration: InputDecoration(
                         labelText: 'URL for Monitor ${monitor.index}',
-                        hintText: 'Enter URL to display',
+                        hintText: 'Or enter custom URL here',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.link, size: 20),
                         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                       style: TextStyle(fontSize: 14),
                     ),
-                  SizedBox(height: 8),
+                  SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -825,15 +903,22 @@ class _MyAppState extends State<MyApp> {
                 SizedBox(height: 8),
                 Text(
                   '1. Check detected monitors above\n'
-                  '2. Enter different URLs for each monitor (optional)\n'
-                  '3. Use "Start All" to set all monitors at once\n'
-                  '4. Or use individual controls for each monitor\n'
+                  '2. Click 🚀 Quick Test buttons to load test pages instantly\n'
+                  '3. Or enter custom URL in the text field\n'
+                  '4. Use "Start All" to apply to all monitors at once\n'
                   '5. Each monitor displays its own independent content!\n\n'
-                  '💡 Tips:\n'
-                  '  • Try different HTML files on different monitors\n'
-                  '  • test_draggable.html - 拖拽演示（支持鼠标透明）\n'
-                  '  • test_simple.html, test_api.html - 基础测试\n'
-                  '  • Mouse transparency works with drag & drop via hook!',
+                  '💡 Quick Test Pages:\n'
+                  '  🎨 Simple - Basic wallpaper test\n'
+                  '  🖱️ Draggable - Drag & drop demo (mouse hook)\n'
+                  '  ⚙️ API Test - Full API testing\n'
+                  '  👆 Click Test - Click detection test\n'
+                  '  👁️ Visibility - Power saving test\n'
+                  '  ⚛️ React / 💚 Vue - SPA framework tests\n'
+                  '  📺 iFrame Ads - Ad detection test\n\n'
+                  '✨ Tips:\n'
+                  '  • Click quick test buttons for instant load\n'
+                  '  • Mouse transparency works with drag & drop!\n'
+                  '  • Try different pages on different monitors',
                   style: TextStyle(color: Colors.grey[800], fontSize: 13),
                 ),
               ],
