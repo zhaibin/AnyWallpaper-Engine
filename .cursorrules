@@ -4,28 +4,24 @@
 Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在桌面图标后方）。
 
 **技术栈**: Flutter 3.0+ | C++17 | WebView2 | CMake | JavaScript  
-**命名规范**: 包名 `anywp_engine` | 类名 `AnyWPEngine` `AnyWPEnginePlugin`  
-**核心功能**: 壁纸嵌入 | 鼠标交互 | 元素拖拽 | 状态持久化 | 省电优化
+**命名**: 包名 `anywp_engine` | 类名 `AnyWPEngine` `AnyWPEnginePlugin`  
+**核心功能**: 壁纸嵌入 | 鼠标交互 | 元素拖拽 | 应用级存储隔离 | 省电优化
 
 ---
 
 ## 编码规范
 
 ### Dart
-- **命名**: 类 `UpperCamelCase` | 方法 `lowerCamelCase` | 文件 `snake_case.dart`
-- **必须**: 公共 API 需文档注释 | 异步用 `Future<T>` | 命名参数 + 默认值
-- **检查**: 使用 `flutter_lints`
+- 类 `UpperCamelCase` | 方法 `lowerCamelCase` | 文件 `snake_case.dart`
+- 公共 API 需文档注释 | 异步用 `Future<T>` | 使用 `flutter_lints`
 
 ### C++
-- **命名**: 类/方法 `PascalCase` | 成员变量 `snake_case_` | 局部 `snake_case` | 常量 `UPPER_SNAKE_CASE`
-- **必须**: `wil::com_ptr<T>` 管理 COM | RAII 管理资源 | 检查 Win32 API 返回值 | 宽字符串 `L"..."`
-- **禁止**: 匈牙利命名法 | 内存泄漏
+- 类/方法 `PascalCase` | 成员变量 `snake_case_` | 常量 `UPPER_SNAKE_CASE`
+- 使用智能指针管理 COM | RAII 管理资源 | 检查 Win32 API 返回值
 
 ### JavaScript
-- **命名**: 全局 `PascalCase` | 方法 `lowerCamelCase` | 常量 `UPPER_SNAKE_CASE`
-- **必须**: 参数验证 | 错误处理 | 挂载到 `window.AnyWPSDK`
-- **SDK 加载**: 在 HTML 中引入 `<script src="../windows/anywp_sdk.js"></script>`
-- **核心 API**: `setInteractionMode()` `makeDraggable()` `saveState()` `loadState()`
+- 全局 `window.AnyWP` | 方法 `lowerCamelCase`
+- 核心 API: `makeDraggable()` `saveState()` `loadState()` `onClick()`
 
 ---
 
@@ -36,227 +32,120 @@ lib/                    # Dart API
 windows/                # C++ 实现 + anywp_sdk.js
   ├── include/anywp_engine/  # 公共头文件
 example/                # 示例应用
-examples/               # 测试 HTML
-docs/                   # 文档
+examples/               # 测试 HTML (8个测试页面)
+docs/                   # 文档（面向 Flutter/Web 开发者）
 scripts/                # 构建脚本
+release/                # 发布包
 ```
-
-**新增文件规则**:
-- Dart → `lib/` | C++ → `windows/` | 头文件 → `windows/include/anywp_engine/`
-- 测试 HTML → `examples/` | 文档 → `docs/` | 脚本 → `scripts/`
-
-**测试文件**:
-- `test_simple.html` - 简单壁纸测试
-- `test_api.html` - 完整 API 测试
-- `test_draggable.html` - 拖拽功能测试
-- `test_visibility.html` - 可见性测试
-- `test_react.html` / `test_vue.html` - 框架集成测试
 
 ---
 
 ## 常用命令
 
 ```bash
-# 基础命令
-.\scripts\setup_webview2.bat      # 首次: 安装 WebView2 SDK
+# 开发
 .\scripts\build_and_run.bat       # 构建并运行
-.\scripts\run.bat                 # 运行（已构建，支持 -r/-f 参数）
+.\scripts\debug_run.bat           # 调试模式（保留日志）
 .\scripts\test.bat                # 快速测试
 
-# 调试命令
-.\scripts\debug_run.bat           # 调试模式运行（保留日志输出）
-.\scripts\monitor_log.bat         # 监控日志输出
+# 发布
+.\scripts\build_release_v2.bat    # 构建 Release 包
+.\scripts\PUSH_TO_GITHUB.bat      # 推送到 GitHub
 ```
 
 ---
 
-## 文档规范
+## 核心文档
 
-### 格式要求
-- Markdown: 标注代码块语言（dart/cpp/javascript）
-- 中英文混排: 术语间加空格（`AnyWP Engine 是一个 Flutter 插件`）
-- 代码用反引号: `initializeWallpaper()`
+### 面向开发者
+- **Flutter 开发者**: `docs/FOR_FLUTTER_DEVELOPERS.md` (导航) + `docs/DEVELOPER_API_REFERENCE.md` (API)
+- **Web 开发者**: `docs/WEB_DEVELOPER_GUIDE_CN.md` + `docs/FOR_WEB_DEVELOPERS.md`
+- **集成指南**: `docs/PACKAGE_USAGE_GUIDE_CN.md` + `docs/PRECOMPILED_DLL_INTEGRATION.md`
+- **最佳实践**: `docs/BEST_PRACTICES.md` + `docs/API_USAGE_EXAMPLES.md`
+- **存储隔离**: `docs/STORAGE_ISOLATION.md` (v1.2.0+)
 
-### 文档位置
-- **用户文档**: `README.md` `docs/README_CN.md` `docs/QUICK_START.md`
-- **开发者**: `docs/PACKAGE_USAGE_GUIDE_CN.md` `docs/FOR_FLUTTER_DEVELOPERS.md`
-- **Web 开发**: `docs/WEB_DEVELOPER_GUIDE_CN.md` `docs/FOR_WEB_DEVELOPERS.md`
-- **API 参考**: `docs/DEVELOPER_API_REFERENCE.md` `docs/API_USAGE_EXAMPLES.md`
-- **技术文档**: `docs/TECHNICAL_NOTES.md` `docs/API_BRIDGE.md` `docs/INTEGRATION_ARCHITECTURE.md`
-- **最佳实践**: `docs/BEST_PRACTICES.md` `docs/TESTING_GUIDE.md` `docs/TROUBLESHOOTING.md`
+### 技术文档
+- `docs/TECHNICAL_NOTES.md` - 技术实现细节
+- `docs/API_BRIDGE.md` - API 桥接机制
+- `docs/INTEGRATION_ARCHITECTURE.md` - 集成架构
 
-### 更新原则
-修改功能 → 同步更新文档 + `CHANGELOG_CN.md`
+### 用户文档
+- `README.md` - 项目主页
+- `docs/QUICK_START.md` - 快速开始
+- `docs/TROUBLESHOOTING.md` - 故障排除
 
 ---
 
-## Git 规范
+## AI 工作流
 
-### Commit Message
-```
-<type>(<scope>): <subject>
+### 基本原则
+- **默认中文回复**（技术术语保留英文）
+- **直接实现**，避免冗长解释
+- **自动调试**：自己编译、运行、读日志、优化
+- **自动提交**：功能完成后自动 git commit
 
-<body>
+### 文档更新
+- 修改功能 → 同步更新相关文档 + `CHANGELOG_CN.md`
+- 发布前 → 确保所有核心文档包含新功能
+- **不创建过程性文档**（测试报告、验证报告等）
 
-<footer>
-```
-**Type**: `feat` `fix` `docs` `style` `refactor` `perf` `test` `chore`
-
-### 推送前检查
-- [ ] Linter 通过
-- [ ] 测试通过
-- [ ] 文档已更新
-- [ ] CHANGELOG_CN.md 已更新
-
-### 中文提交信息（避免乱码）
-
-**问题**：PowerShell 执行 `git commit -m "中文信息"` 会导致乱码
-
-**解决方案（AI 自动执行）**：
+### Git 提交
 ```bash
-# 1. 使用 write 工具创建 UTF-8 提交信息文件
-write("commit_msg.txt", "提交信息内容")
-
-# 2. 使用文件提交
+# 中文提交信息使用文件方式（避免乱码）
+write("commit_msg.txt", "提交信息")
 git commit -F commit_msg.txt
-
-# 3. 删除临时文件
 delete_file("commit_msg.txt")
 ```
 
-**AI 执行规则**：
-- ❌ **禁止**：`git commit -m "中文信息"`（会乱码）
-- ✅ **必须**：先用 `write` 工具创建 `commit_msg.txt`，再用 `git commit -F` 提交
-- ✅ 提交后自动删除 `commit_msg.txt` 文件
-
----
-
-## API 设计原则
-
-### Dart
-- 简洁 | 一致 | 安全（参数验证）| 异步优先 | 文档完整
-
-### C++
-- MethodChannel 注册 | `EncodableMap` 传参 | 线程安全（主线程 UI）
-
-### JavaScript
-- `window.AnyWPSDK` 命名空间 | 回调模式 | 优雅错误处理 | 向后兼容
-
----
-
-## 性能优化
-
-**优先级**: P0（必须）> P1（应该）> P2（可以）  
-**已实现**: 智能指针 | URL 快速验证 | 鼠标钩子优化 | WebView2 配置优化
-
----
-
-## 依赖和系统
-
-**Flutter**: `flutter` `plugin_platform_interface ^2.0.0`  
-**NuGet**: `Microsoft.Web.WebView2` (通过 `setup_webview2.bat`)  
-**系统**: Windows 10/11 | VS 2022 Build Tools | Flutter 3.0+ | WebView2 Runtime
-
----
-
-## AI 辅助规则
-
-### 基本规则
-- **默认中文回复**（技术术语保留英文）
-- 代码: 遵循编码规范 + 错误处理 + 文档注释
-- 回答: 引用 `docs/` 文档 + 代码示例
-
-### 文档管理
-- **禁止新增文档**: 文档结构已完整，代码完成后不要创建新文档
-- **禁止赘述**: 避免冗长解释，直接实现功能
-- **优先速度**: 加快开发与测试速度
-
-### 调试流程
-1. **自动化调试**: 
-   - AI 自己编译代码 (`.\scripts\build_and_run.bat` 或 `.\scripts\debug_run.bat`)
-   - AI 自己执行程序
-   - AI 自己监听和读取日志输出（`debug_run.log` 或 `example/test_output.log`）
-2. **用户反馈**: 用户只反馈看到的现象（如"壁纸显示了"、"点击无效"、"拖拽卡顿"）
-3. **AI 优化**: AI 根据现象 + 日志自动分析并优化代码，无需用户粘贴日志
-4. **持续迭代**: 重复上述流程直至功能完成
-
-**日志位置**:
-- `debug_run.log` - debug_run.bat 的输出日志
-- `example/test_output.log` - Flutter 运行日志
-- 控制台输出 - 实时日志（以 `[AnyWP]` 开头）
-
-### Git 工作流
-- **自动提交**: 每个功能或优化完成后自动提交 git
-  ```bash
-  git add .
-  git commit -m "feat: 功能描述"
-  ```
-- **GitHub 推送**: 仅在用户明确指令时才推送到 GitHub
-  ```bash
-  # 等待用户指令
-  # .\scripts\PUSH_TO_GITHUB.bat
-  ```
-
-### PowerShell 注意事项
-- **禁止使用 `&&`**: PowerShell 不支持 `&&` 操作符
-- **使用分号**: 多命令用 `;` 分隔
-  ```powershell
-  # ❌ 错误
-  flutter clean && flutter build windows
-  
-  # ✅ 正确
-  flutter clean; flutter build windows
-  ```
+### PowerShell 注意
+- **禁止** `&&` 操作符
+- **使用** `;` 分隔多命令
 
 ---
 
 ## 发布流程
 
-### 版本发布步骤
+### 发布前准备
+1. 更新版本号：`pubspec.yaml` + `scripts/build_release_v2.bat`
+2. 更新 `CHANGELOG_CN.md`
+3. **同步核心文档**：README.md, API 参考等
+4. 测试功能
 
-**发布前准备**:
-1. 更新 `pubspec.yaml` 中的版本号
-2. 更新 `CHANGELOG_CN.md` 记录新功能
-3. 更新 `scripts/build_release_v2.bat` 中的版本号
-4. 运行测试确保所有功能正常
-
-**构建预编译包**:
+### 构建发布
 ```bash
 .\scripts\build_release_v2.bat
 ```
 
-**验证构建产物**:
-- 检查 `release/anywp_engine_v{版本号}/` 目录结构
-- 验证 DLL 文件完整性
-- 测试预编译包可用性
-
-**提交和推送**:
+### 提交推送
 ```bash
-# 提交发布相关文件
-git add release/ CHANGELOG_CN.md pubspec.yaml
-# 使用 write 工具创建提交信息
+git add release/ CHANGELOG_CN.md pubspec.yaml docs/ README.md
 git commit -F commit_msg.txt
-# 推送到 GitHub
 .\scripts\PUSH_TO_GITHUB.bat
 ```
 
-**GitHub Release**:
-1. 在 GitHub 创建新 Release
-2. 标签：`v{版本号}` (例如 v1.1.0)
-3. 标题：`AnyWP Engine v{版本号}`
-4. 上传 `release/anywp_engine_v{版本号}.zip`
-5. 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md` 内容作为发布说明
+### GitHub Release
+1. 标签: `v{版本号}` (如 v1.2.0)
+2. 上传: `release/anywp_engine_v{版本号}.zip`
+3. 说明: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
 
 ---
 
-## 参考
-- [完整中文指南](docs/README_CN.md)
-- [快速开始](docs/QUICK_START.md)
-- [Flutter 开发者](docs/FOR_FLUTTER_DEVELOPERS.md)
-- [Web 开发者](docs/WEB_DEVELOPER_GUIDE_CN.md)
-- [API 参考](docs/DEVELOPER_API_REFERENCE.md)
-- [技术实现](docs/TECHNICAL_NOTES.md)
-- [发布指南](docs/RELEASE_GUIDE.md)
+## 核心特性
 
-**版本**: 1.1.0 (Changelog: 4.2.0) | **更新**: 2025-11-05
+### 存储系统
+- **应用级隔离**: 每个应用独立目录 `%LOCALAPPDATA%\AnyWPEngine\[AppName]\`
+- **无残留卸载**: 删除应用目录即可
+- **向后兼容**: 默认使用 "Default" 应用名
 
+### 测试页面 (examples/)
+- 🎨 Simple - 基础测试
+- 🖱️ Draggable - 拖拽演示
+- ⚙️ API Test - 完整 API
+- 👆 Click Test - 点击检测
+- 👁️ Visibility - 省电测试
+- ⚛️ React / 💚 Vue - SPA 测试
+- 📺 iFrame Ads - 广告检测
+
+---
+
+**版本**: 1.2.0 (Changelog: 4.4.0) | **更新**: 2025-11-06
