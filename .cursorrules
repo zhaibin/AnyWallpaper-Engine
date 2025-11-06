@@ -348,9 +348,46 @@ delete_file("commit_msg.txt")
 
 **禁止**: `git commit -m "中文信息"` ❌ 会乱码
 
-### PowerShell 注意
-- **禁止** `&&` 操作符
-- **使用** `;` 分隔多命令
+### PowerShell 注意事项
+
+**基本规则**:
+- **禁止** `&&` 操作符，使用 `;` 分隔多命令
+- **禁止** 在单行中使用复杂的脚本块（`{ }` 嵌套）
+- **禁止** 在中文字符串中使用特殊字符（`"`、`'`、`{}`）
+
+**常见问题**:
+
+1. **中文字符串中的引号问题**
+```powershell
+# ❌ 错误：中文中包含引号
+Write-Host "发现 $($_.Count) 处新 API 引用 ✓"  # ✓ 会导致解析错误
+
+# ✅ 正确：避免在中文中使用特殊符号
+Write-Host "发现 $($_.Count) 处新 API 引用"
+```
+
+2. **复杂脚本块解析失败**
+```powershell
+# ❌ 错误：单行多层嵌套
+foreach ($item in $list) { if ($x) { Write-Host "..." } }
+
+# ✅ 正确：使用简单命令或批处理脚本
+Get-ChildItem | Where-Object Name -like "*.dll"
+```
+
+3. **转义字符问题**
+```powershell
+# ❌ 错误：未转义的特殊字符
+"包含 { 或 } 的字符串"
+
+# ✅ 正确：避免使用或正确转义
+"包含花括号的字符串"
+```
+
+**推荐做法**:
+- ✅ 优先使用批处理脚本（.bat）处理复杂逻辑
+- ✅ PowerShell 只用于简单命令（Get-ChildItem, Test-Path, Copy-Item）
+- ✅ 验证流程使用 grep 工具代替 PowerShell 脚本
 
 ---
 
@@ -412,22 +449,42 @@ flutter build windows --release
 - [ ] DLL 文件正确
 
 #### Step 6: 发布包文档验证
-**必须检查**:
-- [ ] `release/anywp_engine_v{版本号}/README.md` 包含新功能
-- [ ] `release/anywp_engine_v{版本号}/CHANGELOG_CN.md` 包含新版本
-- [ ] `release/anywp_engine_v{版本号}/pubspec.yaml` 版本号正确
-- [ ] `release/anywp_engine_v{版本号}/lib/dart/anywp_engine.dart` 包含新 API
 
-**验证命令**:
+**使用 grep 验证**（避免复杂 PowerShell）:
+
 ```bash
-# 检查新 API 是否在发布包中
-grep -r "新API名称" release/anywp_engine_v{版本号}/
+# 1. 检查 README.md 包含新 API
+grep "setApplicationName\|getStoragePath" release/anywp_engine_v{版本号}/README.md
+
+# 2. 检查 CHANGELOG 包含新版本
+grep "4\.4\.0.*2025-11-06" release/anywp_engine_v{版本号}/CHANGELOG_CN.md
+
+# 3. 检查版本号
+grep "version.*1\.2\.0" release/anywp_engine_v{版本号}/pubspec.yaml
+
+# 4. 检查 Dart 源码包含新 API
+grep "setApplicationName\|getStoragePath" release/anywp_engine_v{版本号}/lib/dart/anywp_engine.dart
 ```
+
+**必须检查**:
+- [ ] README.md 包含新功能（grep 找到匹配）
+- [ ] CHANGELOG_CN.md 包含新版本（grep 找到匹配）
+- [ ] pubspec.yaml 版本号正确（grep 找到 1.2.0）
+- [ ] anywp_engine.dart 包含新 API（grep 找到匹配）
 
 **新 API 必须出现在**:
 - README.md（示例代码）
 - CHANGELOG_CN.md（功能说明）
 - lib/dart/anywp_engine.dart（源码注释）
+
+**验证示例**（v1.2.0）:
+```bash
+# 验证结果：
+✓ README.md: 4 matches (包含 setApplicationName/getStoragePath)
+✓ CHANGELOG_CN.md: 找到版本 [4.4.0] - 2025-11-06
+✓ pubspec.yaml: version: 1.2.0
+✓ anywp_engine.dart: 6 matches (新 API 方法)
+```
 
 #### Step 7: 创建 Release Notes
 - [ ] 复制 `docs/RELEASE_TEMPLATE.md`
