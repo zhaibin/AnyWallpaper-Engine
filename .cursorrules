@@ -174,6 +174,7 @@ grep -r "newAPIName" docs/ README.md lib/
 - 所有关键文件的复制失败都应该是错误，而非警告
 - 修复 `build_release_v2.bat` 中的错误处理逻辑
 - 如需无人值守执行，可先设置 `NO_PAUSE=1`：`cmd /c "set NO_PAUSE=1 && .\scripts\build_release_v2.bat"`
+- `Compress-Archive` 请使用绝对路径（例如 `E:\Projects\...`），避免 PowerShell “路径不存在”的误判
 
 #### 3.4 发布包验证
 
@@ -586,6 +587,10 @@ git tag -l
 # 推送 tag 到 GitHub
 git push origin v{版本号}
 ```
+
+**建议**:
+- Tag 描述尽量使用 ASCII 文本；若需包含中文，请先在仓库根目录执行 `cmd /c "echo AnyWP Engine v{版本号} - desc>tag_msg.txt"`，再运行 `git tag -a v{版本号} -F tag_msg.txt`
+- 所有 Git 命令均在仓库根目录执行，避免相对路径导致 `Copy-Item`/`Compress-Archive` 找不到目标
 
 **示例**（v1.2.0）:
 ```bash
