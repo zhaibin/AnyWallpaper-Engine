@@ -288,6 +288,11 @@
         ]);
         const logs = ref([]);
         const spaDetected = ref(false);
+        
+        // AnyWP SDK info (for template access)
+        const anywpVersion = ref('N/A');
+        const dpiScale = ref(1);
+        const vueVersion = ref(Vue.version || 'N/A');
 
         // Computed
         const activeTodos = computed(() => 
@@ -362,6 +367,10 @@
             return;
           }
 
+          // Initialize AnyWP info for template
+          anywpVersion.value = AnyWP.version || 'N/A';
+          dpiScale.value = AnyWP.dpiScale || 1;
+
           // Enable debug mode
           AnyWP.enableDebug();
           
@@ -412,6 +421,9 @@
           logs,
           spaDetected,
           activeTodos,
+          anywpVersion,
+          dpiScale,
+          vueVersion,
           switchTab,
           addTodo,
           toggleTodo,
@@ -428,10 +440,10 @@
           </div>
 
           <div class="status">
-            <div class="status-item">🚀 AnyWP SDK v{{ window.AnyWP?.version || 'N/A' }}</div>
-            <div class="status-item">💚 Vue v{{ Vue.version }}</div>
+            <div class="status-item">🚀 AnyWP SDK v{{ anywpVersion }}</div>
+            <div class="status-item">💚 Vue v{{ vueVersion }}</div>
             <div class="status-item">🔄 SPA Mode: {{ spaDetected ? '✅ Enabled' : '❌ Disabled' }}</div>
-            <div class="status-item">📊 DPI Scale: {{ window.AnyWP?.dpiScale || 1 }}x</div>
+            <div class="status-item">📊 DPI Scale: {{ dpiScale }}x</div>
           </div>
 
           <div class="tabs">
