@@ -3469,76 +3469,87 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   // ENHANCED: Force pause all content (videos, animations, requestAnimationFrame)
   // Keep WebView visible but stop all rendering activity
   
-  // 1. Force pause all content via JavaScript
+  // 1. Force pause all content via JavaScript (wait for DOM ready)
   std::wstring pause_script = L"(function() {"
-    L"  try {"
-    L"    // Pause all videos"
-    L"    const videos = document.querySelectorAll('video');"
-    L"    videos.forEach(function(video) {"
-    L"      if (!video.paused) {"
-    L"        video.__anyWP_wasPlaying = true;"
-    L"        video.pause();"
+    L"  function doPause() {"
+    L"    try {"
+    L"      console.log('[AnyWP] Starting pause operation...');"
+    L"      "
+    L"      // Pause all videos"
+    L"      const videos = document.querySelectorAll('video');"
+    L"      console.log('[AnyWP] Found ' + videos.length + ' video(s)');"
+    L"      videos.forEach(function(video) {"
+    L"        if (!video.paused) {"
+    L"          video.__anyWP_wasPlaying = true;"
+    L"          video.pause();"
+    L"          console.log('[AnyWP] Video paused');"
+    L"        }"
+    L"      });"
+    L"      "
+    L"      // Pause all audio"
+    L"      const audios = document.querySelectorAll('audio');"
+    L"      console.log('[AnyWP] Found ' + audios.length + ' audio(s)');"
+    L"      audios.forEach(function(audio) {"
+    L"        if (!audio.paused) {"
+    L"          audio.__anyWP_wasPlaying = true;"
+    L"          audio.pause();"
+    L"          console.log('[AnyWP] Audio paused');"
+    L"        }"
+    L"      });"
+    L"      "
+    L"      // Pause all CSS animations"
+    L"      let pauseStyle = document.getElementById('__anywp_pause_style');"
+    L"      if (!pauseStyle) {"
+    L"        pauseStyle = document.createElement('style');"
+    L"        pauseStyle.id = '__anywp_pause_style';"
+    L"        pauseStyle.textContent = '* { animation-play-state: paused !important; transition-play-state: paused !important; }';"
+    L"        document.head.appendChild(pauseStyle);"
+    L"        console.log('[AnyWP] CSS animations paused');"
     L"      }"
-    L"    });"
-    L"    "
-    L"    // Pause all audio"
-    L"    const audios = document.querySelectorAll('audio');"
-    L"    audios.forEach(function(audio) {"
-    L"      if (!audio.paused) {"
-    L"        audio.__anyWP_wasPlaying = true;"
-    L"        audio.pause();"
+    L"      "
+    L"      // Stop all requestAnimationFrame loops"
+    L"      if (!window.__anyWP_rafPaused) {"
+    L"        window.__anyWP_rafPaused = true;"
+    L"        window.__anyWP_originalRAF = window.requestAnimationFrame;"
+    L"        window.requestAnimationFrame = function() { return 0; };"
+    L"        console.log('[AnyWP] requestAnimationFrame disabled');"
     L"      }"
-    L"    });"
-    L"    "
-    L"    // Pause all CSS animations"
-    L"    const style = document.createElement('style');"
-    L"    style.id = '__anywp_pause_style';"
-    L"    style.textContent = '* { animation-play-state: paused !important; }';"
-    L"    document.head.appendChild(style);"
-    L"    "
-    L"    // Stop all requestAnimationFrame loops"
-    L"    if (!window.__anyWP_rafPaused) {"
-    L"      window.__anyWP_rafPaused = true;"
-    L"      const originalRAF = window.requestAnimationFrame;"
-    L"      window.requestAnimationFrame = function() { return 0; };"
-    L"      window.__anyWP_originalRAF = originalRAF;"
+    L"      "
+    L"      // Notify SDK if available"
+    L"      if (window.AnyWP && window.AnyWP._autoPauseAnimations) {"
+    L"        window.AnyWP._autoPauseAnimations();"
+    L"        console.log('[AnyWP] SDK pause called');"
+    L"      }"
+    L"      "
+    L"      // Dispatch visibility events"
+    L"      document.dispatchEvent(new Event('visibilitychange'));"
+    L"      window.dispatchEvent(new CustomEvent('AnyWP:visibility', { detail: { visible: false } }));"
+    L"      "
+    L"      console.log('[AnyWP] All content paused successfully');"
+    L"      return true;"
+    L"    } catch(e) {"
+    L"      console.error('[AnyWP] Error pausing content:', e);"
+    L"      return false;"
     L"    }"
-    L"    "
-    L"    // Notify SDK if available"
-    L"    if (window.AnyWP && window.AnyWP._autoPauseAnimations) {"
-    L"      window.AnyWP._autoPauseAnimations();"
-    L"    }"
-    L"    "
-    L"    // Dispatch visibility events"
-    L"    document.dispatchEvent(new Event('visibilitychange'));"
-    L"    window.dispatchEvent(new CustomEvent('AnyWP:visibility', { detail: { visible: false } }));"
-    L"    "
-    L"    console.log('[AnyWP] All content paused (videos, animations, RAF)');"
-    L"  } catch(e) {"
-    L"    console.error('[AnyWP] Error pausing content:', e);"
+    L"  }"
+    L"  "
+    L"  // Wait for DOM ready if needed"
+    L"  if (document.readyState === 'loading') {"
+    L"    document.addEventListener('DOMContentLoaded', doPause);"
+    L"  } else {"
+    L"    doPause();"
     L"  }"
     L"})();";
   
   ExecuteScriptToAllInstances(pause_script);
   
-  // 2. Aggressive memory optimization
+  // 2. Light memory optimization (don't clear cache to avoid reload)
   SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
   
-  // 3. Clear WebView cache to reduce memory
-  {
-    std::lock_guard<std::mutex> lock(instances_mutex_);
-    for (auto& instance : wallpaper_instances_) {
-      if (instance.webview && instance.webview.Get()) {
-        instance.webview->CallDevToolsProtocolMethod(L"Network.clearBrowserCache", L"{}", nullptr);
-      }
-    }
-  }
+  // 3. Reduce WebView rendering priority (don't clear cache - it causes reload)
+  // Note: Clearing cache causes resources to reload, increasing memory again
   
-  if (webview_ && webview_.Get()) {
-    webview_->CallDevToolsProtocolMethod(L"Network.clearBrowserCache", L"{}", nullptr);
-  }
-  
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper paused (all content stopped, memory optimized)" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Pause script executed (check console for results)" << std::endl;
 }
 
 // Resume wallpaper - Resume all content (videos, animations, requestAnimationFrame)
@@ -3556,54 +3567,74 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
   
   // 1. Force resume all content via JavaScript
   std::wstring resume_script = L"(function() {"
-    L"  try {"
-    L"    // Remove CSS animation pause style"
-    L"    const pauseStyle = document.getElementById('__anywp_pause_style');"
-    L"    if (pauseStyle) {"
-    L"      pauseStyle.remove();"
-    L"    }"
-    L"    "
-    L"    // Restore requestAnimationFrame"
-    L"    if (window.__anyWP_rafPaused && window.__anyWP_originalRAF) {"
-    L"      window.requestAnimationFrame = window.__anyWP_originalRAF;"
-    L"      window.__anyWP_rafPaused = false;"
-    L"      delete window.__anyWP_originalRAF;"
-    L"    }"
-    L"    "
-    L"    // Resume all videos"
-    L"    const videos = document.querySelectorAll('video');"
-    L"    videos.forEach(function(video) {"
-    L"      if (video.__anyWP_wasPlaying) {"
-    L"        video.play().catch(function(e) {"
-    L"          console.log('[AnyWP] Video play failed:', e);"
-    L"        });"
-    L"        delete video.__anyWP_wasPlaying;"
+    L"  function doResume() {"
+    L"    try {"
+    L"      console.log('[AnyWP] Starting resume operation...');"
+    L"      "
+    L"      // Remove CSS animation pause style"
+    L"      const pauseStyle = document.getElementById('__anywp_pause_style');"
+    L"      if (pauseStyle) {"
+    L"        pauseStyle.remove();"
+    L"        console.log('[AnyWP] CSS animations resumed');"
     L"      }"
-    L"    });"
-    L"    "
-    L"    // Resume all audio"
-    L"    const audios = document.querySelectorAll('audio');"
-    L"    audios.forEach(function(audio) {"
-    L"      if (audio.__anyWP_wasPlaying) {"
-    L"        audio.play().catch(function(e) {"
-    L"          console.log('[AnyWP] Audio play failed:', e);"
-    L"        });"
-    L"        delete audio.__anyWP_wasPlaying;"
+    L"      "
+    L"      // Restore requestAnimationFrame"
+    L"      if (window.__anyWP_rafPaused && window.__anyWP_originalRAF) {"
+    L"        window.requestAnimationFrame = window.__anyWP_originalRAF;"
+    L"        window.__anyWP_rafPaused = false;"
+    L"        delete window.__anyWP_originalRAF;"
+    L"        console.log('[AnyWP] requestAnimationFrame restored');"
     L"      }"
-    L"    });"
-    L"    "
-    L"    // Notify SDK if available"
-    L"    if (window.AnyWP && window.AnyWP._autoResumeAnimations) {"
-    L"      window.AnyWP._autoResumeAnimations();"
+    L"      "
+    L"      // Resume all videos"
+    L"      const videos = document.querySelectorAll('video');"
+    L"      console.log('[AnyWP] Found ' + videos.length + ' video(s)');"
+    L"      videos.forEach(function(video) {"
+    L"        if (video.__anyWP_wasPlaying) {"
+    L"          video.play().catch(function(e) {"
+    L"            console.log('[AnyWP] Video play failed:', e);"
+    L"          });"
+    L"          delete video.__anyWP_wasPlaying;"
+    L"          console.log('[AnyWP] Video resumed');"
+    L"        }"
+    L"      });"
+    L"      "
+    L"      // Resume all audio"
+    L"      const audios = document.querySelectorAll('audio');"
+    L"      console.log('[AnyWP] Found ' + audios.length + ' audio(s)');"
+    L"      audios.forEach(function(audio) {"
+    L"        if (audio.__anyWP_wasPlaying) {"
+    L"          audio.play().catch(function(e) {"
+    L"            console.log('[AnyWP] Audio play failed:', e);"
+    L"          });"
+    L"          delete audio.__anyWP_wasPlaying;"
+    L"          console.log('[AnyWP] Audio resumed');"
+    L"        }"
+    L"      });"
+    L"      "
+    L"      // Notify SDK if available"
+    L"      if (window.AnyWP && window.AnyWP._autoResumeAnimations) {"
+    L"        window.AnyWP._autoResumeAnimations();"
+    L"        console.log('[AnyWP] SDK resume called');"
+    L"      }"
+    L"      "
+    L"      // Dispatch visibility events"
+    L"      document.dispatchEvent(new Event('visibilitychange'));"
+    L"      window.dispatchEvent(new CustomEvent('AnyWP:visibility', { detail: { visible: true } }));"
+    L"      "
+    L"      console.log('[AnyWP] All content resumed successfully');"
+    L"      return true;"
+    L"    } catch(e) {"
+    L"      console.error('[AnyWP] Error resuming content:', e);"
+    L"      return false;"
     L"    }"
-    L"    "
-    L"    // Dispatch visibility events"
-    L"    document.dispatchEvent(new Event('visibilitychange'));"
-    L"    window.dispatchEvent(new CustomEvent('AnyWP:visibility', { detail: { visible: true } }));"
-    L"    "
-    L"    console.log('[AnyWP] All content resumed (videos, animations, RAF)');"
-    L"  } catch(e) {"
-    L"    console.error('[AnyWP] Error resuming content:', e);"
+    L"  }"
+    L"  "
+    L"  // Wait for DOM ready if needed"
+    L"  if (document.readyState === 'loading') {"
+    L"    document.addEventListener('DOMContentLoaded', doResume);"
+    L"  } else {"
+    L"    doResume();"
     L"  }"
     L"})();";
   
@@ -3776,7 +3807,7 @@ size_t AnyWPEnginePlugin::GetCurrentMemoryUsage() {
   return 0;
 }
 
-// Execute JavaScript script to all WebView instances (helper function)
+// Execute JavaScript script to all WebView instances (helper function with callback)
 void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) {
   // SAFE: Send to all instances with lock
   {
@@ -3784,14 +3815,34 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
     for (auto& instance : wallpaper_instances_) {
       // SAFETY: Check webview is valid
       if (instance.webview && instance.webview.Get()) {
-        instance.webview->ExecuteScript(script.c_str(), nullptr);
+        instance.webview->ExecuteScript(
+          script.c_str(),
+          Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+            [](HRESULT error, LPCWSTR result) -> HRESULT {
+              if (SUCCEEDED(error)) {
+                std::cout << "[AnyWP] Script executed successfully" << std::endl;
+              } else {
+                std::cout << "[AnyWP] ERROR: Script execution failed: " << std::hex << error << std::endl;
+              }
+              return S_OK;
+            }).Get());
       }
     }
   }
   
   // SAFETY: Send to legacy instance with NULL check
   if (webview_ && webview_.Get()) {
-    webview_->ExecuteScript(script.c_str(), nullptr);
+    webview_->ExecuteScript(
+      script.c_str(),
+      Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+        [](HRESULT error, LPCWSTR result) -> HRESULT {
+          if (SUCCEEDED(error)) {
+            std::cout << "[AnyWP] Script executed successfully (legacy)" << std::endl;
+          } else {
+            std::cout << "[AnyWP] ERROR: Script execution failed (legacy): " << std::hex << error << std::endl;
+          }
+          return S_OK;
+        }).Get());
   }
 }
 
