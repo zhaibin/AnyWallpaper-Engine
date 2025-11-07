@@ -183,7 +183,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   std::mutex instances_mutex_;
   
   // Persistent monitor configuration (survives session switches)
-  std::vector<int> original_monitor_indices_;  // User's initial monitor setup
+  std::vector<std::string> original_monitor_devices_;  // Device names (e.g. "\\.\DISPLAY1")
   
   // P0: Retry tracking
   int init_retry_count_ = 0;

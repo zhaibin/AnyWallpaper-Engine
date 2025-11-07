@@ -397,7 +397,7 @@ void AnyWPEnginePlugin::HandleMethodCall(
     // Clear original configuration when user explicitly stops
     {
       std::lock_guard<std::mutex> lock(instances_mutex_);
-      original_monitor_indices_.clear();
+      original_monitor_devices_.clear();
       std::cout << "[AnyWP] Cleared original monitor configuration (user stopped)" << std::endl;
     }
     
@@ -2797,11 +2797,13 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
     std::cout << "[AnyWP] Added wallpaper instance for monitor " << monitor_index 
               << " (Total instances: " << wallpaper_instances_.size() << ")" << std::endl;
     
-    // Save to original configuration if not already present
-    if (std::find(original_monitor_indices_.begin(), original_monitor_indices_.end(), monitor_index) 
-        == original_monitor_indices_.end()) {
-      original_monitor_indices_.push_back(monitor_index);
-      std::cout << "[AnyWP] Saved monitor " << monitor_index << " to original configuration" << std::endl;
+    // Save to original configuration if not already present (use device name for stability)
+    std::string device_name = target_monitor->device_name;
+    if (std::find(original_monitor_devices_.begin(), original_monitor_devices_.end(), device_name) 
+        == original_monitor_devices_.end()) {
+      original_monitor_devices_.push_back(device_name);
+      std::cout << "[AnyWP] Saved monitor " << device_name << " (index " << monitor_index 
+                << ") to original configuration" << std::endl;
     }
   }
   
@@ -3842,19 +3844,37 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     std::string saved_url = default_wallpaper_url_;
     std::vector<int> saved_monitor_indices;
     
+    std::vector<std::string> saved_monitor_devices;
+    
     {
       std::lock_guard<std::mutex> lock(instances_mutex_);
-      // Use original configuration (survives session switches)
-      saved_monitor_indices = original_monitor_indices_;
+      // Use original configuration (device names, survives session switches)
+      saved_monitor_devices = original_monitor_devices_;
       
       std::cout << "[AnyWP] [PowerSaving] Using original monitor configuration: " 
-                << saved_monitor_indices.size() << " monitor(s)" << std::endl;
+                << saved_monitor_devices.size() << " monitor(s)" << std::endl;
       
       // Fallback: if no original config, try current instances
-      if (saved_monitor_indices.empty()) {
+      if (saved_monitor_devices.empty()) {
         std::cout << "[AnyWP] [PowerSaving] No original config, using current instances" << std::endl;
         for (const auto& instance : wallpaper_instances_) {
-          saved_monitor_indices.push_back(instance.monitor_index);
+          // Find device name for this instance's monitor index
+          for (const auto& monitor : monitors_) {
+            if (monitor.index == instance.monitor_index) {
+              saved_monitor_devices.push_back(monitor.device_name);
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    // Convert device names to current indices
+    for (const auto& device_name : saved_monitor_devices) {
+      for (const auto& monitor : monitors_) {
+        if (monitor.device_name == device_name) {
+          saved_monitor_indices.push_back(monitor.index);
+          break;
         }
       }
     }
