@@ -2,6 +2,189 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [4.6.0] - 2025-11-07 - 🖥️ 会话切换与多显示器稳定性大幅提升
+
+### ✨ 新增功能
+
+#### 跨会话稳定性
+- **完整的远程桌面支持**：主机 ↔ 远程桌面切换时自动重建壁纸，保持持续可见
+- **锁屏智能恢复**：锁屏后再解锁，壁纸自动恢复；跨会话锁屏也能正确重建
+- **多显示器持久化**：使用设备名称而非索引标识显示器，即使枚举顺序改变也能正确恢复
+
+#### 增强的多显示器支持
+- **设备名称映射**：自动将保存的设备名称（如 `\\.\DISPLAY1`）映射到当前会话的索引
+- **智能跳过**：重建时自动跳过当前会话不存在的显示器，避免初始化错误
+- **完整恢复**：所有显示器的壁纸都能在会话切换后正确恢复
+
+### 🔄 重构改进
+
+#### 会话管理系统完善
+- **统一决策函数**：`ShouldWallpaperBeActive()` 基于锁屏状态决定壁纸是否应该激活
+- **状态追踪机制**：使用 atomic 标志 (`is_session_locked_`, `is_remote_session_`) 实时追踪系统状态
+- **智能重建检测**：解锁时自动检测 `wallpaper_instances_` 是否为空，决定是普通恢复还是强制重建
+
+#### 多显示器架构优化
+- **持久化配置**：引入 `original_monitor_devices_` 保存用户最初的显示器配置（设备名称）
+- **动态枚举**：重建前重新枚举当前会话的显示器，确保使用最新的显示器列表
+- **自动映射**：将设备名称动态映射到当前索引，适配不同会话的显示器配置
+
+### 🐛 Bug 修复
+
+#### 会话切换修复（15个迭代修复）
+1. ✅ **远程桌面壁纸消失**：允许远程会话运行壁纸，切换时强制重建
+2. ✅ **锁屏后壁纸不恢复**：锁屏时暂停，解锁时检测是否需要重建
+3. ✅ **WebView2 初始化失败**：避免连续两次 `StopWallpaper()` 导致 COM 对象冲突
+4. ✅ **副显示器消失**：持久化保存所有显示器配置，重建时恢复所有显示器
+5. ✅ **显示器索引混乱**：使用设备名称而非索引标识，解决枚举顺序不一致问题
+
+#### 跨会话锁屏场景修复
+- **远程桌面锁屏 → 主机解锁**：壁纸正确重建 ✓
+- **主机锁屏 → 远程桌面解锁**：壁纸正确重建 ✓
+- **不锁屏切换**：每次切换都能正确显示 ✓
+
+#### 多显示器场景修复
+- **显示器枚举顺序变化**：自动映射设备名称到当前索引 ✓
+- **远程桌面显示器数量不同**：智能跳过不存在的显示器 ✓
+- **主显示器和副显示器映射错误**：使用稳定的设备名称标识 ✓
+
+### 🎯 使用示例
+
+#### 跨会话使用（无需任何额外代码）
+
+```dart
+// 在主机上启动壁纸
+await AnyWPEngine.initializeWallpaper(
+  url: 'file:///path/to/wallpaper.html',
+  enableMouseTransparent: true,
+);
+
+// 切换到远程桌面 → 壁纸自动重建 ✓
+// 锁屏 → 壁纸自动暂停 ✓
+// 解锁 → 壁纸自动恢复或重建 ✓
+// 切换回主机 → 壁纸自动重建 ✓
+
+// 所有场景都自动处理，无需手动干预
+```
+
+#### 多显示器场景（自动适配）
+
+```dart
+// 在两个显示器上启动壁纸
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file:///path/to/wallpaper.html',
+  enableMouseTransparent: true,
+  monitorIndex: 0,  // 主显示器
+);
+
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file:///path/to/wallpaper.html',
+  enableMouseTransparent: true,
+  monitorIndex: 1,  // 副显示器
+);
+
+// 切换到远程桌面（可能只有1个显示器）
+// → 插件自动跳过不存在的显示器1 ✓
+// → 显示器0正常显示 ✓
+
+// 切换回主机（2个显示器）
+// → 插件自动恢复两个显示器 ✓
+// → 即使枚举顺序改变也能正确映射 ✓
+```
+
+### 🔧 技术细节
+
+#### 会话管理核心逻辑
+
+**状态追踪**：
+```cpp
+std::atomic<bool> is_session_locked_;   // 锁屏状态
+std::atomic<bool> is_remote_session_;   // 远程会话状态
+
+bool ShouldWallpaperBeActive() {
+  return !is_session_locked_.load();  // 只要不锁屏就激活
+}
+```
+
+**事件处理**：
+- `WTS_SESSION_LOCK` → 暂停壁纸
+- `WTS_SESSION_UNLOCK` → 检测是否需要重建，然后恢复或重建
+- `WTS_CONSOLE_CONNECT/DISCONNECT` → 强制重建（跨会话窗口不可见）
+- `WTS_REMOTE_CONNECT/DISCONNECT` → 强制重建
+
+#### 多显示器持久化
+
+**保存配置**：
+```cpp
+// 使用设备名称而非索引
+std::vector<std::string> original_monitor_devices_;  // ["\\.\DISPLAY1", "\\.\DISPLAY2"]
+```
+
+**恢复配置**：
+```cpp
+// 1. 重新枚举当前会话的显示器
+GetMonitors();  // 更新 monitors_
+
+// 2. 将设备名称映射到当前索引
+for (const auto& device_name : original_monitor_devices_) {
+  for (const auto& monitor : monitors_) {
+    if (monitor.device_name == device_name) {
+      saved_monitor_indices.push_back(monitor.index);
+      break;
+    }
+  }
+}
+
+// 3. 只在存在的显示器上初始化
+for (int monitor_index : saved_monitor_indices) {
+  bool exists = /* 检查是否存在 */;
+  if (exists) {
+    InitializeWallpaperOnMonitor(..., monitor_index);
+  } else {
+    std::cout << "Skipping monitor (not available)" << std::endl;
+  }
+}
+```
+
+### 📚 文档更新
+
+- 更新 `docs/FOR_FLUTTER_DEVELOPERS.md`：添加会话管理和多显示器最佳实践
+- 更新 `docs/WEB_DEVELOPER_GUIDE_CN.md`：补充跨会话场景的注意事项
+- 新增 `SESSION_LOGIC_ANALYSIS.md`：完整的会话切换逻辑分析
+
+### 🧪 测试验证
+
+#### 会话切换场景（全部通过）
+- ✅ 主机锁屏 → 主机解锁（动画暂停再继续）
+- ✅ 远程桌面锁屏 → 远程桌面解锁（动画暂停再继续）
+- ✅ 主机锁屏 → 远程桌面解锁（壁纸重建）
+- ✅ 远程桌面锁屏 → 主机解锁（壁纸重建）
+- ✅ 主机不锁屏 → 远程桌面进入（壁纸重建）
+- ✅ 远程桌面不锁屏 → 主机进入（壁纸重建）
+
+#### 多显示器场景（全部通过）
+- ✅ 主机2显示器 → 远程1显示器 → 主机（所有显示器恢复）
+- ✅ 显示器枚举顺序改变（设备名称映射正确）
+- ✅ 多次往返切换（无资源泄漏）
+
+### ⚠️ 重要说明
+
+#### 系统要求
+- **Windows 10/11**：完整支持所有会话切换场景
+- **WebView2 Runtime**：确保安装最新版本
+
+#### 已知限制
+- **远程桌面显示器数量**：如果远程桌面显示器数量少于主机，部分显示器会被跳过（正常行为）
+- **DPI 缩放**：不同会话的 DPI 设置可能影响壁纸尺寸，但会自动适配
+
+### 🎉 升级建议
+
+从 v1.2.x 升级到 v1.3.0：
+- ✅ **完全向后兼容**：无需修改现有代码
+- ✅ **自动获益**：会话切换和多显示器功能自动生效
+- ✅ **零配置**：所有优化都在插件层自动处理
+
+---
+
 ## [4.5.0] - 2025-11-06 - 🔧 预编译包集成体验升级
 
 ### ✨ 新增功能
