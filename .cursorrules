@@ -18,6 +18,8 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 ### C++
 - 类/方法 `PascalCase` | 成员变量 `snake_case_` | 常量 `UPPER_SNAKE_CASE`
 - 使用智能指针管理 COM | RAII 管理资源 | 检查 Win32 API 返回值
+- **模块化设计** (v1.3.2+): 按功能拆分为独立模块（`modules/`）和工具类（`utils/`）
+- 核心插件文件保持精简，复杂功能委托给专门模块
 
 ### JavaScript
 - 全局 `window.AnyWP` | 方法 `lowerCamelCase`
@@ -30,18 +32,29 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 ```
 lib/                    # Dart API
 windows/                # C++ 实现 + anywp_sdk.js
-  ├── sdk/              # 模块化 JavaScript SDK 源码 (NEW v4.2.0)
+  ├── modules/          # 功能模块 (NEW v1.3.2)
+  │   ├── iframe_detector.cpp/h       # iframe 检测与坐标映射
+  │   ├── sdk_bridge.cpp/h            # JavaScript SDK 注入与消息桥接
+  │   ├── mouse_hook_manager.cpp/h   # 鼠标钩子管理（框架）
+  │   ├── monitor_manager.cpp/h      # 多显示器管理（框架）
+  │   └── power_manager.cpp/h        # 省电与性能优化（框架）
+  ├── utils/            # 工具类 (NEW v1.3.2)
+  │   ├── state_persistence.cpp/h    # 应用级状态持久化
+  │   ├── url_validator.cpp/h        # URL 白名单/黑名单验证
+  │   └── logger.cpp/h               # 日志工具
+  ├── sdk/              # 模块化 JavaScript SDK 源码 (v4.2.0)
   │   ├── core/         # 核心模块 (AnyWP对象, 初始化)
   │   ├── modules/      # 功能模块 (events, click, drag, storage, spa, animations)
   │   ├── utils/        # 工具模块 (bounds, coordinates, debug)
   │   ├── index.js      # 入口文件
   │   ├── package.json  # 依赖配置
   │   └── rollup.config.js  # 构建配置
+  ├── anywp_engine_plugin.cpp/h  # 主插件实现（重构后更精简）
   └── anywp_sdk.js      # 构建后的单文件 SDK
 example/                # 示例应用
-examples/               # 测试 HTML (8个)
+examples/               # 测试 HTML (9个，含 test_refactoring.html)
 docs/                   # 核心文档 (21个)
-scripts/                # 构建脚本
+scripts/                # 构建脚本 + test_refactoring.bat
 release/                # 发布包
 ```
 
@@ -782,6 +795,41 @@ git push origin main              # 推送到 GitHub
 
 ---
 
+## 代码架构 (v1.3.2+)
+
+### C++ 模块化设计
+
+**重构目标**: 将 4000+ 行的单文件重构为多个职责明确的模块，提高可维护性和可测试性。
+
+**模块分类**:
+
+#### 工具类 (`windows/utils/`)
+- `StatePersistence` - 应用级状态持久化（键值对存储）
+- `URLValidator` - URL 白名单/黑名单验证
+- `Logger` - 统一日志记录接口
+
+#### 功能模块 (`windows/modules/`)
+- `IframeDetector` - iframe 边界检测与坐标映射（已完成）
+- `SDKBridge` - JavaScript SDK 注入与消息桥接（已完成）
+- `MouseHookManager` - 鼠标钩子管理（框架）
+- `MonitorManager` - 多显示器枚举与变更监听（框架）
+- `PowerManager` - 省电优化与性能管理（框架）
+
+**设计原则**:
+1. **单一职责**: 每个模块只负责一个核心功能
+2. **低耦合**: 模块之间通过接口交互，减少依赖
+3. **易测试**: 独立模块便于单元测试和集成测试
+4. **向后兼容**: 重构不改变外部 API 行为
+
+**添加新模块步骤**:
+1. 创建 `windows/modules/module_name.h/cpp` 或 `windows/utils/utility_name.h/cpp`
+2. 实现功能并遵循命名规范
+3. 更新 `windows/CMakeLists.txt`，添加源文件到 `add_library`
+4. 在主插件文件中引入并使用模块
+5. 编写测试用例验证功能
+
+---
+
 ## 核心特性
 
 ### 存储系统 (v1.2.0+)
@@ -800,4 +848,4 @@ git push origin main              # 推送到 GitHub
 
 ---
 
-**版本**: 1.3.1 (Changelog: 4.8.0) | **更新**: 2025-11-07 | **重要**: 显示器热插拔完整实现 + Web SDK 自动化构建
+**版本**: 1.3.2-dev (Changelog: 4.8.0) | **更新**: 2025-11-07 | **重要**: C++ 代码模块化重构完成 - 核心插件文件从 4000+ 行拆分为多个独立模块
