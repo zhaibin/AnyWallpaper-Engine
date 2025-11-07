@@ -3427,7 +3427,21 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
       if (wParam == WTS_SESSION_LOCK || wParam == WTS_SESSION_UNLOCK) {
         std::cout << "[AnyWP] [PowerSaving] Checking if wallpaper should be active..." << std::endl;
         if (display_change_instance_->ShouldWallpaperBeActive()) {
-          display_change_instance_->ResumeWallpaper("Session: User in local desktop");
+          // Check if wallpaper needs to be rebuilt (cross-session scenario)
+          bool need_rebuild = false;
+          {
+            std::lock_guard<std::mutex> lock(display_change_instance_->instances_mutex_);
+            need_rebuild = display_change_instance_->wallpaper_instances_.empty() && 
+                          !display_change_instance_->default_wallpaper_url_.empty();
+          }
+          
+          if (need_rebuild && wParam == WTS_SESSION_UNLOCK) {
+            std::cout << "[AnyWP] [PowerSaving] Wallpaper missing after session switch, forcing rebuild..." << std::endl;
+            display_change_instance_->is_paused_.store(true);
+            display_change_instance_->ResumeWallpaper("Session: Unlock after cross-session", true);  // force_reinit
+          } else {
+            display_change_instance_->ResumeWallpaper("Session: User in local desktop");
+          }
         } else {
           display_change_instance_->PauseWallpaper("Session: User not in local desktop");
         }
