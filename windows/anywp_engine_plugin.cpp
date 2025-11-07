@@ -3649,20 +3649,30 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
   // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
   bool need_reinitialize = false;
   
+  std::cout << "[AnyWP] [PowerSaving] Verifying wallpaper window state..." << std::endl;
+  
   // Check single-monitor mode
   if (webview_host_hwnd_) {
+    std::cout << "[AnyWP] [PowerSaving] Single-monitor mode detected" << std::endl;
+    std::cout << "[AnyWP] [PowerSaving] WebView window: " << webview_host_hwnd_ << std::endl;
+    std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(webview_host_hwnd_) 
+              << ", IsVisible: " << (IsWindow(webview_host_hwnd_) ? IsWindowVisible(webview_host_hwnd_) : false) << std::endl;
+    
     if (!IsWindow(webview_host_hwnd_) || !IsWindowVisible(webview_host_hwnd_)) {
-      std::cout << "[AnyWP] [PowerSaving] WARNING: Wallpaper window invalid or hidden!" << std::endl;
-      std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(webview_host_hwnd_) 
-                << ", IsVisible: " << (IsWindow(webview_host_hwnd_) ? IsWindowVisible(webview_host_hwnd_) : false) << std::endl;
+      std::cout << "[AnyWP] [PowerSaving] [X] WARNING: Wallpaper window invalid or hidden!" << std::endl;
       need_reinitialize = true;
     } else {
       // Verify parent relationship
       HWND parent = GetParent(webview_host_hwnd_);
+      std::cout << "[AnyWP] [PowerSaving] Expected parent (WorkerW): " << worker_w_hwnd_ << std::endl;
+      std::cout << "[AnyWP] [PowerSaving] Actual parent: " << parent << std::endl;
+      std::cout << "[AnyWP] [PowerSaving] WorkerW valid: " << IsWindow(worker_w_hwnd_) << std::endl;
+      
       if (parent != worker_w_hwnd_ || !IsWindow(worker_w_hwnd_)) {
-        std::cout << "[AnyWP] [PowerSaving] WARNING: Parent window relationship broken!" << std::endl;
-        std::cout << "[AnyWP] [PowerSaving] Expected parent: " << worker_w_hwnd_ << ", Actual: " << parent << std::endl;
+        std::cout << "[AnyWP] [PowerSaving] [X] WARNING: Parent window relationship broken!" << std::endl;
         need_reinitialize = true;
+      } else {
+        std::cout << "[AnyWP] [PowerSaving] [OK] Window valid, parent relationship OK" << std::endl;
       }
     }
   }
