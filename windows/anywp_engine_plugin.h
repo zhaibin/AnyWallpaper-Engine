@@ -276,7 +276,9 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // Performance optimization
   std::atomic<bool> is_paused_{false};
   
-  // Session state checking
+  // Session state tracking
+  std::atomic<bool> is_session_locked_{false};     // Track lock state from WTS events
+  std::atomic<bool> is_remote_session_{false};     // Track remote session state
   bool ShouldWallpaperBeActive();  // Check if user is in local desktop environment
 };
 
