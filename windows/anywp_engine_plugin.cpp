@@ -3761,16 +3761,10 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     if (!saved_url.empty()) {
       std::cout << "[AnyWP] [PowerSaving] Re-initializing wallpaper with URL: " << saved_url << std::endl;
       
-      if (was_multi_monitor && !active_monitors.empty()) {
-        // Restore multi-monitor setup
-        for (int monitor_idx : active_monitors) {
-          std::cout << "[AnyWP] [PowerSaving] Restoring wallpaper on monitor " << monitor_idx << std::endl;
-          InitializeWallpaperOnMonitor(saved_url, monitor_idx, !enable_interaction_);
-        }
-      } else {
-        // Restore single-monitor setup
-        InitializeWallpaper(saved_url, !enable_interaction_);
-      }
+      // IMPORTANT: After session switch, display numbering may change
+      // Don't use saved monitor indices, use default initialization
+      std::cout << "[AnyWP] [PowerSaving] Using default initialization (adapts to current display config)" << std::endl;
+      InitializeWallpaper(saved_url, !enable_interaction_);
       
       std::cout << "[AnyWP] [PowerSaving] Wallpaper restoration complete" << std::endl;
       
