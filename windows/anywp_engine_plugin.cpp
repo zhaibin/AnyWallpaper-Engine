@@ -3299,37 +3299,34 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
   switch (message) {
     case WM_WTSSESSION_CHANGE:
       // Session state changed (lock/unlock/remote desktop)
+      std::cout << "[AnyWP] [PowerSaving] Session change event: " << wParam << std::endl;
+      
       switch (wParam) {
         case WTS_SESSION_LOCK:
-          std::cout << "[AnyWP] [PowerSaving] System LOCKED" << std::endl;
-          // Add lock as a pause reason
-          display_change_instance_->PauseWallpaper("LOCK");
+          std::cout << "[AnyWP] [PowerSaving] Event: System LOCKED" << std::endl;
           break;
         case WTS_SESSION_UNLOCK:
-          std::cout << "[AnyWP] [PowerSaving] System UNLOCKED" << std::endl;
-          // Remove lock reason (wallpaper will only resume if no other reasons remain)
-          display_change_instance_->ResumeWallpaper("LOCK");
+          std::cout << "[AnyWP] [PowerSaving] Event: System UNLOCKED" << std::endl;
           break;
         case WTS_CONSOLE_CONNECT:
-          std::cout << "[AnyWP] [PowerSaving] CONSOLE CONNECTED (returned from remote desktop)" << std::endl;
-          // Remove remote session reason
-          display_change_instance_->ResumeWallpaper("REMOTE_SESSION");
+          std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE CONNECTED (returned from remote desktop)" << std::endl;
           break;
         case WTS_CONSOLE_DISCONNECT:
-          std::cout << "[AnyWP] [PowerSaving] CONSOLE DISCONNECTED (switched to remote desktop)" << std::endl;
-          // Add remote session as a pause reason
-          display_change_instance_->PauseWallpaper("REMOTE_SESSION");
+          std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE DISCONNECTED (switched to remote desktop)" << std::endl;
           break;
         case WTS_REMOTE_CONNECT:
-          std::cout << "[AnyWP] [PowerSaving] REMOTE DESKTOP CONNECTED" << std::endl;
-          // Add remote session as a pause reason
-          display_change_instance_->PauseWallpaper("REMOTE_SESSION");
+          std::cout << "[AnyWP] [PowerSaving] Event: REMOTE DESKTOP CONNECTED" << std::endl;
           break;
         case WTS_REMOTE_DISCONNECT:
-          std::cout << "[AnyWP] [PowerSaving] REMOTE DESKTOP DISCONNECTED" << std::endl;
-          // Remove remote session reason
-          display_change_instance_->ResumeWallpaper("REMOTE_SESSION");
+          std::cout << "[AnyWP] [PowerSaving] Event: REMOTE DESKTOP DISCONNECTED" << std::endl;
           break;
+      }
+      
+      // Unified state check: Should wallpaper be active now?
+      if (display_change_instance_->ShouldWallpaperBeActive()) {
+        display_change_instance_->ResumeWallpaper("Session: User in local desktop");
+      } else {
+        display_change_instance_->PauseWallpaper("Session: User not in local desktop");
       }
       break;
       
@@ -3355,6 +3352,48 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
   }
   
   return DefWindowProcW(hwnd, message, wParam, lParam);
+}
+
+// Check if wallpaper should be active based on current session state
+bool AnyWPEnginePlugin::ShouldWallpaperBeActive() {
+  // Check 1: Is this a remote desktop session?
+  if (GetSystemMetrics(SM_REMOTESESSION)) {
+    std::cout << "[AnyWP] [PowerSaving] Session check: REMOTE session detected" << std::endl;
+    return false;  // Don't show wallpaper in remote desktop
+  }
+  
+  // Check 2: Is the system locked?
+  DWORD session_id = WTSGetActiveConsoleSessionId();
+  if (session_id == 0xFFFFFFFF) {
+    std::cout << "[AnyWP] [PowerSaving] Session check: No active console session" << std::endl;
+    return false;
+  }
+  
+  // Query lock state
+  BOOL is_locked = FALSE;
+  DWORD bytes_returned = 0;
+  LPWSTR buffer = nullptr;
+  
+  if (WTSQuerySessionInformationW(WTS_CURRENT_SERVER_HANDLE, session_id, WTSSessionInfoEx, &buffer, &bytes_returned)) {
+    if (buffer && bytes_returned >= sizeof(WTSINFOEXW)) {
+      WTSINFOEXW* info = reinterpret_cast<WTSINFOEXW*>(buffer);
+      if (info->Level == 1 && info->Data.WTSInfoExLevel1.SessionFlags == WTS_SESSIONSTATE_LOCK) {
+        is_locked = TRUE;
+      }
+    }
+    if (buffer) {
+      WTSFreeMemory(buffer);
+    }
+  }
+  
+  if (is_locked) {
+    std::cout << "[AnyWP] [PowerSaving] Session check: System is LOCKED" << std::endl;
+    return false;
+  }
+  
+  // All checks passed - user is in local unlocked desktop
+  std::cout << "[AnyWP] [PowerSaving] Session check: Local UNLOCKED desktop - wallpaper should be ACTIVE" << std::endl;
+  return true;
 }
 
 // Update power state based on current system status
@@ -3489,28 +3528,7 @@ void AnyWPEnginePlugin::StopFullscreenDetection() {
 
 // Pause wallpaper - GOAL: Reduce CPU/GPU usage while keeping wallpaper visible
 void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
-  // Track pause reason
-  bool should_pause = false;
-  {
-    std::lock_guard<std::mutex> lock(pause_reasons_mutex_);
-    auto result = pause_reasons_.insert(reason);
-    should_pause = (pause_reasons_.size() == 1);  // Only pause if this is the first reason
-    
-    if (result.second) {  // New reason added
-      std::cout << "[AnyWP] [PowerSaving] Added pause reason: " << reason << " (Total: " << pause_reasons_.size() << ")" << std::endl;
-    } else {
-      std::cout << "[AnyWP] [PowerSaving] Pause reason already exists: " << reason << std::endl;
-      return;  // Reason already tracked
-    }
-  }
-  
-  // Only actually pause if this is the first reason
-  if (!should_pause) {
-    std::cout << "[AnyWP] [PowerSaving] Already paused by other reason(s), not pausing again" << std::endl;
-    return;
-  }
-  
-  // Guard: Avoid duplicate pause at atomic level
+  // Guard: Avoid duplicate pause
   if (is_paused_.exchange(true)) {
     return;  // Already paused
   }
@@ -3605,36 +3623,7 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
 
 // Resume wallpaper - Restore animations and rendering
 void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
-  // Remove pause reason
-  bool should_resume = false;
-  {
-    std::lock_guard<std::mutex> lock(pause_reasons_mutex_);
-    auto it = pause_reasons_.find(reason);
-    if (it != pause_reasons_.end()) {
-      pause_reasons_.erase(it);
-      std::cout << "[AnyWP] [PowerSaving] Removed pause reason: " << reason << " (Remaining: " << pause_reasons_.size() << ")" << std::endl;
-      should_resume = pause_reasons_.empty();  // Only resume if all reasons are gone
-    } else {
-      std::cout << "[AnyWP] [PowerSaving] Pause reason not found: " << reason << std::endl;
-      return;  // Reason not tracked
-    }
-    
-    // Log remaining reasons
-    if (!should_resume && !pause_reasons_.empty()) {
-      std::cout << "[AnyWP] [PowerSaving] Still paused due to: ";
-      for (const auto& r : pause_reasons_) {
-        std::cout << "\"" << r << "\" ";
-      }
-      std::cout << std::endl;
-    }
-  }
-  
-  // Only actually resume if all reasons are gone
-  if (!should_resume) {
-    return;
-  }
-  
-  // Guard: Avoid duplicate resume at atomic level
+  // Guard: Avoid duplicate resume
   if (!is_paused_.exchange(false)) {
     return;  // Already resumed
   }

@@ -276,9 +276,8 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // Performance optimization
   std::atomic<bool> is_paused_{false};
   
-  // Track multiple pause reasons (e.g., locked + remote session)
-  std::set<std::string> pause_reasons_;
-  std::mutex pause_reasons_mutex_;
+  // Session state checking
+  bool ShouldWallpaperBeActive();  // Check if user is in local desktop environment
 };
 
 }  // namespace anywp_engine
