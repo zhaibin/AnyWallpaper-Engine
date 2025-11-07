@@ -1,8 +1,26 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:anywp_engine/anywp_engine.dart';
+import 'package:window_manager/window_manager.dart';
+
+/// 显示器配置（用于记忆拔掉前的状态）
+class MonitorConfig {
+  final String url;
+  final bool wasRunning;
+  final DateTime lastSeen;
+  
+  MonitorConfig({
+    required this.url,
+    required this.wasRunning,
+    required this.lastSeen,
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize window manager to prevent window position jumping
+  await windowManager.ensureInitialized();
   
   // Set application name for storage isolation
   await AnyWPEngine.setApplicationName('AnyWallpaperDemo');
@@ -21,7 +39,7 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WindowListener {
   // Multi-monitor support
   List<MonitorInfo> _monitors = [];
   Map<int, bool> _monitorWallpapers = {};  // Track which monitors have wallpapers
@@ -29,6 +47,14 @@ class _MyAppState extends State<MyApp> {
   Map<int, bool> _monitorLoading = {};  // Track loading state for each monitor
   bool _allMonitorsLoading = false;  // Track "Start All" / "Stop All" loading state
   bool _mouseTransparent = true;  // Default: wallpaper mode (transparent)
+  Timer? _monitorCheckTimer;  // Timer for polling monitor changes
+  bool _isHandlingMonitorChange = false;  // Prevent overlapping monitor change handling
+  
+  // Monitor configuration memory - preserves settings when monitors are unplugged
+  Map<String, MonitorConfig> _monitorConfigMemory = {};  // Key: deviceName (e.g., \\.\DISPLAY2)
+  
+  // Window position memory - prevents jumping when monitors change
+  Offset? _savedWindowPosition;
   
   // Power saving & optimization
   String _powerState = 'Loading...';
@@ -50,104 +76,191 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    
+    // Register window listener to save/restore position
+    windowManager.addListener(this);
+    
     _loadMonitors();
     
-    // Listen for monitor changes from native side
-    AnyWPEngine.setOnMonitorChangeCallback(() {
-      print('[APP] Monitor change callback received!');
-      _handleMonitorChange();
+    // Start polling for monitor changes (every 3 seconds to reduce UI thrashing)
+    // Note: Direct InvokeMethod callback causes crashes, so we use polling instead
+    _monitorCheckTimer = Timer.periodic(Duration(seconds: 3), (timer) {
+      _checkMonitorChanges();
     });
+    
+    print('[APP] Monitor polling started (every 3 seconds)');
   }
   
   Future<void> _handleMonitorChange() async {
     print('[APP] Handling monitor change - detecting changes and auto-applying...');
     
     try {
-      // Get old monitor indices before refresh
-      final oldIndices = _monitors.map((m) => m.index).toSet();
+       // Get old monitor configuration BEFORE any changes
+       final oldMonitors = List<MonitorInfo>.from(_monitors);
+       final oldIndices = oldMonitors.map((m) => m.index).toSet();
+       
+       // Get new monitor list (without updating state yet)
+       final newMonitors = await AnyWPEngine.getMonitors();
+       final newIndices = newMonitors.map((m) => m.index).toSet();
+       
+       // Detect changes
+       final addedIndices = newIndices.difference(oldIndices);
+       final removedIndices = oldIndices.difference(newIndices);
+       
+       // IMPORTANT: Save configuration BEFORE _loadMonitors() clears controllers
+       if (removedIndices.isNotEmpty) {
+         print('[APP] Detected removed monitors: $removedIndices');
+         for (final removedIndex in removedIndices) {
+           // Find monitor in OLD list
+           final removedMonitor = oldMonitors.firstWhere(
+             (m) => m.index == removedIndex,
+             orElse: () => oldMonitors.first,
+           );
+           
+           // Save BEFORE controllers are disposed
+           if (_monitorUrlControllers.containsKey(removedIndex)) {
+             final url = _monitorUrlControllers[removedIndex]!.text.trim();
+             final wasRunning = _monitorWallpapers[removedIndex] == true;
+             
+             if (url.isNotEmpty) {
+               _monitorConfigMemory[removedMonitor.deviceName] = MonitorConfig(
+                 url: url,
+                 wasRunning: wasRunning,
+                 lastSeen: DateTime.now(),
+               );
+               print('[APP] 💾 Saved config for ${removedMonitor.deviceName}:');
+               print('[APP]    URL: $url');
+               print('[APP]    Running: $wasRunning');
+             }
+           }
+         }
+       }
+       
+       // Now refresh monitor list (this will clean up controllers)
+       await _loadMonitors();
       
-      // Refresh monitor list
-      await _loadMonitors();
-      
-      // Get new monitor indices after refresh
-      final newIndices = _monitors.map((m) => m.index).toSet();
-      
-      // Detect newly added monitors
-      final addedIndices = newIndices.difference(oldIndices);
-      final removedIndices = oldIndices.difference(newIndices);
-      
-      if (removedIndices.isNotEmpty) {
-        print('[APP] Detected removed monitors: $removedIndices');
-      }
-      
-      if (addedIndices.isNotEmpty) {
+       if (addedIndices.isNotEmpty) {
         print('[APP] Detected new monitors: $addedIndices');
         
-        // Find a running wallpaper to copy its URL
-        String? activeUrl;
-        for (final entry in _monitorWallpapers.entries) {
-          if (entry.value == true && _monitorUrlControllers.containsKey(entry.key)) {
-            activeUrl = _monitorUrlControllers[entry.key]!.text.trim();
-            if (activeUrl.isNotEmpty) {
-              print('[APP] Found active wallpaper URL from monitor ${entry.key}: $activeUrl');
-              break;
-            }
-          }
-        }
+        int successCount = 0;
+        Map<int, bool> updatedWallpapers = {};
         
-        // If no active wallpaper found, use default URL
-        if (activeUrl == null || activeUrl.isEmpty) {
-          // Try to get URL from any controller
-          for (final controller in _monitorUrlControllers.values) {
-            final url = controller.text.trim();
-            if (url.isNotEmpty) {
-              activeUrl = url;
-              print('[APP] Using URL from controller: $activeUrl');
-              break;
-            }
-          }
-        }
-        
-        // Auto-start wallpaper on new monitors
-        if (activeUrl != null && activeUrl.isNotEmpty) {
-          int successCount = 0;
-          for (final index in addedIndices) {
-            print('[APP] Auto-starting wallpaper on new monitor $index with URL: $activeUrl');
+        // Process each newly added monitor
+        for (final index in addedIndices) {
+          final newMonitor = _monitors.firstWhere((m) => m.index == index);
+          String? urlToUse;
+          bool shouldStart = false;
+          
+          // Strategy 1: Check if this monitor has saved configuration (was unplugged before)
+          if (_monitorConfigMemory.containsKey(newMonitor.deviceName)) {
+            final savedConfig = _monitorConfigMemory[newMonitor.deviceName]!;
             
-            // Set URL for the new monitor
+            print('[APP] 📂 Found saved config for ${newMonitor.deviceName}:');
+            print('[APP]    Saved URL: ${savedConfig.url}');
+            print('[APP]    Was Running: ${savedConfig.wasRunning}');
+            print('[APP]    Last Seen: ${savedConfig.lastSeen}');
+            
+            // Only restore if it was running before being unplugged
+            if (savedConfig.wasRunning) {
+              urlToUse = savedConfig.url;
+              shouldStart = true;
+              print('[APP] ✅ Will RESTORE previous wallpaper on monitor $index');
+            } else {
+              print('[APP] ⏸️ Wallpaper was NOT running, will not auto-start');
+            }
+          } else {
+            print('[APP] ❌ No saved config found for ${newMonitor.deviceName}');
+          }
+          
+          // Strategy 2: If no saved config, check if there's a running wallpaper on any other monitor
+          if (!shouldStart) {
+            print('[APP] 🔍 No saved config or wasn\'t running, checking for active wallpapers...');
+            for (final entry in _monitorWallpapers.entries) {
+              if (entry.value == true && _monitorUrlControllers.containsKey(entry.key)) {
+                final activeUrl = _monitorUrlControllers[entry.key]!.text.trim();
+                if (activeUrl.isNotEmpty) {
+                  urlToUse = activeUrl;
+                  shouldStart = true;
+                  print('[APP] 🔄 Using active wallpaper URL from monitor ${entry.key}: $urlToUse');
+                  break;
+                }
+              }
+            }
+            if (!shouldStart) {
+              print('[APP] ⚠️ No active wallpaper found to copy');
+            }
+          }
+          
+          // Apply wallpaper if we have a URL
+          if (shouldStart && urlToUse != null && urlToUse.isNotEmpty) {
+            print('[APP] ▶️ Starting wallpaper on monitor $index');
+            print('[APP]    Device: ${newMonitor.deviceName}');
+            print('[APP]    URL: $urlToUse');
+            
+            // Set URL in controller
             if (_monitorUrlControllers[index] != null) {
-              _monitorUrlControllers[index]!.text = activeUrl;
+              _monitorUrlControllers[index]!.text = urlToUse;
+              print('[APP]    Controller updated with URL');
             }
             
-            // Start wallpaper
-            final success = await AnyWPEngine.initializeWallpaperOnMonitor(
-              url: activeUrl,
+            // Try to start wallpaper
+            bool success = await AnyWPEngine.initializeWallpaperOnMonitor(
+              url: urlToUse,
               monitorIndex: index,
               enableMouseTransparent: _mouseTransparent,
             );
             
+            print('[APP]    Result: ${success ? "✅ SUCCESS" : "❌ FAILED"}');
+            
+            // If failed, try fallback to primary monitor's URL
+            if (!success && urlToUse != _getPrimaryMonitorUrl()) {
+              print('[APP] Failed with URL: $urlToUse, trying primary monitor URL as fallback');
+              final primaryUrl = _getPrimaryMonitorUrl();
+              
+              if (primaryUrl != null && primaryUrl.isNotEmpty) {
+                print('[APP] Fallback to primary URL: $primaryUrl');
+                
+                if (_monitorUrlControllers[index] != null) {
+                  _monitorUrlControllers[index]!.text = primaryUrl;
+                }
+                
+                success = await AnyWPEngine.initializeWallpaperOnMonitor(
+                  url: primaryUrl,
+                  monitorIndex: index,
+                  enableMouseTransparent: _mouseTransparent,
+                );
+                
+                if (success) {
+                  print('[APP] Fallback succeeded on monitor $index');
+                }
+              }
+            }
+            
             if (success) {
-              setState(() {
-                _monitorWallpapers[index] = true;
-              });
+              updatedWallpapers[index] = true;
               successCount++;
-              print('[APP] Successfully auto-started wallpaper on monitor $index');
+              print('[APP] Successfully started wallpaper on monitor $index');
             } else {
-              print('[APP] Failed to auto-start wallpaper on monitor $index');
+              print('[APP] Failed to start wallpaper on monitor $index (even after fallback)');
             }
+          } else {
+            print('[APP] No URL to apply on monitor $index (no saved config and no active wallpaper)');
           }
-          
-          if (mounted) {
-            if (successCount > 0) {
-              _showMessage('Auto-started wallpaper on $successCount new monitor(s)');
-            } else {
-              _showMessage('Display configuration changed - could not auto-start');
-            }
-          }
-        } else {
-          print('[APP] No active URL found, skipping auto-start');
-          if (mounted) {
-            _showMessage('New monitor detected - please start wallpaper manually');
+        }
+        
+        // Update state once after all operations
+        if (updatedWallpapers.isNotEmpty && mounted) {
+          setState(() {
+            _monitorWallpapers.addAll(updatedWallpapers);
+          });
+        }
+        
+        // Show result message
+        if (mounted) {
+          if (successCount > 0) {
+            _showMessage('Auto-started wallpaper on $successCount new monitor(s)');
+          } else if (addedIndices.isNotEmpty) {
+            _showMessage('New monitor detected - no wallpaper to apply');
           }
         }
       } else {
@@ -170,10 +283,75 @@ class _MyAppState extends State<MyApp> {
   
   @override
   void dispose() {
+    _monitorCheckTimer?.cancel();
+    windowManager.removeListener(this);
     for (final controller in _monitorUrlControllers.values) {
       controller.dispose();
     }
     super.dispose();
+  }
+  
+  // WindowListener callbacks - save window position before monitor change
+  @override
+  void onWindowMoved() async {
+    final position = await windowManager.getPosition();
+    _savedWindowPosition = position;
+    print('[APP] Window position saved: $position');
+  }
+  
+  @override
+  void onWindowEvent(String eventName) {
+    // Monitor changes can trigger window repositioning by Windows
+    // We'll restore position after monitor detection
+    print('[APP] Window event: $eventName');
+  }
+  
+  // Check for monitor changes by polling
+  Future<void> _checkMonitorChanges() async {
+    // Prevent overlapping calls
+    if (_isHandlingMonitorChange) {
+      return;
+    }
+    
+    try {
+      final monitors = await AnyWPEngine.getMonitors();
+      
+      // Check if monitor count changed
+      if (monitors.length != _monitors.length) {
+        print('[APP] Monitor count changed: ${_monitors.length} -> ${monitors.length}');
+        
+        // Save current window position before handling monitor change
+        try {
+          final currentPosition = await windowManager.getPosition();
+          _savedWindowPosition = currentPosition;
+          print('[APP] Saved window position before monitor change: $currentPosition');
+        } catch (e) {
+          print('[APP] Failed to save window position: $e');
+        }
+        
+        _isHandlingMonitorChange = true;
+        try {
+          await _handleMonitorChange();
+          
+          // Restore window position after a short delay (let Windows finish its repositioning)
+          Future.delayed(Duration(milliseconds: 500), () async {
+            if (_savedWindowPosition != null) {
+              try {
+                await windowManager.setPosition(_savedWindowPosition!);
+                print('[APP] Restored window position to: $_savedWindowPosition');
+              } catch (e) {
+                print('[APP] Failed to restore window position: $e');
+              }
+            }
+          });
+        } finally {
+          _isHandlingMonitorChange = false;
+        }
+      }
+    } catch (e) {
+      // Silently ignore errors during polling to avoid spam
+      _isHandlingMonitorChange = false;
+    }
   }
   
   Future<void> _loadMonitors() async {
@@ -409,6 +587,44 @@ class _MyAppState extends State<MyApp> {
         );
       }
     }
+  }
+  
+  // Get primary monitor's URL (helper for fallback)
+  // IMPORTANT: Only returns URL if wallpaper is RUNNING successfully
+  // This prevents fallback loops when URLs are invalid
+  String? _getPrimaryMonitorUrl() {
+    // Find primary monitor with RUNNING wallpaper
+    for (final monitor in _monitors) {
+      if (monitor.isPrimary) {
+        // Check if wallpaper is actually running on this monitor
+        if (_monitorWallpapers[monitor.index] == true) {
+          final controller = _monitorUrlControllers[monitor.index];
+          if (controller != null) {
+            final url = controller.text.trim();
+            if (url.isNotEmpty) {
+              print('[APP] Found RUNNING wallpaper on primary monitor: $url');
+              return url;
+            }
+          }
+        } else {
+          print('[APP] Primary monitor exists but wallpaper is not running');
+        }
+      }
+    }
+    
+    // Fallback: return any RUNNING wallpaper URL (not primary)
+    for (final entry in _monitorWallpapers.entries) {
+      if (entry.value == true && _monitorUrlControllers.containsKey(entry.key)) {
+        final url = _monitorUrlControllers[entry.key]!.text.trim();
+        if (url.isNotEmpty) {
+          print('[APP] Found RUNNING wallpaper on monitor ${entry.key}: $url');
+          return url;
+        }
+      }
+    }
+    
+    print('[APP] No RUNNING wallpaper found for fallback');
+    return null;
   }
   
   // Load quick test page URL

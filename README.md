@@ -10,7 +10,7 @@ A Flutter Windows plugin that embeds WebView2 as an interactive desktop wallpape
 - 🎯 **Proper Z-Order** - WebView renders behind desktop icons (not covering them)
 - 🖱️ **Mouse Transparency** - Optional click-through to desktop
 - 📺 **Multi-Monitor Support** - Different content on each display
-- 🔥 **Hot-Plug Auto Setup** (NEW ✨) - Auto-detect and apply wallpaper on new monitors
+- 🔥 **Smart Hot-Plug** (v1.3.1 ✨) - Auto-detects monitors, restores configurations, handles failures
 - 🪟 **Windows 10/11 Support** - Optimized for modern Windows
 
 ### Performance & Power

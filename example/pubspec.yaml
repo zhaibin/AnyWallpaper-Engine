@@ -10,6 +10,7 @@ dependencies:
     sdk: flutter
   anywp_engine:
     path: ../
+  window_manager: ^0.3.7
 
 dev_dependencies:
   flutter_test:

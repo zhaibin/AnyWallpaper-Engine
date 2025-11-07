@@ -3083,23 +3083,22 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
   // We need to ensure it's safe to call Flutter API from this context
   
   try {
-    std::cout << "[AnyWP] [DisplayChange] Preparing to invoke Dart callback..." << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] Monitor change detected" << std::endl;
     
-    // Create empty map for the notification
-    auto args = std::make_unique<flutter::EncodableValue>(flutter::EncodableMap());
+    // CRITICAL: InvokeMethod causes deadlock/crash even with message queue
+    // Root cause: Flutter engine thread synchronization issues
+    // Solution: Use polling from Dart side instead (Timer.periodic)
     
-    std::cout << "[AnyWP] [DisplayChange] Invoking onMonitorChange method..." << std::endl;
+    // Do NOT call InvokeMethod - it will hang the application
+    // method_channel_->InvokeMethod("onMonitorChange", std::move(args));
     
-    // Invoke the method - this should be safe now as we're using SafeNotifyMonitorChange
-    // which posts a message to ensure we're in the correct thread context
-    method_channel_->InvokeMethod("onMonitorChange", std::move(args));
-    
-    std::cout << "[AnyWP] [DisplayChange] InvokeMethod completed successfully" << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] Skipping InvokeMethod to prevent deadlock" << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] Dart side will detect changes via polling" << std::endl;
     
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [DisplayChange] EXCEPTION during InvokeMethod: " << e.what() << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] EXCEPTION: " << e.what() << std::endl;
   } catch (...) {
-    std::cout << "[AnyWP] [DisplayChange] UNKNOWN EXCEPTION during InvokeMethod" << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] UNKNOWN EXCEPTION" << std::endl;
   }
   
   std::cout << "[AnyWP] [DisplayChange] NotifyMonitorChange completed" << std::endl;

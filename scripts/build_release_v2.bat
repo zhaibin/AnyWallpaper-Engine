@@ -26,7 +26,7 @@ set "EXAMPLE_DIR=%cd%\example"
 set "BUILD_DIR=%EXAMPLE_DIR%\build\windows\x64"
 set "RELEASE_DIR=%cd%\release"
 set "TEMPLATE_DIR=%cd%\templates"
-set "VERSION=1.3.0"
+set "VERSION=1.3.1"
 set "RELEASE_NAME=anywp_engine_v%VERSION%"
 set "ERROR_COUNT=0"
 
