@@ -3372,65 +3372,61 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
         case WTS_CONSOLE_CONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE CONNECTED (returned from remote desktop)" << std::endl;
           display_change_instance_->is_remote_session_.store(false);
-          // CRITICAL: Stop old wallpaper (cross-session windows are never visible)
-          std::cout << "[AnyWP] [PowerSaving] Stopping cross-session wallpaper..." << std::endl;
-          display_change_instance_->StopWallpaper();
-          // Check if wallpaper should be active
+          // Check if wallpaper should be active (force_reinit will handle stop+rebuild)
           std::cout << "[AnyWP] [PowerSaving] Session switched, checking if wallpaper should be active..." << std::endl;
           if (display_change_instance_->ShouldWallpaperBeActive()) {
             std::cout << "[AnyWP] [PowerSaving] Rebuilding wallpaper on new session..." << std::endl;
             display_change_instance_->is_paused_.store(true);  // Force paused state
             display_change_instance_->ResumeWallpaper("Session: Switched to local console", true);  // force_reinit = true
           } else {
-            std::cout << "[AnyWP] [PowerSaving] System locked, wallpaper will rebuild after unlock" << std::endl;
+            std::cout << "[AnyWP] [PowerSaving] System locked, will stop wallpaper and rebuild after unlock" << std::endl;
+            // Stop cross-session wallpaper (it's not visible anyway)
+            display_change_instance_->StopWallpaper();
           }
           break;
         case WTS_CONSOLE_DISCONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE DISCONNECTED (switched to remote desktop)" << std::endl;
           display_change_instance_->is_remote_session_.store(true);
-          // CRITICAL: Stop old wallpaper (cross-session windows are never visible)
-          std::cout << "[AnyWP] [PowerSaving] Stopping cross-session wallpaper..." << std::endl;
-          display_change_instance_->StopWallpaper();
-          // Check if wallpaper should be active
+          // Check if wallpaper should be active (force_reinit will handle stop+rebuild)
           std::cout << "[AnyWP] [PowerSaving] Session switched, checking if wallpaper should be active..." << std::endl;
           if (display_change_instance_->ShouldWallpaperBeActive()) {
             std::cout << "[AnyWP] [PowerSaving] Rebuilding wallpaper on new session..." << std::endl;
             display_change_instance_->is_paused_.store(true);  // Force paused state
             display_change_instance_->ResumeWallpaper("Session: Switched to remote desktop", true);  // force_reinit = true
           } else {
-            std::cout << "[AnyWP] [PowerSaving] System locked, wallpaper will rebuild after unlock" << std::endl;
+            std::cout << "[AnyWP] [PowerSaving] System locked, will stop wallpaper and rebuild after unlock" << std::endl;
+            // Stop cross-session wallpaper (it's not visible anyway)
+            display_change_instance_->StopWallpaper();
           }
           break;
         case WTS_REMOTE_CONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: REMOTE DESKTOP CONNECTED" << std::endl;
           display_change_instance_->is_remote_session_.store(true);
-          // CRITICAL: Stop old wallpaper (cross-session windows are never visible)
-          std::cout << "[AnyWP] [PowerSaving] Stopping cross-session wallpaper..." << std::endl;
-          display_change_instance_->StopWallpaper();
-          // Check if wallpaper should be active
+          // Check if wallpaper should be active (force_reinit will handle stop+rebuild)
           std::cout << "[AnyWP] [PowerSaving] Session switched, checking if wallpaper should be active..." << std::endl;
           if (display_change_instance_->ShouldWallpaperBeActive()) {
             std::cout << "[AnyWP] [PowerSaving] Rebuilding wallpaper on new session..." << std::endl;
             display_change_instance_->is_paused_.store(true);  // Force paused state
             display_change_instance_->ResumeWallpaper("Session: Remote desktop connected", true);  // force_reinit = true
           } else {
-            std::cout << "[AnyWP] [PowerSaving] System locked, wallpaper will rebuild after unlock" << std::endl;
+            std::cout << "[AnyWP] [PowerSaving] System locked, will stop wallpaper and rebuild after unlock" << std::endl;
+            // Stop cross-session wallpaper (it's not visible anyway)
+            display_change_instance_->StopWallpaper();
           }
           break;
         case WTS_REMOTE_DISCONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: REMOTE DESKTOP DISCONNECTED" << std::endl;
           display_change_instance_->is_remote_session_.store(false);
-          // CRITICAL: Stop old wallpaper (cross-session windows are never visible)
-          std::cout << "[AnyWP] [PowerSaving] Stopping cross-session wallpaper..." << std::endl;
-          display_change_instance_->StopWallpaper();
-          // Check if wallpaper should be active
+          // Check if wallpaper should be active (force_reinit will handle stop+rebuild)
           std::cout << "[AnyWP] [PowerSaving] Session switched, checking if wallpaper should be active..." << std::endl;
           if (display_change_instance_->ShouldWallpaperBeActive()) {
             std::cout << "[AnyWP] [PowerSaving] Rebuilding wallpaper on new session..." << std::endl;
             display_change_instance_->is_paused_.store(true);  // Force paused state
             display_change_instance_->ResumeWallpaper("Session: Remote desktop disconnected", true);  // force_reinit = true
           } else {
-            std::cout << "[AnyWP] [PowerSaving] System locked, wallpaper will rebuild after unlock" << std::endl;
+            std::cout << "[AnyWP] [PowerSaving] System locked, will stop wallpaper and rebuild after unlock" << std::endl;
+            // Stop cross-session wallpaper (it's not visible anyway)
+            display_change_instance_->StopWallpaper();
           }
           break;
       }
