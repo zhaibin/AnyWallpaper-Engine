@@ -3425,8 +3425,15 @@ void AnyWPEnginePlugin::UpdatePowerState() {
     } else {
       if (power_state_ == PowerState::IDLE) {
         std::cout << "[AnyWP] [PowerSaving] User ACTIVE again" << std::endl;
-        ResumeWallpaper("USER_IDLE");
-        NotifyPowerStateChange(PowerState::ACTIVE);
+        
+        // Check session state before resuming
+        if (ShouldWallpaperBeActive()) {
+          ResumeWallpaper("USER_IDLE");
+          NotifyPowerStateChange(PowerState::ACTIVE);
+        } else {
+          std::cout << "[AnyWP] [PowerSaving] Session doesn't allow wallpaper (locked/remote), keeping paused" << std::endl;
+          NotifyPowerStateChange(PowerState::ACTIVE);  // Reset state but keep paused
+        }
       }
     }
   }
@@ -3496,9 +3503,17 @@ void AnyWPEnginePlugin::StartFullscreenDetection() {
           PauseWallpaper("FULLSCREEN_APP");
           power_state_ = PowerState::FULLSCREEN_APP;
         } else if (!is_fullscreen && power_state_ == PowerState::FULLSCREEN_APP) {
-          std::cout << "[AnyWP] [PowerSaving] No fullscreen app, resuming wallpaper" << std::endl;
-          ResumeWallpaper("FULLSCREEN_APP");
-          power_state_ = PowerState::ACTIVE;
+          std::cout << "[AnyWP] [PowerSaving] No fullscreen app" << std::endl;
+          
+          // Check session state before resuming
+          if (ShouldWallpaperBeActive()) {
+            std::cout << "[AnyWP] [PowerSaving] Session allows wallpaper, resuming..." << std::endl;
+            ResumeWallpaper("FULLSCREEN_APP");
+            power_state_ = PowerState::ACTIVE;
+          } else {
+            std::cout << "[AnyWP] [PowerSaving] Session doesn't allow wallpaper (locked/remote), keeping paused" << std::endl;
+            power_state_ = PowerState::ACTIVE;  // Reset state but keep paused
+          }
         }
         
         // Also check user activity
