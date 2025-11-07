@@ -2484,8 +2484,8 @@ bool AnyWPEnginePlugin::StopWallpaper() {
       }
       
       wallpaper_instances_.clear();
-      default_wallpaper_url_.clear();
-      std::cout << "[AnyWP] All wallpapers stopped, cleared default URL" << std::endl;
+      // DON'T clear default_wallpaper_url_ - needed for session switch rebuild
+      std::cout << "[AnyWP] All wallpapers stopped (URL preserved for rebuild)" << std::endl;
     }
   }
 
