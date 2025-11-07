@@ -1,0 +1,27 @@
+{
+  "name": "anywp-sdk",
+  "version": "4.2.0",
+  "description": "AnyWP Engine JavaScript SDK - Modular Architecture",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c rollup.config.js",
+    "build:watch": "rollup -c rollup.config.js --watch",
+    "build:production": "cross-env NODE_ENV=production rollup -c rollup.config.js"
+  },
+  "keywords": [
+    "wallpaper",
+    "webview2",
+    "desktop",
+    "windows"
+  ],
+  "author": "AnyWP Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "rollup": "^4.9.4",
+    "cross-env": "^7.0.3"
+  }
+}
+

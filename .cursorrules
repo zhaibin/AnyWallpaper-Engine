@@ -30,6 +30,14 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 ```
 lib/                    # Dart API
 windows/                # C++ 实现 + anywp_sdk.js
+  ├── sdk/              # 模块化 JavaScript SDK 源码 (NEW v4.2.0)
+  │   ├── core/         # 核心模块 (AnyWP对象, 初始化)
+  │   ├── modules/      # 功能模块 (events, click, drag, storage, spa, animations)
+  │   ├── utils/        # 工具模块 (bounds, coordinates, debug)
+  │   ├── index.js      # 入口文件
+  │   ├── package.json  # 依赖配置
+  │   └── rollup.config.js  # 构建配置
+  └── anywp_sdk.js      # 构建后的单文件 SDK
 example/                # 示例应用
 examples/               # 测试 HTML (8个)
 docs/                   # 核心文档 (21个)
@@ -61,6 +69,38 @@ release/                # 发布包
 1. 实现功能 + 错误处理
 2. 运行测试验证（`.\scripts\test.bat`）
 3. 自动提交代码
+
+### Web SDK 开发 (v4.2.0+ 模块化)
+**源码位置**: `windows/sdk/`
+
+**开发步骤**:
+1. 修改模块源码 (`sdk/core/`, `sdk/modules/`, `sdk/utils/`)
+2. 构建 SDK: `cd windows\sdk && npm run build`
+3. 测试: 使用生成的 `windows\anywp_sdk.js`
+4. 提交: 同时提交源码和构建产物
+
+**快速构建**:
+```bash
+# 从项目根目录
+.\scripts\build_sdk.bat
+
+# 或从 windows/sdk 目录
+cd windows\sdk
+npm run build
+```
+
+**模块说明**:
+- `core/AnyWP.js` - 核心对象定义
+- `core/init.js` - 初始化逻辑
+- `modules/events.js` - 事件系统
+- `modules/click.js` - 点击处理
+- `modules/drag.js` - 拖拽功能
+- `modules/storage.js` - 状态持久化
+- `modules/spa.js` - SPA 框架支持
+- `modules/animations.js` - 动画控制
+- `utils/bounds.js` - 边界计算
+- `utils/coordinates.js` - 坐标转换
+- `utils/debug.js` - 调试工具
 
 ### 调试流程
 1. 编译运行：`.\scripts\debug_run.bat`
