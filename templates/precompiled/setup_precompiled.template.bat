@@ -61,6 +61,7 @@ for %%F in ("
     "lib\dart\anywp_engine.dart"
     "windows\anywp_sdk.js"
     "windows\CMakeLists.txt"
+    "windows\src\anywp_engine_plugin.cpp"
 ) do (
     if not exist "%TARGET_DIR%%%F" (
         echo    ERROR: Missing file: %TARGET_DIR%%%F

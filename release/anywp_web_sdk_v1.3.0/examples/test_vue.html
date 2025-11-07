@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnyWP - Vue Integration Test</title>
+  
+  <!-- 加载 AnyWP SDK -->
+  <script src="../windows/anywp_sdk.js"></script>
+  
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #42b883 0%, #35495e 100%);
+      min-height: 100vh;
+      padding: 40px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 40px;
+    }
+    
+    .header h1 {
+      font-size: 48px;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .header p {
+      font-size: 18px;
+      opacity: 0.9;
+    }
+    
+    .status {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 20px;
+      border-radius: 12px;
+      color: white;
+      margin-bottom: 30px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .status-item {
+      margin: 8px 0;
+      font-size: 14px;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .tab {
+      padding: 15px 30px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid transparent;
+      border-radius: 12px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      backdrop-filter: blur(10px);
+    }
+    
+    .tab:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .tab.active {
+      background: white;
+      color: #42b883;
+      border-color: #42b883;
+    }
+    
+    .tab-content {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      min-height: 400px;
+    }
+    
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+    
+    .card {
+      background: linear-gradient(135deg, #42b883 0%, #35495e 100%);
+      border-radius: 12px;
+      padding: 25px;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .card h3 {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    
+    .card p {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+    
+    .todo-app {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .todo-input {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .todo-input input {
+      flex: 1;
+      padding: 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 16px;
+    }
+    
+    .todo-input button {
+      padding: 15px 30px;
+      background: linear-gradient(135deg, #42b883 0%, #35495e 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .todo-input button:hover {
+      transform: scale(1.05);
+    }
+    
+    .todo-list {
+      list-style: none;
+    }
+    
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      transition: all 0.2s;
+    }
+    
+    .todo-item:hover {
+      background: #e0e0e0;
+    }
+    
+    .todo-item.completed {
+      opacity: 0.6;
+    }
+    
+    .todo-item.completed .todo-text {
+      text-decoration: line-through;
+    }
+    
+    .todo-checkbox {
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+    }
+    
+    .todo-text {
+      flex: 1;
+      font-size: 16px;
+    }
+    
+    .todo-delete {
+      padding: 8px 16px;
+      background: #f5576c;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .todo-delete:hover {
+      background: #e04858;
+    }
+    
+    .counter-display {
+      font-size: 72px;
+      font-weight: bold;
+      color: #42b883;
+      text-align: center;
+      margin: 30px 0;
+    }
+    
+    .counter-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+    }
+    
+    .counter-btn {
+      padding: 15px 40px;
+      font-size: 18px;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: white;
+    }
+    
+    .counter-btn.increment {
+      background: linear-gradient(135deg, #42b883 0%, #35495e 100%);
+    }
+    
+    .counter-btn.decrement {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .counter-btn.reset {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .counter-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
+    
+    .log {
+      background: rgba(0, 0, 0, 0.8);
+      color: #0f0;
+      padding: 20px;
+      border-radius: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 30px;
+    }
+    
+    .log div {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const { createApp, ref, onMounted, onUnmounted, computed } = Vue;
+
+    createApp({
+      setup() {
+        // State
+        const activeTab = ref('home');
+        const count = ref(0);
+        const newTodo = ref('');
+        const todos = ref([
+          { id: 1, text: 'Click me to complete', completed: false },
+          { id: 2, text: 'Click X to delete', completed: false }
+        ]);
+        const logs = ref([]);
+        const spaDetected = ref(false);
+        
+        // AnyWP SDK info (for template access)
+        const anywpVersion = ref('N/A');
+        const dpiScale = ref(1);
+        const vueVersion = ref(Vue.version || 'N/A');
+
+        // Computed
+        const activeTodos = computed(() => 
+          todos.value.filter(t => !t.completed).length
+        );
+
+        // Methods
+        const addLog = (message) => {
+          const timestamp = new Date().toLocaleTimeString();
+          logs.value = [...logs.value, `[${timestamp}] ${message}`].slice(-10);
+        };
+
+        const switchTab = (tab) => {
+          addLog(`Switching to ${tab} tab`);
+          activeTab.value = tab;
+          
+          // Refresh bounds after tab switch (DOM changed)
+          setTimeout(() => {
+            if (window.AnyWP) {
+              AnyWP.refreshBounds();
+              addLog('Bounds refreshed after tab switch');
+            }
+          }, 100);
+        };
+
+        const addTodo = () => {
+          if (newTodo.value.trim()) {
+            todos.value.push({
+              id: Date.now(),
+              text: newTodo.value,
+              completed: false
+            });
+            addLog(`Added todo: ${newTodo.value}`);
+            newTodo.value = '';
+            
+            // Refresh bounds (new elements added)
+            setTimeout(() => {
+              if (window.AnyWP) {
+                AnyWP.refreshBounds();
+              }
+            }, 100);
+          }
+        };
+
+        const toggleTodo = (id) => {
+          const todo = todos.value.find(t => t.id === id);
+          if (todo) {
+            todo.completed = !todo.completed;
+            addLog(`Toggled todo: ${todo.text}`);
+          }
+        };
+
+        const deleteTodo = (id) => {
+          const todo = todos.value.find(t => t.id === id);
+          if (todo) {
+            addLog(`Deleted todo: ${todo.text}`);
+            todos.value = todos.value.filter(t => t.id !== id);
+          }
+        };
+
+        const openLink = (name, url) => {
+          addLog(`Opening ${name}`);
+          if (window.AnyWP) {
+            AnyWP.openURL(url);
+          }
+        };
+
+        // Lifecycle
+        onMounted(() => {
+          if (!window.AnyWP) {
+            console.error('AnyWP SDK not loaded');
+            return;
+          }
+
+          // Initialize AnyWP info for template
+          anywpVersion.value = AnyWP.version || 'N/A';
+          dpiScale.value = AnyWP.dpiScale || 1;
+
+          // Enable debug mode
+          AnyWP.enableDebug();
+          
+          // Check if SPA was detected
+          spaDetected.value = AnyWP._spaMode;
+          
+          addLog('AnyWP SDK initialized (v' + AnyWP.version + ')');
+          addLog('SPA Mode: ' + (AnyWP._spaMode ? 'Enabled' : 'Disabled'));
+          
+          // Notify ready
+          AnyWP.ready('Vue Test Wallpaper');
+
+          // Register counter buttons
+          AnyWP.onClick('.counter-btn.increment', (x, y) => {
+            addLog('Increment clicked at (' + x + ',' + y + ')');
+            count.value++;
+          }, { waitFor: true, debug: true });
+
+          AnyWP.onClick('.counter-btn.decrement', (x, y) => {
+            addLog('Decrement clicked at (' + x + ',' + y + ')');
+            count.value--;
+          }, { waitFor: true, debug: true });
+
+          AnyWP.onClick('.counter-btn.reset', (x, y) => {
+            addLog('Reset clicked at (' + x + ',' + y + ')');
+            count.value = 0;
+          }, { waitFor: true, debug: true });
+
+          // Register cards (will be registered when they appear)
+          AnyWP.onClick('#card-vue', () => {
+            openLink('Vue Docs', 'https://vuejs.org');
+          }, { waitFor: true });
+
+          AnyWP.onClick('#card-github', () => {
+            openLink('GitHub', 'https://github.com');
+          }, { waitFor: true });
+
+          AnyWP.onClick('#card-anywp', () => {
+            openLink('AnyWP', 'https://example.com');
+          }, { waitFor: true });
+        });
+
+        return {
+          activeTab,
+          count,
+          newTodo,
+          todos,
+          logs,
+          spaDetected,
+          activeTodos,
+          anywpVersion,
+          dpiScale,
+          vueVersion,
+          switchTab,
+          addTodo,
+          toggleTodo,
+          deleteTodo,
+          openLink
+        };
+      },
+
+      template: `
+        <div class="container">
+          <div class="header">
+            <h1>🎨 AnyWP Vue Integration</h1>
+            <p>Interactive Desktop Wallpaper with Vue 3</p>
+          </div>
+
+          <div class="status">
+            <div class="status-item">🚀 AnyWP SDK v{{ anywpVersion }}</div>
+            <div class="status-item">💚 Vue v{{ vueVersion }}</div>
+            <div class="status-item">🔄 SPA Mode: {{ spaDetected ? '✅ Enabled' : '❌ Disabled' }}</div>
+            <div class="status-item">📊 DPI Scale: {{ dpiScale }}x</div>
+          </div>
+
+          <div class="tabs">
+            <div class="tab" :class="{ active: activeTab === 'home' }" @click="switchTab('home')">
+              🏠 Home
+            </div>
+            <div class="tab" :class="{ active: activeTab === 'counter' }" @click="switchTab('counter')">
+              🔢 Counter
+            </div>
+            <div class="tab" :class="{ active: activeTab === 'todos' }" @click="switchTab('todos')">
+              ✓ Todos ({{ activeTodos }})
+            </div>
+          </div>
+
+          <div class="tab-content">
+            <!-- Home Tab -->
+            <div v-if="activeTab === 'home'">
+              <h2 style="margin-bottom: 30px; color: #333;">Explore Links</h2>
+              <div class="card-grid">
+                <div id="card-vue" class="card">
+                  <h3>💚 Vue.js</h3>
+                  <p>The Progressive JavaScript Framework</p>
+                </div>
+                <div id="card-github" class="card">
+                  <h3>🐙 GitHub</h3>
+                  <p>Where the world builds software</p>
+                </div>
+                <div id="card-anywp" class="card">
+                  <h3>📚 AnyWP</h3>
+                  <p>Interactive Wallpaper Engine</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Counter Tab -->
+            <div v-if="activeTab === 'counter'">
+              <h2 style="text-align: center; margin-bottom: 20px; color: #333;">
+                Interactive Counter
+              </h2>
+              <div class="counter-display">{{ count }}</div>
+              <div class="counter-buttons">
+                <button class="counter-btn increment">+ Increment</button>
+                <button class="counter-btn decrement">- Decrement</button>
+                <button class="counter-btn reset">↻ Reset</button>
+              </div>
+            </div>
+
+            <!-- Todos Tab -->
+            <div v-if="activeTab === 'todos'">
+              <div class="todo-app">
+                <h2 style="margin-bottom: 20px; color: #333;">Todo List</h2>
+                
+                <div class="todo-input">
+                  <input 
+                    v-model="newTodo" 
+                    @keyup.enter="addTodo"
+                    placeholder="What needs to be done?"
+                  >
+                  <button @click="addTodo">Add</button>
+                </div>
+
+                <ul class="todo-list">
+                  <li 
+                    v-for="todo in todos" 
+                    :key="todo.id"
+                    class="todo-item"
+                    :class="{ completed: todo.completed }"
+                  >
+                    <input 
+                      type="checkbox" 
+                      class="todo-checkbox"
+                      :checked="todo.completed"
+                      @change="toggleTodo(todo.id)"
+                    >
+                    <span class="todo-text">{{ todo.text }}</span>
+                    <button class="todo-delete" @click="deleteTodo(todo.id)">×</button>
+                  </li>
+                </ul>
+
+                <p v-if="todos.length === 0" style="text-align: center; color: #999; margin-top: 40px;">
+                  No todos yet. Add one above!
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="log">
+            <div><strong>📋 Event Log:</strong></div>
+            <div v-for="(log, index) in logs" :key="index">{{ log }}</div>
+          </div>
+        </div>
+      `
+    }).mount('#app');
+  </script>
+</body>
+</html>
+

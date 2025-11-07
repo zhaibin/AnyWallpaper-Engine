@@ -190,40 +190,97 @@ grep -r "newAPIName" docs/ README.md lib/
 **必须存在的文件**（缺一不可）：
 - [ ] `bin/anywp_engine_plugin.dll` - 运行时 DLL
 - [ ] `bin/WebView2Loader.dll` - WebView2 运行时
-- [ ] `lib/anywp_engine_plugin.lib` - **链接库（必需！）**
+- [ ] `lib/anywp_engine_plugin.lib` - **链接库（必需！客户集成时链接器需要）**
 - [ ] `lib/anywp_engine.dart` - Dart 源码（标准位置）
 - [ ] `lib/dart/anywp_engine.dart` - Dart 源码（向后兼容）
-- [ ] `include/anywp_engine/any_w_p_engine_plugin.h` - 头文件
-- [ ] `sdk/anywp_sdk.js` - JavaScript SDK
-- [ ] `windows/CMakeLists.txt` - CMake 配置
+- [ ] `include/anywp_engine/any_w_p_engine_plugin.h` - 公共头文件
+- [ ] `windows/src/anywp_engine_plugin.cpp` - **C++ 源码（必需！客户可选择自行编译）**
+- [ ] `windows/src/anywp_engine_plugin.h` - C++ 源码头文件
+- [ ] `windows/anywp_sdk.js` - JavaScript SDK
+- [ ] `windows/CMakeLists.txt` - CMake 配置（支持预编译/源码模式）
+- [ ] `windows/packages/` - WebView2 NuGet 包目录
+- [ ] `windows/packages.config` - NuGet 配置
 
 **验证命令**（在项目根目录执行）:
 ```bash
-# 验证文档覆盖度
+# 验证文档覆盖度（替换 newAPIName 为实际 API 名称）
 grep -r "newAPIName" release/anywp_engine_v{版本号}/
 
 # ⚠️ 验证关键文件存在（必须全部返回 True）
-Test-Path "release/anywp_engine_v{版本号}/bin/anywp_engine_plugin.dll"
-Test-Path "release/anywp_engine_v{版本号}/bin/WebView2Loader.dll"
-Test-Path "release/anywp_engine_v{版本号}/lib/anywp_engine_plugin.lib"  # 最易遗漏
-Test-Path "release/anywp_engine_v{版本号}/lib/anywp_engine.dart"        # 标准位置
-Test-Path "release/anywp_engine_v{版本号}/lib/dart/anywp_engine.dart"   # 向后兼容
+Test-Path "release\anywp_engine_v{版本号}\bin\anywp_engine_plugin.dll"
+Test-Path "release\anywp_engine_v{版本号}\bin\WebView2Loader.dll"
+Test-Path "release\anywp_engine_v{版本号}\lib\anywp_engine_plugin.lib"      # 最易遗漏！
+Test-Path "release\anywp_engine_v{版本号}\lib\anywp_engine.dart"            # 标准位置
+Test-Path "release\anywp_engine_v{版本号}\lib\dart\anywp_engine.dart"       # 向后兼容
+Test-Path "release\anywp_engine_v{版本号}\windows\src\anywp_engine_plugin.cpp"  # C++ 源码
+Test-Path "release\anywp_engine_v{版本号}\windows\src\anywp_engine_plugin.h"    # C++ 头文件
+Test-Path "release\anywp_engine_v{版本号}\windows\anywp_sdk.js"
+Test-Path "release\anywp_engine_v{版本号}\windows\CMakeLists.txt"
+Test-Path "release\anywp_engine_v{版本号}\windows\packages\"
 
 # 运行发布包自检脚本（推荐）
 cmd /c "cd release\anywp_engine_v{版本号} && verify_precompiled.bat"
 ```
 
 **❌ 如果缺少任何关键文件**：
-1. 停止发布流程
-2. 重新运行 `.\scripts\build_release_v2.bat`
-3. 如果仍然缺少，手动复制并调查原因
+1. **立即停止发布流程** - 不完整的包会导致客户集成失败
+2. 重新运行 `.\scripts\build_release_v2.bat` 并检查错误日志
+3. 如果仍然缺少，手动复制并调查原因：
+   - `.lib` 文件：从 `example\build\windows\x64\plugins\anywp_engine\Release\`
+   - `.cpp/.h` 文件：从 `windows\`
+   - 其他文件：参考构建脚本路径
 4. 确保 `build_release_v2.bat` 中所有复制操作都是 **错误级别** 而非警告
+5. 记录问题到 CHANGELOG，避免下次发生
+
+**⚠️ 客户反馈的常见集成错误**：
+- `LNK1104: 无法打开文件 anywp_engine_plugin-NOTFOUND.obj` → 缺少 .lib 文件
+- `Source file not found` → 缺少 .cpp 源文件
+- `IMPORTED_IMPLIB not found` → .lib 文件路径不正确
+- Dart 文件找不到 → Dart 文件不在标准 lib/ 目录
 
 **额外验收（强烈建议）**：
 - 在全新 Flutter 工程中执行 `release/anywp_engine_v{版本号}/setup_precompiled.bat`
 - 运行 `release/anywp_engine_v{版本号}/example_minimal`，确认壁纸可启动/停止
 
-#### 3.5 创建 GitHub Release Notes
+#### 3.5 创建 Web SDK 独立发布包（v1.3.0+ 新增）
+
+**为 Web 开发者单独打包 JavaScript SDK**：
+
+```bash
+# 创建目录结构
+mkdir release\anywp_web_sdk_v{版本号}
+mkdir release\anywp_web_sdk_v{版本号}\sdk
+mkdir release\anywp_web_sdk_v{版本号}\examples
+mkdir release\anywp_web_sdk_v{版本号}\docs
+
+# 复制 SDK 文件
+Copy-Item "windows\anywp_sdk.js" "release\anywp_web_sdk_v{版本号}\sdk\" -Force
+
+# 复制示例文件
+Copy-Item "examples\*.html" "release\anywp_web_sdk_v{版本号}\examples\" -Force
+
+# 复制文档
+Copy-Item "docs\WEB_DEVELOPER_GUIDE_CN.md" "release\anywp_web_sdk_v{版本号}\docs\" -Force
+Copy-Item "docs\WEB_DEVELOPER_GUIDE.md" "release\anywp_web_sdk_v{版本号}\docs\" -Force
+Copy-Item "docs\API_USAGE_EXAMPLES.md" "release\anywp_web_sdk_v{版本号}\docs\" -Force
+Copy-Item "LICENSE" "release\anywp_web_sdk_v{版本号}\" -Force
+
+# 创建 README.md（使用 write 工具创建）
+# 压缩为 ZIP
+cd release
+Compress-Archive -Path "anywp_web_sdk_v{版本号}" -DestinationPath "anywp_web_sdk_v{版本号}.zip" -Force
+cd ..
+```
+
+**检查清单**：
+- [ ] SDK 文件：`sdk/anywp_sdk.js`
+- [ ] 8个示例文件：`examples/test_*.html`
+- [ ] 3个文档文件：`docs/WEB_DEVELOPER_GUIDE*.md`, `API_USAGE_EXAMPLES.md`
+- [ ] README.md 包含快速开始和 API 参考
+- [ ] LICENSE 文件
+- [ ] ZIP 文件生成成功
+
+#### 3.6 创建 GitHub Release Notes
 - [ ] 复制 `docs/RELEASE_TEMPLATE.md`
 - [ ] 修改为 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
 - [ ] 填写完整的功能说明、示例、测试结果
@@ -275,7 +332,8 @@ git push origin main
    - **Title**: `AnyWP Engine v{版本号} - 功能描述`
    - **Description**: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md` 内容
 3. 上传文件:
-   - `release/anywp_engine_v{版本号}.zip`
+   - `release/anywp_engine_v{版本号}.zip` (Flutter 插件包)
+   - `release/anywp_web_sdk_v{版本号}.zip` (Web SDK 独立包，v1.3.0+)
 4. 勾选 "Set as the latest release"
 5. 点击 "Publish release"
 
