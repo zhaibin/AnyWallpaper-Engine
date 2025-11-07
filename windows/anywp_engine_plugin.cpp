@@ -3322,27 +3322,41 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
         case WTS_CONSOLE_CONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE CONNECTED (returned from remote desktop)" << std::endl;
           display_change_instance_->is_remote_session_.store(false);
+          // Force reinitialize wallpaper in new session
+          std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
+          display_change_instance_->ResumeWallpaper("Session: Switched to local console");
           break;
         case WTS_CONSOLE_DISCONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE DISCONNECTED (switched to remote desktop)" << std::endl;
           display_change_instance_->is_remote_session_.store(true);
+          // Force reinitialize wallpaper in new session
+          std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
+          display_change_instance_->ResumeWallpaper("Session: Switched to remote desktop");
           break;
         case WTS_REMOTE_CONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: REMOTE DESKTOP CONNECTED" << std::endl;
           display_change_instance_->is_remote_session_.store(true);
+          // Force reinitialize wallpaper in new session
+          std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
+          display_change_instance_->ResumeWallpaper("Session: Remote desktop connected");
           break;
         case WTS_REMOTE_DISCONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: REMOTE DESKTOP DISCONNECTED" << std::endl;
           display_change_instance_->is_remote_session_.store(false);
+          // Force reinitialize wallpaper in new session
+          std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
+          display_change_instance_->ResumeWallpaper("Session: Remote desktop disconnected");
           break;
       }
       
-      // Unified state check: Should wallpaper be active now?
-      std::cout << "[AnyWP] [PowerSaving] Checking if wallpaper should be active..." << std::endl;
-      if (display_change_instance_->ShouldWallpaperBeActive()) {
-        display_change_instance_->ResumeWallpaper("Session: User in local desktop");
-      } else {
-        display_change_instance_->PauseWallpaper("Session: User not in local desktop");
+      // For lock/unlock events, use unified state check
+      if (wParam == WTS_SESSION_LOCK || wParam == WTS_SESSION_UNLOCK) {
+        std::cout << "[AnyWP] [PowerSaving] Checking if wallpaper should be active..." << std::endl;
+        if (display_change_instance_->ShouldWallpaperBeActive()) {
+          display_change_instance_->ResumeWallpaper("Session: User in local desktop");
+        } else {
+          display_change_instance_->PauseWallpaper("Session: User not in local desktop");
+        }
       }
       std::cout << "[AnyWP] [PowerSaving] =========================================" << std::endl;
       break;
@@ -3380,19 +3394,19 @@ bool AnyWPEnginePlugin::ShouldWallpaperBeActive() {
   std::cout << "[AnyWP] [PowerSaving] Session check: locked=" << locked 
             << ", remote=" << remote << std::endl;
   
-  // Wallpaper should be active only if NOT locked AND NOT remote
+  // Wallpaper should be active only if NOT locked
+  // Remote session is now ALLOWED (wallpaper will be recreated in new session)
   if (locked) {
     std::cout << "[AnyWP] [PowerSaving] → System is LOCKED, wallpaper should be PAUSED" << std::endl;
     return false;
   }
   
+  // Allow wallpaper in both local and remote sessions
   if (remote) {
-    std::cout << "[AnyWP] [PowerSaving] → In REMOTE session, wallpaper should be PAUSED" << std::endl;
-    return false;
+    std::cout << "[AnyWP] [PowerSaving] → In REMOTE session, wallpaper should be ACTIVE (will reinit)" << std::endl;
+  } else {
+    std::cout << "[AnyWP] [PowerSaving] → In LOCAL session, wallpaper should be ACTIVE" << std::endl;
   }
-  
-  // All checks passed - user is in local unlocked desktop
-  std::cout << "[AnyWP] [PowerSaving] → Local UNLOCKED desktop, wallpaper should be ACTIVE" << std::endl;
   return true;
 }
 
