@@ -3871,15 +3871,47 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     if (!saved_url.empty()) {
       std::cout << "[AnyWP] [PowerSaving] Re-initializing wallpaper with URL: " << saved_url << std::endl;
       
+      // CRITICAL: Re-enumerate monitors before rebuilding (session may have different monitors)
+      std::cout << "[AnyWP] [PowerSaving] Re-enumerating monitors for current session..." << std::endl;
+      GetMonitors();
+      std::cout << "[AnyWP] [PowerSaving] Current session has " << monitors_.size() << " monitor(s)" << std::endl;
+      
       if (!saved_monitor_indices.empty()) {
-        // Restore wallpaper on all previously active monitors
-        std::cout << "[AnyWP] [PowerSaving] Restoring wallpaper on " 
+        // Restore wallpaper on all previously active monitors that still exist
+        std::cout << "[AnyWP] [PowerSaving] Attempting to restore " 
                   << saved_monitor_indices.size() << " monitor(s)..." << std::endl;
         
+        int restored_count = 0;
         for (int monitor_index : saved_monitor_indices) {
-          std::cout << "[AnyWP] [PowerSaving] Restoring wallpaper on monitor " 
-                    << monitor_index << std::endl;
-          InitializeWallpaperOnMonitor(saved_url, !enable_interaction_, monitor_index);
+          // Check if this monitor exists in current session
+          bool monitor_exists = false;
+          for (const auto& monitor : monitors_) {
+            if (monitor.index == monitor_index) {
+              monitor_exists = true;
+              break;
+            }
+          }
+          
+          if (monitor_exists) {
+            std::cout << "[AnyWP] [PowerSaving] Restoring wallpaper on monitor " 
+                      << monitor_index << std::endl;
+            bool success = InitializeWallpaperOnMonitor(saved_url, !enable_interaction_, monitor_index);
+            if (success) {
+              restored_count++;
+            }
+          } else {
+            std::cout << "[AnyWP] [PowerSaving] Skipping monitor " << monitor_index 
+                      << " (not available in current session)" << std::endl;
+          }
+        }
+        
+        std::cout << "[AnyWP] [PowerSaving] Successfully restored " << restored_count 
+                  << " of " << saved_monitor_indices.size() << " monitor(s)" << std::endl;
+        
+        // If no monitors were restored, try primary display as fallback
+        if (restored_count == 0 && !monitors_.empty()) {
+          std::cout << "[AnyWP] [PowerSaving] No original monitors available, falling back to primary display" << std::endl;
+          InitializeWallpaperOnMonitor(saved_url, !enable_interaction_, 0);
         }
       } else {
         // Fallback: initialize on primary display
