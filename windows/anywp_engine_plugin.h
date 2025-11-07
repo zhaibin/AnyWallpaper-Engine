@@ -17,6 +17,9 @@
 #include <psapi.h>
 #include <mutex>
 
+// Forward declarations of modular classes
+#include "utils/url_validator.h"
+
 namespace anywp_engine {
 
 // Monitor information
@@ -70,20 +73,9 @@ private:
   std::set<HWND> tracked_windows_;
 };
 
-// P0-3: URL Validator for security
-class URLValidator {
-public:
-  bool IsAllowed(const std::string& url);
-  void AddWhitelist(const std::string& pattern);
-  void AddBlacklist(const std::string& pattern);
-  void ClearWhitelist();
-  void ClearBlacklist();
-
-private:
-  std::vector<std::string> whitelist_;
-  std::vector<std::string> blacklist_;
-  bool MatchesPattern(const std::string& url, const std::string& pattern);
-};
+// P0-3: URL Validator for security (MOVED TO utils/url_validator.h)
+// Forward declaration - full definition in utils/url_validator.h
+class URLValidator;
 
 class AnyWPEnginePlugin : public flutter::Plugin {
  public:

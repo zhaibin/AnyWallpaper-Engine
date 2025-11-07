@@ -112,7 +112,8 @@ public:
   }
 };
 
-// P0-3: URLValidator implementation
+// P0-3: URLValidator implementation (MOVED TO utils/url_validator.cpp)
+#if 0  // Disabled - using new modular implementation
 bool URLValidator::IsAllowed(const std::string& url) {
   // Empty whitelist = allow all (except blacklist)
   bool allowed = whitelist_.empty();
@@ -179,6 +180,7 @@ bool URLValidator::MatchesPattern(const std::string& url, const std::string& pat
   
   return lower_url.find(lower_pattern) != std::string::npos;
 }
+#endif  // Disabled URLValidator - using modular implementation
 
 // P1-1: Shared WebView2 environment (static)
 Microsoft::WRL::ComPtr<ICoreWebView2Environment> AnyWPEnginePlugin::shared_environment_;
@@ -1504,6 +1506,25 @@ void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
     if (msg_start != std::string::npos && msg_end != std::string::npos) {
       std::string log_msg = message.substr(msg_start, msg_end - msg_start);
       std::cout << "[AnyWP] [WebLog] " << log_msg << std::endl;
+    }
+  }
+  else if (message.find("\"type\":\"console_log\"") != std::string::npos) {
+    // Enhanced console.log forwarding with level support
+    size_t msg_start = message.find("\"message\":\"") + 11;
+    size_t msg_end = message.rfind("\"");
+    
+    if (msg_start != std::string::npos && msg_end != std::string::npos && msg_end > msg_start) {
+      std::string log_msg = message.substr(msg_start, msg_end - msg_start);
+      bool is_error = message.find("\"level\":\"error\"") != std::string::npos;
+      bool is_warn = message.find("\"level\":\"warn\"") != std::string::npos;
+      
+      if (is_error) {
+        std::cout << "[JS-ERROR] " << log_msg << std::endl;
+      } else if (is_warn) {
+        std::cout << "[JS-WARN] " << log_msg << std::endl;
+      } else {
+        std::cout << "[JS-LOG] " << log_msg << std::endl;
+      }
     }
   }
   else if (message.find("\"type\":\"saveState\"") != std::string::npos) {

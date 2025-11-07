@@ -63,6 +63,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
   
   // Quick test pages
   final List<Map<String, String>> _testPages = [
+    {'name': '🔧 Refactoring Test', 'file': 'test_refactoring.html', 'icon': '🔧'},
     {'name': 'Simple', 'file': 'test_simple.html', 'icon': '🎨'},
     {'name': 'Draggable', 'file': 'test_draggable.html', 'icon': '🖱️'},
     {'name': 'Drag Debug', 'file': 'test_drag_debug.html', 'icon': '🔍'},
@@ -396,7 +397,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
           _monitorWallpapers[monitor.index] = false;
           _monitorLoading[monitor.index] = false;
           _monitorUrlControllers[monitor.index] = TextEditingController(
-            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_draggable.html',
+            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_refactoring.html',
           );
         }
       }
