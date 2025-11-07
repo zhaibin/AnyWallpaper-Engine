@@ -3324,6 +3324,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           display_change_instance_->is_remote_session_.store(false);
           // Force reinitialize wallpaper in new session
           std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
+          display_change_instance_->is_paused_.store(true);  // Force paused state
           display_change_instance_->ResumeWallpaper("Session: Switched to local console");
           break;
         case WTS_CONSOLE_DISCONNECT:
@@ -3331,6 +3332,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           display_change_instance_->is_remote_session_.store(true);
           // Force reinitialize wallpaper in new session
           std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
+          display_change_instance_->is_paused_.store(true);  // Force paused state
           display_change_instance_->ResumeWallpaper("Session: Switched to remote desktop");
           break;
         case WTS_REMOTE_CONNECT:
@@ -3338,6 +3340,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           display_change_instance_->is_remote_session_.store(true);
           // Force reinitialize wallpaper in new session
           std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
+          display_change_instance_->is_paused_.store(true);  // Force paused state
           display_change_instance_->ResumeWallpaper("Session: Remote desktop connected");
           break;
         case WTS_REMOTE_DISCONNECT:
@@ -3345,6 +3348,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           display_change_instance_->is_remote_session_.store(false);
           // Force reinitialize wallpaper in new session
           std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
+          display_change_instance_->is_paused_.store(true);  // Force paused state
           display_change_instance_->ResumeWallpaper("Session: Remote desktop disconnected");
           break;
       }
