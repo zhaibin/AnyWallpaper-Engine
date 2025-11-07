@@ -533,6 +533,34 @@
     this._log('Visibility callback registered');
   },
   
+  // INTERNAL: Notify visibility change (called by C++ PauseWallpaper/ResumeWallpaper)
+  _notifyVisibilityChange: function(visible) {
+    console.log('[AnyWP] _notifyVisibilityChange called:', visible);
+    
+    // Trigger registered callback
+    if (this._visibilityCallback && typeof this._visibilityCallback === 'function') {
+      try {
+        this._visibilityCallback(visible);
+        console.log('[AnyWP] Visibility callback executed successfully');
+      } catch(e) {
+        console.error('[AnyWP] Error in visibility callback:', e);
+      }
+    } else {
+      console.log('[AnyWP] No visibility callback registered');
+    }
+    
+    // Also dispatch native event for compatibility
+    try {
+      var event = new CustomEvent('AnyWP:visibility', {
+        detail: { visible: visible }
+      });
+      window.dispatchEvent(event);
+      console.log('[AnyWP] AnyWP:visibility event dispatched');
+    } catch(e) {
+      console.error('[AnyWP] Error dispatching visibility event:', e);
+    }
+  },
+  
   // ENHANCED: Comprehensive auto-pause for power saving
   _autoPauseAnimations: function() {
     // Guard: Prevent duplicate pause

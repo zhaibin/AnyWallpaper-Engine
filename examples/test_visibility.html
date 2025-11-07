@@ -209,6 +209,24 @@
   <div class="container">
     <h1>🔋 Visibility API 测试</h1>
     
+    <div class="status-panel" style="background: rgba(255, 193, 7, 0.25); border-color: rgba(255, 193, 7, 0.6); padding: 10px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: center;">
+        <div style="text-align: center; background: rgba(255, 152, 0, 0.3); padding: 8px; border-radius: 8px; border: 2px solid #ff9800;">
+          <div style="font-size: 13px; margin-bottom: 3px;">🟡 暂停次数</div>
+          <div id="pause-count" style="font-size: 36px; font-weight: bold; color: #ff9800; text-shadow: 0 0 10px rgba(255, 152, 0, 0.6);">0</div>
+        </div>
+        <div style="text-align: center; background: rgba(76, 175, 80, 0.3); padding: 8px; border-radius: 8px; border: 2px solid #4CAF50;">
+          <div style="font-size: 13px; margin-bottom: 3px;">🟢 恢复次数</div>
+          <div id="resume-count" style="font-size: 36px; font-weight: bold; color: #4CAF50; text-shadow: 0 0 10px rgba(76, 175, 80, 0.6);">0</div>
+        </div>
+        <div style="text-align: center; background: rgba(33, 150, 243, 0.3); padding: 8px; border-radius: 8px; border: 2px solid #2196F3;">
+          <div style="font-size: 12px; line-height: 1.4;">
+            💡 按 <strong>Win+L</strong> 锁屏测试<br>或点击 Pause/Resume 按钮
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <div class="status-panel">
       <h2>实时状态</h2>
       <div class="status-grid">
@@ -225,16 +243,6 @@
         <div class="status-item">
           <span class="status-label">视频状态</span>
           <span class="status-value" id="video-status">未加载</span>
-        </div>
-        
-        <div class="status-item">
-          <span class="status-label">暂停次数</span>
-          <span class="status-value" id="pause-count">0</span>
-        </div>
-        
-        <div class="status-item">
-          <span class="status-label">恢复次数</span>
-          <span class="status-value" id="resume-count">0</span>
         </div>
       </div>
     </div>
@@ -307,7 +315,8 @@
         animationEl.className = 'status-value active';
         resumeCount++;
         document.getElementById('resume-count').textContent = resumeCount;
-        console.log('[Test] Resume count:', resumeCount);
+        console.log('[Test] ✅ 恢复计数增加:', resumeCount);
+        addLog('✅ 恢复计数 +1 (当前: ' + resumeCount + ')', 'visible');
         
         // Resume video if it was playing or if it ended
         if (video.readyState >= 2) {
@@ -328,7 +337,8 @@
         animationEl.className = 'status-value paused';
         pauseCount++;
         document.getElementById('pause-count').textContent = pauseCount;
-        console.log('[Test] Pause count:', pauseCount);
+        console.log('[Test] ⏸️ 暂停计数增加:', pauseCount);
+        addLog('⏸️ 暂停计数 +1 (当前: ' + pauseCount + ')', 'hidden');
         
         // Pause video if it's playing
         if (!video.paused) {
@@ -376,13 +386,57 @@
     // CSS animation for the circle
     let circlePosition = 0;
     const circle = document.getElementById('circle');
+    let animationId = null;
     
     function animateCircle() {
+      // CRITICAL: Check pause flags FIRST before doing anything
+      if (window.__anyWP_paused || window.__anyWP_rafPaused) {
+        console.log('[Test] Animation stopped by pause flag');
+        animationId = null;
+        return; // Stop animation immediately
+      }
       circlePosition = (circlePosition + 2) % (window.innerWidth - 60);
       circle.style.left = circlePosition + 'px';
-      requestAnimationFrame(animateCircle);
+      animationId = requestAnimationFrame(animateCircle);
     }
+    
+    // Start animation
     animateCircle();
+    
+    // Listen for pause/resume events
+    window.addEventListener('AnyWP:visibility', function(event) {
+      console.log('[Test] AnyWP:visibility event:', event.detail.visible);
+      if (!event.detail.visible) {
+        // Paused - cancel animation immediately
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+          animationId = null;
+          console.log('[Test] Animation cancelled by visibility event');
+        }
+      } else {
+        // Resumed - restart animation
+        if (!animationId && !window.__anyWP_paused && !window.__anyWP_rafPaused) {
+          console.log('[Test] Restarting animation');
+          animateCircle();
+        }
+      }
+    });
+    
+    // Also listen for direct pause flag changes (polling fallback)
+    var lastPauseState = false;
+    setInterval(function() {
+      var isPaused = window.__anyWP_paused || window.__anyWP_rafPaused;
+      if (isPaused !== lastPauseState) {
+        lastPauseState = isPaused;
+        console.log('[Test] Pause state changed:', isPaused);
+        if (isPaused && animationId) {
+          cancelAnimationFrame(animationId);
+          animationId = null;
+        } else if (!isPaused && !animationId) {
+          animateCircle();
+        }
+      }
+    }, 100);
     
     // Wait for AnyWP SDK
     function initAnyWP() {
@@ -397,10 +451,14 @@
       
       // Register visibility callback
       AnyWP.onVisibilityChange(function(visible) {
+        console.log('[Test] ========== VISIBILITY CALLBACK TRIGGERED ==========');
         console.log('[Test] Visibility changed:', visible, 'Current state:', currentVisibilityState);
         addLog(visible ? '壁纸恢复可见 ⚡' : '壁纸已隐藏（省电模式）', visible ? 'visible' : 'hidden');
         updateStatus(visible);
+        console.log('[Test] ========== CALLBACK COMPLETE ==========');
       });
+      
+      console.log('[Test] Visibility callback registered successfully');
       
       // Also listen to native Page Visibility API as backup
       document.addEventListener('visibilitychange', function() {
@@ -441,4 +499,5 @@
   </script>
 </body>
 </html>
+
 

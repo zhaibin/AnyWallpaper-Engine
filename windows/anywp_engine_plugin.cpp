@@ -3523,6 +3523,11 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
           window.requestAnimationFrame = function() { return 0; };
         }
         
+        // Trigger visibility change event for test page counters
+        if (window.AnyWP && typeof window.AnyWP._notifyVisibilityChange === 'function') {
+          window.AnyWP._notifyVisibilityChange(false);
+        }
+        
         return 'PAUSED';
       } catch(e) {
         return 'ERROR: ' + e.message;
@@ -3532,7 +3537,22 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   
   ExecuteScriptToAllInstances(freeze_script);
   
-  // 2. Light memory trim (avoid aggressive trim to prevent performance impact)
+  // 2. Notify visibility change via SDK (separate script to ensure SDK is loaded)
+  std::wstring notify_pause = LR"(
+    (function() {
+      if (window.AnyWP && typeof window.AnyWP._notifyVisibilityChange === 'function') {
+        console.log('[C++] Calling AnyWP._notifyVisibilityChange(false)');
+        window.AnyWP._notifyVisibilityChange(false);
+        return 'NOTIFY_PAUSE_OK';
+      } else {
+        console.log('[C++] AnyWP._notifyVisibilityChange not available');
+        return 'NOTIFY_PAUSE_FAILED';
+      }
+    })();
+  )";
+  ExecuteScriptToAllInstances(notify_pause);
+  
+  // 3. Light memory trim (avoid aggressive trim to prevent performance impact)
   SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
   
   std::cout << "[AnyWP] [PowerSaving] Wallpaper paused - last frame frozen" << std::endl;
@@ -3581,6 +3601,11 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
           window.__anyWP_rafPaused = false;
         }
         
+        // Trigger visibility change event for test page counters
+        if (window.AnyWP && typeof window.AnyWP._notifyVisibilityChange === 'function') {
+          window.AnyWP._notifyVisibilityChange(true);
+        }
+        
         return 'RESUMED';
       } catch(e) {
         return 'ERROR: ' + e.message;
@@ -3589,6 +3614,21 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
   )";
   
   ExecuteScriptToAllInstances(unfreeze_script);
+  
+  // 2. Notify visibility change via SDK (separate script to ensure SDK is loaded)
+  std::wstring notify_resume = LR"(
+    (function() {
+      if (window.AnyWP && typeof window.AnyWP._notifyVisibilityChange === 'function') {
+        console.log('[C++] Calling AnyWP._notifyVisibilityChange(true)');
+        window.AnyWP._notifyVisibilityChange(true);
+        return 'NOTIFY_RESUME_OK';
+      } else {
+        console.log('[C++] AnyWP._notifyVisibilityChange not available');
+        return 'NOTIFY_RESUME_FAILED';
+      }
+    })();
+  )";
+  ExecuteScriptToAllInstances(notify_resume);
   
   std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed - animations restarted" << std::endl;
 }
