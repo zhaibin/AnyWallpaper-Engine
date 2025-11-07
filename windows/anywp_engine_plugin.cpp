@@ -3298,7 +3298,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
   
   switch (message) {
     case WM_WTSSESSION_CHANGE:
-      // Session state changed (lock/unlock)
+      // Session state changed (lock/unlock/remote desktop)
       switch (wParam) {
         case WTS_SESSION_LOCK:
           std::cout << "[AnyWP] [PowerSaving] System LOCKED" << std::endl;
@@ -3309,6 +3309,26 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           std::cout << "[AnyWP] [PowerSaving] System UNLOCKED" << std::endl;
           // Always resume on unlock (system event)
           display_change_instance_->ResumeWallpaper("System unlocked");
+          break;
+        case WTS_CONSOLE_CONNECT:
+          std::cout << "[AnyWP] [PowerSaving] CONSOLE CONNECTED (returned from remote desktop)" << std::endl;
+          // Resume wallpaper when returning to local console
+          display_change_instance_->ResumeWallpaper("Console connected");
+          break;
+        case WTS_CONSOLE_DISCONNECT:
+          std::cout << "[AnyWP] [PowerSaving] CONSOLE DISCONNECTED (switched to remote desktop)" << std::endl;
+          // Pause wallpaper when switching away from local console
+          display_change_instance_->PauseWallpaper("Console disconnected");
+          break;
+        case WTS_REMOTE_CONNECT:
+          std::cout << "[AnyWP] [PowerSaving] REMOTE DESKTOP CONNECTED" << std::endl;
+          // Pause wallpaper during remote desktop session
+          display_change_instance_->PauseWallpaper("Remote desktop connected");
+          break;
+        case WTS_REMOTE_DISCONNECT:
+          std::cout << "[AnyWP] [PowerSaving] REMOTE DESKTOP DISCONNECTED" << std::endl;
+          // Resume wallpaper after remote desktop disconnects
+          display_change_instance_->ResumeWallpaper("Remote desktop disconnected");
           break;
       }
       break;

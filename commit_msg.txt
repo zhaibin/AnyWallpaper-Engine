@@ -1,32 +1,11 @@
-fix: 修复长时间锁屏后壁纸消失的问题
+fix: 修复远程桌面切换后壁纸消失的问题
 
-**问题描述**:
-- 长时间锁屏后回到桌面，互动壁纸不见了
-- 原因：Windows 可能在长时间锁屏时销毁壁纸窗口或重置窗口关系
+添加对远程桌面会话切换事件的支持：
+- WTS_CONSOLE_CONNECT：从远程桌面回到本地控制台 → 恢复壁纸
+- WTS_CONSOLE_DISCONNECT：从本地切换到远程桌面 → 暂停壁纸
+- WTS_REMOTE_CONNECT：远程桌面连接 → 暂停壁纸
+- WTS_REMOTE_DISCONNECT：远程桌面断开 → 恢复壁纸
 
-**解决方案**:
-1. 在 ResumeWallpaper() 中添加窗口验证逻辑
-   - 检查窗口是否仍然有效 (IsWindow)
-   - 检查窗口是否可见 (IsWindowVisible)
-   - 检查父窗口关系是否正常 (GetParent)
-
-2. 自动恢复机制
-   - 保存壁纸 URL (default_wallpaper_url_)
-   - 如果检测到窗口失效，自动停止并重新初始化
-   - 支持单显示器和多显示器模式
-
-3. 详细日志
-   - 记录窗口状态检查结果
-   - 记录恢复过程
-
-**技术细节**:
-- 单显示器：检查 webview_host_hwnd_ 和 worker_w_hwnd_
-- 多显示器：检查所有 wallpaper_instances_ 中的窗口
-- 恢复：StopWallpaper() -> InitializeWallpaper()
-- 保持电源状态同步
-
-**测试建议**:
-1. 启动壁纸
-2. 锁屏 5-10 分钟
-3. 解锁，壁纸应自动恢复显示
+现有的 ResumeWallpaper 方法已经包含完整的窗口验证和自动恢复机制，
+能够检测并修复窗口层级关系被破坏的情况。
 
