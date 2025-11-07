@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 REM ============================================================
 REM Purpose: Build publishable precompiled DLL package (required for release)
 REM Function: Compile Release -> Package DLL/headers/docs -> Generate ZIP
@@ -9,8 +9,14 @@ REM ============================================================
 setlocal enabledelayedexpansion
 
 echo ============================================
-echo AnyWP Engine - Build Release Package v2.0
+echo AnyWP Engine - Build Release Package v2.1
 echo ============================================
+echo.
+echo This script will:
+echo   - Build Flutter Release version
+echo   - Package DLL + Headers + Docs
+echo   - Create Flutter Plugin ZIP
+echo   - Create Web SDK ZIP (NEW!)
 echo.
 
 REM Check if running from correct directory
@@ -30,7 +36,7 @@ set "VERSION=1.3.1"
 set "RELEASE_NAME=anywp_engine_v%VERSION%"
 set "ERROR_COUNT=0"
 
-echo [1/16] Cleaning old build...
+echo [1/17] Cleaning old build...
 if exist "%EXAMPLE_DIR%\build" (
     rmdir /s /q "%EXAMPLE_DIR%\build" 2>nul
     if errorlevel 1 (
@@ -38,7 +44,7 @@ if exist "%EXAMPLE_DIR%\build" (
     )
 )
 
-echo [2/16] Running flutter clean...
+echo [2/17] Running flutter clean...
 cd "%EXAMPLE_DIR%"
 flutter clean >nul 2>&1
 if errorlevel 1 (
@@ -46,7 +52,7 @@ if errorlevel 1 (
     set /a ERROR_COUNT+=1
 )
 
-echo [3/16] Getting dependencies...
+echo [3/17] Getting dependencies...
 flutter pub get >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] flutter pub get failed
@@ -56,7 +62,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [4/16] Building Release version...
+echo [4/17] Building Release version...
 echo        This may take a few minutes, please wait...
 flutter build windows --release
 if errorlevel 1 (
@@ -74,7 +80,7 @@ if not exist "%BUILD_DIR%\runner\Release\anywallpaper_engine_example.exe" (
     exit /b 1
 )
 
-echo [5/16] Creating Release directory structure...
+echo [5/17] Creating Release directory structure...
 cd ..
 if not exist "%RELEASE_DIR%" (
     mkdir "%RELEASE_DIR%" 2>nul
@@ -95,7 +101,7 @@ mkdir "%RELEASE_DIR%\%RELEASE_NAME%\include" 2>nul
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\windows" 2>nul
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\windows\src" 2>nul
 
-echo [6/16] Copying DLL and related files...
+echo [6/17] Copying DLL and related files...
 REM Plugin DLL
 copy "%BUILD_DIR%\plugins\anywp_engine\Release\anywp_engine_plugin.dll" "%RELEASE_DIR%\%RELEASE_NAME%\bin\" >nul 2>&1
 if errorlevel 1 (
@@ -119,7 +125,7 @@ if errorlevel 1 (
     set /a ERROR_COUNT+=1
 )
 
-echo [7/16] Copying Dart source code...
+echo [7/17] Copying Dart source code...
 REM Dart library - Copy directly to lib/ (standard location)
 copy "lib\anywp_engine.dart" "%RELEASE_DIR%\%RELEASE_NAME%\lib\" >nul 2>&1
 if errorlevel 1 (
@@ -134,7 +140,7 @@ REM Also copy to lib/dart/ (backward compatibility)
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\lib\dart" 2>nul
 copy "lib\anywp_engine.dart" "%RELEASE_DIR%\%RELEASE_NAME%\lib\dart\" >nul 2>&1
 
-echo [8/16] Copying C++ header files...
+echo [8/17] Copying C++ header files...
 mkdir "%RELEASE_DIR%\%RELEASE_NAME%\include\anywp_engine" 2>nul
 powershell -Command "Copy-Item -Path 'windows\include\anywp_engine\*' -Destination '%RELEASE_DIR%\%RELEASE_NAME%\include\anywp_engine' -Recurse -Force" >nul 2>&1
 if errorlevel 1 (
@@ -144,7 +150,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [9/16] Syncing native source files and SDK...
+echo [9/17] Syncing native source files and SDK...
 copy "windows\anywp_sdk.js" "%RELEASE_DIR%\%RELEASE_NAME%\windows\" >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Cannot copy SDK file (windows\\anywp_sdk.js)
@@ -183,7 +189,7 @@ if exist "windows\packages.config" (
     copy "windows\packages.config" "%RELEASE_DIR%\%RELEASE_NAME%\windows\" >nul 2>&1
 )
 
-echo [10/16] Creating CMake configuration...
+echo [10/17] Creating CMake configuration...
 (
 echo cmake_minimum_required^(VERSION 3.14^)
 echo project^(anywp_engine LANGUAGES CXX^)
@@ -246,61 +252,61 @@ echo   PARENT_SCOPE
 echo ^)
 ) > "%RELEASE_DIR%\%RELEASE_NAME%\windows\CMakeLists.txt"
 
-echo [11/16] Copying documentation...
+echo [11/17] Copying documentation...
 copy "README.md" "%RELEASE_DIR%\%RELEASE_NAME%\" >nul 2>&1
 copy "LICENSE" "%RELEASE_DIR%\%RELEASE_NAME%\" >nul 2>&1
 copy "CHANGELOG_CN.md" "%RELEASE_DIR%\%RELEASE_NAME%\" >nul 2>&1
 
-echo [12/16] Generating PRECOMPILED_README...
+echo [12/17] Generating PRECOMPILED_README...
 (
-echo # AnyWP Engine v%VERSION% - 预编译版本
+echo # AnyWP Engine v%VERSION% - 棰勭紪璇戠増鏈?
 echo.
-echo ## 📦 包含内容
+echo ## 馃摝 鍖呭惈鍐呭
 echo.
-echo - `bin/` - 运行时 DLL（anywp_engine_plugin.dll）与 WebView2Loader
-echo - `lib/` - Dart 源码与链接库（anywp_engine_plugin.lib）
-echo - `include/` - C++ 公开头文件
+echo - `bin/` - 杩愯鏃?DLL锛坅nywp_engine_plugin.dll锛変笌 WebView2Loader
+echo - `lib/` - Dart 婧愮爜涓庨摼鎺ュ簱锛坅nywp_engine_plugin.lib锛?
+echo - `include/` - C++ 鍏紑澶存枃浠?
 echo - `windows/anywp_sdk.js` - JavaScript SDK
-echo - `windows/src/` - C++ 实现源码（可选择自行编译）
-echo - `windows/CMakeLists.txt` - 自动检测预编译/源码模式
+echo - `windows/src/` - C++ 瀹炵幇婧愮爜锛堝彲閫夋嫨鑷缂栬瘧锛?
+echo - `windows/CMakeLists.txt` - 鑷姩妫€娴嬮缂栬瘧/婧愮爜妯″紡
 echo.
-echo ## 🚀 快速集成
+echo ## 馃殌 蹇€熼泦鎴?
 echo.
-echo ### 1. 推荐：运行安装脚本
+echo ### 1. 鎺ㄨ崘锛氳繍琛屽畨瑁呰剼鏈?
 echo ```powershell
 echo .\setup_precompiled.bat
 echo ```
 echo.
-echo ### 2. 或手动在 `pubspec.yaml` 中添加：
+echo ### 2. 鎴栨墜鍔ㄥ湪 `pubspec.yaml` 涓坊鍔狅細
 echo ```yaml
 echo dependencies:
 echo   anywp_engine:
 echo     path: ./packages/anywp_engine_v%VERSION%
 echo ```
 echo.
-echo ### 3. 安装后运行
+echo ### 3. 瀹夎鍚庤繍琛?
 echo ```bash
 echo flutter pub get
 echo flutter build windows
 echo ```
 echo.
-echo ### 4. 启动示例
+echo ### 4. 鍚姩绀轰緥
 echo ```bash
 echo cd example_minimal
 echo flutter run -d windows
 echo ```
 echo.
-echo ## 📚 完整文档
+echo ## 馃摎 瀹屾暣鏂囨。
 echo.
 echo - README.md / CHANGELOG_CN.md
-echo - setup_precompiled.bat（自动安装）
-echo - verify_precompiled.bat（快速验证）
-echo - generate_pubspec_snippet.bat（pubspec 片段）
+echo - setup_precompiled.bat锛堣嚜鍔ㄥ畨瑁咃級
+echo - verify_precompiled.bat锛堝揩閫熼獙璇侊級
+echo - generate_pubspec_snippet.bat锛坧ubspec 鐗囨锛?
 echo.
-echo 更多信息请访问：https://github.com/zhaibin/AnyWallpaper-Engine
+echo 鏇村淇℃伅璇疯闂細https://github.com/zhaibin/AnyWallpaper-Engine
 ) > "%RELEASE_DIR%\%RELEASE_NAME%\PRECOMPILED_README.md"
 
-echo [13/16] Generating automation helper scripts...
+echo [13/17] Generating automation helper scripts...
 powershell -Command "(Get-Content '%TEMPLATE_DIR%\precompiled\setup_precompiled.template.bat') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\setup_precompiled.bat'" >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Cannot generate setup_precompiled.bat
@@ -325,7 +331,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [14/16] Copying minimal example project...
+echo [14/17] Copying minimal example project...
 powershell -Command "Copy-Item -Path '%TEMPLATE_DIR%\example_minimal' -Destination '%RELEASE_DIR%\%RELEASE_NAME%' -Recurse -Force" >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Cannot copy example project
@@ -337,7 +343,7 @@ if errorlevel 1 (
 powershell -Command "(Get-Content '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\pubspec.yaml') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\pubspec.yaml'" >nul 2>&1
 powershell -Command "(Get-Content '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\README.md') -replace '__VERSION__', '!VERSION!' | Set-Content -Encoding UTF8 '%RELEASE_DIR%\%RELEASE_NAME%\example_minimal\README.md'" >nul 2>&1
 
-echo [15/16] Generating pubspec.yaml...
+echo [15/17] Generating pubspec.yaml...
 REM Create pubspec.yaml (Note: removed dartPluginClass)
 (
 echo name: anywp_engine
@@ -363,7 +369,7 @@ echo   assets:
 echo     - windows/anywp_sdk.js
 ) > "%RELEASE_DIR%\%RELEASE_NAME%\pubspec.yaml"
 
-echo [16/16] Creating ZIP archive...
+echo [16/17] Creating ZIP archive...
 cd "%RELEASE_DIR%"
 powershell -Command "Compress-Archive -Path '%RELEASE_NAME%' -DestinationPath '%RELEASE_NAME%.zip' -Force" 2>nul
 if errorlevel 1 (
@@ -377,6 +383,16 @@ if errorlevel 1 (
 
 cd ..
 
+REM [17/17] Build Web SDK package
+echo [17/17] Building Web SDK package...
+powershell -ExecutionPolicy Bypass -File "scripts\build_web_sdk.ps1" -Version "%VERSION%" 2>nul
+if errorlevel 1 (
+    echo [WARNING] Web SDK package build failed
+    set /a ERROR_COUNT+=1
+) else (
+    echo [SUCCESS] Web SDK package created: anywp_web_sdk_v%VERSION%.zip
+)
+
 echo.
 echo ============================================
 if !ERROR_COUNT! EQU 0 (
@@ -386,11 +402,12 @@ if !ERROR_COUNT! EQU 0 (
 )
 echo ============================================
 echo.
-echo Release package location:
-echo    %RELEASE_DIR%\%RELEASE_NAME%.zip
+echo Release packages location:
+echo    1. Flutter Plugin: %RELEASE_DIR%\%RELEASE_NAME%.zip
 if defined FILE_SIZE_KB (
-    echo    Size: !FILE_SIZE_KB! KB
+    echo       Size: !FILE_SIZE_KB! KB
 )
+echo    2. Web SDK: %RELEASE_DIR%\anywp_web_sdk_v%VERSION%.zip
 echo.
 echo Extracted files location:
 echo    %RELEASE_DIR%\%RELEASE_NAME%\
@@ -399,7 +416,9 @@ echo Next steps:
 echo    1. Test if the precompiled package works
 echo    2. Visit https://github.com/zhaibin/AnyWallpaper-Engine/releases/new
 echo    3. Select tag v%VERSION%
-echo    4. Upload %RELEASE_NAME%.zip
+echo    4. Upload BOTH ZIP files:
+echo       - %RELEASE_NAME%.zip (Flutter Plugin)
+echo       - anywp_web_sdk_v%VERSION%.zip (Web SDK)
 echo    5. Copy content from release\GITHUB_RELEASE_NOTES_v%VERSION%.md as description
 echo.
 
