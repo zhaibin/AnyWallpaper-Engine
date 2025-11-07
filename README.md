@@ -152,12 +152,13 @@ AnyWP.loadState('settings', (value) => {
   console.log('Settings:', settings);
 });
 
-// Monitor visibility (pause animations when hidden)
+// Monitor visibility (pause animations when hidden) ✅ v4.2.1 增强
+// 触发时机：锁屏/解锁、全屏应用、手动暂停/恢复
 AnyWP.onVisibilityChange((visible) => {
   if (visible) {
-    resumeAnimations();
+    resumeAnimations();  // Resume when unlocked
   } else {
-    pauseAnimations();  // Save power
+    pauseAnimations();  // Save power when locked
   }
 });
 

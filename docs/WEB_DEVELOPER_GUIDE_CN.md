@@ -11,6 +11,22 @@
 - ✅ Angular
 - ✅ 其他任何 Web 框架
 
+## 🆕 最新更新 (v4.2.1)
+
+### ✅ 可见性回调增强
+- **修复**：`onVisibilityChange` 现在正确触发锁屏/解锁事件
+- **新增**：手动暂停/恢复也会触发回调
+- **改进**：回调机制更稳定，支持计数器监控
+- **测试**：提供完整的测试示例和最佳实践
+
+**使用场景**：
+- 🔋 锁屏时暂停动画，节省电量
+- 📊 监控暂停/恢复次数（调试）
+- 💾 暂停时保存状态，恢复时继续
+- 🎯 复杂动画的精确控制
+
+详见 [onVisibilityChange API](#onvisibilitychange-callback)
+
 ---
 
 ## 🚀 快速开始
@@ -221,33 +237,60 @@ AnyWP.onKeyboard(function(event) {
 });
 ```
 
-##### `onVisibilityChange(callback)` 🆕
+##### `onVisibilityChange(callback)` 🆕 ✅ v4.2.1 增强
 监听壁纸可见性变化（省电优化）。
 
 **何时触发**：
-- 系统锁屏/解锁
-- 全屏应用启动/退出
-- 用户空闲/活跃
-- 手动暂停/恢复
+- ✅ 系统锁屏/解锁（Win+L）
+- ✅ 全屏应用启动/退出
+- ✅ 用户空闲/活跃
+- ✅ 手动暂停/恢复（通过 Flutter 应用）
 
 **自动行为**：
 - SDK 自动暂停所有视频和音频
 - 解锁后自动恢复播放
 - **瞬间恢复**（<50ms）
 
-**示例**：
+**基础用法**：
 ```javascript
+// 注册可见性回调
 AnyWP.onVisibilityChange(function(visible) {
   if (visible) {
-    console.log('壁纸可见 - 恢复动画');
+    console.log('✅ 壁纸可见 - 恢复动画');
     resumeMyAnimations();
   } else {
-    console.log('壁纸隐藏 - 暂停动画（省电）');
+    console.log('⏸️ 壁纸隐藏 - 暂停动画（省电）');
     pauseMyAnimations();
   }
 });
+```
 
-// 高级用法：保存和恢复状态
+**完整示例：计数器监控**：
+```javascript
+let pauseCount = 0;
+let resumeCount = 0;
+
+AnyWP.onVisibilityChange(function(visible) {
+  if (visible) {
+    resumeCount++;
+    document.getElementById('resume-count').textContent = resumeCount;
+    console.log('恢复次数:', resumeCount);
+    
+    // 恢复你的动画
+    startAnimation();
+  } else {
+    pauseCount++;
+    document.getElementById('pause-count').textContent = pauseCount;
+    console.log('暂停次数:', pauseCount);
+    
+    // 暂停你的动画
+    stopAnimation();
+  }
+});
+```
+
+**高级用法：状态持久化**：
+```javascript
 let animationFrame = 0;
 
 AnyWP.onVisibilityChange(function(visible) {
@@ -262,10 +305,61 @@ AnyWP.onVisibilityChange(function(visible) {
 });
 ```
 
-**💡 提示**：
-- 大多数情况下，SDK 的自动暂停已经足够
-- 对于复杂动画，使用此 API 优化性能
-- 保存状态可实现无缝的暂停/恢复体验
+**测试方法**：
+```html
+<!-- HTML -->
+<div id="pause-count">0</div>
+<div id="resume-count">0</div>
+<div id="animation-circle"></div>
+
+<script>
+let pauseCount = 0;
+let resumeCount = 0;
+let animationId = null;
+
+// 监听可见性变化
+AnyWP.onVisibilityChange(function(visible) {
+  if (visible) {
+    resumeCount++;
+    document.getElementById('resume-count').textContent = resumeCount;
+    // 重启动画
+    if (!animationId) animateCircle();
+  } else {
+    pauseCount++;
+    document.getElementById('pause-count').textContent = pauseCount;
+    // 停止动画
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+  }
+});
+
+function animateCircle() {
+  // 你的动画逻辑
+  animationId = requestAnimationFrame(animateCircle);
+}
+
+// 测试步骤：
+// 1. 按 Win+L 锁屏 → 暂停计数应 +1
+// 2. 解锁 → 恢复计数应 +1
+// 3. 点击 Flutter 应用的 Pause/Resume 按钮 → 计数器增加
+</script>
+```
+
+**💡 最佳实践**：
+- ✅ 使用此 API 处理复杂动画或计算密集型任务
+- ✅ 暂停时保存状态，恢复时继续（流畅体验）
+- ✅ 结合计数器验证功能是否正常
+- ⚠️ 大多数情况下，SDK 的自动暂停已经足够
+- ⚠️ 避免在回调中执行耗时操作（保持 <10ms）
+
+**常见问题**：
+- **Q**: 为什么我的计数器不增加？
+- **A**: 确保调用了 `AnyWP.onVisibilityChange()` 注册回调，且 SDK 已加载（v4.2.1+）
+
+- **Q**: 锁屏后动画还在继续？
+- **A**: 检查是否在回调中正确停止了 `requestAnimationFrame`
 
 ---
 
