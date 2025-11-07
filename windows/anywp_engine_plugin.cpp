@@ -2488,6 +2488,13 @@ bool AnyWPEnginePlugin::StopWallpaper() {
       std::cout << "[AnyWP] All wallpapers stopped (URL preserved for rebuild)" << std::endl;
     }
   }
+  
+  // CRITICAL: Clear shared WebView2 environment to force recreation
+  // This is essential for session switch scenarios where environment becomes invalid
+  if (shared_environment_) {
+    std::cout << "[AnyWP] Clearing shared WebView2 environment (will recreate on next init)" << std::endl;
+    shared_environment_ = nullptr;
+  }
 
   // Stop single-monitor mode instance
   if (webview_controller_) {
