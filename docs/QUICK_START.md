@@ -32,9 +32,9 @@ build_and_run.bat
 
 ## 📖 详细文档
 
-- [完整中文文档](docs/README_CN.md)
-- [使用示例](docs/USAGE_EXAMPLES.md)
-- [故障排除](docs/TROUBLESHOOTING.md)
+- [完整项目文档](../README.md)
+- [API 使用示例](API_USAGE_EXAMPLES.md)
+- [故障排除](TROUBLESHOOTING.md)
 
 ## 🔧 命令参考
 

@@ -32,7 +32,7 @@ lib/                    # Dart API
 windows/                # C++ 实现 + anywp_sdk.js
 example/                # 示例应用
 examples/               # 测试 HTML (8个)
-docs/                   # 核心文档 (22个)
+docs/                   # 核心文档 (21个)
 scripts/                # 构建脚本
 release/                # 发布包
 ```
