@@ -11,9 +11,91 @@
 - ✅ Angular
 - ✅ 其他任何 Web 框架
 
-## 🆕 最新更新 (v4.2.1)
+## 🆕 最新更新 (v1.3.0 / 4.6.0)
 
-### ✅ 可见性回调增强
+### 🖥️ 跨会话稳定性（新增）
+
+**重要特性**：壁纸现在完全支持以下场景，**无需任何 Web 端代码修改**：
+
+#### ✅ 自动处理的场景
+- **远程桌面切换**：主机 ↔ 远程桌面切换时，壁纸自动重建并继续运行
+- **锁屏恢复**：锁屏后解锁，壁纸自动恢复或重建
+- **多显示器适配**：显示器数量不同时，自动跳过不可用的显示器
+- **设备名称映射**：即使显示器枚举顺序改变，也能正确恢复到对应的物理显示器
+
+#### 🔋 自动优化的行为
+- **锁屏时**：
+  - 壁纸自动暂停（调用 `onVisibilityChange(false)`）
+  - 停止动画、视频、音频，节省电量
+  - 保持最后一帧画面，避免闪烁
+  
+- **解锁时**：
+  - 同会话：直接恢复动画（调用 `onVisibilityChange(true)`）
+  - 跨会话：重建壁纸，重新加载网页
+  
+- **会话切换时**：
+  - 自动检测当前会话的显示器配置
+  - 重建壁纸到正确的物理显示器
+  - 状态持久化（如果使用 `saveState/loadState`）
+
+#### 💡 Web 开发者注意事项
+
+**您无需做任何特殊处理**，但以下最佳实践可以提升体验：
+
+1. **使用状态持久化**（推荐）：
+```javascript
+// 定期保存状态
+window.AnyWP.saveState(JSON.stringify({
+  progress: videoElement.currentTime,
+  userSettings: {...}
+}));
+
+// 页面加载时恢复
+window.addEventListener('load', () => {
+  const savedState = window.AnyWP.loadState();
+  if (savedState) {
+    const state = JSON.parse(savedState);
+    // 恢复状态
+  }
+});
+```
+
+2. **响应可见性变化**（可选）：
+```javascript
+window.AnyWP.onVisibilityChange((visible) => {
+  if (visible) {
+    // 恢复动画/视频
+  } else {
+    // 暂停动画/视频（引擎会自动处理，但您可以添加自定义逻辑）
+  }
+});
+```
+
+3. **处理页面重建**（可选）：
+```javascript
+// 会话切换时页面会重新加载，确保初始化逻辑健壮
+window.addEventListener('load', () => {
+  // 恢复状态
+  const state = window.AnyWP.loadState();
+  
+  // 初始化 UI
+  initializeUI();
+  
+  // 启动动画
+  startAnimations();
+});
+```
+
+#### 🧪 测试建议
+
+在开发时测试以下场景：
+- 锁屏 → 解锁（动画应该恢复）
+- 远程桌面登录 → 主机登录（壁纸应该重建）
+- 长时间暂停后恢复（状态应该保持或正确重置）
+
+---
+
+### ✅ 可见性回调增强 (v4.2.1)
 - **修复**：`onVisibilityChange` 现在正确触发锁屏/解锁事件
 - **新增**：手动暂停/恢复也会触发回调
 - **改进**：回调机制更稳定，支持计数器监控

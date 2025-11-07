@@ -225,6 +225,55 @@ setOnPowerStateChangeCallback(callback)   // 电源状态变化
 
 ---
 
+## 🆕 v1.3.0 重要更新
+
+### 🖥️ 会话切换与多显示器稳定性大幅提升
+
+**现在完全支持以下场景，无需任何 Flutter 代码修改：**
+
+#### ✅ 自动处理
+- **远程桌面切换**：主机 ↔ 远程桌面切换时，壁纸自动重建并继续运行
+- **锁屏恢复**：锁屏后解锁，壁纸自动恢复（同会话）或重建（跨会话）
+- **多显示器适配**：显示器数量不同时，自动跳过不可用的显示器
+- **设备名称映射**：即使显示器枚举顺序改变，也能正确恢复到对应的物理显示器
+
+#### 🎯 Flutter 开发者建议
+
+**无需特殊处理**，但可以考虑：
+
+```dart
+// 1. 启动时设置应用名称（推荐，用于状态隔离）
+await AnyWPEngine.setApplicationName('MyAwesomeApp');
+
+// 2. 使用多显示器 API（自动适配会话切换）
+final monitors = await AnyWPEngine.getMonitors();
+for (var monitor in monitors) {
+  await AnyWPEngine.initializeWallpaperOnMonitor(
+    url: 'file:///path/to/wallpaper.html',
+    enableMouseTransparent: true,
+    monitorIndex: monitor['index'],
+  );
+}
+
+// 3. 监控电源状态变化（可选）
+AnyWPEngine.onPowerStateChange((state) {
+  print('Power state changed: $state');
+  // state: 'active', 'paused', 'fullscreen_blocked', 'idle_paused'
+});
+```
+
+#### 📋 测试场景
+
+开发时建议测试：
+- 锁屏 → 解锁
+- 远程桌面登录 → 主机登录
+- 多显示器切换
+- 长时间暂停后恢复
+
+**所有场景都会自动处理，无需手动干预！**
+
+---
+
 ## 💡 常见场景快速查找
 
 ### 我想...
@@ -235,6 +284,10 @@ setOnPowerStateChangeCallback(callback)   // 电源状态变化
 **支持多显示器**
 → [DEVELOPER_API_REFERENCE.md#multi-monitor-support](DEVELOPER_API_REFERENCE.md#multi-monitor-support)
 → [API_USAGE_EXAMPLES.md#example-2](API_USAGE_EXAMPLES.md#example-2-different-content-per-monitor)
+
+**处理远程桌面和锁屏** 🆕
+→ **无需任何代码，自动处理！**
+→ 查看上方 "v1.3.0 重要更新"
 
 **优化内存和性能**
 → [BEST_PRACTICES.md#memory-management](BEST_PRACTICES.md#memory-management)
