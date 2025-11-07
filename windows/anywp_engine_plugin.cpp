@@ -3730,32 +3730,13 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
   if (need_reinitialize) {
     std::cout << "[AnyWP] [PowerSaving] ========== RESTORING LOST WALLPAPER ==========" << std::endl;
     
-    // Save current state
+    // Save current URL
     std::string saved_url = default_wallpaper_url_;
-    bool was_multi_monitor = false;
-    std::vector<int> active_monitors;
     
-    {
-      std::lock_guard<std::mutex> lock(instances_mutex_);
-      if (!wallpaper_instances_.empty()) {
-        was_multi_monitor = true;
-        for (const auto& instance : wallpaper_instances_) {
-          active_monitors.push_back(instance.monitor_index);
-        }
-      }
-    }
-    
-    // Stop current instance (cleanup invalid windows)
-    if (was_multi_monitor) {
-      std::cout << "[AnyWP] [PowerSaving] Stopping multi-monitor wallpaper..." << std::endl;
-      // Stop each monitor individually
-      for (int monitor_idx : active_monitors) {
-        StopWallpaperOnMonitor(monitor_idx);
-      }
-    } else if (is_initialized_) {
-      std::cout << "[AnyWP] [PowerSaving] Stopping single-monitor wallpaper..." << std::endl;
-      StopWallpaper();
-    }
+    // CRITICAL: Always stop existing wallpaper before recreating
+    // Don't rely on state flags which may be out of sync after session switch
+    std::cout << "[AnyWP] [PowerSaving] Stopping existing wallpaper (if any)..." << std::endl;
+    StopWallpaper();
     
     // Re-initialize wallpaper
     if (!saved_url.empty()) {
