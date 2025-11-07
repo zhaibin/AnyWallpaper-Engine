@@ -3822,8 +3822,19 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
   if (need_reinitialize) {
     std::cout << "[AnyWP] [PowerSaving] ========== RESTORING LOST WALLPAPER ==========" << std::endl;
     
-    // Save current URL
+    // Save current URL and monitor indices
     std::string saved_url = default_wallpaper_url_;
+    std::vector<int> saved_monitor_indices;
+    
+    {
+      std::lock_guard<std::mutex> lock(instances_mutex_);
+      for (const auto& instance : wallpaper_instances_) {
+        saved_monitor_indices.push_back(instance.monitor_index);
+      }
+    }
+    
+    std::cout << "[AnyWP] [PowerSaving] Saved " << saved_monitor_indices.size() 
+              << " monitor configuration(s)" << std::endl;
     
     // CRITICAL: Always stop existing wallpaper before recreating
     // Don't rely on state flags which may be out of sync after session switch
@@ -3834,10 +3845,21 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     if (!saved_url.empty()) {
       std::cout << "[AnyWP] [PowerSaving] Re-initializing wallpaper with URL: " << saved_url << std::endl;
       
-      // IMPORTANT: Use monitor-based initialization to match how user starts wallpaper
-      // This ensures StopWallpaper() can properly clean up on next session switch
-      std::cout << "[AnyWP] [PowerSaving] Using monitor-based initialization on primary display (monitor 0)" << std::endl;
-      InitializeWallpaperOnMonitor(saved_url, !enable_interaction_, 0);
+      if (!saved_monitor_indices.empty()) {
+        // Restore wallpaper on all previously active monitors
+        std::cout << "[AnyWP] [PowerSaving] Restoring wallpaper on " 
+                  << saved_monitor_indices.size() << " monitor(s)..." << std::endl;
+        
+        for (int monitor_index : saved_monitor_indices) {
+          std::cout << "[AnyWP] [PowerSaving] Restoring wallpaper on monitor " 
+                    << monitor_index << std::endl;
+          InitializeWallpaperOnMonitor(saved_url, !enable_interaction_, monitor_index);
+        }
+      } else {
+        // Fallback: initialize on primary display
+        std::cout << "[AnyWP] [PowerSaving] No saved monitor config, using primary display (monitor 0)" << std::endl;
+        InitializeWallpaperOnMonitor(saved_url, !enable_interaction_, 0);
+      }
       
       std::cout << "[AnyWP] [PowerSaving] Wallpaper restoration complete" << std::endl;
       
