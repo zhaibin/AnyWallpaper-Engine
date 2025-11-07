@@ -2,6 +2,170 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [4.7.0] - 2025-11-07 - 🔥 显示器热插拔自动化
+
+### ✨ 新增功能
+
+#### 显示器热插拔自动化
+- **自动检测显示器接入**：系统接入新显示器时，自动检测并通知应用层
+- **自动应用壁纸**：新显示器接入后，自动在其上启动壁纸（使用当前活跃的 URL）
+- **自动清理资源**：显示器移除时，自动停止该显示器上的壁纸并清理资源
+- **统一内容展示**：新显示器自动显示与主显示器一致的内容
+
+### 🔧 技术改进
+
+#### C++ 层修复
+- **启用 InvokeMethod 回调**：修复了之前被注释掉的 `onMonitorChange` 回调机制
+- **线程安全通信**：使用 `SafeNotifyMonitorChange()` 和 `WM_NOTIFY_MONITOR_CHANGE` 消息机制，确保跨线程安全
+- **实时通知**：显示器配置变化时，C++ 层立即通过 MethodChannel 通知 Dart 层
+
+#### Dart 层增强
+- **智能 URL 检测**：自动查找当前运行的壁纸 URL，优先使用活跃显示器的 URL
+- **增量更新逻辑**：通过 Set 差集计算新增和移除的显示器，精确识别变化
+- **自动启动策略**：检测到新显示器后，自动调用 `initializeWallpaperOnMonitor()` 启动壁纸
+- **用户友好提示**：所有操作都有清晰的日志和 UI 提示
+
+### 🎯 使用示例
+
+#### 显示器热插拔场景（全自动）
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 1. 注册显示器变化回调（一次性设置）
+  AnyWPEngine.setOnMonitorChangeCallback(() {
+    print('显示器配置已变化，正在自动处理...');
+  });
+  
+  runApp(MyApp());
+}
+
+// 在主显示器上启动壁纸
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file:///path/to/wallpaper.html',
+  monitorIndex: 0,
+  enableMouseTransparent: true,
+);
+
+// 🔌 用户接入第二个显示器
+// → 系统自动检测到新显示器 ✓
+// → 应用自动在新显示器上启动相同的壁纸 ✓
+// → 用户看到提示："Auto-started wallpaper on 1 new monitor(s)" ✓
+
+// 🔌 用户移除第二个显示器
+// → 系统自动检测到显示器移除 ✓
+// → 应用自动清理该显示器的资源 ✓
+// → 用户看到提示："Display configuration changed" ✓
+```
+
+#### 示例应用中的实现
+
+示例应用 (`example/lib/main.dart`) 已经实现了完整的自动化逻辑：
+
+```dart
+// 在 initState 中注册回调
+AnyWPEngine.setOnMonitorChangeCallback(() {
+  _handleMonitorChange();
+});
+
+// 自动处理逻辑
+Future<void> _handleMonitorChange() async {
+  // 1. 检测新增显示器
+  final addedIndices = newIndices.difference(oldIndices);
+  
+  if (addedIndices.isNotEmpty) {
+    // 2. 查找当前活跃的壁纸 URL
+    String? activeUrl;
+    for (final entry in _monitorWallpapers.entries) {
+      if (entry.value == true) {
+        activeUrl = _monitorUrlControllers[entry.key]!.text;
+        break;
+      }
+    }
+    
+    // 3. 在新显示器上自动启动壁纸
+    for (final index in addedIndices) {
+      await AnyWPEngine.initializeWallpaperOnMonitor(
+        url: activeUrl,
+        monitorIndex: index,
+        enableMouseTransparent: _mouseTransparent,
+      );
+    }
+  }
+}
+```
+
+### 📚 用户体验提升
+
+**之前的流程**：
+1. 接入新显示器
+2. 手动点击"Refresh"按钮刷新显示器列表
+3. 手动在新显示器的 URL 输入框中输入或选择 URL
+4. 手动点击"Start"按钮启动壁纸
+
+**现在的流程**：
+1. 接入新显示器 → **完全自动，无需任何操作** ✓
+
+**提升效果**：
+- ✅ **零操作**：用户无需手动干预，插入显示器即可使用
+- ✅ **即时响应**：显示器接入后立即自动应用壁纸
+- ✅ **内容一致**：新显示器自动显示与主显示器相同的内容
+- ✅ **智能清理**：显示器移除时自动清理资源，避免内存泄漏
+
+### 🔍 技术细节
+
+#### 显示器变化检测流程
+
+```
+[系统层] Windows 发送 WM_DISPLAYCHANGE 消息
+    ↓
+[C++ 窗口过程] DisplayChangeWndProc 接收消息
+    ↓
+[C++ HandleDisplayChange] 重新枚举显示器，计算变化
+    ↓
+[C++ SafeNotifyMonitorChange] 发送 WM_NOTIFY_MONITOR_CHANGE 到消息队列
+    ↓
+[C++ NotifyMonitorChange] 在安全线程上调用 InvokeMethod
+    ↓
+[Dart MethodChannel] 接收 "onMonitorChange" 回调
+    ↓
+[Dart _handleMonitorChange] 计算新增/移除的显示器
+    ↓
+[Dart 自动应用] 在新显示器上调用 initializeWallpaperOnMonitor
+```
+
+#### 线程安全保证
+
+1. **WM_DISPLAYCHANGE**：来自 Windows 消息循环，可能不在 Flutter UI 线程
+2. **PostMessage**：将通知请求放入消息队列，延迟到窗口过程处理
+3. **WM_NOTIFY_MONITOR_CHANGE**：在窗口过程中处理，与 Flutter 引擎同步
+4. **InvokeMethod**：在正确的线程上下文中调用，避免崩溃
+
+### ⚠️ 注意事项
+
+1. **首次启动**：应用首次启动时，没有活跃的壁纸 URL，需要手动启动第一个显示器
+2. **URL 匹配**：自动应用使用当前任何一个运行中的显示器的 URL（优先使用运行状态的）
+3. **兼容性**：该功能完全向后兼容，不影响现有代码
+
+### 🎬 演示场景
+
+**场景 1：双显示器扩展**
+- 用户在主显示器上启动壁纸
+- 接入第二个显示器 → 第二个显示器自动显示相同壁纸 ✓
+
+**场景 2：笔记本+外接显示器**
+- 用户在笔记本屏幕启动壁纸
+- 连接外接显示器 → 外接显示器自动显示壁纸 ✓
+- 断开外接显示器 → 系统自动清理资源 ✓
+
+**场景 3：会议室投影**
+- 用户在办公桌启动壁纸（单显示器）
+- 进入会议室连接投影仪 → 投影仪自动显示壁纸 ✓
+- 离开会议室断开投影仪 → 笔记本屏幕继续显示壁纸 ✓
+
+---
+
 ## [4.6.0] - 2025-11-07 - 🖥️ 会话切换与多显示器稳定性大幅提升
 
 ### ✨ 新增功能

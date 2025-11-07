@@ -34,7 +34,6 @@ class _MyAppState extends State<MyApp> {
   String _powerState = 'Loading...';
   int _memoryUsageMB = 0;
   bool _autoPowerSaving = true;
-  int _selectedTab = 0;
   
   // Quick test pages
   final List<Map<String, String>> _testPages = [
@@ -61,19 +60,111 @@ class _MyAppState extends State<MyApp> {
   }
   
   Future<void> _handleMonitorChange() async {
-    print('[APP] Handling monitor change - refreshing monitor list...');
+    print('[APP] Handling monitor change - detecting changes and auto-applying...');
     
     try {
+      // Get old monitor indices before refresh
+      final oldIndices = _monitors.map((m) => m.index).toSet();
+      
+      // Refresh monitor list
       await _loadMonitors();
       
-      if (mounted) {
-        _showMessage('Display configuration changed - UI updated');
+      // Get new monitor indices after refresh
+      final newIndices = _monitors.map((m) => m.index).toSet();
+      
+      // Detect newly added monitors
+      final addedIndices = newIndices.difference(oldIndices);
+      final removedIndices = oldIndices.difference(newIndices);
+      
+      if (removedIndices.isNotEmpty) {
+        print('[APP] Detected removed monitors: $removedIndices');
+      }
+      
+      if (addedIndices.isNotEmpty) {
+        print('[APP] Detected new monitors: $addedIndices');
+        
+        // Find a running wallpaper to copy its URL
+        String? activeUrl;
+        for (final entry in _monitorWallpapers.entries) {
+          if (entry.value == true && _monitorUrlControllers.containsKey(entry.key)) {
+            activeUrl = _monitorUrlControllers[entry.key]!.text.trim();
+            if (activeUrl.isNotEmpty) {
+              print('[APP] Found active wallpaper URL from monitor ${entry.key}: $activeUrl');
+              break;
+            }
+          }
+        }
+        
+        // If no active wallpaper found, use default URL
+        if (activeUrl == null || activeUrl.isEmpty) {
+          // Try to get URL from any controller
+          for (final controller in _monitorUrlControllers.values) {
+            final url = controller.text.trim();
+            if (url.isNotEmpty) {
+              activeUrl = url;
+              print('[APP] Using URL from controller: $activeUrl');
+              break;
+            }
+          }
+        }
+        
+        // Auto-start wallpaper on new monitors
+        if (activeUrl != null && activeUrl.isNotEmpty) {
+          int successCount = 0;
+          for (final index in addedIndices) {
+            print('[APP] Auto-starting wallpaper on new monitor $index with URL: $activeUrl');
+            
+            // Set URL for the new monitor
+            if (_monitorUrlControllers[index] != null) {
+              _monitorUrlControllers[index]!.text = activeUrl;
+            }
+            
+            // Start wallpaper
+            final success = await AnyWPEngine.initializeWallpaperOnMonitor(
+              url: activeUrl,
+              monitorIndex: index,
+              enableMouseTransparent: _mouseTransparent,
+            );
+            
+            if (success) {
+              setState(() {
+                _monitorWallpapers[index] = true;
+              });
+              successCount++;
+              print('[APP] Successfully auto-started wallpaper on monitor $index');
+            } else {
+              print('[APP] Failed to auto-start wallpaper on monitor $index');
+            }
+          }
+          
+          if (mounted) {
+            if (successCount > 0) {
+              _showMessage('Auto-started wallpaper on $successCount new monitor(s)');
+            } else {
+              _showMessage('Display configuration changed - could not auto-start');
+            }
+          }
+        } else {
+          print('[APP] No active URL found, skipping auto-start');
+          if (mounted) {
+            _showMessage('New monitor detected - please start wallpaper manually');
+          }
+        }
+      } else {
+        // No new monitors, just a configuration change
+        if (mounted) {
+          _showMessage('Display configuration changed');
+        }
       }
       
       print('[APP] Monitor change handled successfully');
     } catch (e, stackTrace) {
       print('[APP] ERROR in _handleMonitorChange: $e');
       print('[APP] StackTrace: $stackTrace');
+      
+      if (mounted) {
+        _showMessage('Error handling monitor change: $e');
+      }
     }
   }
   

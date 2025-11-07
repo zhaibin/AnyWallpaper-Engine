@@ -3083,29 +3083,23 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
   // We need to ensure it's safe to call Flutter API from this context
   
   try {
-    std::cout << "[AnyWP] [DisplayChange] Before InvokeMethod..." << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] Preparing to invoke Dart callback..." << std::endl;
     
     // Create empty map for the notification
     auto args = std::make_unique<flutter::EncodableValue>(flutter::EncodableMap());
     
-    std::cout << "[AnyWP] [DisplayChange] Calling InvokeMethod..." << std::endl;
-    std::cout << "[AnyWP] [DisplayChange] Channel pointer valid: " << (method_channel_ != nullptr) << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] Invoking onMonitorChange method..." << std::endl;
     
-    // WORKAROUND: InvokeMethod crashes even with message queue
-    // For now, just skip the notification to prevent crash
-    // User must manually click Refresh button
-    std::cout << "[AnyWP] [DisplayChange] Skipping InvokeMethod to prevent crash" << std::endl;
-    std::cout << "[AnyWP] [DisplayChange] User must click Refresh button to update UI" << std::endl;
+    // Invoke the method - this should be safe now as we're using SafeNotifyMonitorChange
+    // which posts a message to ensure we're in the correct thread context
+    method_channel_->InvokeMethod("onMonitorChange", std::move(args));
     
-    // TODO: Find why InvokeMethod crashes
-    // method_channel_->InvokeMethod("onMonitorChange", std::move(args));
-    
-    std::cout << "[AnyWP] [DisplayChange] Notification skipped (workaround)" << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] InvokeMethod completed successfully" << std::endl;
     
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [DisplayChange] EXCEPTION: " << e.what() << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] EXCEPTION during InvokeMethod: " << e.what() << std::endl;
   } catch (...) {
-    std::cout << "[AnyWP] [DisplayChange] UNKNOWN EXCEPTION caught" << std::endl;
+    std::cout << "[AnyWP] [DisplayChange] UNKNOWN EXCEPTION during InvokeMethod" << std::endl;
   }
   
   std::cout << "[AnyWP] [DisplayChange] NotifyMonitorChange completed" << std::endl;

@@ -10,6 +10,7 @@ A Flutter Windows plugin that embeds WebView2 as an interactive desktop wallpape
 - 🎯 **Proper Z-Order** - WebView renders behind desktop icons (not covering them)
 - 🖱️ **Mouse Transparency** - Optional click-through to desktop
 - 📺 **Multi-Monitor Support** - Different content on each display
+- 🔥 **Hot-Plug Auto Setup** (NEW ✨) - Auto-detect and apply wallpaper on new monitors
 - 🪟 **Windows 10/11 Support** - Optimized for modern Windows
 
 ### Performance & Power
@@ -167,6 +168,64 @@ AnyWP.onClick('#button', (x, y) => {
   console.log('Clicked at:', x, y);
 });
 ```
+
+## 🔥 Hot-Plug Display Support (NEW)
+
+**Automatic Monitor Detection & Setup**: When users plug in or remove displays, AnyWP Engine automatically detects the change and applies wallpapers without manual intervention.
+
+### How It Works
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Register monitor change callback (one-time setup)
+  AnyWPEngine.setOnMonitorChangeCallback(() {
+    print('Display configuration changed - auto-applying...');
+  });
+  
+  runApp(MyApp());
+}
+
+// Start wallpaper on primary monitor
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'https://example.com',
+  monitorIndex: 0,
+  enableMouseTransparent: true,
+);
+
+// 🔌 User plugs in second monitor
+// → System auto-detects new monitor ✓
+// → App auto-starts wallpaper with same URL ✓
+// → User sees: "Auto-started wallpaper on 1 new monitor(s)" ✓
+
+// 🔌 User unplugs second monitor
+// → System auto-detects removal ✓
+// → App auto-cleans up resources ✓
+```
+
+### Key Benefits
+
+✅ **Zero Manual Steps** - No "Refresh" button needed  
+✅ **Instant Response** - Wallpaper appears immediately on new monitors  
+✅ **Content Consistency** - New monitors show same content as primary  
+✅ **Smart Cleanup** - Removed monitors are cleaned up automatically
+
+### Use Cases
+
+**Laptop + External Monitor**:
+- Work on laptop → Connect to desk monitor → Wallpaper auto-extends ✓
+- Leave desk → Disconnect → Laptop continues with wallpaper ✓
+
+**Meeting Room Presentation**:
+- Office desk (1 monitor) → Meeting room projector → Auto-extends ✓
+- Return to desk → Disconnect → Back to single monitor ✓
+
+**Multi-Monitor Gaming Setup**:
+- Start with 2 monitors → Add 3rd monitor for streaming → Auto-setup ✓
+- Remove streaming monitor → Cleanup automatic ✓
+
+---
 
 ## 🗂️ Storage Isolation (v1.2.0+)
 
