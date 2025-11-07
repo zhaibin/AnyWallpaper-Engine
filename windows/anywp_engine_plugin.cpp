@@ -3325,7 +3325,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           // Force reinitialize wallpaper in new session
           std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
           display_change_instance_->is_paused_.store(true);  // Force paused state
-          display_change_instance_->ResumeWallpaper("Session: Switched to local console");
+          display_change_instance_->ResumeWallpaper("Session: Switched to local console", true);  // force_reinit = true
           break;
         case WTS_CONSOLE_DISCONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE DISCONNECTED (switched to remote desktop)" << std::endl;
@@ -3333,7 +3333,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           // Force reinitialize wallpaper in new session
           std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
           display_change_instance_->is_paused_.store(true);  // Force paused state
-          display_change_instance_->ResumeWallpaper("Session: Switched to remote desktop");
+          display_change_instance_->ResumeWallpaper("Session: Switched to remote desktop", true);  // force_reinit = true
           break;
         case WTS_REMOTE_CONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: REMOTE DESKTOP CONNECTED" << std::endl;
@@ -3341,7 +3341,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           // Force reinitialize wallpaper in new session
           std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
           display_change_instance_->is_paused_.store(true);  // Force paused state
-          display_change_instance_->ResumeWallpaper("Session: Remote desktop connected");
+          display_change_instance_->ResumeWallpaper("Session: Remote desktop connected", true);  // force_reinit = true
           break;
         case WTS_REMOTE_DISCONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: REMOTE DESKTOP DISCONNECTED" << std::endl;
@@ -3349,7 +3349,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           // Force reinitialize wallpaper in new session
           std::cout << "[AnyWP] [PowerSaving] Session switched: forcing wallpaper reinitialization" << std::endl;
           display_change_instance_->is_paused_.store(true);  // Force paused state
-          display_change_instance_->ResumeWallpaper("Session: Remote desktop disconnected");
+          display_change_instance_->ResumeWallpaper("Session: Remote desktop disconnected", true);  // force_reinit = true
           break;
       }
       
@@ -3655,7 +3655,7 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
 }
 
 // Resume wallpaper - Restore animations and rendering
-void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
+void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_reinit) {
   // Guard: Avoid duplicate resume
   if (!is_paused_.exchange(false)) {
     return;  // Already resumed
@@ -3663,58 +3663,64 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
   
   std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER ==========" << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
-  
-  // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
-  bool need_reinitialize = false;
-  
-  std::cout << "[AnyWP] [PowerSaving] Verifying wallpaper window state..." << std::endl;
-  
-  // Check single-monitor mode
-  if (webview_host_hwnd_) {
-    std::cout << "[AnyWP] [PowerSaving] Single-monitor mode detected" << std::endl;
-    std::cout << "[AnyWP] [PowerSaving] WebView window: " << webview_host_hwnd_ << std::endl;
-    std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(webview_host_hwnd_) 
-              << ", IsVisible: " << (IsWindow(webview_host_hwnd_) ? IsWindowVisible(webview_host_hwnd_) : false) << std::endl;
-    
-    if (!IsWindow(webview_host_hwnd_) || !IsWindowVisible(webview_host_hwnd_)) {
-      std::cout << "[AnyWP] [PowerSaving] [X] WARNING: Wallpaper window invalid or hidden!" << std::endl;
-      need_reinitialize = true;
-    } else {
-      // Verify parent relationship
-      HWND parent = GetParent(webview_host_hwnd_);
-      std::cout << "[AnyWP] [PowerSaving] Expected parent (WorkerW): " << worker_w_hwnd_ << std::endl;
-      std::cout << "[AnyWP] [PowerSaving] Actual parent: " << parent << std::endl;
-      std::cout << "[AnyWP] [PowerSaving] WorkerW valid: " << IsWindow(worker_w_hwnd_) << std::endl;
-      
-      if (parent != worker_w_hwnd_ || !IsWindow(worker_w_hwnd_)) {
-        std::cout << "[AnyWP] [PowerSaving] [X] WARNING: Parent window relationship broken!" << std::endl;
-        need_reinitialize = true;
-      } else {
-        std::cout << "[AnyWP] [PowerSaving] [OK] Window valid, parent relationship OK" << std::endl;
-      }
-    }
+  if (force_reinit) {
+    std::cout << "[AnyWP] [PowerSaving] Force reinitialize: YES (session switch)" << std::endl;
   }
   
-  // Check multi-monitor mode
-  {
-    std::lock_guard<std::mutex> lock(instances_mutex_);
-    if (!wallpaper_instances_.empty()) {
-      std::cout << "[AnyWP] [PowerSaving] Multi-monitor mode detected (" << wallpaper_instances_.size() << " instances)" << std::endl;
+  // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
+  bool need_reinitialize = force_reinit;  // Force if requested
+  
+  // Skip validation if force reinit requested
+  if (!force_reinit) {
+    std::cout << "[AnyWP] [PowerSaving] Verifying wallpaper window state..." << std::endl;
+    
+    // Check single-monitor mode
+    if (webview_host_hwnd_) {
+      std::cout << "[AnyWP] [PowerSaving] Single-monitor mode detected" << std::endl;
+      std::cout << "[AnyWP] [PowerSaving] WebView window: " << webview_host_hwnd_ << std::endl;
+      std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(webview_host_hwnd_) 
+                << ", IsVisible: " << (IsWindow(webview_host_hwnd_) ? IsWindowVisible(webview_host_hwnd_) : false) << std::endl;
       
-      for (auto& instance : wallpaper_instances_) {
-        std::cout << "[AnyWP] [PowerSaving] Checking monitor " << instance.monitor_index << std::endl;
-        std::cout << "[AnyWP] [PowerSaving] WebView window: " << instance.webview_host_hwnd << std::endl;
-        std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(instance.webview_host_hwnd) 
-                  << ", IsVisible: " << IsWindowVisible(instance.webview_host_hwnd) << std::endl;
+      if (!IsWindow(webview_host_hwnd_) || !IsWindowVisible(webview_host_hwnd_)) {
+        std::cout << "[AnyWP] [PowerSaving] [X] WARNING: Wallpaper window invalid or hidden!" << std::endl;
+        need_reinitialize = true;
+      } else {
+        // Verify parent relationship
+        HWND parent = GetParent(webview_host_hwnd_);
+        std::cout << "[AnyWP] [PowerSaving] Expected parent (WorkerW): " << worker_w_hwnd_ << std::endl;
+        std::cout << "[AnyWP] [PowerSaving] Actual parent: " << parent << std::endl;
+        std::cout << "[AnyWP] [PowerSaving] WorkerW valid: " << IsWindow(worker_w_hwnd_) << std::endl;
         
-        if (!IsWindow(instance.webview_host_hwnd) || !IsWindowVisible(instance.webview_host_hwnd)) {
-          std::cout << "[AnyWP] [PowerSaving] [X] WARNING: Monitor " << instance.monitor_index 
-                    << " wallpaper window invalid or hidden!" << std::endl;
+        if (parent != worker_w_hwnd_ || !IsWindow(worker_w_hwnd_)) {
+          std::cout << "[AnyWP] [PowerSaving] [X] WARNING: Parent window relationship broken!" << std::endl;
           need_reinitialize = true;
-          break;
         } else {
-          std::cout << "[AnyWP] [PowerSaving] [OK] Monitor " << instance.monitor_index 
-                    << " window valid" << std::endl;
+          std::cout << "[AnyWP] [PowerSaving] [OK] Window valid, parent relationship OK" << std::endl;
+        }
+      }
+    }
+    
+    // Check multi-monitor mode
+    {
+      std::lock_guard<std::mutex> lock(instances_mutex_);
+      if (!wallpaper_instances_.empty()) {
+        std::cout << "[AnyWP] [PowerSaving] Multi-monitor mode detected (" << wallpaper_instances_.size() << " instances)" << std::endl;
+        
+        for (auto& instance : wallpaper_instances_) {
+          std::cout << "[AnyWP] [PowerSaving] Checking monitor " << instance.monitor_index << std::endl;
+          std::cout << "[AnyWP] [PowerSaving] WebView window: " << instance.webview_host_hwnd << std::endl;
+          std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(instance.webview_host_hwnd) 
+                    << ", IsVisible: " << IsWindowVisible(instance.webview_host_hwnd) << std::endl;
+          
+          if (!IsWindow(instance.webview_host_hwnd) || !IsWindowVisible(instance.webview_host_hwnd)) {
+            std::cout << "[AnyWP] [PowerSaving] [X] WARNING: Monitor " << instance.monitor_index 
+                      << " wallpaper window invalid or hidden!" << std::endl;
+            need_reinitialize = true;
+            break;
+          } else {
+            std::cout << "[AnyWP] [PowerSaving] [OK] Monitor " << instance.monitor_index 
+                      << " window valid" << std::endl;
+          }
         }
       }
     }

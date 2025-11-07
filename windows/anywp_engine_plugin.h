@@ -248,7 +248,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void UpdatePowerState();
   bool IsFullscreenAppActive();
   void PauseWallpaper(const std::string& reason);
-  void ResumeWallpaper(const std::string& reason);
+  void ResumeWallpaper(const std::string& reason, bool force_reinit = false);
   void NotifyPowerStateChange(PowerState newState);
   std::string PowerStateToString(PowerState state);
   void NotifyWebContentVisibility(bool visible);
