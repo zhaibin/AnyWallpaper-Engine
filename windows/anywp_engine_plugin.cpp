@@ -2447,6 +2447,49 @@ bool AnyWPEnginePlugin::StopWallpaper() {
   // 移除鼠标钩子
   RemoveMouseHook();
 
+  // CRITICAL: Stop all wallpaper instances (multi-monitor mode)
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    if (!wallpaper_instances_.empty()) {
+      std::cout << "[AnyWP] Stopping " << wallpaper_instances_.size() << " multi-monitor instance(s)..." << std::endl;
+      
+      for (auto& instance : wallpaper_instances_) {
+        // Close WebView
+        if (instance.webview_controller) {
+          try {
+            instance.webview_controller->Close();
+          } catch (...) {
+            std::cout << "[AnyWP] WARNING: Exception while closing WebView controller" << std::endl;
+          }
+          instance.webview_controller = nullptr;
+        }
+        instance.webview = nullptr;
+        
+        // Destroy window
+        if (instance.webview_host_hwnd) {
+          if (IsWindow(instance.webview_host_hwnd)) {
+            ResourceTracker::Instance().UntrackWindow(instance.webview_host_hwnd);
+            if (!DestroyWindow(instance.webview_host_hwnd)) {
+              DWORD error = GetLastError();
+              std::cout << "[AnyWP] WARNING: Failed to destroy window, error: " << error << std::endl;
+            }
+          } else {
+            ResourceTracker::Instance().UntrackWindow(instance.webview_host_hwnd);
+          }
+          instance.webview_host_hwnd = nullptr;
+        }
+        
+        // Clear iframe data
+        instance.iframes.clear();
+      }
+      
+      wallpaper_instances_.clear();
+      default_wallpaper_url_.clear();
+      std::cout << "[AnyWP] All wallpapers stopped, cleared default URL" << std::endl;
+    }
+  }
+
+  // Stop single-monitor mode instance
   if (webview_controller_) {
     try {
       webview_controller_->Close();
