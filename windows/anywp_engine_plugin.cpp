@@ -2432,6 +2432,10 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
 
   // Initialize WebView2 (pass -1 for legacy single-monitor support)
   SetupWebView2(webview_host_hwnd_, url, -1);
+  
+  // Save URL for recovery after long-term lock/sleep
+  default_wallpaper_url_ = url;
+  std::cout << "[AnyWP] Saved wallpaper URL for auto-recovery: " << url << std::endl;
 
   std::cout << "[AnyWP] ========== Initialization Complete ==========" << std::endl;
   return true;
@@ -3567,6 +3571,100 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
   
   std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER ==========" << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
+  
+  // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
+  bool need_reinitialize = false;
+  
+  // Check single-monitor mode
+  if (webview_host_hwnd_) {
+    if (!IsWindow(webview_host_hwnd_) || !IsWindowVisible(webview_host_hwnd_)) {
+      std::cout << "[AnyWP] [PowerSaving] WARNING: Wallpaper window invalid or hidden!" << std::endl;
+      std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(webview_host_hwnd_) 
+                << ", IsVisible: " << (IsWindow(webview_host_hwnd_) ? IsWindowVisible(webview_host_hwnd_) : false) << std::endl;
+      need_reinitialize = true;
+    } else {
+      // Verify parent relationship
+      HWND parent = GetParent(webview_host_hwnd_);
+      if (parent != worker_w_hwnd_ || !IsWindow(worker_w_hwnd_)) {
+        std::cout << "[AnyWP] [PowerSaving] WARNING: Parent window relationship broken!" << std::endl;
+        std::cout << "[AnyWP] [PowerSaving] Expected parent: " << worker_w_hwnd_ << ", Actual: " << parent << std::endl;
+        need_reinitialize = true;
+      }
+    }
+  }
+  
+  // Check multi-monitor mode
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      if (!IsWindow(instance.webview_host_hwnd) || !IsWindowVisible(instance.webview_host_hwnd)) {
+        std::cout << "[AnyWP] [PowerSaving] WARNING: Monitor " << instance.monitor_index 
+                  << " wallpaper window invalid or hidden!" << std::endl;
+        need_reinitialize = true;
+        break;
+      }
+    }
+  }
+  
+  // If window is lost, try to restore it
+  if (need_reinitialize) {
+    std::cout << "[AnyWP] [PowerSaving] ========== RESTORING LOST WALLPAPER ==========" << std::endl;
+    
+    // Save current state
+    std::string saved_url = default_wallpaper_url_;
+    bool was_multi_monitor = false;
+    std::vector<int> active_monitors;
+    
+    {
+      std::lock_guard<std::mutex> lock(instances_mutex_);
+      if (!wallpaper_instances_.empty()) {
+        was_multi_monitor = true;
+        for (const auto& instance : wallpaper_instances_) {
+          active_monitors.push_back(instance.monitor_index);
+        }
+      }
+    }
+    
+    // Stop current instance (cleanup invalid windows)
+    if (was_multi_monitor) {
+      std::cout << "[AnyWP] [PowerSaving] Stopping multi-monitor wallpaper..." << std::endl;
+      // Stop each monitor individually
+      for (int monitor_idx : active_monitors) {
+        StopWallpaperOnMonitor(monitor_idx);
+      }
+    } else if (is_initialized_) {
+      std::cout << "[AnyWP] [PowerSaving] Stopping single-monitor wallpaper..." << std::endl;
+      StopWallpaper();
+    }
+    
+    // Re-initialize wallpaper
+    if (!saved_url.empty()) {
+      std::cout << "[AnyWP] [PowerSaving] Re-initializing wallpaper with URL: " << saved_url << std::endl;
+      
+      if (was_multi_monitor && !active_monitors.empty()) {
+        // Restore multi-monitor setup
+        for (int monitor_idx : active_monitors) {
+          std::cout << "[AnyWP] [PowerSaving] Restoring wallpaper on monitor " << monitor_idx << std::endl;
+          InitializeWallpaperOnMonitor(saved_url, monitor_idx, !enable_interaction_);
+        }
+      } else {
+        // Restore single-monitor setup
+        InitializeWallpaper(saved_url, !enable_interaction_);
+      }
+      
+      std::cout << "[AnyWP] [PowerSaving] Wallpaper restoration complete" << std::endl;
+      
+      // Set power state to active
+      power_state_ = PowerState::ACTIVE;
+      NotifyPowerStateChange(PowerState::ACTIVE);
+      
+      return;  // Skip normal resume (already showing)
+    } else {
+      std::cout << "[AnyWP] [PowerSaving] ERROR: No saved URL to restore wallpaper!" << std::endl;
+      LogError("Cannot restore wallpaper: no saved URL");
+      return;
+    }
+  }
   
   // Remove freeze and restore animations
   std::wstring unfreeze_script = LR"(
