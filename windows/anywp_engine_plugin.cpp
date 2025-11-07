@@ -393,6 +393,14 @@ void AnyWPEnginePlugin::HandleMethodCall(
   }
   else if (method_call.method_name() == "stopWallpaper") {
     bool success = StopWallpaper();
+    
+    // Clear original configuration when user explicitly stops
+    {
+      std::lock_guard<std::mutex> lock(instances_mutex_);
+      original_monitor_indices_.clear();
+      std::cout << "[AnyWP] Cleared original monitor configuration (user stopped)" << std::endl;
+    }
+    
     result->Success(flutter::EncodableValue(success));
   }
   else if (method_call.method_name() == "navigateToUrl") {
@@ -2484,8 +2492,9 @@ bool AnyWPEnginePlugin::StopWallpaper() {
       }
       
       wallpaper_instances_.clear();
+      // DON'T clear original_monitor_indices_ - needed for session switch rebuild
       // DON'T clear default_wallpaper_url_ - needed for session switch rebuild
-      std::cout << "[AnyWP] All wallpapers stopped (URL preserved for rebuild)" << std::endl;
+      std::cout << "[AnyWP] All wallpapers stopped (URL and original config preserved for rebuild)" << std::endl;
     }
   }
   
@@ -2787,6 +2796,13 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
     wallpaper_instances_.push_back(new_instance);
     std::cout << "[AnyWP] Added wallpaper instance for monitor " << monitor_index 
               << " (Total instances: " << wallpaper_instances_.size() << ")" << std::endl;
+    
+    // Save to original configuration if not already present
+    if (std::find(original_monitor_indices_.begin(), original_monitor_indices_.end(), monitor_index) 
+        == original_monitor_indices_.end()) {
+      original_monitor_indices_.push_back(monitor_index);
+      std::cout << "[AnyWP] Saved monitor " << monitor_index << " to original configuration" << std::endl;
+    }
   }
   
   // Show window
@@ -3822,19 +3838,29 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
   if (need_reinitialize) {
     std::cout << "[AnyWP] [PowerSaving] ========== RESTORING LOST WALLPAPER ==========" << std::endl;
     
-    // Save current URL and monitor indices
+    // Save current URL and use ORIGINAL monitor configuration
     std::string saved_url = default_wallpaper_url_;
     std::vector<int> saved_monitor_indices;
     
     {
       std::lock_guard<std::mutex> lock(instances_mutex_);
-      for (const auto& instance : wallpaper_instances_) {
-        saved_monitor_indices.push_back(instance.monitor_index);
+      // Use original configuration (survives session switches)
+      saved_monitor_indices = original_monitor_indices_;
+      
+      std::cout << "[AnyWP] [PowerSaving] Using original monitor configuration: " 
+                << saved_monitor_indices.size() << " monitor(s)" << std::endl;
+      
+      // Fallback: if no original config, try current instances
+      if (saved_monitor_indices.empty()) {
+        std::cout << "[AnyWP] [PowerSaving] No original config, using current instances" << std::endl;
+        for (const auto& instance : wallpaper_instances_) {
+          saved_monitor_indices.push_back(instance.monitor_index);
+        }
       }
     }
     
-    std::cout << "[AnyWP] [PowerSaving] Saved " << saved_monitor_indices.size() 
-              << " monitor configuration(s)" << std::endl;
+    std::cout << "[AnyWP] [PowerSaving] Will restore " << saved_monitor_indices.size() 
+              << " monitor(s)" << std::endl;
     
     // CRITICAL: Always stop existing wallpaper before recreating
     // Don't rely on state flags which may be out of sync after session switch

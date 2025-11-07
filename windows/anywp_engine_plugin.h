@@ -182,6 +182,9 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   std::vector<WallpaperInstance> wallpaper_instances_;
   std::mutex instances_mutex_;
   
+  // Persistent monitor configuration (survives session switches)
+  std::vector<int> original_monitor_indices_;  // User's initial monitor setup
+  
   // P0: Retry tracking
   int init_retry_count_ = 0;
   
