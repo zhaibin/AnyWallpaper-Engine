@@ -3785,10 +3785,10 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     if (!saved_url.empty()) {
       std::cout << "[AnyWP] [PowerSaving] Re-initializing wallpaper with URL: " << saved_url << std::endl;
       
-      // IMPORTANT: After session switch, display numbering may change
-      // Don't use saved monitor indices, use default initialization
-      std::cout << "[AnyWP] [PowerSaving] Using default initialization (adapts to current display config)" << std::endl;
-      InitializeWallpaper(saved_url, !enable_interaction_);
+      // IMPORTANT: Use monitor-based initialization to match how user starts wallpaper
+      // This ensures StopWallpaper() can properly clean up on next session switch
+      std::cout << "[AnyWP] [PowerSaving] Using monitor-based initialization on primary display (monitor 0)" << std::endl;
+      InitializeWallpaperOnMonitor(saved_url, !enable_interaction_, 0);
       
       std::cout << "[AnyWP] [PowerSaving] Wallpaper restoration complete" << std::endl;
       
