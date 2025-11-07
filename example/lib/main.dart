@@ -65,6 +65,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
   final List<Map<String, String>> _testPages = [
     {'name': 'Simple', 'file': 'test_simple.html', 'icon': '🎨'},
     {'name': 'Draggable', 'file': 'test_draggable.html', 'icon': '🖱️'},
+    {'name': 'Drag Debug', 'file': 'test_drag_debug.html', 'icon': '🔍'},
     {'name': 'API Test', 'file': 'test_api.html', 'icon': '⚙️'},
     {'name': 'Click Test', 'file': 'test_basic_click.html', 'icon': '👆'},
     {'name': 'Visibility', 'file': 'test_visibility.html', 'icon': '👁️'},
@@ -627,12 +628,49 @@ class _MyAppState extends State<MyApp> with WindowListener {
     return null;
   }
   
-  // Load quick test page URL
-  void _loadTestPage(int monitorIndex, String filename) {
+  // Load quick test page URL and auto-start/navigate wallpaper
+  Future<void> _loadTestPage(int monitorIndex, String filename) async {
     final controller = _monitorUrlControllers[monitorIndex];
-    if (controller != null) {
-      controller.text = 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/$filename';
-      _showMessage('Loaded: $filename');
+    if (controller == null) return;
+    
+    final url = 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/$filename';
+    controller.text = url;
+    
+    // Smart switching: use navigate if already running, otherwise start fresh
+    final isRunning = _monitorWallpapers[monitorIndex] == true;
+    
+    if (isRunning) {
+      // Seamless navigation without showing desktop
+      print('[APP] Seamlessly navigating to $filename on monitor $monitorIndex');
+      
+      setState(() {
+        _monitorLoading[monitorIndex] = true;
+      });
+      
+      try {
+        final success = await AnyWPEngine.navigateToUrlOnMonitor(url, monitorIndex);
+        
+        setState(() {
+          _monitorLoading[monitorIndex] = false;
+        });
+        
+        if (success) {
+          _showMessage('🎨 Switched to: $filename');
+        } else {
+          _showMessage('Failed to switch page, restarting...');
+          // Fallback to restart if navigate failed
+          await _startWallpaperOnMonitor(monitorIndex);
+        }
+      } catch (e) {
+        setState(() {
+          _monitorLoading[monitorIndex] = false;
+        });
+        _showMessage('Error: $e');
+      }
+    } else {
+      // First time start
+      print('[APP] Starting wallpaper with $filename on monitor $monitorIndex');
+      await _startWallpaperOnMonitor(monitorIndex);
     }
   }
   
@@ -1210,20 +1248,21 @@ class _MyAppState extends State<MyApp> with WindowListener {
                 SizedBox(height: 8),
                 Text(
                   '1. Check detected monitors above\n'
-                  '2. Click 🚀 Quick Test buttons to load test pages instantly\n'
-                  '3. Or enter custom URL in the text field\n'
+                  '2. Click 🚀 Quick Test buttons - wallpaper starts automatically!\n'
+                  '3. Or enter custom URL and click "Start" manually\n'
                   '4. Use "Start All" to apply to all monitors at once\n'
                   '5. Each monitor displays its own independent content!\n\n'
                   '💡 Quick Test Pages:\n'
                   '  🎨 Simple - Basic wallpaper test\n'
                   '  🖱️ Draggable - Drag & drop demo (mouse hook)\n'
+                  '  🔍 Drag Debug - Drag debug with detailed logs\n'
                   '  ⚙️ API Test - Full API testing\n'
                   '  👆 Click Test - Click detection test\n'
                   '  👁️ Visibility - Power saving test\n'
                   '  ⚛️ React / 💚 Vue - SPA framework tests\n'
                   '  📺 iFrame Ads - Ad detection test\n\n'
                   '✨ Tips:\n'
-                  '  • Click quick test buttons for instant load\n'
+                  '  • Quick test buttons auto-start instantly (no need to click Start!)\n'
                   '  • Mouse transparency works with drag & drop!\n'
                   '  • Try different pages on different monitors',
                   style: TextStyle(color: Colors.grey[800], fontSize: 13),
