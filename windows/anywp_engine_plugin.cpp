@@ -3680,12 +3680,24 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason) {
   // Check multi-monitor mode
   {
     std::lock_guard<std::mutex> lock(instances_mutex_);
-    for (auto& instance : wallpaper_instances_) {
-      if (!IsWindow(instance.webview_host_hwnd) || !IsWindowVisible(instance.webview_host_hwnd)) {
-        std::cout << "[AnyWP] [PowerSaving] WARNING: Monitor " << instance.monitor_index 
-                  << " wallpaper window invalid or hidden!" << std::endl;
-        need_reinitialize = true;
-        break;
+    if (!wallpaper_instances_.empty()) {
+      std::cout << "[AnyWP] [PowerSaving] Multi-monitor mode detected (" << wallpaper_instances_.size() << " instances)" << std::endl;
+      
+      for (auto& instance : wallpaper_instances_) {
+        std::cout << "[AnyWP] [PowerSaving] Checking monitor " << instance.monitor_index << std::endl;
+        std::cout << "[AnyWP] [PowerSaving] WebView window: " << instance.webview_host_hwnd << std::endl;
+        std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(instance.webview_host_hwnd) 
+                  << ", IsVisible: " << IsWindowVisible(instance.webview_host_hwnd) << std::endl;
+        
+        if (!IsWindow(instance.webview_host_hwnd) || !IsWindowVisible(instance.webview_host_hwnd)) {
+          std::cout << "[AnyWP] [PowerSaving] [X] WARNING: Monitor " << instance.monitor_index 
+                    << " wallpaper window invalid or hidden!" << std::endl;
+          need_reinitialize = true;
+          break;
+        } else {
+          std::cout << "[AnyWP] [PowerSaving] [OK] Monitor " << instance.monitor_index 
+                    << " window valid" << std::endl;
+        }
       }
     }
   }
