@@ -222,6 +222,44 @@ setOnPowerStateChangeCallback(callback)   // 电源状态变化
 - 深入技术细节
 - Windows API 使用
 - WebView2 集成原理
+- C++ 模块化架构说明 (v1.3.2+)
+
+---
+
+## 🆕 v1.3.2 重要更新
+
+### 🏗️ C++ 代码模块化重构
+
+**开发者体验改进（对 Flutter 开发者透明）：**
+
+#### ✅ 完成的工作
+- **核心插件精简**：主文件从 4000+ 行减少到更易维护的规模
+- **模块化设计**：功能拆分为 8 个独立模块（工具类 + 功能模块）
+- **代码质量提升**：单一职责、低耦合、易测试
+- **向后兼容**：所有 API 行为完全保持不变
+
+#### 📦 新增模块
+**工具类** (`windows/utils/`):
+- `StatePersistence` - 状态持久化
+- `URLValidator` - URL 验证
+- `Logger` - 日志记录
+
+**功能模块** (`windows/modules/`):
+- `IframeDetector` - iframe 检测（✅ 完成）
+- `SDKBridge` - SDK 桥接（✅ 完成）
+- `MouseHookManager` - 鼠标钩子（框架）
+- `MonitorManager` - 多显示器管理（框架）
+- `PowerManager` - 省电管理（框架）
+
+#### 🎯 对 Flutter 开发者的影响
+**完全透明！无需任何代码修改。**
+
+- ✅ 所有现有 API 正常工作
+- ✅ 性能和功能完全一致
+- ✅ 未来功能扩展更快速
+- ✅ Bug 修复更容易
+
+**详细了解重构架构** → [TECHNICAL_NOTES.md#modular-components-details](TECHNICAL_NOTES.md#modular-components-details-v132)
 
 ---
 

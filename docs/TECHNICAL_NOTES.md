@@ -2,20 +2,54 @@
 
 ## Core Architecture
 
-### Plugin Structure
+### Plugin Structure (v1.3.2+ Modular Design)
 
 ```
 AnyWallpaperEnginePlugin (C++)
-  ├─ RegisterWithRegistrar()      // Plugin registration
-  ├─ HandleMethodCall()            // Dart <-> C++ bridge
-  ├─ InitializeWallpaper()         // Main initialization
-  ├─ FindWorkerW()                 // Win10 WorkerW finder
-  ├─ FindWorkerWWindows11()        // Win11 WorkerW finder
-  ├─ CreateWebViewHostWindow()    // Window creation
-  ├─ SetupWebView2()               // WebView2 initialization
-  ├─ StopWallpaper()               // Cleanup
-  └─ NavigateToUrl()               // Navigation
+  ├─ Core Plugin (anywp_engine_plugin.cpp/h)
+  │   ├─ RegisterWithRegistrar()      // Plugin registration
+  │   ├─ HandleMethodCall()            // Dart <-> C++ bridge
+  │   ├─ InitializeWallpaper()         // Main initialization
+  │   ├─ FindWorkerW()                 // Win10 WorkerW finder
+  │   ├─ FindWorkerWWindows11()        // Win11 WorkerW finder
+  │   ├─ CreateWebViewHostWindow()    // Window creation
+  │   ├─ SetupWebView2()               // WebView2 initialization
+  │   ├─ StopWallpaper()               // Cleanup
+  │   └─ NavigateToUrl()               // Navigation
+  │
+  ├─ Utility Classes (utils/)
+  │   ├─ StatePersistence              // Key-value state storage
+  │   ├─ URLValidator                  // URL whitelist/blacklist
+  │   └─ Logger                        // Unified logging
+  │
+  └─ Functional Modules (modules/)
+      ├─ IframeDetector                // iframe boundary detection
+      ├─ SDKBridge                     // JavaScript SDK injection
+      ├─ MouseHookManager              // Mouse hook management (framework)
+      ├─ MonitorManager                // Multi-monitor support (framework)
+      └─ PowerManager                  // Power saving optimization (framework)
 ```
+
+### Modular Architecture Benefits
+
+**Before Refactoring:**
+- Single file with 4000+ lines
+- Mixed responsibilities
+- Hard to test and maintain
+- Difficult to extend
+
+**After Refactoring (v1.3.2+):**
+- Multiple focused modules (8 modules + core)
+- Single Responsibility Principle
+- Loose coupling via interfaces
+- Easy to unit test
+- Simple to add new features
+
+**Design Principles:**
+1. **Single Responsibility**: Each module handles one core function
+2. **Low Coupling**: Modules interact via well-defined interfaces
+3. **High Testability**: Independent modules enable unit testing
+4. **Backward Compatibility**: External API behavior unchanged
 
 ## WorkerW Layer Injection
 
@@ -334,18 +368,189 @@ static Future<bool> initializeWallpaper({
 3. **DPI Scaling**: Works but not explicitly handled
 4. **Windows Updates**: WorkerW behavior may change
 
+## Modular Components Details (v1.3.2+)
+
+### Utility Classes (`windows/utils/`)
+
+#### StatePersistence
+**Purpose**: Application-scoped key-value state storage
+
+**Features:**
+- Per-application isolated storage
+- JSON-based persistence
+- Automatic directory creation
+- UTF-8 encoding support
+
+**Key Methods:**
+```cpp
+void SetApplicationName(const std::string& name);
+bool SaveState(const std::string& key, const std::string& value);
+std::string LoadState(const std::string& key);
+bool ClearState();
+std::string GetStoragePath();
+```
+
+**Storage Location:** `%LOCALAPPDATA%\AnyWPEngine\[AppName]\`
+
+#### URLValidator
+**Purpose**: Security mechanism for URL validation
+
+**Features:**
+- Whitelist/blacklist pattern matching
+- Wildcard support
+- Multiple pattern rules
+
+**Key Methods:**
+```cpp
+bool IsAllowed(const std::string& url);
+void AddWhitelist(const std::string& pattern);
+void AddBlacklist(const std::string& pattern);
+bool MatchesPattern(const std::string& url, const std::string& pattern);
+```
+
+#### Logger
+**Purpose**: Unified logging interface
+
+**Features:**
+- Multiple log levels (Info, Warn, Error)
+- Console output
+- Extensible for file logging
+
+**Key Methods:**
+```cpp
+static void Info(const std::string& message);
+static void Warn(const std::string& message);
+static void Error(const std::string& message);
+```
+
+### Functional Modules (`windows/modules/`)
+
+#### IframeDetector (✅ Complete)
+**Purpose**: Detect iframe boundaries and map coordinates
+
+**Features:**
+- Parse iframe data from JavaScript messages
+- Point-in-iframe detection
+- Coordinate transformation
+
+**Key Methods:**
+```cpp
+void UpdateIframes(const std::string& json_data);
+std::optional<IframeInfo> GetIframeAtPoint(int x, int y);
+void Clear();
+```
+
+**Use Case:** Enables click detection inside embedded iframes (e.g., ads)
+
+#### SDKBridge (✅ Complete)
+**Purpose**: JavaScript SDK injection and messaging
+
+**Features:**
+- SDK file injection into WebView2
+- Message listener setup
+- Handler registration system
+- JSON message parsing
+
+**Key Methods:**
+```cpp
+bool InjectSDK(ICoreWebView2* webview, const std::string& sdk_content);
+void SetupMessageBridge(ICoreWebView2* webview);
+void HandleWebMessage(const std::string& message);
+void RegisterHandler(const std::string& type, MessageHandler handler);
+```
+
+**Use Case:** Bridge between web content and C++ plugin
+
+#### MouseHookManager (Framework)
+**Purpose**: Low-level mouse event interception
+
+**Planned Features:**
+- System-wide mouse hook
+- Custom click handling
+- Drag-and-drop support
+- Click-through management
+
+**Key Methods (Placeholder):**
+```cpp
+bool SetupHook();
+void RemoveHook();
+void SetTargetWebView(ICoreWebView2Controller* controller);
+void CancelActiveDrag();
+```
+
+#### MonitorManager (Framework)
+**Purpose**: Multi-monitor enumeration and management
+
+**Planned Features:**
+- Monitor enumeration
+- Display change detection
+- Hot-plug support
+- Per-monitor configuration
+
+**Key Methods (Placeholder):**
+```cpp
+std::vector<MonitorInfo> GetMonitors();
+void SetupDisplayChangeListener();
+void HandleDisplayChange();
+```
+
+#### PowerManager (Framework)
+**Purpose**: Power saving and performance optimization
+
+**Planned Features:**
+- Idle detection
+- Automatic pause/resume
+- Memory threshold monitoring
+- Battery-aware optimization
+
+**Key Methods (Placeholder):**
+```cpp
+void Enable();
+void UpdatePowerState(PowerState new_state);
+void PauseWallpaper();
+void ResumeWallpaper();
+void ConfigureIdleTimeout(int seconds);
+void ConfigureMemoryThreshold(int mb);
+```
+
 ## Future Enhancements
 
-- [ ] Multi-monitor support
-- [ ] Window position/size control
-- [ ] Custom transparency levels
-- [ ] Hardware acceleration options
-- [ ] Performance profiling
+- [ ] Complete MouseHookManager implementation
+- [ ] Complete MonitorManager implementation
+- [ ] Complete PowerManager implementation
+- [ ] Unit tests for all modules
+- [ ] Integration tests
+- [ ] Performance profiling per module
 - [ ] Error recovery mechanisms
+- [ ] Module hot-reload support
+
+## Build System
+
+### CMakeLists.txt Configuration (v1.3.2+)
+
+All modular source files are added to the build:
+
+```cmake
+add_library(${PLUGIN_NAME} SHARED
+  "anywp_engine_plugin.cpp"
+  "utils/state_persistence.cpp"
+  "utils/logger.cpp"
+  "utils/url_validator.cpp"
+  "modules/iframe_detector.cpp"
+  "modules/sdk_bridge.cpp"
+  "modules/mouse_hook_manager.cpp"
+  "modules/monitor_manager.cpp"
+  "modules/power_manager.cpp"
+)
+
+# Disable C4819 encoding warning
+target_compile_options(${PLUGIN_NAME} PRIVATE /wd4819)
+```
 
 ## References
 
 - [WebView2 Documentation](https://docs.microsoft.com/en-us/microsoft-edge/webview2/)
 - [Windows Desktop Window Manager](https://docs.microsoft.com/en-us/windows/win32/dwm/dwm-overview)
 - [Win32 Window Classes](https://docs.microsoft.com/en-us/windows/win32/winmsg/window-classes)
+- [C++ Modular Design Best Practices](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)
 
