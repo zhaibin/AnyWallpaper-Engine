@@ -1182,7 +1182,7 @@ git push origin main      # 推送到 GitHub
 
 **✅ 脚本编写规范（强制）**:
 1. **全英文编写**: 所有脚本、注释、输出信息必须使用英文
-2. **禁止 Emoji**: 避免使用任何 emoji 符号（✓、❌、🚀 等）
+2. **禁止 Emoji**: 脚本中避免使用任何 emoji 符号（✓、❌、🚀 等），文档中可以使用
 3. **编码规范**: 使用 ASCII 或 UTF-8 without BOM
 4. **命名规范**: 全英文小写，使用下划线分隔（如 `build_release.bat`）
 5. **输出信息**: 使用简单英文，避免特殊字符
@@ -1192,6 +1192,7 @@ git push origin main      # 推送到 GitHub
 # ✅ 正确：简单英文
 echo [OK] Build completed successfully
 echo [ERROR] Missing required file: plugin.dll
+echo [INFO] Processing 5 files...
 
 # ❌ 错误：中文或 emoji
 echo ✅ 构建成功
