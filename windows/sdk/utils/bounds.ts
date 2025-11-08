@@ -1,7 +1,11 @@
 // Bounds calculation utilities
+import type { ElementBounds } from '../types';
+
 export const Bounds = {
-  // Calculate element bounds in physical pixels
-  calculate(element, dpiScale) {
+  /**
+   * Calculate element bounds in physical pixels
+   */
+  calculate(element: HTMLElement, dpiScale: number): ElementBounds {
     const rect = element.getBoundingClientRect();
     
     return {
@@ -14,14 +18,18 @@ export const Bounds = {
     };
   },
   
-  // Check if point is in bounds
-  isInBounds(x, y, bounds) {
+  /**
+   * Check if point is in bounds
+   */
+  isInBounds(x: number, y: number, bounds: ElementBounds): boolean {
     return x >= bounds.left && x <= bounds.right &&
            y >= bounds.top && y <= bounds.bottom;
   },
   
-  // Check if mouse (in physical pixels) is over element
-  isMouseOverElement(mouseX, mouseY, element, dpiScale) {
+  /**
+   * Check if mouse (in physical pixels) is over element
+   */
+  isMouseOverElement(mouseX: number, mouseY: number, element: HTMLElement, dpiScale: number): boolean {
     const rect = element.getBoundingClientRect();
     
     const physicalLeft = Math.round(rect.left * dpiScale);
@@ -33,5 +41,4 @@ export const Bounds = {
            mouseY >= physicalTop && mouseY <= physicalBottom;
   }
 };
-
 

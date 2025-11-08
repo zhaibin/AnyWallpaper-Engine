@@ -23,3 +23,4 @@ export function initializeAnyWP(anyWP) {
   console.log('[AnyWP] Debug mode ENABLED automatically');
 }
 
+

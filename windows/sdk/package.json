@@ -1,27 +1,38 @@
 {
   "name": "anywp-sdk",
   "version": "4.2.0",
-  "description": "AnyWP Engine JavaScript SDK - Modular Architecture",
-  "main": "index.js",
+  "description": "AnyWP Engine JavaScript SDK - TypeScript Modular Architecture",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "rollup -c rollup.config.js",
-    "build:watch": "rollup -c rollup.config.js --watch",
-    "build:production": "cross-env NODE_ENV=production rollup -c rollup.config.js"
+    "build": "npm run clean && npm run compile && rollup -c rollup.config.js",
+    "build:watch": "npm run compile -- --watch",
+    "build:production": "npm run clean && npm run compile && cross-env NODE_ENV=production rollup -c rollup.config.js",
+    "compile": "tsc",
+    "clean": "rimraf dist",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "wallpaper",
     "webview2",
     "desktop",
-    "windows"
+    "windows",
+    "typescript"
   ],
   "author": "AnyWP Team",
   "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/node": "^20.11.5",
     "rollup": "^4.9.4",
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "typescript": "^5.3.3",
+    "tslib": "^2.6.2",
+    "rimraf": "^5.0.5"
   }
 }
+
 

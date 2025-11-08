@@ -1,24 +1,32 @@
 // Debug utilities module
+import type { ElementBounds } from '../types';
+
 export const Debug = {
   enabled: false,
   
-  // Enable debug mode
-  enable() {
+  /**
+   * Enable debug mode
+   */
+  enable(): void {
     this.enabled = true;
     console.log('[AnyWP] Debug mode ENABLED');
   },
   
-  // Log with debug control
-  log(message, forceLog = false) {
+  /**
+   * Log with debug control
+   */
+  log(message: string, forceLog: boolean = false): void {
     if (this.enabled || forceLog) {
       console.log('[AnyWP] ' + message);
     }
   },
   
-  // Show debug border around element
-  showBorder(bounds, element, dpiScale) {
+  /**
+   * Show debug border around element
+   */
+  showBorder(bounds: ElementBounds, element: HTMLElement, dpiScale: number): void {
     // Remove old border if exists
-    const oldBorder = element._anywpDebugBorder;
+    const oldBorder = (element as any)._anywpDebugBorder as HTMLElement | undefined;
     if (oldBorder && oldBorder.parentNode) {
       oldBorder.parentNode.removeChild(oldBorder);
     }
@@ -37,16 +45,17 @@ export const Debug = {
       'z-index: 999999;';
     document.body.appendChild(border);
     
-    element._anywpDebugBorder = border;
+    (element as any)._anywpDebugBorder = border;
   },
   
-  // Detect debug mode from URL parameter
-  detectFromURL() {
+  /**
+   * Detect debug mode from URL parameter
+   */
+  detectFromURL(): void {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('debug')) {
       this.enable();
     }
   }
 };
-
 

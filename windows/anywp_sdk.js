@@ -1,6 +1,7 @@
 // AnyWP Engine SDK v4.2.0 - JavaScript Bridge
 // Auto-injected into WebView2
 // React/Vue SPA Compatible
+// Built with TypeScript modular architecture
 
 var AnyWPBundle = (function (exports) {
   'use strict';
@@ -33,55 +34,56 @@ var AnyWPBundle = (function (exports) {
     }
   };
 
-  // Debug utilities module
   const Debug = {
-    enabled: false,
-    
-    // Enable debug mode
-    enable() {
-      this.enabled = true;
-      console.log('[AnyWP] Debug mode ENABLED');
-    },
-    
-    // Log with debug control
-    log(message, forceLog = false) {
-      if (this.enabled || forceLog) {
-        console.log('[AnyWP] ' + message);
+      enabled: false,
+      /**
+       * Enable debug mode
+       */
+      enable() {
+          this.enabled = true;
+          console.log('[AnyWP] Debug mode ENABLED');
+      },
+      /**
+       * Log with debug control
+       */
+      log(message, forceLog = false) {
+          if (this.enabled || forceLog) {
+              console.log('[AnyWP] ' + message);
+          }
+      },
+      /**
+       * Show debug border around element
+       */
+      showBorder(bounds, element, dpiScale) {
+          // Remove old border if exists
+          const oldBorder = element._anywpDebugBorder;
+          if (oldBorder && oldBorder.parentNode) {
+              oldBorder.parentNode.removeChild(oldBorder);
+          }
+          const border = document.createElement('div');
+          border.className = 'AnyWP-debug-border';
+          border.style.cssText =
+              'position: fixed;' +
+                  'left: ' + (bounds.left / dpiScale) + 'px;' +
+                  'top: ' + (bounds.top / dpiScale) + 'px;' +
+                  'width: ' + (bounds.width / dpiScale) + 'px;' +
+                  'height: ' + (bounds.height / dpiScale) + 'px;' +
+                  'border: 2px solid red;' +
+                  'box-shadow: 0 0 10px red;' +
+                  'pointer-events: none;' +
+                  'z-index: 999999;';
+          document.body.appendChild(border);
+          element._anywpDebugBorder = border;
+      },
+      /**
+       * Detect debug mode from URL parameter
+       */
+      detectFromURL() {
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.has('debug')) {
+              this.enable();
+          }
       }
-    },
-    
-    // Show debug border around element
-    showBorder(bounds, element, dpiScale) {
-      // Remove old border if exists
-      const oldBorder = element._anywpDebugBorder;
-      if (oldBorder && oldBorder.parentNode) {
-        oldBorder.parentNode.removeChild(oldBorder);
-      }
-      
-      const border = document.createElement('div');
-      border.className = 'AnyWP-debug-border';
-      border.style.cssText = 
-        'position: fixed;' +
-        'left: ' + (bounds.left / dpiScale) + 'px;' +
-        'top: ' + (bounds.top / dpiScale) + 'px;' +
-        'width: ' + (bounds.width / dpiScale) + 'px;' +
-        'height: ' + (bounds.height / dpiScale) + 'px;' +
-        'border: 2px solid red;' +
-        'box-shadow: 0 0 10px red;' +
-        'pointer-events: none;' +
-        'z-index: 999999;';
-      document.body.appendChild(border);
-      
-      element._anywpDebugBorder = border;
-    },
-    
-    // Detect debug mode from URL parameter
-    detectFromURL() {
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('debug')) {
-        this.enable();
-      }
-    }
   };
 
   // Event system module
@@ -178,40 +180,40 @@ var AnyWPBundle = (function (exports) {
     }
   };
 
-  // Bounds calculation utilities
   const Bounds = {
-    // Calculate element bounds in physical pixels
-    calculate(element, dpiScale) {
-      const rect = element.getBoundingClientRect();
-      
-      return {
-        left: Math.round(rect.left * dpiScale),
-        top: Math.round(rect.top * dpiScale),
-        right: Math.round(rect.right * dpiScale),
-        bottom: Math.round(rect.bottom * dpiScale),
-        width: Math.round(rect.width * dpiScale),
-        height: Math.round(rect.height * dpiScale)
-      };
-    },
-    
-    // Check if point is in bounds
-    isInBounds(x, y, bounds) {
-      return x >= bounds.left && x <= bounds.right &&
-             y >= bounds.top && y <= bounds.bottom;
-    },
-    
-    // Check if mouse (in physical pixels) is over element
-    isMouseOverElement(mouseX, mouseY, element, dpiScale) {
-      const rect = element.getBoundingClientRect();
-      
-      const physicalLeft = Math.round(rect.left * dpiScale);
-      const physicalTop = Math.round(rect.top * dpiScale);
-      const physicalRight = Math.round(rect.right * dpiScale);
-      const physicalBottom = Math.round(rect.bottom * dpiScale);
-      
-      return mouseX >= physicalLeft && mouseX <= physicalRight &&
-             mouseY >= physicalTop && mouseY <= physicalBottom;
-    }
+      /**
+       * Calculate element bounds in physical pixels
+       */
+      calculate(element, dpiScale) {
+          const rect = element.getBoundingClientRect();
+          return {
+              left: Math.round(rect.left * dpiScale),
+              top: Math.round(rect.top * dpiScale),
+              right: Math.round(rect.right * dpiScale),
+              bottom: Math.round(rect.bottom * dpiScale),
+              width: Math.round(rect.width * dpiScale),
+              height: Math.round(rect.height * dpiScale)
+          };
+      },
+      /**
+       * Check if point is in bounds
+       */
+      isInBounds(x, y, bounds) {
+          return x >= bounds.left && x <= bounds.right &&
+              y >= bounds.top && y <= bounds.bottom;
+      },
+      /**
+       * Check if mouse (in physical pixels) is over element
+       */
+      isMouseOverElement(mouseX, mouseY, element, dpiScale) {
+          const rect = element.getBoundingClientRect();
+          const physicalLeft = Math.round(rect.left * dpiScale);
+          const physicalTop = Math.round(rect.top * dpiScale);
+          const physicalRight = Math.round(rect.right * dpiScale);
+          const physicalBottom = Math.round(rect.bottom * dpiScale);
+          return mouseX >= physicalLeft && mouseX <= physicalRight &&
+              mouseY >= physicalTop && mouseY <= physicalBottom;
+      }
   };
 
   // SPA framework support module

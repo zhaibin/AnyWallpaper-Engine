@@ -1,7 +1,11 @@
 // Coordinate conversion utilities
+import type { Position, CoordinateOffsets } from '../types';
+
 export const Coordinates = {
-  // Convert screen coordinates (physical pixels) to viewport CSS coordinates
-  screenToViewport(mouseX, mouseY, dpiScale) {
+  /**
+   * Convert screen coordinates (physical pixels) to viewport CSS coordinates
+   */
+  screenToViewport(mouseX: number, mouseY: number, dpiScale: number): Position {
     // Get window position (in CSS pixels)
     const windowLeft = (typeof window.screenX !== 'undefined') ? window.screenX : 0;
     const windowTop = (typeof window.screenY !== 'undefined') ? window.screenY : 0;
@@ -16,8 +20,10 @@ export const Coordinates = {
     return { x: viewportX, y: viewportY };
   },
   
-  // Get window and document offsets for drag calculations
-  getOffsets(dpiScale) {
+  /**
+   * Get window and document offsets for drag calculations
+   */
+  getOffsets(dpiScale: number): CoordinateOffsets {
     const windowLeft = (typeof window.screenX !== 'undefined') ? window.screenX : 0;
     const windowTop = (typeof window.screenY !== 'undefined') ? window.screenY : 0;
     const docRect = document.documentElement.getBoundingClientRect();
@@ -31,5 +37,4 @@ export const Coordinates = {
     };
   }
 };
-
 
