@@ -63,6 +63,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
   
   // Quick test pages
   final List<Map<String, String>> _testPages = [
+    {'name': '🔧 Refactoring', 'file': 'test_refactoring.html', 'icon': '🔧'},
     {'name': 'Simple', 'file': 'test_simple.html', 'icon': '🎨'},
     {'name': 'Drag Debug', 'file': 'test_drag_debug.html', 'icon': '🔍'},
     {'name': 'API Test', 'file': 'test_api.html', 'icon': '⚙️'},
