@@ -35,12 +35,20 @@ void PowerManager::Enable(bool enabled) {
   
   enabled_ = enabled;
   
-  if (enabled) {
-    std::cout << "[AnyWP] [PowerManager] Enabling power management" << std::endl;
-    StartFullscreenDetection();
-  } else {
-    std::cout << "[AnyWP] [PowerManager] Disabling power management" << std::endl;
-    StopFullscreenDetection();
+  try {
+    if (enabled) {
+      std::cout << "[AnyWP] [PowerManager] Enabling power management" << std::endl;
+      StartFullscreenDetection();
+    } else {
+      std::cout << "[AnyWP] [PowerManager] Disabling power management" << std::endl;
+      StopFullscreenDetection();
+    }
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [PowerManager] ERROR: Exception in Enable: " << e.what() << std::endl;
+    enabled_ = !enabled;  // Rollback state
+  } catch (...) {
+    std::cout << "[AnyWP] [PowerManager] ERROR: Unknown exception in Enable" << std::endl;
+    enabled_ = !enabled;  // Rollback state
   }
 }
 
@@ -55,26 +63,40 @@ PowerManager::PowerState PowerManager::GetCurrentState() const {
 void PowerManager::UpdatePowerState() {
   PowerState new_state = PowerState::ACTIVE;
   
-  // Check in priority order
-  if (is_session_locked_.load()) {
-    new_state = PowerState::LOCKED;
-  } else if (IsFullscreenAppActive()) {
-    new_state = PowerState::FULLSCREEN_APP;
-  }
-  // TODO: Add idle detection
-  // TODO: Add screen off detection
-  
-  if (new_state != current_state_) {
-    last_state_ = current_state_;
-    current_state_ = new_state;
-    
-    std::cout << "[AnyWP] [PowerManager] State changed: "
-              << static_cast<int>(last_state_) << " -> "
-              << static_cast<int>(current_state_) << std::endl;
-    
-    if (on_state_changed_) {
-      on_state_changed_(last_state_, current_state_);
+  try {
+    // Check in priority order
+    if (is_session_locked_.load()) {
+      new_state = PowerState::LOCKED;
+    } else if (IsFullscreenAppActive()) {
+      new_state = PowerState::FULLSCREEN_APP;
     }
+    // TODO: Add idle detection
+    // TODO: Add screen off detection
+    
+    if (new_state != current_state_) {
+      last_state_ = current_state_;
+      current_state_ = new_state;
+      
+      std::cout << "[AnyWP] [PowerManager] State changed: "
+                << static_cast<int>(last_state_) << " -> "
+                << static_cast<int>(current_state_) << std::endl;
+      
+      if (on_state_changed_) {
+        try {
+          on_state_changed_(last_state_, current_state_);
+        } catch (const std::exception& e) {
+          std::cout << "[AnyWP] [PowerManager] ERROR: Exception in state change callback: " 
+                    << e.what() << std::endl;
+        } catch (...) {
+          std::cout << "[AnyWP] [PowerManager] ERROR: Unknown exception in state change callback" << std::endl;
+        }
+      }
+    }
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [PowerManager] ERROR: Exception in UpdatePowerState: " 
+              << e.what() << std::endl;
+  } catch (...) {
+    std::cout << "[AnyWP] [PowerManager] ERROR: Unknown exception in UpdatePowerState" << std::endl;
   }
 }
 

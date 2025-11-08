@@ -50,39 +50,46 @@ void MonitorManager::StartMonitoring() {
     return;  // Already monitoring
   }
   
-  std::cout << "[AnyWP] [MonitorManager] Starting display change monitoring..." << std::endl;
-  
-  // Register window class
-  WNDCLASSEXW wc = {sizeof(WNDCLASSEXW)};
-  wc.lpfnWndProc = DisplayChangeWndProc;
-  wc.hInstance = GetModuleHandle(nullptr);
-  wc.lpszClassName = L"AnyWPMonitorChangeListener";
-  
-  if (!RegisterClassExW(&wc)) {
-    DWORD error = GetLastError();
-    if (error != ERROR_CLASS_ALREADY_EXISTS) {
-      std::cout << "[AnyWP] [MonitorManager] Failed to register window class: " << error << std::endl;
-      return;
+  try {
+    std::cout << "[AnyWP] [MonitorManager] Starting display change monitoring..." << std::endl;
+    
+    // Register window class
+    WNDCLASSEXW wc = {sizeof(WNDCLASSEXW)};
+    wc.lpfnWndProc = DisplayChangeWndProc;
+    wc.hInstance = GetModuleHandle(nullptr);
+    wc.lpszClassName = L"AnyWPMonitorChangeListener";
+    
+    if (!RegisterClassExW(&wc)) {
+      DWORD error = GetLastError();
+      if (error != ERROR_CLASS_ALREADY_EXISTS) {
+        std::cout << "[AnyWP] [MonitorManager] ERROR: Failed to register window class: " << error << std::endl;
+        return;
+      }
     }
-  }
-  
-  // Create hidden listener window
-  listener_hwnd_ = CreateWindowExW(
-    0,
-    L"AnyWPMonitorChangeListener",
-    L"AnyWP Monitor Change Listener",
-    WS_OVERLAPPED,
-    0, 0, 0, 0,
-    nullptr,
-    nullptr,
-    GetModuleHandle(nullptr),
-    nullptr
-  );
-  
-  if (listener_hwnd_) {
-    std::cout << "[AnyWP] [MonitorManager] Listener window created: " << listener_hwnd_ << std::endl;
-  } else {
-    std::cout << "[AnyWP] [MonitorManager] Failed to create listener window: " << GetLastError() << std::endl;
+    
+    // Create hidden listener window
+    listener_hwnd_ = CreateWindowExW(
+      0,
+      L"AnyWPMonitorChangeListener",
+      L"AnyWP Monitor Change Listener",
+      WS_OVERLAPPED,
+      0, 0, 0, 0,
+      nullptr,
+      nullptr,
+      GetModuleHandle(nullptr),
+      nullptr
+    );
+    
+    if (listener_hwnd_) {
+      std::cout << "[AnyWP] [MonitorManager] Listener window created: " << listener_hwnd_ << std::endl;
+    } else {
+      DWORD error = GetLastError();
+      std::cout << "[AnyWP] [MonitorManager] ERROR: Failed to create listener window: " << error << std::endl;
+    }
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [MonitorManager] ERROR: Exception in StartMonitoring: " << e.what() << std::endl;
+  } catch (...) {
+    std::cout << "[AnyWP] [MonitorManager] ERROR: Unknown exception in StartMonitoring" << std::endl;
   }
 }
 

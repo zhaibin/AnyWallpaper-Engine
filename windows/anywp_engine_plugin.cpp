@@ -1367,11 +1367,38 @@ void AnyWPEnginePlugin::SetupSecurityHandlers() {
 
 // API Bridge: Load SDK JavaScript
 std::string AnyWPEnginePlugin::LoadSDKScript() {
-  // NOTE: SDK is loaded via <script src> in HTML files
-  // C++ injection is kept for compatibility but not required
-  std::cout << "[AnyWP] [API] SDK should be loaded via <script src> in HTML" << std::endl;
+  // Try to load SDK from file
+  // Priority 1: SDK file in windows/ directory (development mode)
+  // Priority 2: SDK file in data/flutter_assets/ directory (release mode)
   
-  // Return minimal compatibility shim
+  std::vector<std::string> sdk_paths = {
+    "windows\\anywp_sdk.js",           // Development: relative to project root
+    "..\\anywp_sdk.js",                // Alternative: relative to executable
+    "data\\flutter_assets\\windows\\anywp_sdk.js",  // Release: in assets
+  };
+  
+  for (const auto& sdk_path : sdk_paths) {
+    std::ifstream sdk_file(sdk_path);
+    if (sdk_file.is_open()) {
+      std::string sdk_content((std::istreambuf_iterator<char>(sdk_file)),
+                              std::istreambuf_iterator<char>());
+      sdk_file.close();
+      
+      if (!sdk_content.empty()) {
+        std::cout << "[AnyWP] [API] SDK loaded from: " << sdk_path 
+                  << " (size: " << sdk_content.length() << " bytes)" << std::endl;
+        return sdk_content;
+      }
+    }
+  }
+  
+  // Fallback: Return error shim if SDK file not found
+  std::cout << "[AnyWP] [API] WARNING: SDK file not found, using error shim" << std::endl;
+  std::cout << "[AnyWP] [API] Tried paths:" << std::endl;
+  for (const auto& path : sdk_paths) {
+    std::cout << "[AnyWP] [API]   - " << path << std::endl;
+  }
+  
   return R"(
 console.log('[AnyWP] Note: Full SDK should be loaded via <script src="../windows/anywp_sdk.js">');
 if (!window.AnyWP) {

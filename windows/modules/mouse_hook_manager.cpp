@@ -22,20 +22,29 @@ bool MouseHookManager::Install() {
     return true;  // Already installed
   }
   
-  std::cout << "[AnyWP] [MouseHook] Installing low-level mouse hook..." << std::endl;
-  
-  hook_ = SetWindowsHookExW(
-    WH_MOUSE_LL,
-    LowLevelMouseProc,
-    GetModuleHandle(nullptr),
-    0
-  );
-  
-  if (hook_) {
-    std::cout << "[AnyWP] [MouseHook] Hook installed successfully" << std::endl;
-    return true;
-  } else {
-    std::cout << "[AnyWP] [MouseHook] Failed to install hook: " << GetLastError() << std::endl;
+  try {
+    std::cout << "[AnyWP] [MouseHook] Installing low-level mouse hook..." << std::endl;
+    
+    hook_ = SetWindowsHookExW(
+      WH_MOUSE_LL,
+      LowLevelMouseProc,
+      GetModuleHandle(nullptr),
+      0
+    );
+    
+    if (hook_) {
+      std::cout << "[AnyWP] [MouseHook] Hook installed successfully" << std::endl;
+      return true;
+    } else {
+      DWORD error = GetLastError();
+      std::cout << "[AnyWP] [MouseHook] ERROR: Failed to install hook: " << error << std::endl;
+      return false;
+    }
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [MouseHook] ERROR: Exception in Install: " << e.what() << std::endl;
+    return false;
+  } catch (...) {
+    std::cout << "[AnyWP] [MouseHook] ERROR: Unknown exception in Install" << std::endl;
     return false;
   }
 }

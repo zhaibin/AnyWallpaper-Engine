@@ -25,38 +25,48 @@ class AutoTestApp extends StatefulWidget {
 class _AutoTestAppState extends State<AutoTestApp> {
   final List<TestCase> _testCases = [
     TestCase(
+      name: 'test_refactoring.html',
+      description: '🔧 重构测试 - 模块化架构验证',
+      duration: Duration(seconds: 20),
+    ),
+    TestCase(
       name: 'test_simple.html',
-      description: '基础壁纸测试 - 紫色渐变 + 时钟',
+      description: '🎨 基础壁纸测试 - 紫色渐变 + 时钟',
       duration: Duration(seconds: 10),
     ),
     TestCase(
-      name: 'test_draggable.html',
-      description: '拖拽功能测试 - 可拖拽元素 + 状态持久化',
+      name: 'test_drag_debug.html',
+      description: '🔍 拖拽调试 - 详细日志 + 状态持久化',
       duration: Duration(seconds: 15),
     ),
     TestCase(
       name: 'test_api.html',
-      description: '完整 API 测试 - 所有 SDK 功能',
+      description: '⚙️ 完整 API 测试 - 所有 SDK 功能',
       duration: Duration(seconds: 15),
     ),
     TestCase(
       name: 'test_basic_click.html',
-      description: '点击检测测试 - 鼠标事件处理',
+      description: '👆 点击检测测试 - 鼠标事件处理',
+      duration: Duration(seconds: 10),
+    ),
+    TestCase(
+      name: 'test_visibility.html',
+      description: '👁️ 可见性测试 - 省电模式验证',
       duration: Duration(seconds: 10),
     ),
     TestCase(
       name: 'test_react.html',
-      description: 'React SPA 测试',
+      description: '⚛️ React SPA 测试',
       duration: Duration(seconds: 10),
     ),
     TestCase(
       name: 'test_vue.html',
-      description: 'Vue SPA 测试',
+      description: '💚 Vue SPA 测试',
       duration: Duration(seconds: 10),
     ),
     TestCase(
       name: 'test_iframe_ads.html',
-      description: 'iframe 坐标映射测试',
+      description: '📺 iframe 坐标映射测试',
       duration: Duration(seconds: 10),
     ),
   ];
