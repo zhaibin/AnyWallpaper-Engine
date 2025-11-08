@@ -37,9 +37,9 @@ windows/                # C++ 实现 + anywp_sdk.js
   ├── modules/          # 功能模块 (NEW v1.3.2)
   │   ├── iframe_detector.cpp/h       # iframe 检测与坐标映射
   │   ├── sdk_bridge.cpp/h            # JavaScript SDK 注入与消息桥接
-  │   ├── mouse_hook_manager.cpp/h   # 鼠标钩子管理（框架）
-  │   ├── monitor_manager.cpp/h      # 多显示器管理（框架）
-  │   └── power_manager.cpp/h        # 省电与性能优化（框架）
+  │   ├── mouse_hook_manager.cpp/h   # 鼠标钩子管理
+  │   ├── monitor_manager.cpp/h      # 多显示器管理
+  │   └── power_manager.cpp/h        # 省电与性能优化
   ├── utils/            # 工具类 (NEW v1.3.2)
   │   ├── state_persistence.cpp/h    # 应用级状态持久化
   │   ├── url_validator.cpp/h        # URL 白名单/黑名单验证

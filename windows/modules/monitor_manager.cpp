@@ -17,17 +17,21 @@ MonitorManager::~MonitorManager() {
 
 std::vector<MonitorInfo> MonitorManager::GetMonitors() {
   std::vector<MonitorInfo> monitors;
+  EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, reinterpret_cast<LPARAM>(&monitors));
   
-  EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, 
-                     reinterpret_cast<LPARAM>(&monitors));
+  std::cout << "[AnyWP] [MonitorManager] Found " << monitors.size() << " monitor(s)" << std::endl;
   
+  // Cache for later use
   cached_monitors_ = monitors;
+  
   return monitors;
 }
 
 MonitorInfo* MonitorManager::GetMonitorByIndex(int index) {
-  if (index >= 0 && index < static_cast<int>(cached_monitors_.size())) {
-    return &cached_monitors_[index];
+  for (auto& monitor : cached_monitors_) {
+    if (monitor.index == index) {
+      return &monitor;
+    }
   }
   return nullptr;
 }
@@ -38,16 +42,53 @@ MonitorInfo* MonitorManager::GetPrimaryMonitor() {
       return &monitor;
     }
   }
-  return nullptr;
+  return cached_monitors_.empty() ? nullptr : &cached_monitors_[0];
 }
 
 void MonitorManager::StartMonitoring() {
-  std::cout << "[MonitorManager] Starting monitor change detection..." << std::endl;
-  // TODO: Implement listener window
+  if (listener_hwnd_) {
+    return;  // Already monitoring
+  }
+  
+  std::cout << "[AnyWP] [MonitorManager] Starting display change monitoring..." << std::endl;
+  
+  // Register window class
+  WNDCLASSEXW wc = {sizeof(WNDCLASSEXW)};
+  wc.lpfnWndProc = DisplayChangeWndProc;
+  wc.hInstance = GetModuleHandle(nullptr);
+  wc.lpszClassName = L"AnyWPMonitorChangeListener";
+  
+  if (!RegisterClassExW(&wc)) {
+    DWORD error = GetLastError();
+    if (error != ERROR_CLASS_ALREADY_EXISTS) {
+      std::cout << "[AnyWP] [MonitorManager] Failed to register window class: " << error << std::endl;
+      return;
+    }
+  }
+  
+  // Create hidden listener window
+  listener_hwnd_ = CreateWindowExW(
+    0,
+    L"AnyWPMonitorChangeListener",
+    L"AnyWP Monitor Change Listener",
+    WS_OVERLAPPED,
+    0, 0, 0, 0,
+    nullptr,
+    nullptr,
+    GetModuleHandle(nullptr),
+    nullptr
+  );
+  
+  if (listener_hwnd_) {
+    std::cout << "[AnyWP] [MonitorManager] Listener window created: " << listener_hwnd_ << std::endl;
+  } else {
+    std::cout << "[AnyWP] [MonitorManager] Failed to create listener window: " << GetLastError() << std::endl;
+  }
 }
 
 void MonitorManager::StopMonitoring() {
   if (listener_hwnd_) {
+    std::cout << "[AnyWP] [MonitorManager] Stopping display change monitoring..." << std::endl;
     DestroyWindow(listener_hwnd_);
     listener_hwnd_ = nullptr;
   }
@@ -62,49 +103,69 @@ void MonitorManager::SetOnMonitorChanged(MonitorChangeCallback callback) {
 }
 
 MonitorInfo* MonitorManager::GetMonitorAtPoint(int x, int y) {
+  POINT pt = {x, y};
+  HMONITOR hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONULL);
+  
+  if (!hMonitor) {
+    return nullptr;
+  }
+  
   for (auto& monitor : cached_monitors_) {
-    if (x >= monitor.left && x < monitor.left + monitor.width &&
-        y >= monitor.top && y < monitor.top + monitor.height) {
+    if (monitor.handle == hMonitor) {
       return &monitor;
     }
   }
+  
   return nullptr;
 }
 
 BOOL CALLBACK MonitorManager::MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
   auto* monitors = reinterpret_cast<std::vector<MonitorInfo>*>(dwData);
   
-  MONITORINFOEXW info = {};
-  info.cbSize = sizeof(MONITORINFOEXW);
-  GetMonitorInfoW(hMonitor, &info);
+  MONITORINFOEXW monitor_info;
+  monitor_info.cbSize = sizeof(MONITORINFOEXW);
   
-  MonitorInfo monitor;
-  monitor.index = static_cast<int>(monitors->size());
-  monitor.left = lprcMonitor->left;
-  monitor.top = lprcMonitor->top;
-  monitor.width = lprcMonitor->right - lprcMonitor->left;
-  monitor.height = lprcMonitor->bottom - lprcMonitor->top;
-  monitor.is_primary = (info.dwFlags & MONITORINFOF_PRIMARY) != 0;
-  monitor.handle = hMonitor;
+  if (GetMonitorInfoW(hMonitor, &monitor_info)) {
+    MonitorInfo info;
+    info.index = static_cast<int>(monitors->size());
+    
+    // Convert device name to string
+    char device_name[256] = {0};
+    WideCharToMultiByte(CP_UTF8, 0, monitor_info.szDevice, -1, 
+                       device_name, sizeof(device_name), nullptr, nullptr);
+    info.device_name = device_name;
+    
+    info.left = monitor_info.rcMonitor.left;
+    info.top = monitor_info.rcMonitor.top;
+    info.width = monitor_info.rcMonitor.right - monitor_info.rcMonitor.left;
+    info.height = monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top;
+    info.is_primary = (monitor_info.dwFlags & MONITORINFOF_PRIMARY) != 0;
+    info.handle = hMonitor;
+    
+    monitors->push_back(info);
+  }
   
-  // Convert device name
-  int size = WideCharToMultiByte(CP_UTF8, 0, info.szDevice, -1, nullptr, 0, nullptr, nullptr);
-  std::string device_name(size - 1, 0);
-  WideCharToMultiByte(CP_UTF8, 0, info.szDevice, -1, &device_name[0], size, nullptr, nullptr);
-  monitor.device_name = device_name;
-  
-  monitors->push_back(monitor);
-  return TRUE;
+  return TRUE;  // Continue enumeration
 }
 
 LRESULT CALLBACK MonitorManager::DisplayChangeWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
-  if (message == WM_DISPLAYCHANGE && instance_ && instance_->on_changed_) {
-    std::cout << "[MonitorManager] Display change detected!" << std::endl;
-    auto new_monitors = instance_->GetMonitors();
-    instance_->on_changed_(new_monitors);
+  if (message == WM_DISPLAYCHANGE) {
+    std::cout << "[AnyWP] [MonitorManager] Display configuration changed!" << std::endl;
+    std::cout << "[AnyWP] [MonitorManager] New resolution: " 
+              << LOWORD(lParam) << "x" << HIWORD(lParam) << std::endl;
+    
+    if (instance_) {
+      // Re-enumerate monitors
+      std::vector<MonitorInfo> new_monitors = instance_->GetMonitors();
+      
+      // Notify callback
+      if (instance_->on_changed_) {
+        instance_->on_changed_(new_monitors);
+      }
+    }
   }
-  return DefWindowProcW(hwnd, message, wParam, lParam);
+  
+  return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
 }  // namespace anywp_engine
-
