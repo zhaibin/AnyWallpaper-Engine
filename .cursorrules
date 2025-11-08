@@ -20,6 +20,9 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 - 使用智能指针管理 COM | RAII 管理资源 | 检查 Win32 API 返回值
 - **模块化设计** (v1.3.2+): 按功能拆分为独立模块（`modules/`）和工具类（`utils/`）
 - 核心插件文件保持精简，复杂功能委托给专门模块
+- **错误处理** (v4.9.0+): 所有关键操作使用 try-catch，回调添加异常保护
+- **日志记录** (v4.9.0+): 使用 `Logger::Instance()` 统一记录，支持多级别和线程安全
+- **单元测试** (v4.9.0+): 新功能需添加测试用例到 `windows/test/`
 
 ### JavaScript/TypeScript
 - 全局 `window.AnyWP` | 方法 `lowerCamelCase`
@@ -34,16 +37,21 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 ```
 lib/                    # Dart API
 windows/                # C++ 实现 + anywp_sdk.js
-  ├── modules/          # 功能模块 (NEW v1.3.2)
+  ├── modules/          # 功能模块 (v1.3.2+)
   │   ├── iframe_detector.cpp/h       # iframe 检测与坐标映射
   │   ├── sdk_bridge.cpp/h            # JavaScript SDK 注入与消息桥接
-  │   ├── mouse_hook_manager.cpp/h   # 鼠标钩子管理
-  │   ├── monitor_manager.cpp/h      # 多显示器管理
-  │   └── power_manager.cpp/h        # 省电与性能优化
-  ├── utils/            # 工具类 (NEW v1.3.2)
+  │   ├── mouse_hook_manager.cpp/h   # 鼠标钩子管理 (完善错误处理)
+  │   ├── monitor_manager.cpp/h      # 多显示器管理 (完善错误处理)
+  │   └── power_manager.cpp/h        # 省电与性能优化 (完善错误处理)
+  ├── utils/            # 工具类 (v1.3.2+)
   │   ├── state_persistence.cpp/h    # 应用级状态持久化
   │   ├── url_validator.cpp/h        # URL 白名单/黑名单验证
-  │   └── logger.cpp/h               # 日志工具
+  │   └── logger.cpp/h               # 日志工具 (线程安全、多级别)
+  ├── test/             # C++ 单元测试 (v4.9.0+)
+  │   ├── test_framework.h           # 轻量级测试框架
+  │   ├── unit_tests.cpp             # 单元测试用例
+  │   ├── CMakeLists.txt             # 测试构建配置
+  │   └── run_tests.bat              # 测试运行脚本
   ├── sdk/              # 模块化 TypeScript SDK 源码 (v4.2.0)
   │   ├── __tests__/    # 单元测试 (Jest + TS, 118 tests, 96.6% pass)
   │   ├── core/         # 核心模块 (AnyWP.ts, init.ts)
@@ -59,8 +67,8 @@ windows/                # C++ 实现 + anywp_sdk.js
   └── anywp_sdk.js      # 构建后的单文件 SDK
 example/                # 示例应用
 examples/               # 测试 HTML (9个，含 test_refactoring.html)
-docs/                   # 核心文档 (21个)
-scripts/                # 构建脚本 + test_refactoring.bat
+docs/                   # 核心文档 (23个)
+scripts/                # 构建脚本 + 测试脚本
 release/                # 发布包
 ```
 
@@ -845,16 +853,35 @@ git push origin v1.2.0
 
 ## 常用命令
 
+**脚本目录**: `scripts/` (10个脚本，全英文，无编码问题)  
+**完整文档**: `docs/SCRIPTS_REFERENCE.md`
+
 ```bash
 # 开发
-.\scripts\build_and_run.bat       # 构建并运行
-.\scripts\debug_run.bat           # 调试模式
-.\scripts\test.bat                # 快速测试
+.\scripts\build.bat       # 构建并运行
+.\scripts\run.bat         # 快速运行
+.\scripts\debug.bat       # 调试模式
+
+# 测试
+.\scripts\test_full.bat   # 全面测试 (性能监控)
+.\scripts\analyze.ps1     # 分析测试结果
+.\scripts\verify.bat      # 验证优化实现
+
+# SDK
+cd windows\sdk && npm run build     # 构建 Web SDK
+cd windows\sdk && npm test          # TypeScript 单元测试
+cd windows\test && run_tests.bat    # C++ 单元测试
 
 # 发布
-.\scripts\build_release_v2.bat    # 构建 Release 包
-git push origin main              # 推送到 GitHub
+.\scripts\release.bat     # 构建 Release 包
+git push origin main      # 推送到 GitHub
 ```
+
+**🚫 脚本政策** (v1.3.2+):
+- **禁止新增脚本**: 脚本集合已完整稳定
+- **添加功能**: 扩展现有脚本或添加参数
+- **特殊情况**: 必须获批准并更新文档
+- **原则**: 保持简洁，避免重复
 
 ---
 
@@ -869,14 +896,19 @@ git push origin main              # 推送到 GitHub
 #### 工具类 (`windows/utils/`)
 - `StatePersistence` - 应用级状态持久化（键值对存储）
 - `URLValidator` - URL 白名单/黑名单验证
-- `Logger` - 统一日志记录接口
+- `Logger` - 统一日志记录接口（多级别、线程安全 v4.9.0+）
 
 #### 功能模块 (`windows/modules/`)
-- `IframeDetector` - iframe 边界检测与坐标映射（已完成）
-- `SDKBridge` - JavaScript SDK 注入与消息桥接（已完成）
-- `MouseHookManager` - 鼠标钩子管理（框架）
-- `MonitorManager` - 多显示器枚举与变更监听（框架）
-- `PowerManager` - 省电优化与性能管理（框架）
+- `IframeDetector` - iframe 边界检测与坐标映射
+- `SDKBridge` - JavaScript SDK 注入与消息桥接
+- `MouseHookManager` - 鼠标钩子管理（完整实现 + 错误处理 v4.9.0+）
+- `MonitorManager` - 多显示器枚举与变更监听（完整实现 + 错误处理 v4.9.0+）
+- `PowerManager` - 省电优化与性能管理（完整实现 + 错误处理 v4.9.0+）
+
+#### 测试框架 (`windows/test/` v4.9.0+)
+- `test_framework.h` - 轻量级 C++ 单元测试框架
+- `unit_tests.cpp` - 模块测试用例
+- `CMakeLists.txt` - 测试构建配置
 
 **设计原则**:
 1. **单一职责**: 每个模块只负责一个核心功能
@@ -887,9 +919,41 @@ git push origin main              # 推送到 GitHub
 **添加新模块步骤**:
 1. 创建 `windows/modules/module_name.h/cpp` 或 `windows/utils/utility_name.h/cpp`
 2. 实现功能并遵循命名规范
-3. 更新 `windows/CMakeLists.txt`，添加源文件到 `add_library`
-4. 在主插件文件中引入并使用模块
-5. 编写测试用例验证功能
+3. 添加错误处理（try-catch）和日志记录（Logger::Instance()）
+4. 更新 `windows/CMakeLists.txt`，添加源文件到 `add_library`
+5. 在主插件文件中引入并使用模块
+6. 添加单元测试到 `windows/test/unit_tests.cpp`
+7. 运行测试验证功能
+
+**错误处理最佳实践** (v4.9.0+):
+```cpp
+try {
+  // 核心逻辑
+  if (callback_) {
+    try {
+      callback_(result);
+    } catch (const std::exception& e) {
+      Logger::Instance().Error("Module", 
+        "Callback failed: " + std::string(e.what()));
+    }
+  }
+} catch (const std::exception& e) {
+  Logger::Instance().Error("Module", 
+    "Operation failed: " + std::string(e.what()));
+  return false;
+}
+```
+
+**单元测试示例** (v4.9.0+):
+```cpp
+TEST_SUITE(YourModule) {
+  TEST_CASE(basic_functionality) {
+    YourModule module;
+    ASSERT_TRUE(module.Initialize());
+    ASSERT_EQUAL(expected, module.GetState());
+  }
+}
+```
 
 ---
 
@@ -911,6 +975,7 @@ git push origin main              # 推送到 GitHub
 
 ---
 
-**版本**: 1.3.2-dev (Changelog: 4.8.0) | **更新**: 2025-11-08 | **重要**: 
+**版本**: 1.3.2-dev (Changelog: 4.9.0) | **更新**: 2025-11-08 | **重要**: 
 - C++ 代码模块化重构完成 - 核心插件文件从 4000+ 行拆分为多个独立模块
 - **TypeScript SDK 迁移完成** - 100% TypeScript 重写，118 个单元测试，96.6% 通过率
+- **C++ 优化完成** (v4.9.0) - 错误处理、日志系统、回调优化、单元测试框架
