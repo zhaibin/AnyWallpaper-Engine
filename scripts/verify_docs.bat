@@ -204,7 +204,7 @@ if exist "%PROJECT_ROOT%\release\anywp_engine_v%VERSION%" (
         set /a ERROR_COUNT+=1
     )
     
-    if exist "!RELEASE_DIR!\windows\anywp_sdk.js" (
+    if exist "!RELEASE_DIR!\sdk\anywp_sdk.js" (
         echo   [OK] anywp_sdk.js
     ) else (
         echo   [ERROR] anywp_sdk.js NOT FOUND

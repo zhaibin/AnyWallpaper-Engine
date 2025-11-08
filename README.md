@@ -40,16 +40,16 @@ A Flutter Windows plugin that embeds WebView2 as an interactive desktop wallpape
 Download from [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
 
 ```powershell
-# 推荐：在 Flutter 项目根目录执行
+# Recommended: Run in Flutter project root directory
 packages\anywp_engine_v1.2.1\setup_precompiled.bat
 ```
 
-`setup_precompiled.bat` 会自动：
-- ✅ 验证关键文件（DLL / LIB / JS / CMake 等）
-- ✅ 将预编译包复制到 `packages/anywp_engine_v1.2.1`
-- ✅ 执行 `flutter pub get`
+`setup_precompiled.bat` will automatically:
+- ✅ Verify critical files (DLL / LIB / JS / CMake etc.)
+- ✅ Copy precompiled package to `packages/anywp_engine_v1.2.1`
+- ✅ Run `flutter pub get`
 
-也可手动在 `pubspec.yaml` 添加：
+Or manually add to `pubspec.yaml`:
 
 ```yaml
 dependencies:
@@ -57,14 +57,14 @@ dependencies:
     path: ./packages/anywp_engine_v1.2.1
 ```
 
-🧰 辅助脚本：
+🧰 Helper Scripts:
 
-| 文件 | 作用 |
+| File | Purpose |
 | --- | --- |
-| `setup_precompiled.bat` | 一键安装预编译包 |
-| `verify_precompiled.bat` | 检查 8 个关键文件是否齐全 |
-| `generate_pubspec_snippet.bat` | 输出 `pubspec.yaml` 片段 |
-| `example_minimal/` | 最小可运行示例，验证集成结果 |
+| `setup_precompiled.bat` | One-click installation of precompiled package |
+| `verify_precompiled.bat` | Check if all 8 critical files are present |
+| `generate_pubspec_snippet.bat` | Generate `pubspec.yaml` snippet |
+| `example_minimal/` | Minimal runnable example to verify integration |
 
 👉 See **[Precompiled DLL Integration Guide](docs/PRECOMPILED_DLL_INTEGRATION.md)** for details
 
