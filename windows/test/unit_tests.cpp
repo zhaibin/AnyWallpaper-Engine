@@ -1,6 +1,6 @@
-#include "../test_framework.h"
-#include "../../utils/logger.h"
-#include "../../modules/power_manager.h"
+#include "test_framework.h"
+#include "../utils/logger.h"
+#include "../modules/power_manager.h"
 
 using namespace anywp_engine;
 using namespace anywp_engine::test;
