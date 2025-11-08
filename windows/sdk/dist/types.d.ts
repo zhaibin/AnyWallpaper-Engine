@@ -170,6 +170,7 @@ export interface AnyWPSDK {
     _persistedState: PersistedState;
     _init(): void;
     _log(message: string, always?: boolean): void;
+    log(message: string): void;
     enableDebug(): void;
     onClick(element: string | HTMLElement, callback: ClickCallback, options?: ClickHandlerOptions): void;
     refreshBounds(): number;

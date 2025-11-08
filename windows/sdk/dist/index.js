@@ -19,6 +19,17 @@ AnyWP.enableDebug = function () {
 AnyWP._log = function (message, always) {
     Debug.log(message, always);
 };
+// Public API: Debug
+AnyWP.log = function (message) {
+    Debug.log(message, true);
+    // Also send to native if available
+    if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage({
+            type: 'log',
+            message: message
+        });
+    }
+};
 // Public API: Click Handler
 AnyWP.onClick = function (element, callback, options) {
     ClickHandler.onClick(this, element, callback, options);

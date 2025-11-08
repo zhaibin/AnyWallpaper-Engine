@@ -41,6 +41,10 @@ export const AnyWP: AnyWPSDK = {
     throw new Error('Not implemented');
   },
   
+  log(_message: string): void {
+    throw new Error('Not implemented');
+  },
+  
   // Placeholder methods (will be implemented by modules)
   enableDebug(): void {
     throw new Error('Not implemented');

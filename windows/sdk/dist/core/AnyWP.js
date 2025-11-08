@@ -26,6 +26,9 @@ export const AnyWP = {
     _log(_message, _always) {
         throw new Error('Not implemented');
     },
+    log(_message) {
+        throw new Error('Not implemented');
+    },
     // Placeholder methods (will be implemented by modules)
     enableDebug() {
         throw new Error('Not implemented');

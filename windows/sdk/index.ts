@@ -33,6 +33,19 @@ AnyWP._log = function(this: AnyWPSDK, message: string, always?: boolean) {
   Debug.log(message, always);
 };
 
+// Public API: Debug
+AnyWP.log = function(this: AnyWPSDK, message: string) {
+  Debug.log(message, true);
+  
+  // Also send to native if available
+  if (window.chrome && window.chrome.webview) {
+    window.chrome.webview.postMessage({
+      type: 'log',
+      message: message
+    });
+  }
+};
+
 // Public API: Click Handler
 AnyWP.onClick = function(this: AnyWPSDK, element: string | HTMLElement, callback: ClickCallback, options?: ClickHandlerOptions) {
   ClickHandler.onClick(this, element, callback, options);
