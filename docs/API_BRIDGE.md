@@ -8,25 +8,35 @@ AnyWP Engine provides a complete JavaScript Bridge for web wallpapers to communi
 
 **For Usage Guide:** See [Web Developer Guide](WEB_DEVELOPER_GUIDE.md) or [Web Developer Guide (中文)](WEB_DEVELOPER_GUIDE_CN.md)
 
-### Core Mechanism
+### Core Mechanism (v1.3.2+ Modular)
 
 ```
 Desktop Click
      ↓
 Windows Mouse Hook (WH_MOUSE_LL)
      ↓
-C++ Plugin (LowLevelMouseProc)
+MouseHookManager (windows/modules/mouse_hook_manager.cpp)
      ↓
-Dispatch AnyWP:mouse Event + AnyWP:click Event
+Core Plugin → Dispatch Event
      ↓
-WebView2 JavaScript
+SDKBridge (windows/modules/sdk_bridge.cpp)
      ↓
-AnyWP SDK (v4.1.0)
+WebView2 ExecuteScript (AnyWP:mouse + AnyWP:click)
+     ↓
+WebView2 JavaScript Runtime
+     ↓
+AnyWP SDK (v4.2.0) - windows/anywp_sdk.js
      ↓
 onClick Handler Match
      ↓
 Callback Triggered
 ```
+
+**模块化说明 (v1.3.2+)**:
+
+- **SDKBridge** (`windows/modules/sdk_bridge.cpp`): 负责 SDK 注入、消息监听、事件分发
+- **IframeDetector** (`windows/modules/iframe_detector.cpp`): 处理 iframe 坐标映射和边界检测
+- **Core Plugin** (`windows/anywp_engine_plugin.cpp`): 协调各模块，提供统一接口
 
 ---
 
@@ -709,12 +719,116 @@ WebView2 permissions auto-denied:
 
 ---
 
-**Version**: v4.1.0  
-**Last Updated**: 2025-11-05  
-**SDK Compatible**: AnyWP Engine SDK v4.1.0
+## 🏗️ C++ 模块化实现 (v1.3.2+)
+
+### SDK 注入与桥接
+
+#### SDKBridge 模块
+**位置**: `windows/modules/sdk_bridge.cpp/h`
+
+**职责**:
+- SDK 文件注入到 WebView2
+- 消息监听器设置
+- 消息解析和分发
+- 处理器注册系统
+
+**关键方法**:
+```cpp
+// 注入 SDK JavaScript 代码
+bool InjectSDK(ICoreWebView2* webview, const std::string& sdk_content);
+
+// 设置消息桥接
+void SetupMessageBridge(ICoreWebView2* webview);
+
+// 处理来自 Web 的消息
+void HandleWebMessage(const std::string& message);
+
+// 注册消息处理器
+void RegisterHandler(const std::string& type, MessageHandler handler);
+```
+
+**使用示例**:
+```cpp
+// 在核心插件中使用
+SDKBridge sdk_bridge;
+
+// 1. 注入 SDK
+sdk_bridge.InjectSDK(webview, sdk_content);
+
+// 2. 设置消息桥接
+sdk_bridge.SetupMessageBridge(webview);
+
+// 3. 注册处理器
+sdk_bridge.RegisterHandler("openURL", [this](const json& data) {
+  // 处理 openURL 消息
+});
+```
+
+### iframe 检测与坐标映射
+
+#### IframeDetector 模块
+**位置**: `windows/modules/iframe_detector.cpp/h`
+
+**职责**:
+- 解析 iframe 边界信息
+- 点击坐标映射
+- iframe 层级管理
+
+**关键方法**:
+```cpp
+// 更新 iframe 列表
+void UpdateIframes(const std::string& json_data);
+
+// 获取指定点的 iframe 信息
+std::optional<IframeInfo> GetIframeAtPoint(int x, int y);
+
+// 清空 iframe 数据
+void Clear();
+```
+
+**数据流**:
+```
+Web Page (JavaScript)
+     ↓ AnyWP.postMessage({type: "iframe_update"})
+SDKBridge.HandleWebMessage()
+     ↓ Parse JSON
+IframeDetector.UpdateIframes()
+     ↓ Store bounds
+Mouse Click Event
+     ↓ Check position
+IframeDetector.GetIframeAtPoint()
+     ↓ Return iframe info
+Forward to iframe
+```
+
+### 架构优势
+
+**模块化设计 (v1.3.2+)**:
+- ✅ **单一职责**: SDKBridge 专注通信，IframeDetector 专注坐标
+- ✅ **低耦合**: 模块间通过接口交互
+- ✅ **易测试**: 独立模块便于单元测试
+- ✅ **易扩展**: 添加新消息类型只需注册新处理器
+
+**向后兼容**:
+- ✅ 所有 API 行为保持不变
+- ✅ Web 开发者无需修改代码
+- ✅ JavaScript SDK 接口完全兼容
+
+---
+
+**版本更新 (v1.3.2)**:
+- 本文档已更新以反映 C++ 模块化重构
+- SDK 注入和消息桥接现由 SDKBridge 模块处理
+- iframe 检测现由 IframeDetector 模块处理
+- 外部 API 行为完全保持不变
+
+**Version**: v4.2.0  
+**Last Updated**: 2025-11-07  
+**SDK Compatible**: AnyWP Engine SDK v4.2.0
 
 **Related Documentation**:
 - [Web Developer Guide (English)](WEB_DEVELOPER_GUIDE.md) - Usage guide for web developers
 - [Web Developer Guide (中文)](WEB_DEVELOPER_GUIDE_CN.md) - Complete SDK guide with examples
 - [Developer API Reference](DEVELOPER_API_REFERENCE.md) - Flutter/Dart API documentation
+- [Technical Notes](TECHNICAL_NOTES.md) ⭐ 已更新 v1.3.2 模块化架构
 

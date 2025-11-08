@@ -50,12 +50,12 @@
 
 ### Technical & Architecture 🔧
 
-| 文档 | 用途 |
-|-----|------|
-| [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) | 系统架构 |
-| [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) | 技术细节 |
-| [API_BRIDGE.md](API_BRIDGE.md) | C++/JS 桥接 |
-| [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | 项目结构 |
+| 文档 | 用途 | 状态 |
+|-----|------|------|
+| [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) | 系统架构 | ⭐ v1.3.2 模块化 |
+| [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) | 技术细节 | ⭐ v1.3.2 模块化 |
+| [API_BRIDGE.md](API_BRIDGE.md) | C++/JS 桥接 | ⭐ v1.3.2 模块化 |
+| [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | 项目结构 | ⭐ v1.3.2 模块化 |
 
 ### General 📖
 
@@ -253,21 +253,30 @@ See [Best Practices Guide](BEST_PRACTICES.md) for detailed recommendations.
 
 ## 📝 Version History
 
-**Current Version: 1.1.0** 🆕
+**Current Version: 1.3.2-dev** 🆕
 
 | Version | Date | Changes |
 |---------|------|---------|
+| **1.3.2** | 2025-11-07 | 🏗️ **C++ 模块化重构** |
+| - | - | 核心代码从 4000+ 行拆分为 8 个模块 |
+| - | - | 单一职责、低耦合、易测试 |
+| - | - | ✅ 外部 API 完全向后兼容 |
+| - | - | ✅ 对 Flutter/Web 开发者透明 |
+| **1.3.1** | 2025-11-07 | 🖥️ 显示器热插拔完整实现 |
+| **1.3.0** | 2025-11-07 | 🔥 会话切换与多显示器稳定性提升 |
+| **1.2.0** | 2025-11-06 | 🗂️ 应用级存储隔离 + 测试 UI 优化 |
 | **1.1.0** | 2025-11-05 | **Instant resume** (<50ms) ⚡ |
 | - | - | Lightweight pause strategy |
 | - | - | Page Visibility API |
-| - | - | Auto video/audio pause |
-| - | - | Configuration APIs |
 | 1.0.0 | 2025-11-03 | Initial release with full features |
-| - | - | Multi-monitor support |
-| - | - | Power saving & optimization |
-| - | - | Comprehensive API |
 
-See [SDK Changelog](SDK_CHANGELOG.md) for detailed version history.
+**v1.3.2 架构改进详情**:
+- 📁 新增 `windows/modules/` - 5 个功能模块
+- 📁 新增 `windows/utils/` - 3 个工具类
+- 📖 已更新 4 个核心技术文档
+- 🔧 构建系统自动集成所有模块
+
+See [CHANGELOG_CN.md](../CHANGELOG_CN.md) for complete version history.
 
 ---
 
