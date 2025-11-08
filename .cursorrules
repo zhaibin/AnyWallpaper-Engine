@@ -622,12 +622,51 @@ delete_file("commit_msg.txt")
 
 **禁止**: `git commit -m "中文信息"` ❌ 会乱码
 
-### PowerShell 注意事项
+### PowerShell 注意事项（⚠️ 重要！反复出现错误）
 
-**基本规则**:
-- **禁止** `&&` 操作符，使用 `;` 分隔多命令
-- **禁止** 在单行中使用复杂的脚本块（`{ }` 嵌套）
-- **禁止** 在中文字符串中使用特殊字符（`"`、`'`、`{}`）
+**🚫 严禁使用的语法**:
+1. **Here-String (`@" ... "@`)** - 在 PowerShell 中会导致编码和解析问题
+2. **中文字符串中的特殊符号** - `"`、`'`、`{}`、`✓`、`❌` 等会导致解析错误
+3. **`&&` 操作符** - PowerShell 不支持，使用 `;` 分隔命令
+4. **复杂脚本块嵌套** - 超过 2 层嵌套会导致解析失败
+
+**✅ 安全的中文提交方式**:
+```powershell
+# 方式 1：使用 echo 重定向（推荐，最安全）
+echo "release: 发布 v1.3.1 - 功能描述" > commit_msg.txt
+echo "" >> commit_msg.txt
+echo "详细说明" >> commit_msg.txt
+git commit -F commit_msg.txt
+Remove-Item commit_msg.txt
+
+# 方式 2：使用 Set-Content（适合单行）
+Set-Content -Path "commit_msg.txt" -Value "release: 发布 v1.3.1" -Encoding UTF8
+git commit -F commit_msg.txt
+Remove-Item commit_msg.txt
+
+# 方式 3：使用批处理脚本（最可靠）
+# 创建 commit.bat:
+#   @echo off
+#   echo release: 发布 v1.3.1 - 功能描述 > commit_msg.txt
+#   echo. >> commit_msg.txt
+#   echo 详细说明 >> commit_msg.txt
+#   git commit -F commit_msg.txt
+#   del commit_msg.txt
+```
+
+**❌ 错误示例（会导致乱码或失败）**:
+```powershell
+# 错误 1：使用 Here-String
+@"
+release: 发布 v1.3.1
+"@ | Out-File -FilePath "commit_msg.txt" -Encoding UTF8  # ❌ 会导致编码问题
+
+# 错误 2：直接使用 -m 参数
+git commit -m "release: 发布 v1.3.1"  # ❌ 中文会乱码
+
+# 错误 3：特殊符号
+Write-Host "发现 ✓"  # ❌ 特殊符号导致解析错误
+```
 
 **常见问题**:
 
@@ -658,24 +697,43 @@ Get-ChildItem | Where-Object Name -like "*.dll"
 "包含花括号的字符串"
 ```
 
-**推荐做法**:
-- ✅ **优先使用批处理脚本（.bat）** 处理复杂逻辑
-- ✅ **PowerShell 仅用于简单命令**: Get-ChildItem, Test-Path, Copy-Item, Remove-Item
-- ✅ **验证流程使用 grep 工具** 代替 PowerShell 脚本块
-- ✅ **文件读写使用 UTF-8**: `Get-Content -Raw` + `[System.Text.UTF8Encoding]::new($false)`
-- ✅ **避免 PowerShell 管道复杂度**: 不超过 2 级管道，使用变量缓存中间结果
+**推荐做法（严格遵守）**:
+- ✅ **优先使用批处理脚本（.bat）** 处理所有复杂逻辑和中文文本
+- ✅ **PowerShell 仅用于最简单的命令**: Test-Path, Copy-Item, Remove-Item（无中文输出）
+- ✅ **中文提交信息**: 使用 `echo > file` 或批处理脚本，**禁止 Here-String**
+- ✅ **文件读写**: 使用 `Get-Content -Raw -Encoding UTF8` 读取，`Set-Content -Encoding UTF8` 写入
+- ✅ **避免 PowerShell 管道复杂度**: 不超过 1 级管道，使用批处理脚本替代
 
-**最佳实践**:
-```powershell
-# ✅ 正确：简单命令
-Test-Path "release\anywp_engine_v1.3.1\bin\*.dll"
+**验证脚本模板**（批处理脚本，而非 PowerShell）:
+```batch
+@echo off
+setlocal enabledelayedexpansion
 
-# ❌ 错误：复杂脚本块
-Get-ChildItem | Where-Object { $_.Name -match "\.dll$" } | ForEach-Object { Write-Host "Found: $($_.Name)" }
+set "VERSION=1.3.1"
+set "BASE_PATH=release\anywp_engine_v%VERSION%"
 
-# ✅ 正确：使用批处理脚本
-dir /b /s release\*.dll > dll_list.txt
+echo 验证关键文件...
+
+if not exist "%BASE_PATH%\bin\anywp_engine_plugin.dll" (
+    echo [ERROR] 缺少: bin\anywp_engine_plugin.dll
+    exit /b 1
+)
+
+if not exist "%BASE_PATH%\lib\anywp_engine_plugin.lib" (
+    echo [ERROR] 缺少: lib\anywp_engine_plugin.lib
+    exit /b 1
+)
+
+echo [OK] 所有关键文件验证通过
+exit /b 0
 ```
+
+**教训总结（v1.3.2+ 反复出现的问题）**:
+- ❌ **问题 1**: PowerShell Here-String 导致提交信息乱码
+- ❌ **问题 2**: 中文字符串中的特殊符号（✓、❌）导致解析失败
+- ❌ **问题 3**: 复杂脚本块在文档中被误解析
+- ✅ **解决方案**: 所有中文操作使用批处理脚本，PowerShell 仅用于文件操作
+- 📝 **结论**: 永远不要在 PowerShell 中使用 Here-String 处理中文
 
 ---
 
@@ -760,40 +818,60 @@ flutter build windows --release
 
 **6.1 关键文件验证（必须全部通过）**:
 
-**一键验证脚本** (PowerShell):
-```powershell
-$version = "1.3.1"  # 替换为实际版本号
-$basePath = "release\anywp_engine_v$version"
+**推荐方式：使用批处理脚本验证**
 
-$requiredFiles = @(
-    "bin\anywp_engine_plugin.dll",
-    "bin\WebView2Loader.dll",
-    "lib\anywp_engine_plugin.lib",      # 最易遗漏！
-    "lib\anywp_engine.dart",
-    "lib\dart\anywp_engine.dart",
-    "include\anywp_engine\any_w_p_engine_plugin.h",
-    "windows\anywp_sdk.js",
-    "windows\CMakeLists.txt",
-    "windows\packages\"
+创建 `scripts/verify_release.bat`:
+```batch
+@echo off
+setlocal enabledelayedexpansion
+
+if "%1"=="" (
+    echo Usage: verify_release.bat [version]
+    echo Example: verify_release.bat 1.3.1
+    exit /b 1
 )
 
-$missing = @()
-foreach ($file in $requiredFiles) {
-    if (-not (Test-Path "$basePath\$file")) {
-        $missing += $file
-    }
-}
+set "VERSION=%1"
+set "BASE_PATH=release\anywp_engine_v%VERSION%"
 
-if ($missing.Count -gt 0) {
-    Write-Host "❌ 缺少关键文件：" -ForegroundColor Red
-    $missing | ForEach-Object { Write-Host "  - $_" }
-    exit 1
-} else {
-    Write-Host "✅ 所有关键文件验证通过" -ForegroundColor Green
-}
+echo 验证关键文件: %BASE_PATH%
+echo.
+
+set "ERROR_COUNT=0"
+
+call :CheckFile "bin\anywp_engine_plugin.dll"
+call :CheckFile "bin\WebView2Loader.dll"
+call :CheckFile "lib\anywp_engine_plugin.lib"
+call :CheckFile "lib\anywp_engine.dart"
+call :CheckFile "windows\anywp_sdk.js"
+call :CheckFile "windows\CMakeLists.txt"
+
+if %ERROR_COUNT%==0 (
+    echo.
+    echo [OK] 所有关键文件验证通过
+    exit /b 0
+) else (
+    echo.
+    echo [ERROR] 发现 %ERROR_COUNT% 个缺失文件
+    exit /b 1
+)
+
+:CheckFile
+if not exist "%BASE_PATH%\%~1" (
+    echo [X] 缺失: %~1
+    set /a ERROR_COUNT+=1
+) else (
+    echo [v] 存在: %~1
+)
+goto :eof
 ```
 
-**手动验证** (逐一检查):
+使用方式：
+```bash
+.\scripts\verify_release.bat 1.3.1
+```
+
+**手动验证** (简单命令):
 ```powershell
 # ⚠️ 这些文件缺失会导致客户集成失败
 Test-Path "release\anywp_engine_v{版本号}\bin\anywp_engine_plugin.dll"    # 必需
@@ -870,21 +948,24 @@ copy docs\RELEASE_TEMPLATE.md release\GITHUB_RELEASE_NOTES_v{版本号}.md
 # 添加发布相关文件
 git add release/ CHANGELOG_CN.md pubspec.yaml docs/ README.md .cursorrules
 
-# 创建中文提交信息（使用文件方式）
-@"
-release: 发布 v{版本号} - 功能描述
-
-详细说明：
-- 新增功能1
-- 新增功能2
-- 修复问题3
-"@ | Out-File -FilePath "commit_msg.txt" -Encoding UTF8
-
-# 提交
+# 方式 1：使用 echo 重定向（推荐）
+echo release: 发布 v{版本号} - 功能描述 > commit_msg.txt
+echo. >> commit_msg.txt
+echo 详细说明： >> commit_msg.txt
+echo - 新增功能1 >> commit_msg.txt
+echo - 新增功能2 >> commit_msg.txt
 git commit -F commit_msg.txt
+del commit_msg.txt
 
-# 清理临时文件
-Remove-Item commit_msg.txt
+# 方式 2：使用批处理脚本
+# 创建 commit_release.bat:
+#   @echo off
+#   echo release: 发布 v1.3.1 - 功能描述 > commit_msg.txt
+#   echo. >> commit_msg.txt
+#   echo 详细说明 >> commit_msg.txt
+#   git commit -F commit_msg.txt
+#   del commit_msg.txt
+# 然后运行: .\commit_release.bat
 ```
 
 **检查清单**:
@@ -906,16 +987,15 @@ git push origin main
 # 创建 annotated tag（英文描述推荐）
 git tag -a v{版本号} -m "AnyWP Engine v{版本号} - feature description"
 
-# 如需中文描述，使用文件方式
-@"
-AnyWP Engine v{版本号} - 功能描述
-详细说明
-"@ | Out-File -FilePath "tag_msg.txt" -Encoding UTF8
+# 如需中文描述，使用 echo 重定向
+echo AnyWP Engine v{版本号} - 功能描述 > tag_msg.txt
+echo. >> tag_msg.txt
+echo 详细说明 >> tag_msg.txt
 git tag -a v{版本号} -F tag_msg.txt
-Remove-Item tag_msg.txt
+del tag_msg.txt
 
 # 验证 tag 创建
-git tag -l | Select-String "v{版本号}"
+git tag -l
 
 # 推送 tag 到 GitHub
 git push origin v{版本号}
@@ -925,6 +1005,7 @@ git push origin v{版本号}
 - ⚠️ **必须先推送 tag，GitHub Release 才能基于 tag 创建**
 - 所有 Git 命令均在仓库根目录执行
 - Tag 描述尽量使用 ASCII 文本（避免编码问题）
+- **使用 echo 重定向，不要使用 PowerShell Here-String**
 
 **检查清单**:
 - [ ] Tag 创建成功：`git tag -l` 可见 v{版本号}
