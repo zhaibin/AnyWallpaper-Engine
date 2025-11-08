@@ -1113,53 +1113,41 @@ class _MyAppState extends State<MyApp> with WindowListener {
                     ),
                   ),
                   SizedBox(height: 8),
-                  // Two-column grid layout
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 3.5,
-                    ),
-                    itemCount: _testPages.length,
-                    itemBuilder: (context, index) {
-                      final page = _testPages[index];
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _testPages.map((page) {
                       return InkWell(
                         onTap: () => _loadTestPage(monitor.index, page['file']!),
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.blue[50],
                             border: Border.all(color: Colors.blue[200]!),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 page['icon']!,
-                                style: TextStyle(fontSize: 16),
+                                style: TextStyle(fontSize: 14),
                               ),
-                              SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  page['name']!,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.blue[900],
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                              SizedBox(width: 4),
+                              Text(
+                                page['name']!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.blue[900],
                                 ),
                               ),
                             ],
                           ),
                         ),
                       );
-                    },
+                    }).toList(),
                   ),
                   SizedBox(height: 12),
                   // Custom URL input

@@ -8,57 +8,79 @@
     <style>
         body {
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             height: 100vh;
-            overflow: auto;
+            overflow: hidden;
+            box-sizing: border-box;
         }
         
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: 100%;
+            height: calc(100vh - 30px);
+            display: flex;
+            flex-direction: column;
         }
         
         h1 {
             text-align: center;
-            margin-bottom: 30px;
+            margin: 0 0 15px 0;
+            font-size: 1.8em;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            flex: 1;
+            overflow: hidden;
         }
         
         .test-section {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
+            border-radius: 12px;
+            padding: 15px;
             border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         
         .test-section h2 {
-            margin-top: 0;
+            margin: 0 0 10px 0;
             color: #ffd700;
-            font-size: 1.5em;
+            font-size: 1.2em;
+        }
+        
+        .test-section p {
+            margin: 5px 0 10px 0;
+            font-size: 0.9em;
+            opacity: 0.9;
         }
         
         .test-buttons {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 6px;
+            margin-bottom: 10px;
         }
         
         button {
-            padding: 10px 20px;
-            font-size: 14px;
+            padding: 8px 12px;
+            font-size: 12px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
             background: #4CAF50;
             color: white;
-            transition: all 0.3s;
+            transition: all 0.2s;
             font-weight: 500;
+            flex: 1;
+            min-width: fit-content;
         }
         
         button:hover {
@@ -85,14 +107,14 @@
         
         .log-output {
             background: rgba(0, 0, 0, 0.5);
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 15px;
-            max-height: 300px;
+            border-radius: 6px;
+            padding: 10px;
+            max-height: 150px;
             overflow-y: auto;
             font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.6;
+            font-size: 11px;
+            line-height: 1.4;
+            flex: 1;
         }
         
         .log-entry {
@@ -141,12 +163,13 @@
         .draggable-box {
             background: rgba(255, 255, 255, 0.2);
             border: 2px dashed rgba(255, 255, 255, 0.5);
-            border-radius: 10px;
-            padding: 20px;
-            margin: 10px;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 5px;
             cursor: move;
             display: inline-block;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            font-size: 0.9em;
         }
         
         .draggable-box:hover {
@@ -161,28 +184,27 @@
         
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
         }
         
         .stat-item {
             background: rgba(0, 0, 0, 0.3);
-            padding: 10px;
-            border-radius: 8px;
+            padding: 8px;
+            border-radius: 6px;
             text-align: center;
         }
         
         .stat-value {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: #ffd700;
         }
         
         .stat-label {
-            font-size: 12px;
+            font-size: 11px;
             opacity: 0.8;
-            margin-top: 5px;
+            margin-top: 3px;
         }
     </style>
 </head>
@@ -190,90 +212,91 @@
     <div class="container">
         <h1>🔧 AnyWP Engine 重构功能测试</h1>
         
-        <!-- SDK 状态 -->
-        <div class="test-section">
-            <h2>📦 SDK 状态 <span class="status pending" id="sdk-status">检测中...</span></h2>
-            <p>SDK 版本: <strong id="sdk-version">未知</strong></p>
-            <p>加载时间: <strong id="load-time">计算中...</strong></p>
-        </div>
-        
-        <!-- 状态持久化测试 -->
-        <div class="test-section">
-            <h2>💾 状态持久化测试</h2>
-            <p>测试 StatePersistence 模块的功能</p>
-            <div class="test-buttons">
-                <button onclick="testSaveState()">保存测试数据</button>
-                <button class="secondary" onclick="testLoadState()">加载测试数据</button>
-                <button class="danger" onclick="testClearState()">清除所有数据</button>
-            </div>
-            <div class="log-output" id="state-log"></div>
-        </div>
-        
-        <!-- 拖拽功能测试 -->
-        <div class="test-section">
-            <h2>🖱️ 拖拽功能测试</h2>
-            <p>测试 MouseHookManager 和拖拽 API</p>
-            <div class="test-buttons">
-                <button onclick="initDraggables()">初始化拖拽元素</button>
-                <button class="secondary" onclick="testMouseEvents()">测试鼠标事件</button>
-            </div>
-            <div id="drag-container">
-                <div class="draggable-box" data-id="box1">
-                    📦 拖动我 #1
+        <div class="test-grid">
+            <!-- 左列 -->
+            <div style="display: flex; flex-direction: column; gap: 15px; overflow: hidden;">
+                <!-- SDK 状态 -->
+                <div class="test-section">
+                    <h2>📦 SDK 状态 <span class="status pending" id="sdk-status">检测中...</span></h2>
+                    <p>版本: <strong id="sdk-version">未知</strong> | 加载: <strong id="load-time">...</strong></p>
                 </div>
-                <div class="draggable-box" data-id="box2">
-                    📦 拖动我 #2
+                
+                <!-- 状态持久化测试 -->
+                <div class="test-section">
+                    <h2>💾 状态持久化</h2>
+                    <p>StatePersistence 模块</p>
+                    <div class="test-buttons">
+                        <button onclick="testSaveState()">保存</button>
+                        <button class="secondary" onclick="testLoadState()">加载</button>
+                        <button class="danger" onclick="testClearState()">清除</button>
+                    </div>
+                    <div class="log-output" id="state-log"></div>
                 </div>
-                <div class="draggable-box" data-id="box3">
-                    📦 拖动我 #3
-                </div>
-            </div>
-            <div class="log-output" id="drag-log"></div>
-        </div>
-        
-        <!-- JavaScript 桥接测试 -->
-        <div class="test-section">
-            <h2>🌉 JavaScript 桥接测试</h2>
-            <p>测试 SDKBridge 消息通信</p>
-            <div class="test-buttons">
-                <button onclick="testMessageBridge()">发送测试消息</button>
-                <button class="secondary" onclick="testConsoleLog()">测试日志转发</button>
-                <button onclick="testOpenURL()">测试打开URL</button>
-            </div>
-            <div class="log-output" id="bridge-log"></div>
-        </div>
-        
-        <!-- 性能统计 -->
-        <div class="test-section">
-            <h2>📊 性能统计</h2>
-            <div class="stats">
-                <div class="stat-item">
-                    <div class="stat-value" id="event-count">0</div>
-                    <div class="stat-label">事件总数</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="click-count">0</div>
-                    <div class="stat-label">点击次数</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="drag-count">0</div>
-                    <div class="stat-label">拖拽次数</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="save-count">0</div>
-                    <div class="stat-label">保存次数</div>
+                
+                <!-- 拖拽功能测试 -->
+                <div class="test-section">
+                    <h2>🖱️ 拖拽功能</h2>
+                    <p>MouseHookManager</p>
+                    <div class="test-buttons">
+                        <button onclick="initDraggables()">初始化</button>
+                        <button class="secondary" onclick="testMouseEvents()">监听事件</button>
+                    </div>
+                    <div id="drag-container">
+                        <div class="draggable-box" data-id="box1">📦 #1</div>
+                        <div class="draggable-box" data-id="box2">📦 #2</div>
+                        <div class="draggable-box" data-id="box3">📦 #3</div>
+                    </div>
+                    <div class="log-output" id="drag-log"></div>
                 </div>
             </div>
-        </div>
-        
-        <!-- 综合测试日志 -->
-        <div class="test-section">
-            <h2>📝 综合测试日志</h2>
-            <div class="test-buttons">
-                <button class="danger" onclick="clearAllLogs()">清除所有日志</button>
-                <button class="secondary" onclick="exportTestResults()">导出测试结果</button>
+            
+            <!-- 右列 -->
+            <div style="display: flex; flex-direction: column; gap: 15px; overflow: hidden;">
+                <!-- JavaScript 桥接测试 -->
+                <div class="test-section">
+                    <h2>🌉 JavaScript 桥接</h2>
+                    <p>SDKBridge 消息通信</p>
+                    <div class="test-buttons">
+                        <button onclick="testMessageBridge()">发送消息</button>
+                        <button class="secondary" onclick="testConsoleLog()">日志转发</button>
+                        <button onclick="testOpenURL()">打开URL</button>
+                    </div>
+                    <div class="log-output" id="bridge-log"></div>
+                </div>
+                
+                <!-- 性能统计 -->
+                <div class="test-section">
+                    <h2>📊 性能统计</h2>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="event-count">0</div>
+                            <div class="stat-label">事件总数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="click-count">0</div>
+                            <div class="stat-label">点击次数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="drag-count">0</div>
+                            <div class="stat-label">拖拽次数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="save-count">0</div>
+                            <div class="stat-label">保存次数</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 综合测试日志 -->
+                <div class="test-section">
+                    <h2>📝 综合日志</h2>
+                    <div class="test-buttons">
+                        <button class="danger" onclick="clearAllLogs()">清除日志</button>
+                        <button class="secondary" onclick="exportTestResults()">导出结果</button>
+                    </div>
+                    <div class="log-output" id="main-log"></div>
+                </div>
             </div>
-            <div class="log-output" id="main-log"></div>
         </div>
     </div>
     
