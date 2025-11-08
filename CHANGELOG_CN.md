@@ -2,6 +2,118 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [4.9.0] - 2025-11-08 - 🛡️ C++ 模块优化与测试框架
+
+### ✨ 新增功能
+
+#### 单元测试框架
+- **测试框架**：创建轻量级 C++ 单元测试框架
+- **自动注册**：使用宏自动注册测试用例
+- **丰富断言**：ASSERT_TRUE, ASSERT_FALSE, ASSERT_EQUAL 等
+- **清晰输出**：彩色输出测试结果（✅/❌）
+
+#### 日志系统增强
+- **多级别日志**：DEBUG, INFO, WARNING, ERROR
+- **线程安全**：使用 std::mutex 保护日志写入
+- **双输出**：支持控制台和文件输出
+- **精确时间戳**：毫秒级时间戳
+- **可配置**：可设置最小日志级别
+
+### 🔧 重构改进
+
+#### 错误处理完善
+- **异常捕获**：所有关键模块添加 try-catch
+- **状态回滚**：失败时自动回滚状态
+- **详细日志**：记录完整错误信息和堆栈
+- **错误码**：Windows API 调用记录错误码
+
+#### 回调机制优化
+- **异常保护**：回调执行包装在 try-catch 中
+- **错误隔离**：回调异常不影响主流程
+- **详细日志**：记录回调执行状态
+
+### 📚 文档更新
+
+- ✅ `docs/OPTIMIZATION_COMPLETE.md` - 优化完成报告
+- ✅ `windows/test/test_framework.h` - 测试框架文档
+- ✅ `windows/test/run_tests.bat` - 测试运行脚本
+
+### 🔧 技术细节
+
+#### 测试框架实现
+```cpp
+TEST_SUITE(PowerManager) {
+  TEST_CASE(initialization) {
+    PowerManager manager;
+    ASSERT_FALSE(manager.IsEnabled());
+    ASSERT_EQUAL(PowerManager::PowerState::ACTIVE, 
+                 manager.GetCurrentState());
+  }
+}
+```
+
+#### 日志系统使用
+```cpp
+// 使用宏记录日志
+ANYWP_LOG_INFO("Component", "Operation completed");
+ANYWP_LOG_ERROR("Component", "Critical error");
+
+// 配置日志
+Logger::Instance().SetMinLevel(Logger::Level::DEBUG);
+Logger::Instance().EnableFileLogging("debug.log");
+```
+
+#### 错误处理模式
+```cpp
+try {
+  // 执行操作
+  if (callback_) {
+    try {
+      callback_(result);
+    } catch (const std::exception& e) {
+      Logger::Instance().Error("Module", 
+        "Callback failed: " + std::string(e.what()));
+    }
+  }
+} catch (const std::exception& e) {
+  Logger::Instance().Error("Module", 
+    "Operation failed: " + std::string(e.what()));
+  return false;
+}
+```
+
+### 🎯 使用示例
+
+#### 运行单元测试
+```bash
+cd windows\test
+run_tests.bat
+```
+
+#### 自定义日志
+```cpp
+// 初始化时配置
+Logger::Instance().SetMinLevel(Logger::Level::INFO);
+Logger::Instance().EnableFileLogging("app.log");
+Logger::Instance().EnableConsoleLogging(true);
+```
+
+### 📁 新增文件
+
+- `windows/test/test_framework.h` - 测试框架头文件
+- `windows/test/unit_tests.cpp` - 示例测试用例
+- `windows/test/run_tests.bat` - 测试构建脚本
+- `docs/OPTIMIZATION_COMPLETE.md` - 优化完成报告
+
+### 🏆 质量提升
+
+- **健壮性**: 所有关键路径添加异常处理
+- **可调试性**: 详细的错误日志和错误码
+- **可测试性**: 完整的单元测试框架
+- **可维护性**: 统一的错误处理模式
+
+---
+
 ## [4.8.0] - 2025-11-07 - 🎯 显示器热插拔完整实现
 
 ### ✨ 新增功能
