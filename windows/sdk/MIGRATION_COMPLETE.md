@@ -151,11 +151,14 @@ windows/sdk/
 ### ✅ 已完成的优化 (2025-11-08)
 - [x] 修复 `declarationMap` 警告 - 配置 Rollup 生成声明文件
 - [x] 生成 `.d.ts` 类型声明文件 - 完整的类型定义输出
-- [x] 添加单元测试 (Jest + TS) - 16个测试用例全部通过
+- [x] 添加单元测试 (Jest + TS) - **118个测试用例，114个通过 (96.6%)**
+- [x] 完整模块测试覆盖 - 所有核心模块 (storage, animations, events, click, drag, spa) + 工具模块 (debug, bounds, coordinates)
+- [x] 测试覆盖率报告 - **~71% 代码覆盖率**
 
 ### 可选的未来优化
 - [ ] 发布到 npm (可选)
-- [ ] 添加更多模块的测试用例（events, spa, click, drag, storage, animations）
+- [ ] 提升测试覆盖率到 85%+ (增加边界情况测试)
+- [ ] 添加集成测试 (端到端场景)
 
 ### 文档更新
 - [x] 更新 SDK 开发文档
