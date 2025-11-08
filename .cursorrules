@@ -151,9 +151,16 @@ npm run test:coverage  # 生成覆盖率报告
 - **测试覆盖**: 118 tests, 114 passing (96.6%), ~71% code coverage
 
 ### 调试流程
-1. 编译运行：`.\scripts\debug_run.bat`
+1. 编译运行：`.\scripts\debug.bat`
 2. 查看日志：`debug_run.log` 或 `example/test_output.log`
-3. 分析优化，重复测试
+3. 实时监控：`.\scripts\monitor_log.bat` (可选)
+4. 分析优化，重复测试
+
+**⚠️ 重要提示**:
+- 使用 `Logger::Instance()` 统一记录日志
+- C++ 日志级别：Error, Warning, Info, Debug
+- 所有异常必须有 try-catch 保护
+- 回调函数需要额外的异常保护层
 
 ---
 
