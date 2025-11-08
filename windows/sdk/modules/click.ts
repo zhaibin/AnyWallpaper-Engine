@@ -47,6 +47,20 @@ export const ClickHandler = {
   
   // Register click handler with SPA support
   onClick(anyWP: AnyWPSDK, element: string | HTMLElement, callback: ClickCallback, options: ClickHandlerOptions = {}) {
+    // Validate parameters
+    if (typeof element === 'function') {
+      console.error('[AnyWP] onClick: First parameter should be element, not callback!');
+      console.error('[AnyWP] Correct usage: AnyWP.onClick(element, callback, options)');
+      console.error('[AnyWP] Example: AnyWP.onClick("#my-button", (x, y) => { ... })');
+      throw new TypeError('[AnyWP] onClick: Invalid parameters - element must be HTMLElement or selector string');
+    }
+    
+    if (typeof callback !== 'function') {
+      console.error('[AnyWP] onClick: Second parameter must be a callback function!');
+      console.error('[AnyWP] Correct usage: AnyWP.onClick(element, callback, options)');
+      throw new TypeError('[AnyWP] onClick: callback must be a function');
+    }
+    
     const self = this;
     const immediate = options.immediate || false;
     const waitFor = options.waitFor !== undefined ? options.waitFor : !immediate;
