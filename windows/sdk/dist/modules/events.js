@@ -1,30 +1,38 @@
 // Event system module
 import { Debug } from '../utils/debug';
 export const Events = {
+    _setupCompleted: false,
+    _eventHandlers: {},
     // Setup event listeners
     setup(anyWP, clickHandler, animationsHandler) {
-        window.addEventListener('AnyWP:mouse', function (event) {
+        // Prevent duplicate setup
+        if (this._setupCompleted) {
+            console.log('[AnyWP] Events already setup, skipping duplicate initialization');
+            return;
+        }
+        // Create event handlers (store references for potential cleanup)
+        this._eventHandlers.mouse = function (event) {
             const customEvent = event;
             anyWP._mouseCallbacks.forEach(function (cb) {
                 cb(customEvent.detail);
             });
-        });
-        window.addEventListener('AnyWP:keyboard', function (event) {
+        };
+        this._eventHandlers.keyboard = function (event) {
             const customEvent = event;
             anyWP._keyboardCallbacks.forEach(function (cb) {
                 cb(customEvent.detail);
             });
-        });
-        window.addEventListener('AnyWP:click', function (event) {
+        };
+        this._eventHandlers.click = function (event) {
             const customEvent = event;
             clickHandler.handleClick(customEvent.detail.x, customEvent.detail.y);
-        });
-        window.addEventListener('AnyWP:interactionMode', function (event) {
+        };
+        this._eventHandlers.interactionMode = function (event) {
             const customEvent = event;
             anyWP.interactionEnabled = customEvent.detail.enabled;
             Debug.log('Interaction mode: ' + (anyWP.interactionEnabled ? 'ON' : 'OFF'), true);
-        });
-        window.addEventListener('AnyWP:visibility', function (event) {
+        };
+        this._eventHandlers.visibility = function (event) {
             const customEvent = event;
             const visible = customEvent.detail.visible;
             Debug.log('Visibility changed: ' + (visible ? 'visible' : 'hidden'), true);
@@ -37,13 +45,22 @@ export const Events = {
             else {
                 animationsHandler.resume(anyWP);
             }
-        });
-        window.addEventListener('resize', function () {
+        };
+        this._eventHandlers.resize = function () {
             Debug.log('Window resized, refreshing...');
             setTimeout(function () {
                 clickHandler.refreshBounds(anyWP);
             }, 200);
-        });
+        };
+        // Register event listeners
+        window.addEventListener('AnyWP:mouse', this._eventHandlers.mouse);
+        window.addEventListener('AnyWP:keyboard', this._eventHandlers.keyboard);
+        window.addEventListener('AnyWP:click', this._eventHandlers.click);
+        window.addEventListener('AnyWP:interactionMode', this._eventHandlers.interactionMode);
+        window.addEventListener('AnyWP:visibility', this._eventHandlers.visibility);
+        window.addEventListener('resize', this._eventHandlers.resize);
+        this._setupCompleted = true;
+        console.log('[AnyWP] Events setup completed');
     },
     // Register mouse callback
     onMouse(anyWP, callback) {

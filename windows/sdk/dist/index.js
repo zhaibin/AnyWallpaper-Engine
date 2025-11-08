@@ -104,15 +104,24 @@ AnyWP.ready = function (name) {
 export { AnyWP };
 // Auto-initialize when DOM is ready
 if (typeof window !== 'undefined') {
-    window.AnyWP = AnyWP;
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () {
-            AnyWP._init();
-        });
+    // ========== CRITICAL: Prevent Duplicate SDK Initialization ==========
+    // Check if SDK is already loaded (防止重复注入)
+    if (typeof window.AnyWP !== 'undefined') {
+        console.log('[AnyWP] SDK already loaded, skipping re-initialization');
+        console.log('[AnyWP] This is expected when C++ plugin injects SDK multiple times');
     }
     else {
-        AnyWP._init();
+        console.log('[AnyWP] Initializing SDK for the first time');
+        window.AnyWP = AnyWP;
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                AnyWP._init();
+            });
+        }
+        else {
+            AnyWP._init();
+        }
+        console.log('[AnyWP] SDK loaded successfully');
     }
-    console.log('[AnyWP] SDK loaded successfully');
 }
 //# sourceMappingURL=index.js.map

@@ -116,6 +116,9 @@ export interface ClickHandlerData {
   autoRefresh: boolean;
   options: ClickHandlerOptions;
   resizeObserver?: ResizeObserver;
+  intersectionObserver?: IntersectionObserver;
+  positionCheckTimer?: any;  // NodeJS.Timeout | number (browser vs node)
+  lastBounds?: ElementBounds;
 }
 
 /**

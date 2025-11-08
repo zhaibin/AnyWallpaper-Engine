@@ -7,7 +7,7 @@
     
     <!-- 手动加载 SDK（用于浏览器直接打开测试） -->
     <!-- 引擎运行时会自动注入，手动加载会被覆盖 -->
-    <script src="../windows/anywp_sdk.js"></script>
+    <script>if (!window.AnyWP) { document.write('<script src="..\/windows\/anywp_sdk.js"><\/script>'); }</script>
     
     <style>
         * {

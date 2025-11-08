@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>重构功能测试页面</title>
-    <script src="../windows/anywp_sdk.js"></script>
+    <script>if (!window.AnyWP) { document.write('<script src="..\/windows\/anywp_sdk.js"><\/script>'); }</script>
     <style>
         body {
             margin: 0;
@@ -400,35 +400,25 @@
                     button.removeAttribute('onclick');
                     
                     // 使用 AnyWP.onClick 来处理点击
+                    // SDK 自动跟踪位置变化 (ResizeObserver + IntersectionObserver + Position Polling)
                     window.AnyWP.onClick(button, function() {
                         // 执行原始的函数
                         try {
                             eval(onclickAttr);
-                            // 点击后重新注册所有按钮（解决布局变化导致位置偏移）
-                            setTimeout(() => refreshButtonClicks(), 100);
                         } catch (e) {
                             console.error('执行按钮函数失败:', e);
                             addLog('main-log', '按钮执行错误: ' + e.message, 'error');
                         }
                     }, {
-                        immediate: true
+                        immediate: true,
+                        autoRefresh: true  // SDK 自动跟踪位置变化，无需手动刷新
                     });
                 }
             });
             
             if (enabledCount > 0) {
-                addLog('main-log', '已启用 ' + enabledCount + ' 个按钮的点击功能', 'success');
+                addLog('main-log', '已启用 ' + enabledCount + ' 个按钮的点击功能 (SDK 自动位置跟踪)', 'success');
             }
-        }
-        
-        // 刷新按钮点击区域（在布局变化后调用）
-        function refreshButtonClicks() {
-            const buttons = document.querySelectorAll('button');
-            buttons.forEach(button => {
-                // 清除标记，允许重新注册
-                button.dataset.clickEnabled = '';
-            });
-            enableButtonClicks();
         }
         
         // 状态持久化测试
@@ -518,17 +508,17 @@
         function testMouseEvents() {
             if (!window.AnyWP) return;
             
-            // 先清除之前的处理器，避免重复注册
-            window.AnyWP.clearHandlers();
+            // 注意：不要清除所有处理器，因为按钮的点击处理器也会被清除
+            // window.AnyWP.clearHandlers(); // ❌ 这会清除按钮的点击处理器
             
-            // 监听整个拖拽容器区域的点击
+            // 只注册拖拽容器的点击监听（按钮处理器会自动去重）
             window.AnyWP.onClick('#drag-container', function(x, y) {
                 addLog('drag-log', `检测到点击: (${x}, ${y})`, 'info');
                 updateStat('clicks');
                 updateStat('events');
             }, {
                 immediate: true,
-                debug: true  // 显示调试边框
+                debug: false  // ❌ 不显示调试边框，避免干扰
             });
             
             addLog('drag-log', '鼠标事件监听已启动 (监听 #drag-container)', 'success');

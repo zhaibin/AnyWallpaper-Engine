@@ -105,6 +105,9 @@ export interface ClickHandlerData {
     autoRefresh: boolean;
     options: ClickHandlerOptions;
     resizeObserver?: ResizeObserver;
+    intersectionObserver?: IntersectionObserver;
+    positionCheckTimer?: any;
+    lastBounds?: ElementBounds;
 }
 /**
  * Mouse event detail

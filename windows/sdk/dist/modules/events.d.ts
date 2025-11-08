@@ -2,6 +2,10 @@ import type { AnyWPSDK, MouseCallback, KeyboardCallback } from '../types';
 import type { ClickHandler as ClickHandlerType } from './click';
 import type { Animations as AnimationsType } from './animations';
 export declare const Events: {
+    _setupCompleted: boolean;
+    _eventHandlers: {
+        [key: string]: EventListener;
+    };
     setup(anyWP: AnyWPSDK, clickHandler: typeof ClickHandlerType, animationsHandler: typeof AnimationsType): void;
     onMouse(anyWP: AnyWPSDK, callback: MouseCallback): void;
     onKeyboard(anyWP: AnyWPSDK, callback: KeyboardCallback): void;

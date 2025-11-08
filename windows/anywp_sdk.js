@@ -161,30 +161,38 @@ var AnyWPBundle = (function (exports) {
 
     // Event system module
     const Events = {
+        _setupCompleted: false,
+        _eventHandlers: {},
         // Setup event listeners
         setup(anyWP, clickHandler, animationsHandler) {
-            window.addEventListener('AnyWP:mouse', function (event) {
+            // Prevent duplicate setup
+            if (this._setupCompleted) {
+                console.log('[AnyWP] Events already setup, skipping duplicate initialization');
+                return;
+            }
+            // Create event handlers (store references for potential cleanup)
+            this._eventHandlers.mouse = function (event) {
                 const customEvent = event;
                 anyWP._mouseCallbacks.forEach(function (cb) {
                     cb(customEvent.detail);
                 });
-            });
-            window.addEventListener('AnyWP:keyboard', function (event) {
+            };
+            this._eventHandlers.keyboard = function (event) {
                 const customEvent = event;
                 anyWP._keyboardCallbacks.forEach(function (cb) {
                     cb(customEvent.detail);
                 });
-            });
-            window.addEventListener('AnyWP:click', function (event) {
+            };
+            this._eventHandlers.click = function (event) {
                 const customEvent = event;
                 clickHandler.handleClick(customEvent.detail.x, customEvent.detail.y);
-            });
-            window.addEventListener('AnyWP:interactionMode', function (event) {
+            };
+            this._eventHandlers.interactionMode = function (event) {
                 const customEvent = event;
                 anyWP.interactionEnabled = customEvent.detail.enabled;
                 Debug.log('Interaction mode: ' + (anyWP.interactionEnabled ? 'ON' : 'OFF'), true);
-            });
-            window.addEventListener('AnyWP:visibility', function (event) {
+            };
+            this._eventHandlers.visibility = function (event) {
                 const customEvent = event;
                 const visible = customEvent.detail.visible;
                 Debug.log('Visibility changed: ' + (visible ? 'visible' : 'hidden'), true);
@@ -197,13 +205,22 @@ var AnyWPBundle = (function (exports) {
                 else {
                     animationsHandler.resume(anyWP);
                 }
-            });
-            window.addEventListener('resize', function () {
+            };
+            this._eventHandlers.resize = function () {
                 Debug.log('Window resized, refreshing...');
                 setTimeout(function () {
                     clickHandler.refreshBounds(anyWP);
                 }, 200);
-            });
+            };
+            // Register event listeners
+            window.addEventListener('AnyWP:mouse', this._eventHandlers.mouse);
+            window.addEventListener('AnyWP:keyboard', this._eventHandlers.keyboard);
+            window.addEventListener('AnyWP:click', this._eventHandlers.click);
+            window.addEventListener('AnyWP:interactionMode', this._eventHandlers.interactionMode);
+            window.addEventListener('AnyWP:visibility', this._eventHandlers.visibility);
+            window.addEventListener('resize', this._eventHandlers.resize);
+            this._setupCompleted = true;
+            console.log('[AnyWP] Events setup completed');
         },
         // Register mouse callback
         onMouse(anyWP, callback) {
@@ -488,13 +505,18 @@ var AnyWPBundle = (function (exports) {
                     console.error('[AnyWP] Element not found:', element);
                     return;
                 }
-                // Check if already registered
+                // Check if already registered (prevent duplicate handlers)
                 const existingIndex = anyWP._clickHandlers.findIndex(function (h) {
                     return h.element === el;
                 });
                 if (existingIndex !== -1) {
-                    Debug.log('Element already registered, updating bounds...');
-                    anyWP._clickHandlers.splice(existingIndex, 1);
+                    const existingHandler = anyWP._clickHandlers[existingIndex];
+                    if (existingHandler) {
+                        console.warn('[AnyWP] Element already has click handler, skipping duplicate registration:', el.id || el.className);
+                        console.warn('[AnyWP] Existing handler callback:', existingHandler.callback.toString().substring(0, 100));
+                        console.warn('[AnyWP] New callback (ignored):', callback.toString().substring(0, 100));
+                    }
+                    return; // Skip duplicate registration instead of replacing
                 }
                 // Calculate bounds
                 const bounds = Bounds.calculate(el, anyWP.dpiScale);
@@ -508,13 +530,52 @@ var AnyWPBundle = (function (exports) {
                     options: options
                 };
                 anyWP._clickHandlers.push(handlerData);
-                // Setup ResizeObserver
-                if (autoRefresh && window.ResizeObserver) {
-                    const resizeObserver = new ResizeObserver(function () {
-                        self.refreshElementBounds(anyWP, handlerData);
-                    });
-                    resizeObserver.observe(el);
-                    handlerData.resizeObserver = resizeObserver;
+                // ========== Auto-Refresh: 智能位置跟踪 ==========
+                if (autoRefresh) {
+                    // 方案 1: ResizeObserver - 监听元素自身大小变化（快速响应）
+                    if (window.ResizeObserver) {
+                        const resizeObserver = new ResizeObserver(function () {
+                            self.refreshElementBounds(anyWP, handlerData);
+                        });
+                        resizeObserver.observe(el);
+                        handlerData.resizeObserver = resizeObserver;
+                    }
+                    // 方案 2: IntersectionObserver - 监听元素位置/可见性变化（高效）
+                    if (window.IntersectionObserver) {
+                        const intersectionObserver = new IntersectionObserver(function (entries) {
+                            entries.forEach(function (entry) {
+                                // 元素位置变化或可见性变化时触发
+                                if (entry.isIntersecting || entry.intersectionRatio > 0) {
+                                    self.refreshElementBounds(anyWP, handlerData);
+                                }
+                            });
+                        }, {
+                            threshold: [0, 0.1, 0.5, 0.9, 1.0] // 多个阈值，提高灵敏度
+                        });
+                        intersectionObserver.observe(el);
+                        handlerData.intersectionObserver = intersectionObserver;
+                    }
+                    // 方案 3: 定期检查位置变化（兜底方案，适用于复杂布局）
+                    if (!handlerData.positionCheckTimer) {
+                        handlerData.lastBounds = bounds;
+                        handlerData.positionCheckTimer = setInterval(function () {
+                            if (!el.isConnected) {
+                                clearInterval(handlerData.positionCheckTimer);
+                                return;
+                            }
+                            // 检查位置是否变化
+                            const rect = el.getBoundingClientRect();
+                            const currentLeft = Math.round(rect.left * anyWP.dpiScale);
+                            const currentTop = Math.round(rect.top * anyWP.dpiScale);
+                            if (handlerData.lastBounds &&
+                                (currentLeft !== handlerData.lastBounds.left ||
+                                    currentTop !== handlerData.lastBounds.top)) {
+                                // 位置变化，刷新
+                                self.refreshElementBounds(anyWP, handlerData);
+                                Debug.log('Position changed for: ' + (el.id || el.className), false);
+                            }
+                        }, 500); // 每 500ms 检查一次，性能开销低
+                    }
                 }
                 // Debug output
                 const showDebug = (options.debug !== undefined) ? options.debug : anyWP._debugMode;
@@ -565,6 +626,7 @@ var AnyWPBundle = (function (exports) {
                 newBounds.height !== handler.bounds.height;
             if (changed) {
                 handler.bounds = newBounds;
+                handler.lastBounds = newBounds; // 更新最后已知位置
                 if (handler.element._anywpDebugBorder) {
                     Debug.showBorder(newBounds, handler.element, anyWP.dpiScale);
                 }
@@ -586,9 +648,19 @@ var AnyWPBundle = (function (exports) {
         // Clear all registered handlers
         clearHandlers(anyWP) {
             anyWP._clickHandlers.forEach(function (handler) {
+                // 清理 ResizeObserver
                 if (handler.resizeObserver) {
                     handler.resizeObserver.disconnect();
                 }
+                // 清理 IntersectionObserver
+                if (handler.intersectionObserver) {
+                    handler.intersectionObserver.disconnect();
+                }
+                // 清理定时器
+                if (handler.positionCheckTimer) {
+                    clearInterval(handler.positionCheckTimer);
+                }
+                // 清理调试边框
                 if (handler.element && handler.element._anywpDebugBorder) {
                     const border = handler.element._anywpDebugBorder;
                     if (border.parentNode) {
@@ -1236,16 +1308,25 @@ var AnyWPBundle = (function (exports) {
     };
     // Auto-initialize when DOM is ready
     if (typeof window !== 'undefined') {
-        window.AnyWP = AnyWP;
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function () {
-                AnyWP._init();
-            });
+        // ========== CRITICAL: Prevent Duplicate SDK Initialization ==========
+        // Check if SDK is already loaded (防止重复注入)
+        if (typeof window.AnyWP !== 'undefined') {
+            console.log('[AnyWP] SDK already loaded, skipping re-initialization');
+            console.log('[AnyWP] This is expected when C++ plugin injects SDK multiple times');
         }
         else {
-            AnyWP._init();
+            console.log('[AnyWP] Initializing SDK for the first time');
+            window.AnyWP = AnyWP;
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function () {
+                    AnyWP._init();
+                });
+            }
+            else {
+                AnyWP._init();
+            }
+            console.log('[AnyWP] SDK loaded successfully');
         }
-        console.log('[AnyWP] SDK loaded successfully');
     }
 
     exports.AnyWP = AnyWP;

@@ -21,9 +21,12 @@ export default [
       // TypeScript plugin for .ts files
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: true,  // Generate .d.ts files
-        declarationDir: './dist',
-        sourceMap: false
+        compilerOptions: {
+          declaration: false,  // Disable .d.ts generation for main build
+          declarationMap: false,
+          sourceMap: false,
+          outDir: undefined  // Let Rollup handle output
+        }
       })
     ]
   },
@@ -42,9 +45,12 @@ export default [
       resolve(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: true,
-        declarationDir: './dist',
-        sourceMap: true
+        compilerOptions: {
+          declaration: false,
+          declarationMap: false,
+          sourceMap: true,
+          outDir: undefined  // Let Rollup handle output
+        }
       }),
       terser({
         compress: {

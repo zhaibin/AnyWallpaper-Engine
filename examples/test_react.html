@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -6,7 +6,7 @@
   <title>AnyWP - React Integration Test</title>
   
   <!-- CRITICAL: Inline SDK to ensure it's available before React loads -->
-  <script src="../windows/anywp_sdk.js"></script>
+  <script>if (!window.AnyWP) { document.write('<script src="..\/windows\/anywp_sdk.js"><\/script>'); }</script>
   
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>

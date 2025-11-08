@@ -57,13 +57,18 @@ export const ClickHandler = {
                 console.error('[AnyWP] Element not found:', element);
                 return;
             }
-            // Check if already registered
+            // Check if already registered (prevent duplicate handlers)
             const existingIndex = anyWP._clickHandlers.findIndex(function (h) {
                 return h.element === el;
             });
             if (existingIndex !== -1) {
-                Debug.log('Element already registered, updating bounds...');
-                anyWP._clickHandlers.splice(existingIndex, 1);
+                const existingHandler = anyWP._clickHandlers[existingIndex];
+                if (existingHandler) {
+                    console.warn('[AnyWP] Element already has click handler, skipping duplicate registration:', el.id || el.className);
+                    console.warn('[AnyWP] Existing handler callback:', existingHandler.callback.toString().substring(0, 100));
+                    console.warn('[AnyWP] New callback (ignored):', callback.toString().substring(0, 100));
+                }
+                return; // Skip duplicate registration instead of replacing
             }
             // Calculate bounds
             const bounds = Bounds.calculate(el, anyWP.dpiScale);
@@ -77,13 +82,52 @@ export const ClickHandler = {
                 options: options
             };
             anyWP._clickHandlers.push(handlerData);
-            // Setup ResizeObserver
-            if (autoRefresh && window.ResizeObserver) {
-                const resizeObserver = new ResizeObserver(function () {
-                    self.refreshElementBounds(anyWP, handlerData);
-                });
-                resizeObserver.observe(el);
-                handlerData.resizeObserver = resizeObserver;
+            // ========== Auto-Refresh: 智能位置跟踪 ==========
+            if (autoRefresh) {
+                // 方案 1: ResizeObserver - 监听元素自身大小变化（快速响应）
+                if (window.ResizeObserver) {
+                    const resizeObserver = new ResizeObserver(function () {
+                        self.refreshElementBounds(anyWP, handlerData);
+                    });
+                    resizeObserver.observe(el);
+                    handlerData.resizeObserver = resizeObserver;
+                }
+                // 方案 2: IntersectionObserver - 监听元素位置/可见性变化（高效）
+                if (window.IntersectionObserver) {
+                    const intersectionObserver = new IntersectionObserver(function (entries) {
+                        entries.forEach(function (entry) {
+                            // 元素位置变化或可见性变化时触发
+                            if (entry.isIntersecting || entry.intersectionRatio > 0) {
+                                self.refreshElementBounds(anyWP, handlerData);
+                            }
+                        });
+                    }, {
+                        threshold: [0, 0.1, 0.5, 0.9, 1.0] // 多个阈值，提高灵敏度
+                    });
+                    intersectionObserver.observe(el);
+                    handlerData.intersectionObserver = intersectionObserver;
+                }
+                // 方案 3: 定期检查位置变化（兜底方案，适用于复杂布局）
+                if (!handlerData.positionCheckTimer) {
+                    handlerData.lastBounds = bounds;
+                    handlerData.positionCheckTimer = setInterval(function () {
+                        if (!el.isConnected) {
+                            clearInterval(handlerData.positionCheckTimer);
+                            return;
+                        }
+                        // 检查位置是否变化
+                        const rect = el.getBoundingClientRect();
+                        const currentLeft = Math.round(rect.left * anyWP.dpiScale);
+                        const currentTop = Math.round(rect.top * anyWP.dpiScale);
+                        if (handlerData.lastBounds &&
+                            (currentLeft !== handlerData.lastBounds.left ||
+                                currentTop !== handlerData.lastBounds.top)) {
+                            // 位置变化，刷新
+                            self.refreshElementBounds(anyWP, handlerData);
+                            Debug.log('Position changed for: ' + (el.id || el.className), false);
+                        }
+                    }, 500); // 每 500ms 检查一次，性能开销低
+                }
             }
             // Debug output
             const showDebug = (options.debug !== undefined) ? options.debug : anyWP._debugMode;
@@ -134,6 +178,7 @@ export const ClickHandler = {
             newBounds.height !== handler.bounds.height;
         if (changed) {
             handler.bounds = newBounds;
+            handler.lastBounds = newBounds; // 更新最后已知位置
             if (handler.element._anywpDebugBorder) {
                 Debug.showBorder(newBounds, handler.element, anyWP.dpiScale);
             }
@@ -155,9 +200,19 @@ export const ClickHandler = {
     // Clear all registered handlers
     clearHandlers(anyWP) {
         anyWP._clickHandlers.forEach(function (handler) {
+            // 清理 ResizeObserver
             if (handler.resizeObserver) {
                 handler.resizeObserver.disconnect();
             }
+            // 清理 IntersectionObserver
+            if (handler.intersectionObserver) {
+                handler.intersectionObserver.disconnect();
+            }
+            // 清理定时器
+            if (handler.positionCheckTimer) {
+                clearInterval(handler.positionCheckTimer);
+            }
+            // 清理调试边框
             if (handler.element && handler.element._anywpDebugBorder) {
                 const border = handler.element._anywpDebugBorder;
                 if (border.parentNode) {

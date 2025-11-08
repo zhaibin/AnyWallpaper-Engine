@@ -32,34 +32,44 @@ interface AnyWPVisibilityEventDetail {
 }
 
 export const Events = {
+  _setupCompleted: false,
+  _eventHandlers: {} as { [key: string]: EventListener },
+  
   // Setup event listeners
   setup(anyWP: AnyWPSDK, clickHandler: typeof ClickHandlerType, animationsHandler: typeof AnimationsType) {
-    window.addEventListener('AnyWP:mouse', function(event: Event) {
+    // Prevent duplicate setup
+    if (this._setupCompleted) {
+      console.log('[AnyWP] Events already setup, skipping duplicate initialization');
+      return;
+    }
+    
+    // Create event handlers (store references for potential cleanup)
+    this._eventHandlers.mouse = function(event: Event) {
       const customEvent = event as CustomEvent<AnyWPMouseEventDetail>;
       anyWP._mouseCallbacks.forEach(function(cb: MouseCallback) {
         cb(customEvent.detail);
       });
-    });
+    };
     
-    window.addEventListener('AnyWP:keyboard', function(event: Event) {
+    this._eventHandlers.keyboard = function(event: Event) {
       const customEvent = event as CustomEvent<AnyWPKeyboardEventDetail>;
       anyWP._keyboardCallbacks.forEach(function(cb: KeyboardCallback) {
         cb(customEvent.detail);
       });
-    });
+    };
     
-    window.addEventListener('AnyWP:click', function(event: Event) {
+    this._eventHandlers.click = function(event: Event) {
       const customEvent = event as CustomEvent<AnyWPClickEventDetail>;
       clickHandler.handleClick(customEvent.detail.x, customEvent.detail.y);
-    });
+    };
     
-    window.addEventListener('AnyWP:interactionMode', function(event: Event) {
+    this._eventHandlers.interactionMode = function(event: Event) {
       const customEvent = event as CustomEvent<AnyWPInteractionEventDetail>;
       anyWP.interactionEnabled = customEvent.detail.enabled;
       Debug.log('Interaction mode: ' + (anyWP.interactionEnabled ? 'ON' : 'OFF'), true);
-    });
+    };
     
-    window.addEventListener('AnyWP:visibility', function(event: Event) {
+    this._eventHandlers.visibility = function(event: Event) {
       const customEvent = event as CustomEvent<AnyWPVisibilityEventDetail>;
       const visible = customEvent.detail.visible;
       Debug.log('Visibility changed: ' + (visible ? 'visible' : 'hidden'), true);
@@ -73,14 +83,25 @@ export const Events = {
       } else {
         animationsHandler.resume(anyWP);
       }
-    });
+    };
     
-    window.addEventListener('resize', function() {
+    this._eventHandlers.resize = function() {
       Debug.log('Window resized, refreshing...');
       setTimeout(function() {
         clickHandler.refreshBounds(anyWP);
       }, 200);
-    });
+    };
+    
+    // Register event listeners
+    window.addEventListener('AnyWP:mouse', this._eventHandlers.mouse);
+    window.addEventListener('AnyWP:keyboard', this._eventHandlers.keyboard);
+    window.addEventListener('AnyWP:click', this._eventHandlers.click);
+    window.addEventListener('AnyWP:interactionMode', this._eventHandlers.interactionMode);
+    window.addEventListener('AnyWP:visibility', this._eventHandlers.visibility);
+    window.addEventListener('resize', this._eventHandlers.resize);
+    
+    this._setupCompleted = true;
+    console.log('[AnyWP] Events setup completed');
   },
   
   // Register mouse callback
