@@ -34,11 +34,11 @@ class _AutoTestAppState extends State<AutoTestApp> {
       description: '🎨 基础壁纸测试 - 紫色渐变 + 时钟',
       duration: Duration(seconds: 10),
     ),
-    TestCase(
-      name: 'test_drag_debug.html',
-      description: '🔍 拖拽调试 - 详细日志 + 状态持久化',
-      duration: Duration(seconds: 15),
-    ),
+    // TestCase(
+    //   name: 'test_drag_debug.html',
+    //   description: '🔍 拖拽调试 - 详细日志 + 状态持久化',
+    //   duration: Duration(seconds: 15),
+    // ), // ⚠️ 已排除拖拽测试
     TestCase(
       name: 'test_api.html',
       description: '⚙️ 完整 API 测试 - 所有 SDK 功能',
