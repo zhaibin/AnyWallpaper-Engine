@@ -312,6 +312,8 @@
         // 日志工具
         function addLog(containerId, message, type = 'info') {
             const container = document.getElementById(containerId);
+            if (!container) return;
+            
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
             const timestamp = new Date().toLocaleTimeString();
@@ -319,9 +321,16 @@
             container.appendChild(entry);
             container.scrollTop = container.scrollHeight;
             
-            // 同时添加到主日志
+            // 同时添加到主日志（避免递归）
             if (containerId !== 'main-log') {
-                addLog('main-log', `[${containerId}] ${message}`, type);
+                const mainLog = document.getElementById('main-log');
+                if (mainLog) {
+                    const mainEntry = document.createElement('div');
+                    mainEntry.className = `log-entry ${type}`;
+                    mainEntry.textContent = `[${timestamp}] [${containerId}] ${message}`;
+                    mainLog.appendChild(mainEntry);
+                    mainLog.scrollTop = mainLog.scrollHeight;
+                }
             }
         }
         
@@ -508,6 +517,9 @@
         
         function testMouseEvents() {
             if (!window.AnyWP) return;
+            
+            // 先清除之前的处理器，避免重复注册
+            window.AnyWP.clearHandlers();
             
             // 监听整个拖拽容器区域的点击
             window.AnyWP.onClick('#drag-container', function(x, y) {
