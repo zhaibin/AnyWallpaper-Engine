@@ -21,7 +21,8 @@ export default [
       // TypeScript plugin for .ts files
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: false,  // Don't emit declarations in main build
+        declaration: true,  // Generate .d.ts files
+        declarationDir: './dist',
         sourceMap: false
       })
     ]
@@ -41,7 +42,8 @@ export default [
       resolve(),
       typescript({
         tsconfig: './tsconfig.json',
-        declaration: false,
+        declaration: true,
+        declarationDir: './dist',
         sourceMap: true
       }),
       terser({

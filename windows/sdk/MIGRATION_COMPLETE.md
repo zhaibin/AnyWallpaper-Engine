@@ -148,11 +148,14 @@ windows/sdk/
 
 ## 下一步
 
-### 可选优化
-- [ ] 修复 `declarationMap` 警告 (设置 `declaration: true`)
-- [ ] 生成 `.d.ts` 类型声明文件
+### ✅ 已完成的优化 (2025-11-08)
+- [x] 修复 `declarationMap` 警告 - 配置 Rollup 生成声明文件
+- [x] 生成 `.d.ts` 类型声明文件 - 完整的类型定义输出
+- [x] 添加单元测试 (Jest + TS) - 16个测试用例全部通过
+
+### 可选的未来优化
 - [ ] 发布到 npm (可选)
-- [ ] 添加单元测试 (Jest + TS)
+- [ ] 添加更多模块的测试用例（events, spa, click, drag, storage, animations）
 
 ### 文档更新
 - [x] 更新 SDK 开发文档

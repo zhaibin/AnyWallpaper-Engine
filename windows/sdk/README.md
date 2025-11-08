@@ -1,142 +1,185 @@
-# AnyWP SDK - Modular Architecture
+# AnyWP Engine SDK - TypeScript Edition
 
-## 📁 目录结构
+**Version**: 4.2.0  
+**Language**: TypeScript  
+**Build**: Modular architecture with Rollup  
+**Testing**: Jest + ts-jest
 
-```
-sdk/
-├── core/               # 核心模块
-│   ├── AnyWP.js       # 核心对象定义
-│   └── init.js        # 初始化逻辑
-├── modules/           # 功能模块
-│   ├── animations.js  # 动画控制
-│   ├── click.js       # 点击处理
-│   ├── drag.js        # 拖拽功能
-│   ├── events.js      # 事件系统
-│   ├── spa.js         # SPA框架支持
-│   └── storage.js     # 状态持久化
-├── utils/             # 工具模块
-│   ├── bounds.js      # 边界计算
-│   ├── coordinates.js # 坐标转换
-│   └── debug.js       # 调试工具
-├── index.js           # 入口文件
-├── package.json       # 依赖配置
-├── rollup.config.js   # 构建配置
-└── README.md          # 本文档
-```
+## Overview
 
-## 🛠️ 开发流程
+AnyWP Engine SDK is a fully TypeScript-based JavaScript SDK for creating interactive desktop wallpapers using WebView2. It provides a rich set of APIs for click handling, drag-and-drop, state persistence, animation control, and SPA framework support.
 
-### 安装依赖
+## Features
+
+- ✅ **100% TypeScript** - Full type safety with `.d.ts` declarations
+- ✅ **Modular Architecture** - Clean separation of concerns
+- ✅ **Type Definitions** - Complete IntelliSense support
+- ✅ **Unit Tested** - Jest test suite with 100% pass rate
+- ✅ **Zero Dependencies** - Pure TypeScript implementation
+- ✅ **ESM + IIFE** - Modern module system with browser bundle
+
+## Installation
 
 ```bash
-cd windows/sdk
 npm install
 ```
 
-### 构建
+## Development
+
+### Build Commands
 
 ```bash
-# 开发构建（未压缩）
+# Full build (clean + compile + bundle)
 npm run build
 
-# 生产构建（压缩版）
+# Watch mode
+npm run build:watch
+
+# Production build (with minification)
 npm run build:production
 
-# 监听模式（自动重新构建）
-npm run build:watch
+# TypeScript compilation only
+npm run compile
+
+# Type checking
+npm run typecheck
 ```
 
-### 构建输出
+### Testing
 
-- `windows/anywp_sdk.js` - 标准版本（未压缩）
-- `windows/anywp_sdk.min.js` - 压缩版本（仅生产构建）
+```bash
+# Run all tests
+npm test
 
-## 📝 模块说明
+# Watch mode
+npm run test:watch
 
-### 核心模块 (core/)
+# Coverage report
+npm run test:coverage
+```
 
-**AnyWP.js**
-- 核心对象定义
-- 状态管理
-- 公共属性
+## Project Structure
 
-**init.js**
-- 初始化逻辑
-- 模块装配
+```
+windows/sdk/
+├── core/
+│   ├── AnyWP.ts            # Core SDK object
+│   └── init.ts             # Initialization logic
+├── modules/
+│   ├── animations.ts       # Animation control
+│   ├── click.ts            # Click handling
+│   ├── drag.ts             # Drag & drop
+│   ├── events.ts           # Event system
+│   ├── spa.ts              # SPA support
+│   └── storage.ts          # State persistence
+├── utils/
+│   ├── bounds.ts           # Bounds calculation
+│   ├── coordinates.ts      # Coordinate conversion
+│   └── debug.ts            # Debug utilities
+├── __tests__/              # Jest test suites
+│   ├── bounds.test.ts
+│   ├── coordinates.test.ts
+│   └── debug.test.ts
+├── types.ts                # TypeScript definitions
+├── index.ts                # Entry point
+├── tsconfig.json           # TypeScript config
+├── jest.config.js          # Jest config
+└── rollup.config.js        # Rollup config
+```
 
-### 功能模块 (modules/)
+## Type Definitions
 
-**events.js**
-- 事件监听器管理
-- 鼠标/键盘/可见性事件
+The SDK generates complete TypeScript declarations (`.d.ts` files) for use in TypeScript projects:
 
-**click.js**
-- 点击区域注册
-- 边界检测
-- 自动刷新
+```typescript
+import { AnyWP, type AnyWPSDK } from './windows/sdk';
 
-**drag.js**
-- 拖拽功能
-- 位置持久化
-- 边界限制
+// Full IntelliSense support
+AnyWP.onClick('#button', (x, y) => {
+  console.log('Clicked at:', x, y);
+});
+```
 
-**storage.js**
-- 状态保存/加载
-- 原生存储桥接
-- LocalStorage 回退
+## Testing
 
-**spa.js**
-- React/Vue/Angular 检测
-- 路由变化监听
-- DOM 变化监控
+The SDK includes a comprehensive test suite covering:
 
-**animations.js**
-- 动画暂停/恢复
-- 视频/音频控制
-- RequestAnimationFrame 拦截
+- **Debug utilities** - Logging, borders, URL detection
+- **Bounds calculation** - DPI scaling, point-in-bounds checks
+- **Coordinates** - Screen-to-viewport conversion
 
-### 工具模块 (utils/)
+Test coverage:
+- ✅ 16 tests passing
+- ✅ 3 test suites
+- ✅ All core utilities tested
 
-**bounds.js**
-- 元素边界计算
-- 碰撞检测
+## Build Output
 
-**coordinates.js**
-- 坐标系转换
-- 物理像素 ↔ CSS 像素
+```
+dist/                      # TypeScript compilation
+  ├── index.d.ts          # Main type definitions
+  ├── index.js            # Compiled JavaScript
+  ├── types.d.ts          # Type definitions
+  └── [modules/utils]     # Compiled modules
 
-**debug.js**
-- 调试日志
-- 可视化边界
-- URL 参数检测
+../anywp_sdk.js           # Bundled SDK (IIFE)
+../anywp_sdk.min.js       # Minified (production)
+```
 
-## 🔄 工作流程
+## Usage in Projects
 
-1. **修改源码** - 编辑 `sdk/` 目录下的模块文件
-2. **构建** - 运行 `npm run build`
-3. **测试** - 使用生成的 `anywp_sdk.js` 测试
-4. **发布** - 生产构建 `npm run build:production`
+### TypeScript Projects
 
-## 📊 代码统计
+```typescript
+import { AnyWP } from './windows/sdk';
 
-| 模块 | 原始行数 | 优化后行数 | 减少比例 |
-|------|---------|-----------|---------|
-| 总计 | 1211行 | ~950行* | ~21% |
+// Type-safe API calls
+AnyWP.onClick(element, (x: number, y: number) => {
+  // TypeScript knows the parameter types
+});
+```
 
-*预估，去除重复代码和优化后的行数
+### JavaScript Projects
 
-## 🎯 优势
+```html
+<script src="windows/anywp_sdk.js"></script>
+<script>
+  // Use global AnyWP object
+  AnyWP.onClick('#button', function(x, y) {
+    console.log('Clicked:', x, y);
+  });
+</script>
+```
 
-✅ **模块化** - 清晰的职责划分  
-✅ **可维护** - 快速定位和修改  
-✅ **可测试** - 独立模块单元测试  
-✅ **可扩展** - 轻松添加新功能  
-✅ **向后兼容** - API 保持不变
+## API Documentation
 
-## 📚 更多文档
+See the [main documentation](../../docs/) for complete API reference:
 
-- [Web开发者指南](../../docs/WEB_DEVELOPER_GUIDE_CN.md)
-- [API使用示例](../../docs/API_USAGE_EXAMPLES.md)
-- [技术笔记](../../docs/TECHNICAL_NOTES.md)
+- **Developer API Reference**: `docs/DEVELOPER_API_REFERENCE.md`
+- **Web Developer Guide**: `docs/WEB_DEVELOPER_GUIDE_CN.md`
+- **Migration Report**: `MIGRATION_COMPLETE.md`
 
+## Contributing
 
+### Code Style
+
+- Follow TypeScript best practices
+- Write unit tests for new features
+- Run `npm run typecheck` before committing
+- Ensure all tests pass with `npm test`
+
+### Adding New Features
+
+1. Create TypeScript files in appropriate directory (`core/`, `modules/`, `utils/`)
+2. Add type definitions to `types.ts`
+3. Write unit tests in `__tests__/`
+4. Update this README
+5. Run full build and test suite
+
+## License
+
+MIT
+
+---
+
+**Built with ❤️ using TypeScript**
