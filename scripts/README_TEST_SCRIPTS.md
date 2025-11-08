@@ -1,4 +1,4 @@
-# AnyWP Engine 全面自动化测试脚本使用指南
+# AnyWP Engine 自动化测试脚本使用指南
 
 ## 📋 脚本概述
 
@@ -10,7 +10,7 @@
 - ✅ 复制 SDK 文件到正确位置
 - ✅ 实时监控内存占用 (每秒采样，CSV 格式)
 - ✅ 实时监控 CPU 使用率 (每秒采样，CSV 格式)
-- ✅ 运行所有测试用例（除拖拽外共 8 个）
+- ✅ 运行所有测试用例（8 个，约 95 秒）
 - ✅ 可选锁屏性能测试
 - ✅ 自动收集和分析日志
 - ✅ 生成详细测试报告
@@ -88,15 +88,17 @@
 |------|---------|------|------|---------|
 | 1 | test_refactoring.html | 🔧 重构测试 | 20s | 模块化架构、SDKBridge、消息通信 |
 | 2 | test_simple.html | 🎨 基础壁纸 | 10s | 渐变、时钟、SDK 版本 |
-| 3 | ~~test_drag_debug.html~~ | ~~🔍 拖拽调试~~ | ~~15s~~ | **已排除** |
-| 4 | test_api.html | ⚙️ API 测试 | 15s | 完整 API 覆盖 |
-| 5 | test_basic_click.html | 👆 点击检测 | 10s | 鼠标事件、透明穿透 |
-| 6 | test_visibility.html | 👁️ 可见性 | 10s | 省电模式、暂停/恢复 |
-| 7 | test_react.html | ⚛️ React SPA | 10s | SPA 路由、状态管理 |
-| 8 | test_vue.html | 💚 Vue SPA | 10s | Vue 集成 |
-| 9 | test_iframe_ads.html | 📺 iframe 映射 | 10s | 坐标转换、广告检测 |
+| 3 | test_api.html | ⚙️ API 测试 | 15s | 完整 API 覆盖 |
+| 4 | test_basic_click.html | 👆 点击检测 | 10s | 鼠标事件、透明穿透 |
+| 5 | test_visibility.html | 👁️ 可见性 | 10s | 省电模式、暂停/恢复 |
+| 6 | test_react.html | ⚛️ React SPA | 10s | SPA 路由、状态管理 |
+| 7 | test_vue.html | 💚 Vue SPA | 10s | Vue 集成 |
+| 8 | test_iframe_ads.html | 📺 iframe 映射 | 10s | 坐标转换、广告检测 |
 
 **总计**：8 个测试用例，约 95 秒
+
+**已排除**：
+- ~~test_drag_debug.html~~ - 拖拽调试（需要手动交互，不适合自动化）
 
 ---
 
@@ -342,18 +344,21 @@ AnyWP Engine - 测试结果分析工具
 
 ## 🔄 更新日志
 
+### v1.3.2 (2025-11-08)
+- ✅ 移除过时和重复的测试脚本
+- ✅ 优化测试流程和文档
+- ✅ 更新测试用例列表（排除拖拽调试）
+
 ### v1.0.0 (2025-11-08)
 - ✅ 初始版本
 - ✅ 内存和 CPU 监控
 - ✅ 自动化测试集成
 - ✅ HTML 报告生成
 - ✅ 锁屏测试支持
-- ✅ 排除拖拽功能测试
 
 ---
 
 **作者**: AI Assistant  
 **维护**: AnyWP Engine Team  
-**版本**: 1.0.0  
+**版本**: 1.3.2  
 **最后更新**: 2025-11-08
-

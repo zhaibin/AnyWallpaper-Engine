@@ -39,23 +39,18 @@
 
 ---
 
-#### `run.bat`
-**用途**: 灵活运行工具（支持参数选项）  
-**参数**:
-- `-d`, `--debug` - 运行 Debug 版本（默认）
-- `-r`, `--release` - 运行 Release 版本
-- `-f`, `--flutter` - 使用 Flutter 运行（支持热重载）
-- `-h`, `--help` - 显示帮助
+#### `test_draggable.bat`
+**用途**: 拖拽功能专项测试  
+**功能**:
+- 加载拖拽测试页面
+- 验证拖拽API和状态持久化
 
 **使用**:
 ```bash
-.\scripts\run.bat           # Debug 版本
-.\scripts\run.bat -r        # Release 版本
-.\scripts\run.bat -f        # Flutter 热重载模式
-.\scripts\run.bat -r -f     # Release + Flutter
+.\scripts\test_draggable.bat
 ```
 
-**适用场景**: 需要特定运行模式时
+**适用场景**: 测试拖拽功能
 
 ---
 
@@ -108,6 +103,7 @@ Get-Content debug_run.log -Tail 50
 - 复制 DLL、头文件、Dart 源码、JavaScript SDK
 - 复制文档（README, CHANGELOG, LICENSE）
 - 打包成 ZIP
+- **自动创建 Web SDK 独立包**
 
 **使用**:
 ```bash
@@ -115,10 +111,140 @@ Get-Content debug_run.log -Tail 50
 ```
 
 **产物**:
-- `release/anywp_engine_v{版本号}/` - 解压后的目录
-- `release/anywp_engine_v{版本号}.zip` - 压缩包
+- `release/anywp_engine_v{版本号}/` - Flutter插件包目录
+- `release/anywp_engine_v{版本号}.zip` - Flutter插件压缩包（~16 MB）
+- `release/anywp_web_sdk_v{版本号}.zip` - Web SDK独立包（~56 KB）
 
 **适用场景**: 准备发布新版本
+
+---
+
+#### `build_sdk.bat`
+**用途**: 构建 Web SDK（TypeScript → JavaScript）  
+**功能**:
+- 从 `windows/sdk/` TypeScript 源码构建
+- 生成 `windows/anywp_sdk.js`
+
+**使用**:
+```bash
+.\scripts\build_sdk.bat
+```
+
+**适用场景**: 修改 Web SDK 后重新构建
+
+---
+
+#### `build_web_sdk.ps1`
+**用途**: 创建 Web SDK 独立发布包  
+**功能**:
+- 打包 SDK 文件 + 示例 + 文档
+- 生成独立 ZIP 包供 Web 开发者使用
+
+**使用**:
+```powershell
+.\scripts\build_web_sdk.ps1 -Version "1.x.x"
+```
+
+**产物**:
+- `release/anywp_web_sdk_v{版本号}.zip`
+
+**适用场景**: 单独发布 Web SDK
+
+**注意**: 通常由 `build_release_v2.bat` 自动调用，无需手动运行
+
+---
+
+### 🧪 测试脚本
+
+#### `comprehensive_auto_test.bat` ⭐ 主测试脚本
+**用途**: 全链路自动化测试（性能监控 + 功能测试）  
+**功能**:
+- 自动编译应用
+- 运行所有测试页面（8个，约95秒）
+- 实时监控内存和CPU（CSV格式）
+- 自动收集日志
+- 生成详细测试报告
+- 支持锁屏测试（可选）
+
+**使用**:
+```bash
+# 标准测试
+.\scripts\comprehensive_auto_test.bat
+
+# 包含锁屏测试
+.\scripts\comprehensive_auto_test.bat --with-lock-screen
+```
+
+**产物**: 
+- `test_logs/comprehensive_test_*.log` - 测试报告
+- `test_logs/memory_*.csv` - 内存监控数据
+- `test_logs/cpu_*.csv` - CPU监控数据
+- `test_logs/build_*.log` - 编译日志
+- `test_logs/app_output_*.log` - 应用日志
+
+**适用场景**: 完整功能验证、性能测试
+
+---
+
+#### `run_comprehensive_test.bat` ⭐ 一键测试
+**用途**: 一键启动测试 + 自动分析  
+**功能**:
+- 运行 `comprehensive_auto_test.bat`
+- 自动调用 `analyze_test_results.ps1` 分析结果
+- 可选生成 HTML 报告
+
+**使用**:
+```bash
+# 标准测试
+.\scripts\run_comprehensive_test.bat
+
+# 包含锁屏测试
+.\scripts\run_comprehensive_test.bat --lock
+```
+
+**适用场景**: 最方便的测试方式，推荐使用
+
+---
+
+#### `analyze_test_results.ps1`
+**用途**: 分析测试结果并生成报告  
+**功能**:
+- 解析内存和CPU数据
+- 计算性能指标
+- 检测内存泄漏
+- 性能评分（0-100分）
+- 生成HTML可视化报告
+
+**使用**:
+```powershell
+# 命令行分析
+.\scripts\analyze_test_results.ps1
+
+# 生成HTML报告
+.\scripts\analyze_test_results.ps1 -GenerateHTML
+```
+
+**产物**:
+- `test_logs/performance_report_*.html` - HTML报告
+
+**适用场景**: 深入分析测试结果
+
+---
+
+#### `verify_optimizations.bat`
+**用途**: 静态验证优化功能实现  
+**功能**:
+- 检查模块文件是否存在
+- 验证错误处理实现（try-catch）
+- 检查Logger增强
+- 验证文档更新
+
+**使用**:
+```bash
+.\scripts\verify_optimizations.bat
+```
+
+**适用场景**: CI/CD 静态检查、代码审查
 
 ---
 
@@ -161,20 +287,51 @@ Get-Content debug_run.log -Tail 50
 .\scripts\debug_run.bat
 ```
 
+### Web SDK 开发流程
+
+```bash
+# 1. 修改 TypeScript 源码（windows/sdk/）
+
+# 2. 构建 SDK
+.\scripts\build_sdk.bat
+
+# 3. 测试 SDK
+.\scripts\test.bat
+```
+
+### 测试流程
+
+```bash
+# 1. 全链路测试（推荐）
+.\scripts\run_comprehensive_test.bat
+
+# 2. 查看 HTML 报告
+# 浏览器会自动打开 test_logs/performance_report_*.html
+
+# 3. 静态验证（可选）
+.\scripts\verify_optimizations.bat
+```
+
 ### 发布流程
 
 ```bash
-# 1. 构建发布包
+# 1. 构建发布包（自动包含 Web SDK）
 .\scripts\build_release_v2.bat
 
 # 2. 验证发布包
 # 检查 release/anywp_engine_v{版本号}/ 目录
+# 检查 release/anywp_web_sdk_v{版本号}.zip 文件
 
 # 3. 推送到 GitHub
 git push origin main
 
-# 4. 创建 GitHub Release
-# 上传 release/anywp_engine_v{版本号}.zip
+# 4. 创建 Git tag
+git tag -a v{版本号} -m "描述"
+git push origin v{版本号}
+
+# 5. 创建 GitHub Release
+# 上传 anywp_engine_v{版本号}.zip
+# 上传 anywp_web_sdk_v{版本号}.zip
 ```
 
 ---
@@ -196,8 +353,20 @@ git push origin main
 
 ---
 
-## 🗑️ 已删除的脚本
+## 🗑️ 已删除的脚本（v1.3.2 清理）
 
+**重复功能**:
+- ❌ `run.bat` - 与 `test.bat` 功能重叠
+- ❌ `test_optimizations.bat` - 与 `verify_optimizations.bat` 重复
+- ❌ `comprehensive_test.bat` - 被 `comprehensive_auto_test.bat` 取代
+
+**过时功能**:
+- ❌ `test_refactoring.bat` - 重构完成后不再需要
+- ❌ `run_auto_test.bat` - 废弃的包装器
+- ❌ `auto_test.py` - 硬编码路径，已被综合测试取代
+- ❌ `automated_test.ps1` - 功能不完整
+
+**历史删除**:
 - ❌ `build_release.bat` - 旧版发布脚本（与 v2 重复）
 - ❌ `PUSH_TO_GITHUB.bat` - GitHub 推送脚本（中文编码问题，改用直接 `git push`）
 
@@ -205,12 +374,13 @@ git push origin main
 
 ## 📊 脚本统计
 
-**总数**: 7 个（8 个 → 7 个，删除 2 个重复脚本）
+**总数**: 13 个
 
 **分类**:
 - 开发脚本: 3 个
 - 调试脚本: 2 个
-- 发布脚本: 1 个
+- 发布脚本: 3 个
+- 测试脚本: 4 个
 - 安装脚本: 1 个
 
 **推荐脚本** (⭐):
@@ -219,7 +389,10 @@ git push origin main
 - `debug_run.bat` - 问题调试
 - `build_release_v2.bat` - 发布构建
 - `setup_webview2.bat` - 首次安装
+- `run_comprehensive_test.bat` - 全链路测试
+- `comprehensive_auto_test.bat` - 主测试脚本
 
 ---
 
-**所有脚本均已测试，无语法错误，支持中文。** ✅
+**所有脚本均已测试，无语法错误，支持中文。** ✅  
+**最后更新**: 2025-11-08 (v1.3.2 脚本清理)
