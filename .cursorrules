@@ -93,9 +93,19 @@ release/                # 发布包
 ## 开发流程
 
 ### 功能开发
-1. 实现功能 + 错误处理
-2. 运行测试验证（`.\scripts\test.bat`）
-3. 自动提交代码
+1. **实现功能**: 编写代码 + 完整错误处理 + 文档注释
+2. **本地测试**: 
+   - C++ 模块: `cd windows\test && run_tests.bat`
+   - Web SDK: `cd windows\sdk && npm test`
+   - 集成测试: `.\scripts\test_full.bat`
+3. **代码检查**: `flutter analyze` 确保无警告
+4. **自动提交**: 使用文件方式提交中文信息
+
+**质量标准**:
+- [ ] 所有公共 API 有文档注释
+- [ ] 关键操作有 try-catch 保护
+- [ ] 单元测试覆盖率 ≥95%
+- [ ] 无 Linter 警告或错误
 
 ### Web SDK 开发 (v4.2.0+ TypeScript 模块化)
 **源码位置**: `windows/sdk/` (100% TypeScript)
@@ -573,6 +583,19 @@ grep -r "新API名称" README.md lib/ docs/DEVELOPER_API_REFERENCE.md docs/FOR_F
 - **自动提交**：功能完成后自动 git commit
 - **不创建过程性文档**（测试报告、验证报告等）
 
+### 代码质量要求
+- **所有公共 API**: 必须有完整的文档注释（Dart/C++/TypeScript）
+- **错误处理**: 所有关键操作使用 try-catch
+- **日志记录**: 使用统一日志接口（`Logger::Instance()`）
+- **单元测试**: 新功能必须添加测试用例
+- **代码审查**: 遵循 `.cursorrules` 中的编码规范
+
+### 开发优先级
+1. **功能正确性** > 性能优化
+2. **代码可读性** > 简洁性
+3. **错误处理完整性** > 功能丰富度
+4. **测试覆盖率** > 开发速度
+
 ### Git 提交规范
 
 **提交信息格式**:
@@ -636,10 +659,23 @@ Get-ChildItem | Where-Object Name -like "*.dll"
 ```
 
 **推荐做法**:
-- ✅ 优先使用批处理脚本（.bat）处理复杂逻辑
-- ✅ PowerShell 只用于简单命令（Get-ChildItem, Test-Path, Copy-Item）
-- ✅ 验证流程使用 grep 工具代替 PowerShell 脚本
-- ✅ 生成脚本/模板时使用 `Get-Content -Raw` + `[System.Text.UTF8Encoding]::new($false)`，避免 BOM 和换行丢失
+- ✅ **优先使用批处理脚本（.bat）** 处理复杂逻辑
+- ✅ **PowerShell 仅用于简单命令**: Get-ChildItem, Test-Path, Copy-Item, Remove-Item
+- ✅ **验证流程使用 grep 工具** 代替 PowerShell 脚本块
+- ✅ **文件读写使用 UTF-8**: `Get-Content -Raw` + `[System.Text.UTF8Encoding]::new($false)`
+- ✅ **避免 PowerShell 管道复杂度**: 不超过 2 级管道，使用变量缓存中间结果
+
+**最佳实践**:
+```powershell
+# ✅ 正确：简单命令
+Test-Path "release\anywp_engine_v1.3.1\bin\*.dll"
+
+# ❌ 错误：复杂脚本块
+Get-ChildItem | Where-Object { $_.Name -match "\.dll$" } | ForEach-Object { Write-Host "Found: $($_.Name)" }
+
+# ✅ 正确：使用批处理脚本
+dir /b /s release\*.dll > dll_list.txt
+```
 
 ---
 
@@ -681,30 +717,83 @@ grep -r "新API" README.md lib/ docs/DEVELOPER_API_REFERENCE.md
 # Debug 测试
 cd example
 flutter clean
+flutter pub get
 flutter build windows --debug
-# 运行测试验证功能
 
-# Release 构建
+# 运行功能测试
+.\scripts\test_full.bat
+
+# Release 构建（必须）
 flutter build windows --release
 ```
-- [ ] Debug 构建成功
-- [ ] Release 构建成功
-- [ ] 功能测试通过
-- [ ] 无内存泄漏
-- [ ] ⚠️ **验证 .lib 文件已生成**：`example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.lib`
+
+**检查清单**:
+- [ ] Debug 构建成功（无编译错误）
+- [ ] Release 构建成功（无编译错误）
+- [ ] 无 Linter 警告：`flutter analyze`
+- [ ] 功能测试通过（至少 2 个测试页面）
+- [ ] 无内存泄漏（< 300 MB）
+- [ ] ⚠️ **验证 .lib 文件已生成**：
+  ```bash
+  Test-Path "example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.lib"
+  ```
 
 #### Step 5: 构建发布包
 ```bash
-.\scripts\build_release_v2.bat
+# 确保在项目根目录执行
+.\scripts\release.bat
 ```
-- [ ] 构建成功
-- [ ] 目录结构完整
-- [ ] DLL 文件正确
+
+**构建后检查**:
+- [ ] 构建成功（ERROR_COUNT = 0）
+- [ ] 目录结构完整（bin, lib, include, sdk, windows）
+- [ ] DLL 文件正确（anywp_engine_plugin.dll, WebView2Loader.dll）
+- [ ] ZIP 文件生成（~16 MB Flutter 包 + ~56 KB Web SDK 包）
+
+**如果构建失败**:
+1. 检查 `example\build\windows\x64\Release\` 是否存在
+2. 确认 Flutter Release 构建成功
+3. 查看构建日志中的错误信息
+4. 手动复制缺失文件并修复构建脚本
 
 #### Step 6: 发布包完整性验证（⚠️ 关键步骤）
 
 **6.1 关键文件验证（必须全部通过）**:
 
+**一键验证脚本** (PowerShell):
+```powershell
+$version = "1.3.1"  # 替换为实际版本号
+$basePath = "release\anywp_engine_v$version"
+
+$requiredFiles = @(
+    "bin\anywp_engine_plugin.dll",
+    "bin\WebView2Loader.dll",
+    "lib\anywp_engine_plugin.lib",      # 最易遗漏！
+    "lib\anywp_engine.dart",
+    "lib\dart\anywp_engine.dart",
+    "include\anywp_engine\any_w_p_engine_plugin.h",
+    "windows\anywp_sdk.js",
+    "windows\CMakeLists.txt",
+    "windows\packages\"
+)
+
+$missing = @()
+foreach ($file in $requiredFiles) {
+    if (-not (Test-Path "$basePath\$file")) {
+        $missing += $file
+    }
+}
+
+if ($missing.Count -gt 0) {
+    Write-Host "❌ 缺少关键文件：" -ForegroundColor Red
+    $missing | ForEach-Object { Write-Host "  - $_" }
+    exit 1
+} else {
+    Write-Host "✅ 所有关键文件验证通过" -ForegroundColor Green
+}
+```
+
+**手动验证** (逐一检查):
 ```powershell
 # ⚠️ 这些文件缺失会导致客户集成失败
 Test-Path "release\anywp_engine_v{版本号}\bin\anywp_engine_plugin.dll"    # 必需
@@ -726,17 +815,21 @@ Test-Path "release\anywp_engine_v{版本号}\windows\CMakeLists.txt"          # 
 **6.2 文档验证**（使用 grep）:
 
 ```bash
+# 快速验证脚本（替换实际版本号和 API 名称）
+$version = "1.3.1"
+$api = "setApplicationName"  # 替换为实际新增的 API
+
 # 1. 检查 README.md 包含新 API
-grep "setApplicationName\|getStoragePath" release/anywp_engine_v{版本号}/README.md
+grep "$api" "release/anywp_engine_v$version/README.md"
 
 # 2. 检查 CHANGELOG 包含新版本
-grep "4\.4\.0.*2025-11-06" release/anywp_engine_v{版本号}/CHANGELOG_CN.md
+grep "\[.*\].*$version" "release/anywp_engine_v$version/CHANGELOG_CN.md"
 
 # 3. 检查版本号
-grep "version.*1\.2\.0" release/anywp_engine_v{版本号}/pubspec.yaml
+grep "version.*$version" "release/anywp_engine_v$version/pubspec.yaml"
 
-# 4. 检查 Dart 源码包含新 API（标准位置）
-grep "setApplicationName\|getStoragePath" release/anywp_engine_v{版本号}/lib/anywp_engine.dart
+# 4. 检查 Dart 源码包含新 API
+grep "$api" "release/anywp_engine_v$version/lib/anywp_engine.dart"
 ```
 
 **检查清单**:
@@ -752,26 +845,53 @@ grep "setApplicationName\|getStoragePath" release/anywp_engine_v{版本号}/lib/
 - 📝 **结论**: 预编译包验证必须自动化且严格
 
 #### Step 7: 创建 Release Notes
-- [ ] 复制 `docs/RELEASE_TEMPLATE.md`
-- [ ] 另存为 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
-- [ ] 填写完整内容：
-  - 发布亮点
-  - 新增功能（详细说明 + 代码示例）
-  - 重构改进
-  - 使用示例
-  - 升级指南
-  - 测试结果
+```bash
+# 复制模板
+copy docs\RELEASE_TEMPLATE.md release\GITHUB_RELEASE_NOTES_v{版本号}.md
+```
+
+**必须包含的内容**:
+- [ ] **发布亮点**: 3-5 句话总结主要更新
+- [ ] **新增功能**: 详细说明 + 代码示例（每个功能）
+- [ ] **重构改进**: 性能优化、架构改进（如有）
+- [ ] **使用示例**: 完整可运行的示例代码
+- [ ] **升级指南**: 从上一版本升级的步骤
+- [ ] **测试结果**: 单元测试通过率、性能数据
+- [ ] **已知问题**: 当前限制和解决方案（如有）
+- [ ] **下载链接**: 两个 ZIP 包的说明
+
+**质量标准**:
+- 所有代码示例必须可直接复制运行
+- 技术术语保持一致（与文档同步）
+- 版本号、日期、链接无误
 
 #### Step 8: Git 提交
 ```bash
+# 添加发布相关文件
 git add release/ CHANGELOG_CN.md pubspec.yaml docs/ README.md .cursorrules
 
-write("commit_msg.txt", "release: 发布 v1.x.0 - 功能描述")
+# 创建中文提交信息（使用文件方式）
+@"
+release: 发布 v{版本号} - 功能描述
+
+详细说明：
+- 新增功能1
+- 新增功能2
+- 修复问题3
+"@ | Out-File -FilePath "commit_msg.txt" -Encoding UTF8
+
+# 提交
 git commit -F commit_msg.txt
-delete_file("commit_msg.txt")
+
+# 清理临时文件
+Remove-Item commit_msg.txt
 ```
-- [ ] 提交成功
-- [ ] 工作区干净
+
+**检查清单**:
+- [ ] 提交成功（无错误）
+- [ ] 工作区干净：`git status` 显示 "nothing to commit"
+- [ ] 提交信息清晰描述版本和功能
+- [ ] 所有发布相关文件已添加（release/, docs/, CHANGELOG_CN.md 等）
 
 #### Step 9: 推送到 GitHub
 ```bash
@@ -783,32 +903,33 @@ git push origin main
 
 #### Step 9.5: 创建并推送 Git Tag（重要！）
 ```bash
-# 创建 annotated tag
-git tag -a v{版本号} -m "AnyWP Engine v{版本号} - 功能描述"
+# 创建 annotated tag（英文描述推荐）
+git tag -a v{版本号} -m "AnyWP Engine v{版本号} - feature description"
+
+# 如需中文描述，使用文件方式
+@"
+AnyWP Engine v{版本号} - 功能描述
+详细说明
+"@ | Out-File -FilePath "tag_msg.txt" -Encoding UTF8
+git tag -a v{版本号} -F tag_msg.txt
+Remove-Item tag_msg.txt
 
 # 验证 tag 创建
-git tag -l
+git tag -l | Select-String "v{版本号}"
 
 # 推送 tag 到 GitHub
 git push origin v{版本号}
 ```
 
-**建议**:
-- Tag 描述尽量使用 ASCII 文本；若需包含中文，请先在仓库根目录执行 `cmd /c "echo AnyWP Engine v{版本号} - desc>tag_msg.txt"`，再运行 `git tag -a v{版本号} -F tag_msg.txt`
-- 所有 Git 命令均在仓库根目录执行，避免相对路径导致 `Copy-Item`/`Compress-Archive` 找不到目标
+**重要提示**:
+- ⚠️ **必须先推送 tag，GitHub Release 才能基于 tag 创建**
+- 所有 Git 命令均在仓库根目录执行
+- Tag 描述尽量使用 ASCII 文本（避免编码问题）
 
-**示例**（v1.2.0）:
-```bash
-git tag -a v1.2.0 -m "AnyWP Engine v1.2.0 - 应用级存储隔离 + 测试UI优化"
-git push origin v1.2.0
-```
-
-**检查**:
-- [ ] Tag 创建成功（`git tag -l` 可见）
-- [ ] Tag 推送成功（显示 `[new tag]`）
-- [ ] GitHub Tags 页面可见新 tag
-
-**注意**: ⚠️ **必须先推送 tag，GitHub Release 才能基于 tag 创建**
+**检查清单**:
+- [ ] Tag 创建成功：`git tag -l` 可见 v{版本号}
+- [ ] Tag 推送成功：显示 `[new tag] v{版本号} -> v{版本号}`
+- [ ] GitHub Tags 页面可见新 tag：https://github.com/zhaibin/AnyWallpaper-Engine/tags
 
 #### Step 10: 创建 GitHub Release
 1. [ ] 访问 GitHub Releases 页面
@@ -885,10 +1006,17 @@ git push origin main      # 推送到 GitHub
 ```
 
 **🚫 脚本政策** (v1.3.2+):
-- **禁止新增脚本**: 脚本集合已完整稳定
+- **禁止新增脚本**: 脚本集合已完整稳定（10 个脚本足够）
 - **添加功能**: 扩展现有脚本或添加参数
 - **特殊情况**: 必须获批准并更新文档
 - **原则**: 保持简洁，避免重复
+- **命名规范**: 全英文命名，避免编码问题
+
+**现有脚本分类**:
+- **开发**: build.bat, run.bat, debug.bat, monitor_log.bat
+- **发布**: release.bat, build_sdk.bat
+- **设置**: setup.bat
+- **测试**: test_full.bat, analyze.ps1, verify.bat
 
 ---
 
