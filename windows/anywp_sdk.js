@@ -369,7 +369,21 @@ var AnyWPBundle = (function (exports) {
          * Calculate element bounds in physical pixels
          */
         calculate(element, dpiScale) {
-            const rect = element.getBoundingClientRect();
+            // Handle string selector
+            let el = element;
+            if (typeof element === 'string') {
+                const found = document.querySelector(element);
+                if (!found) {
+                    throw new Error(`[AnyWP] Element not found: ${element}`);
+                }
+                el = found;
+            }
+            // Validate element
+            if (!el || typeof el.getBoundingClientRect !== 'function') {
+                console.error('[AnyWP] Invalid element passed to Bounds.calculate:', element);
+                throw new TypeError('[AnyWP] Element must be a valid DOM element or selector');
+            }
+            const rect = el.getBoundingClientRect();
             return {
                 left: Math.round(rect.left * dpiScale),
                 top: Math.round(rect.top * dpiScale),
@@ -390,7 +404,21 @@ var AnyWPBundle = (function (exports) {
          * Check if mouse (in physical pixels) is over element
          */
         isMouseOverElement(mouseX, mouseY, element, dpiScale) {
-            const rect = element.getBoundingClientRect();
+            // Handle string selector
+            let el = element;
+            if (typeof element === 'string') {
+                const found = document.querySelector(element);
+                if (!found) {
+                    return false;
+                }
+                el = found;
+            }
+            // Validate element
+            if (!el || typeof el.getBoundingClientRect !== 'function') {
+                console.error('[AnyWP] Invalid element passed to isMouseOverElement:', element);
+                return false;
+            }
+            const rect = el.getBoundingClientRect();
             const physicalLeft = Math.round(rect.left * dpiScale);
             const physicalTop = Math.round(rect.top * dpiScale);
             const physicalRight = Math.round(rect.right * dpiScale);

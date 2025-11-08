@@ -5,8 +5,24 @@ export const Bounds = {
   /**
    * Calculate element bounds in physical pixels
    */
-  calculate(element: HTMLElement, dpiScale: number): ElementBounds {
-    const rect = element.getBoundingClientRect();
+  calculate(element: HTMLElement | string, dpiScale: number): ElementBounds {
+    // Handle string selector
+    let el = element as HTMLElement;
+    if (typeof element === 'string') {
+      const found = document.querySelector(element);
+      if (!found) {
+        throw new Error(`[AnyWP] Element not found: ${element}`);
+      }
+      el = found as HTMLElement;
+    }
+    
+    // Validate element
+    if (!el || typeof el.getBoundingClientRect !== 'function') {
+      console.error('[AnyWP] Invalid element passed to Bounds.calculate:', element);
+      throw new TypeError('[AnyWP] Element must be a valid DOM element or selector');
+    }
+    
+    const rect = el.getBoundingClientRect();
     
     return {
       left: Math.round(rect.left * dpiScale),
@@ -29,8 +45,24 @@ export const Bounds = {
   /**
    * Check if mouse (in physical pixels) is over element
    */
-  isMouseOverElement(mouseX: number, mouseY: number, element: HTMLElement, dpiScale: number): boolean {
-    const rect = element.getBoundingClientRect();
+  isMouseOverElement(mouseX: number, mouseY: number, element: HTMLElement | string, dpiScale: number): boolean {
+    // Handle string selector
+    let el = element as HTMLElement;
+    if (typeof element === 'string') {
+      const found = document.querySelector(element);
+      if (!found) {
+        return false;
+      }
+      el = found as HTMLElement;
+    }
+    
+    // Validate element
+    if (!el || typeof el.getBoundingClientRect !== 'function') {
+      console.error('[AnyWP] Invalid element passed to isMouseOverElement:', element);
+      return false;
+    }
+    
+    const rect = el.getBoundingClientRect();
     
     const physicalLeft = Math.round(rect.left * dpiScale);
     const physicalTop = Math.round(rect.top * dpiScale);
