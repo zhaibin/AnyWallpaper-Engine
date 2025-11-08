@@ -435,13 +435,17 @@
         function testMouseEvents() {
             if (!window.AnyWP) return;
             
-            window.AnyWP.onClick(function(x, y) {
+            // 监听整个拖拽容器区域的点击
+            window.AnyWP.onClick('#drag-container', function(x, y) {
                 addLog('drag-log', `检测到点击: (${x}, ${y})`, 'info');
                 updateStat('clicks');
                 updateStat('events');
+            }, {
+                immediate: true,
+                debug: true  // 显示调试边框
             });
             
-            addLog('drag-log', '鼠标事件监听已启动', 'success');
+            addLog('drag-log', '鼠标事件监听已启动 (监听 #drag-container)', 'success');
         }
         
         // JavaScript 桥接测试
