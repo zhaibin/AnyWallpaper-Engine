@@ -107,7 +107,7 @@ export const ClickHandler = {
                     intersectionObserver.observe(el);
                     handlerData.intersectionObserver = intersectionObserver;
                 }
-                // 方案 3: 定期检查位置变化（兜底方案，适用于复杂布局）
+                // 方案 3: 高频位置检查（兜底方案，适用于快速移动/动画）
                 if (!handlerData.positionCheckTimer) {
                     handlerData.lastBounds = bounds;
                     handlerData.positionCheckTimer = setInterval(function () {
@@ -122,11 +122,11 @@ export const ClickHandler = {
                         if (handlerData.lastBounds &&
                             (currentLeft !== handlerData.lastBounds.left ||
                                 currentTop !== handlerData.lastBounds.top)) {
-                            // 位置变化，刷新
+                            // 位置变化，立即刷新
                             self.refreshElementBounds(anyWP, handlerData);
                             Debug.log('Position changed for: ' + (el.id || el.className), false);
                         }
-                    }, 500); // 每 500ms 检查一次，性能开销低
+                    }, 100); // 每 100ms 检查一次，快速响应
                 }
             }
             // Debug output
