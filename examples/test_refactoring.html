@@ -255,7 +255,7 @@
                 <!-- JavaScript 桥接测试 -->
                 <div class="test-section">
                     <h2>🌉 JavaScript 桥接</h2>
-                    <p>SDKBridge 消息通信</p>
+                    <p>测试日志会输出到 C++ 控制台（debug_run.log）</p>
                     <div class="test-buttons">
                         <button onclick="testMessageBridge()">发送消息</button>
                         <button class="secondary" onclick="testConsoleLog()">日志转发</button>
@@ -265,7 +265,7 @@
                 </div>
                 
                 <!-- 性能统计 -->
-                <div class="test-section">
+                <div class="test-section" style="flex-shrink: 0;">
                     <h2>📊 性能统计</h2>
                     <div class="stats">
                         <div class="stat-item">
@@ -288,9 +288,9 @@
                 </div>
                 
                 <!-- 综合测试日志 -->
-                <div class="test-section">
+                <div class="test-section" style="flex-shrink: 0;">
                     <h2>📝 综合日志</h2>
-                    <div class="test-buttons">
+                    <div class="test-buttons" style="position: sticky; top: 0; background: inherit; z-index: 10;">
                         <button class="danger" onclick="clearAllLogs()">清除日志</button>
                         <button class="secondary" onclick="exportTestResults()">导出结果</button>
                     </div>
@@ -377,10 +377,16 @@
         // 启用按钮点击（解决壁纸模式下点击无反应的问题）
         function enableButtonClicks() {
             const buttons = document.querySelectorAll('button');
+            let enabledCount = 0;
+            
             buttons.forEach(button => {
                 // 获取原始的 onclick 函数名
                 const onclickAttr = button.getAttribute('onclick');
-                if (onclickAttr) {
+                if (onclickAttr && !button.dataset.clickEnabled) {
+                    // 标记为已启用，避免重复注册
+                    button.dataset.clickEnabled = 'true';
+                    enabledCount++;
+                    
                     // 移除原始 onclick，改用 SDK 的点击事件
                     button.removeAttribute('onclick');
                     
@@ -389,15 +395,31 @@
                         // 执行原始的函数
                         try {
                             eval(onclickAttr);
+                            // 点击后重新注册所有按钮（解决布局变化导致位置偏移）
+                            setTimeout(() => refreshButtonClicks(), 100);
                         } catch (e) {
                             console.error('执行按钮函数失败:', e);
+                            addLog('main-log', '按钮执行错误: ' + e.message, 'error');
                         }
                     }, {
                         immediate: true
                     });
                 }
             });
-            addLog('main-log', '已启用 ' + buttons.length + ' 个按钮的点击功能', 'success');
+            
+            if (enabledCount > 0) {
+                addLog('main-log', '已启用 ' + enabledCount + ' 个按钮的点击功能', 'success');
+            }
+        }
+        
+        // 刷新按钮点击区域（在布局变化后调用）
+        function refreshButtonClicks() {
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                // 清除标记，允许重新注册
+                button.dataset.clickEnabled = '';
+            });
+            enableButtonClicks();
         }
         
         // 状态持久化测试
@@ -510,16 +532,25 @@
                 data: '测试消息内容'
             };
             
-            window.AnyWP.log('发送测试消息: ' + JSON.stringify(testMessage));
-            addLog('bridge-log', '消息已发送到 C++ 层', 'success');
+            // 通过 SDK 的 log 方法发送消息到 C++ 层
+            window.AnyWP.log('🔗 [Bridge Test] 发送测试消息: ' + JSON.stringify(testMessage));
+            
+            addLog('bridge-log', '✅ 消息已发送到 C++ 层', 'success');
+            addLog('bridge-log', '📄 消息内容: ' + JSON.stringify(testMessage), 'info');
+            addLog('bridge-log', '💡 查看方式: 在 debug_run.log 中搜索 "[Bridge Test]"', 'info');
             updateStat('events');
         }
         
         function testConsoleLog() {
-            console.log('这是一条测试日志');
-            console.warn('这是一条警告信息');
-            console.error('这是一条错误信息');
-            addLog('bridge-log', '已发送多条日志到 C++ 层', 'success');
+            // 发送不同级别的日志
+            console.log('📝 [日志转发测试] 这是一条普通日志');
+            console.warn('⚠️ [日志转发测试] 这是一条警告信息');
+            console.error('❌ [日志转发测试] 这是一条错误信息');
+            console.log('📊 [日志转发测试] 包含数据:', {test: true, value: 123});
+            
+            addLog('bridge-log', '✅ 已发送 4 条日志到 C++ 层', 'success');
+            addLog('bridge-log', '💡 查看方式: 在 debug_run.log 中搜索 "[日志转发测试]"', 'info');
+            addLog('bridge-log', '📄 日志级别: log, warn, error', 'info');
             updateStat('events');
         }
         
@@ -528,7 +559,8 @@
             
             const testUrl = 'https://www.example.com';
             window.AnyWP.openURL(testUrl);
-            addLog('bridge-log', `请求打开 URL: ${testUrl}`, 'info');
+            addLog('bridge-log', '✅ 请求打开 URL: ' + testUrl, 'success');
+            addLog('bridge-log', '💡 如果配置允许，浏览器将打开此 URL', 'info');
             updateStat('events');
         }
         
