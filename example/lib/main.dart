@@ -63,9 +63,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
   
   // Quick test pages
   final List<Map<String, String>> _testPages = [
-    {'name': '🔧 Refactoring Test', 'file': 'test_refactoring.html', 'icon': '🔧'},
     {'name': 'Simple', 'file': 'test_simple.html', 'icon': '🎨'},
-    {'name': 'Draggable', 'file': 'test_draggable.html', 'icon': '🖱️'},
     {'name': 'Drag Debug', 'file': 'test_drag_debug.html', 'icon': '🔍'},
     {'name': 'API Test', 'file': 'test_api.html', 'icon': '⚙️'},
     {'name': 'Click Test', 'file': 'test_basic_click.html', 'icon': '👆'},
@@ -397,7 +395,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
           _monitorWallpapers[monitor.index] = false;
           _monitorLoading[monitor.index] = false;
           _monitorUrlControllers[monitor.index] = TextEditingController(
-            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_refactoring.html',
+            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_simple.html',
           );
         }
       }
@@ -1115,41 +1113,53 @@ class _MyAppState extends State<MyApp> with WindowListener {
                     ),
                   ),
                   SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: _testPages.map((page) {
+                  // Two-column grid layout
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                      childAspectRatio: 3.5,
+                    ),
+                    itemCount: _testPages.length,
+                    itemBuilder: (context, index) {
+                      final page = _testPages[index];
                       return InkWell(
                         onTap: () => _loadTestPage(monitor.index, page['file']!),
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
                             color: Colors.blue[50],
                             border: Border.all(color: Colors.blue[200]!),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
                                 page['icon']!,
-                                style: TextStyle(fontSize: 14),
+                                style: TextStyle(fontSize: 16),
                               ),
-                              SizedBox(width: 4),
-                              Text(
-                                page['name']!,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.blue[900],
+                              SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  page['name']!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.blue[900],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
                         ),
                       );
-                    }).toList(),
+                    },
                   ),
                   SizedBox(height: 12),
                   // Custom URL input
@@ -1249,21 +1259,20 @@ class _MyAppState extends State<MyApp> with WindowListener {
                 SizedBox(height: 8),
                 Text(
                   '1. Check detected monitors above\n'
-                  '2. Click 🚀 Quick Test buttons - wallpaper starts automatically!\n'
-                  '3. Or enter custom URL and click "Start" manually\n'
+                  '2. Click 🚀 Quick Test buttons to load test pages\n'
+                  '3. Click "Start" button to activate the wallpaper\n'
                   '4. Use "Start All" to apply to all monitors at once\n'
                   '5. Each monitor displays its own independent content!\n\n'
                   '💡 Quick Test Pages:\n'
                   '  🎨 Simple - Basic wallpaper test\n'
-                  '  🖱️ Draggable - Drag & drop demo (mouse hook)\n'
-                  '  🔍 Drag Debug - Drag debug with detailed logs\n'
+                  '  🔍 Drag Debug - Drag & drop demo with detailed logs\n'
                   '  ⚙️ API Test - Full API testing\n'
                   '  👆 Click Test - Click detection test\n'
                   '  👁️ Visibility - Power saving test\n'
                   '  ⚛️ React / 💚 Vue - SPA framework tests\n'
                   '  📺 iFrame Ads - Ad detection test\n\n'
                   '✨ Tips:\n'
-                  '  • Quick test buttons auto-start instantly (no need to click Start!)\n'
+                  '  • Click test page buttons to load URL, then click "Start"\n'
                   '  • Mouse transparency works with drag & drop!\n'
                   '  • Try different pages on different monitors',
                   style: TextStyle(color: Colors.grey[800], fontSize: 13),
