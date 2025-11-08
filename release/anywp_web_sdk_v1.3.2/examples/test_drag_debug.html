@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>拖拽调试测试</title>
+  <script src="../windows/anywp_sdk.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 15px;
+      font-family: 'Consolas', monospace;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      height: 100vh;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    
+    .info {
+      background: #252526;
+      padding: 15px;
+      margin-bottom: 20px;
+      border: 1px solid #3e3e42;
+      border-radius: 5px;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    
+    .info h3 {
+      margin: 0 0 10px 0;
+      color: #4ec9b0;
+    }
+    
+    .box {
+      width: 200px;
+      height: 150px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      position: absolute;
+      left: 700px;
+      top: 200px;
+      cursor: move;
+    }
+    
+    #log {
+      background: #1e1e1e;
+      border: 1px solid #3e3e42;
+      padding: 10px;
+      max-height: 500px;
+      overflow-y: auto;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .log-line {
+      margin: 3px 0;
+      padding: 2px 5px;
+      border-left: 3px solid #4ec9b0;
+    }
+    
+    .log-error {
+      border-left-color: #f48771;
+      color: #f48771;
+    }
+  </style>
+</head>
+<body>
+  <div class="info">
+    <h3>🔍 系统信息</h3>
+    <div id="system-info">正在加载...</div>
+  </div>
+  
+  <div class="info">
+    <h3>📊 实时调试日志</h3>
+    <div id="log"></div>
+  </div>
+  
+  <div id="testBox" class="box">
+    拖动我测试<br>
+    (Widget2 位置)
+  </div>
+  
+  <script>
+    const logDiv = document.getElementById('log');
+    
+    // 捕获所有 console.log
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    
+    console.log = function() {
+      // 调用原始 console.log
+      originalLog.apply(console, arguments);
+      
+      // 也显示在页面上（但跳过太频繁的日志）
+      const message = Array.from(arguments).join(' ');
+      if (message.indexOf('[AnyWP]') !== -1 || message.indexOf('🖱️') !== -1) {
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.style.fontSize = '11px';
+        line.style.color = '#888';
+        line.textContent = message;
+        logDiv.appendChild(line);
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+      
+      // 发送到 C++ 输出到文件（所有 console.log）
+      if (window.chrome && window.chrome.webview) {
+        try {
+          window.chrome.webview.postMessage({
+            type: 'console_log',
+            level: 'info',
+            message: message
+          });
+        } catch (e) {
+          // Ignore
+        }
+      }
+    };
+    
+    // 捕获所有错误
+    console.error = function() {
+      originalError.apply(console, arguments);
+      const message = '❌ ERROR: ' + Array.from(arguments).join(' ');
+      const line = document.createElement('div');
+      line.className = 'log-line log-error';
+      line.textContent = message;
+      logDiv.appendChild(line);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      
+      // 发送到 C++
+      if (window.chrome && window.chrome.webview) {
+        try {
+          window.chrome.webview.postMessage({
+            type: 'console_log',
+            level: 'error',
+            message: message
+          });
+        } catch (e) {
+          // Ignore
+        }
+      }
+    };
+    
+    console.warn = function() {
+      originalWarn.apply(console, arguments);
+      const message = '⚠️ WARN: ' + Array.from(arguments).join(' ');
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.style.color = '#ff9800';
+      line.textContent = message;
+      logDiv.appendChild(line);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    };
+    
+    // 全局错误处理
+    window.addEventListener('error', function(event) {
+      const message = '💥 Global Error: ' + event.message + ' at ' + event.filename + ':' + event.lineno;
+      originalError(message, event.error);
+      const line = document.createElement('div');
+      line.className = 'log-line log-error';
+      line.textContent = message;
+      logDiv.appendChild(line);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    });
+    
+    // 未捕获的 Promise 错误
+    window.addEventListener('unhandledrejection', function(event) {
+      const message = '💥 Unhandled Promise Rejection: ' + event.reason;
+      originalError(message);
+      const line = document.createElement('div');
+      line.className = 'log-line log-error';
+      line.textContent = message;
+      logDiv.appendChild(line);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    });
+    
+    function log(message, isError) {
+      const line = document.createElement('div');
+      line.className = 'log-line' + (isError ? ' log-error' : '');
+      line.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+      logDiv.appendChild(line);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      originalLog(message);
+      
+      // 也发送到 C++ 输出到文件
+      if (window.chrome && window.chrome.webview) {
+        try {
+          window.chrome.webview.postMessage({
+            type: 'console_log',
+            level: isError ? 'error' : 'info',
+            message: message
+          });
+        } catch (e) {
+          // Ignore if bridge not available
+        }
+      }
+    }
+    
+    function updateSystemInfo() {
+      const info = document.getElementById('system-info');
+      info.innerHTML = 
+        '<strong>window.devicePixelRatio:</strong> ' + window.devicePixelRatio + '<br>' +
+        '<strong>screen.width × height:</strong> ' + screen.width + ' × ' + screen.height + ' (CSS 像素)<br>' +
+        '<strong>window.screenX, screenY:</strong> ' + window.screenX + ', ' + window.screenY + ' (物理像素)<br>' +
+        '<strong>window.innerWidth × innerHeight:</strong> ' + window.innerWidth + ' × ' + window.innerHeight + ' (CSS 像素)<br>' +
+        '<strong>AnyWP.dpiScale:</strong> ' + (window.AnyWP ? window.AnyWP.dpiScale : 'N/A') + '<br>' +
+        '<strong>AnyWP.version:</strong> ' + (window.AnyWP ? window.AnyWP.version : 'N/A');
+    }
+    
+    function waitForAnyWP() {
+      if (window.AnyWP) {
+        log('✅ AnyWP SDK v' + AnyWP.version + ' 已加载');
+        updateSystemInfo();
+        setupDraggable();
+      } else {
+        setTimeout(waitForAnyWP, 100);
+      }
+    }
+    
+    function setupDraggable() {
+      const box = document.getElementById('testBox');
+      const rect = box.getBoundingClientRect();
+      
+      log('📦 元素初始状态:');
+      log('  CSS 位置: left=' + rect.left.toFixed(1) + ', top=' + rect.top.toFixed(1));
+      log('  CSS 尺寸: ' + rect.width.toFixed(1) + ' × ' + rect.height.toFixed(1));
+      log('  物理位置: left=' + (rect.left * AnyWP.dpiScale).toFixed(0) + ', top=' + (rect.top * AnyWP.dpiScale).toFixed(0));
+      log('  物理尺寸: ' + (rect.width * AnyWP.dpiScale).toFixed(0) + ' × ' + (rect.height * AnyWP.dpiScale).toFixed(0));
+      
+      // 计数器
+      let mousedownCount = 0;
+      let mousemoveCount = 0;
+      let mouseupCount = 0;
+      
+      // 全局事件监听器（用于调试）
+      let globalMousemoveCount = 0;
+      window.addEventListener('AnyWP:mouse', function(event) {
+        if (event.detail.type === 'mousemove') {
+          globalMousemoveCount++;
+          if (globalMousemoveCount <= 3) {
+            console.log('[GLOBAL] mousemove event #' + globalMousemoveCount + ' received in global handler');
+          }
+        }
+      });
+      
+      // 监听全局鼠标事件
+      window.addEventListener('AnyWP:mouse', function(event) {
+        const detail = event.detail;
+        const mouseX = detail.x;
+        const mouseY = detail.y;
+        const mouseType = detail.type;
+        
+        // 统计事件数量
+        if (mouseType === 'mousedown') mousedownCount++;
+        else if (mouseType === 'mousemove') mousemoveCount++;
+        else if (mouseType === 'mouseup') mouseupCount++;
+        
+        // DEBUG: Log RAW coordinates from C++ (only for mousedown)
+        if (mouseType === 'mousedown') {
+          log('');
+          log('📥 Raw event from C++: type=' + mouseType + ', x=' + mouseX + ', y=' + mouseY);
+          log('  window.screenX=' + window.screenX + ', window.screenY=' + window.screenY);
+        }
+        
+        if (mouseType === 'mousedown') {
+          const rect = box.getBoundingClientRect();
+          const physicalLeft = Math.round(rect.left * AnyWP.dpiScale);
+          const physicalTop = Math.round(rect.top * AnyWP.dpiScale);
+          const physicalRight = Math.round(rect.right * AnyWP.dpiScale);
+          const physicalBottom = Math.round(rect.bottom * AnyWP.dpiScale);
+          
+          const isOver = mouseX >= physicalLeft && mouseX <= physicalRight &&
+                         mouseY >= physicalTop && mouseY <= physicalBottom;
+          
+          log('');
+          log('🖱️ 鼠标点击事件 (mousedown):');
+          log('  鼠标坐标 (物理像素): x=' + mouseX + ', y=' + mouseY);
+          log('  元素边界 (物理像素): [' + physicalLeft + ', ' + physicalTop + '] ~ [' + physicalRight + ', ' + physicalBottom + ']');
+          log('  元素边界 (CSS 像素): [' + rect.left.toFixed(1) + ', ' + rect.top.toFixed(1) + '] ~ [' + rect.right.toFixed(1) + ', ' + rect.bottom.toFixed(1) + ']');
+          log('  DPI 缩放: ' + AnyWP.dpiScale);
+          log('  是否在元素上: ' + (isOver ? '✅ 是' : '❌ 否'), !isOver);
+          
+          if (!isOver) {
+            const distX = mouseX < physicalLeft ? (physicalLeft - mouseX) : (mouseX > physicalRight ? (mouseX - physicalRight) : 0);
+            const distY = mouseY < physicalTop ? (physicalTop - mouseY) : (mouseY > physicalBottom ? (mouseY - physicalBottom) : 0);
+            log('  偏差: 横向=' + distX + 'px, 纵向=' + distY + 'px', true);
+          }
+        } else if (mouseType === 'mousemove') {
+          // 每次都记录，但只显示最新的一条（覆盖）
+          const moveLine = document.getElementById('move-line');
+          if (!moveLine) {
+            const line = document.createElement('div');
+            line.id = 'move-line';
+            line.className = 'log-line';
+            line.style.backgroundColor = '#2d2d30';
+            logDiv.appendChild(line);
+          }
+          const dragInfo = AnyWP._dragState ? 
+            'ACTIVE (offset: ' + AnyWP._dragState.offsetX + ',' + AnyWP._dragState.offsetY + ')' : 
+            'null';
+          document.getElementById('move-line').textContent = 
+            '📍 mousemove 事件 #' + mousemoveCount + ': (' + mouseX + ', ' + mouseY + ') - dragState=' + dragInfo;
+        } else if (mouseType === 'mouseup') {
+          log('');
+          log('🖱️ 鼠标释放事件 (mouseup):');
+          log('  鼠标坐标 (物理像素): x=' + mouseX + ', y=' + mouseY);
+          log('  事件统计: mousedown=' + mousedownCount + ', mousemove=' + mousemoveCount + ', mouseup=' + mouseupCount);
+        }
+      });
+      
+      // 设置拖拽
+      AnyWP.makeDraggable('#testBox', {
+        persistKey: 'test_box_position',
+        onDragStart: function(pos) {
+          log('🎯 开始拖拽: (' + pos.x.toFixed(1) + ', ' + pos.y.toFixed(1) + ')');
+        },
+        onDrag: function(pos) {
+          // 不记录每次移动以避免日志过多
+        },
+        onDragEnd: function(pos) {
+          log('✋ 拖拽结束: (' + pos.x.toFixed(1) + ', ' + pos.y.toFixed(1) + ')');
+        }
+      });
+      
+      log('✅ 拖拽功能已启用');
+    }
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', waitForAnyWP);
+    } else {
+      waitForAnyWP();
+    }
+  </script>
+</body>
+</html>
+

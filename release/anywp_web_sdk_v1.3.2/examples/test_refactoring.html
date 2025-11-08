@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重构功能测试页面</title>
+    <script src="../windows/anywp_sdk.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 15px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        
+        .container {
+            max-width: 100%;
+            height: calc(100vh - 30px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        h1 {
+            text-align: center;
+            margin: 0 0 15px 0;
+            font-size: 1.8em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .test-section h2 {
+            margin: 0 0 10px 0;
+            color: #ffd700;
+            font-size: 1.2em;
+        }
+        
+        .test-section p {
+            margin: 5px 0 10px 0;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            padding: 8px 12px;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            transition: all 0.2s;
+            font-weight: 500;
+            flex: 1;
+            min-width: fit-content;
+        }
+        
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        button.secondary {
+            background: #2196F3;
+        }
+        
+        button.secondary:hover {
+            background: #0b7dda;
+        }
+        
+        button.danger {
+            background: #f44336;
+        }
+        
+        button.danger:hover {
+            background: #da190b;
+        }
+        
+        .log-output {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 6px;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            flex: 1;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #4CAF50;
+            padding-left: 10px;
+        }
+        
+        .log-entry.error {
+            border-left-color: #f44336;
+            color: #ffcdd2;
+        }
+        
+        .log-entry.success {
+            border-left-color: #4CAF50;
+            color: #c8e6c9;
+        }
+        
+        .log-entry.info {
+            border-left-color: #2196F3;
+            color: #bbdefb;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .status.ready {
+            background: #4CAF50;
+        }
+        
+        .status.pending {
+            background: #ff9800;
+        }
+        
+        .status.error {
+            background: #f44336;
+        }
+        
+        .draggable-box {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 5px;
+            cursor: move;
+            display: inline-block;
+            transition: all 0.2s;
+            font-size: 0.9em;
+        }
+        
+        .draggable-box:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .draggable-box.dragging {
+            opacity: 0.7;
+            transform: scale(1.05);
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .stat-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 AnyWP Engine 重构功能测试</h1>
+        
+        <div class="test-grid">
+            <!-- 左列 -->
+            <div style="display: flex; flex-direction: column; gap: 15px; overflow: hidden;">
+                <!-- SDK 状态 -->
+                <div class="test-section">
+                    <h2>📦 SDK 状态 <span class="status pending" id="sdk-status">检测中...</span></h2>
+                    <p>版本: <strong id="sdk-version">未知</strong> | 加载: <strong id="load-time">...</strong></p>
+                </div>
+                
+                <!-- 状态持久化测试 -->
+                <div class="test-section">
+                    <h2>💾 状态持久化</h2>
+                    <p>StatePersistence 模块</p>
+                    <div class="test-buttons">
+                        <button onclick="testSaveState()">保存</button>
+                        <button class="secondary" onclick="testLoadState()">加载</button>
+                        <button class="danger" onclick="testClearState()">清除</button>
+                    </div>
+                    <div class="log-output" id="state-log"></div>
+                </div>
+                
+                <!-- 拖拽功能测试 -->
+                <div class="test-section">
+                    <h2>🖱️ 拖拽功能</h2>
+                    <p>MouseHookManager</p>
+                    <div class="test-buttons">
+                        <button onclick="initDraggables()">初始化</button>
+                        <button class="secondary" onclick="testMouseEvents()">监听事件</button>
+                    </div>
+                    <div id="drag-container">
+                        <div class="draggable-box" data-id="box1">📦 #1</div>
+                        <div class="draggable-box" data-id="box2">📦 #2</div>
+                        <div class="draggable-box" data-id="box3">📦 #3</div>
+                    </div>
+                    <div class="log-output" id="drag-log"></div>
+                </div>
+            </div>
+            
+            <!-- 右列 -->
+            <div style="display: flex; flex-direction: column; gap: 15px; overflow: hidden;">
+                <!-- JavaScript 桥接测试 -->
+                <div class="test-section">
+                    <h2>🌉 JavaScript 桥接</h2>
+                    <p>测试日志会输出到 C++ 控制台（debug_run.log）</p>
+                    <div class="test-buttons">
+                        <button onclick="testMessageBridge()">发送消息</button>
+                        <button class="secondary" onclick="testConsoleLog()">日志转发</button>
+                        <button onclick="testOpenURL()">打开URL</button>
+                    </div>
+                    <div class="log-output" id="bridge-log"></div>
+                </div>
+                
+                <!-- 性能统计 -->
+                <div class="test-section" style="flex-shrink: 0;">
+                    <h2>📊 性能统计</h2>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="event-count">0</div>
+                            <div class="stat-label">事件总数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="click-count">0</div>
+                            <div class="stat-label">点击次数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="drag-count">0</div>
+                            <div class="stat-label">拖拽次数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="save-count">0</div>
+                            <div class="stat-label">保存次数</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 综合测试日志 -->
+                <div class="test-section" style="flex-shrink: 0;">
+                    <h2>📝 综合日志</h2>
+                    <div class="test-buttons" style="position: sticky; top: 0; background: inherit; z-index: 10;">
+                        <button class="danger" onclick="clearAllLogs()">清除日志</button>
+                        <button class="secondary" onclick="exportTestResults()">导出结果</button>
+                    </div>
+                    <div class="log-output" id="main-log"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const startTime = Date.now();
+        let stats = {
+            events: 0,
+            clicks: 0,
+            drags: 0,
+            saves: 0
+        };
+        
+        // 日志工具
+        function addLog(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+            
+            // 同时添加到主日志（避免递归）
+            if (containerId !== 'main-log') {
+                const mainLog = document.getElementById('main-log');
+                if (mainLog) {
+                    const mainEntry = document.createElement('div');
+                    mainEntry.className = `log-entry ${type}`;
+                    mainEntry.textContent = `[${timestamp}] [${containerId}] ${message}`;
+                    mainLog.appendChild(mainEntry);
+                    mainLog.scrollTop = mainLog.scrollHeight;
+                }
+            }
+        }
+        
+        function updateStat(statName, increment = 1) {
+            stats[statName] += increment;
+            const elementId = statName === 'events' ? 'event-count' :
+                            statName === 'clicks' ? 'click-count' :
+                            statName === 'drags' ? 'drag-count' : 'save-count';
+            document.getElementById(elementId).textContent = stats[statName];
+        }
+        
+        function clearAllLogs() {
+            ['state-log', 'drag-log', 'bridge-log', 'main-log'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            addLog('main-log', '所有日志已清除', 'info');
+        }
+        
+        function exportTestResults() {
+            const results = {
+                timestamp: new Date().toISOString(),
+                sdkVersion: window.AnyWP?.version || 'unknown',
+                stats: stats,
+                logs: document.getElementById('main-log').innerText
+            };
+            console.log('测试结果:', JSON.stringify(results, null, 2));
+            addLog('main-log', '测试结果已导出到控制台', 'success');
+        }
+        
+        // 初始化
+        window.addEventListener('load', function() {
+            const loadTime = Date.now() - startTime;
+            document.getElementById('load-time').textContent = loadTime + 'ms';
+            
+            if (window.AnyWP) {
+                document.getElementById('sdk-status').textContent = '就绪';
+                document.getElementById('sdk-status').className = 'status ready';
+                document.getElementById('sdk-version').textContent = window.AnyWP.version || '未知';
+                addLog('main-log', `SDK 加载成功，版本: ${window.AnyWP.version}`, 'success');
+                
+                // 发送就绪消息
+                window.AnyWP.ready('重构测试页面');
+                
+                // 启用所有按钮的点击功能
+                enableButtonClicks();
+            } else {
+                document.getElementById('sdk-status').textContent = '错误';
+                document.getElementById('sdk-status').className = 'status error';
+                addLog('main-log', 'SDK 加载失败！', 'error');
+            }
+        });
+        
+        // 启用按钮点击（解决壁纸模式下点击无反应的问题）
+        function enableButtonClicks() {
+            const buttons = document.querySelectorAll('button');
+            let enabledCount = 0;
+            
+            buttons.forEach(button => {
+                // 获取原始的 onclick 函数名
+                const onclickAttr = button.getAttribute('onclick');
+                if (onclickAttr && !button.dataset.clickEnabled) {
+                    // 标记为已启用，避免重复注册
+                    button.dataset.clickEnabled = 'true';
+                    enabledCount++;
+                    
+                    // 移除原始 onclick，改用 SDK 的点击事件
+                    button.removeAttribute('onclick');
+                    
+                    // 使用 AnyWP.onClick 来处理点击
+                    window.AnyWP.onClick(button, function() {
+                        // 执行原始的函数
+                        try {
+                            eval(onclickAttr);
+                            // 点击后重新注册所有按钮（解决布局变化导致位置偏移）
+                            setTimeout(() => refreshButtonClicks(), 100);
+                        } catch (e) {
+                            console.error('执行按钮函数失败:', e);
+                            addLog('main-log', '按钮执行错误: ' + e.message, 'error');
+                        }
+                    }, {
+                        immediate: true
+                    });
+                }
+            });
+            
+            if (enabledCount > 0) {
+                addLog('main-log', '已启用 ' + enabledCount + ' 个按钮的点击功能', 'success');
+            }
+        }
+        
+        // 刷新按钮点击区域（在布局变化后调用）
+        function refreshButtonClicks() {
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                // 清除标记，允许重新注册
+                button.dataset.clickEnabled = '';
+            });
+            enableButtonClicks();
+        }
+        
+        // 状态持久化测试
+        function testSaveState() {
+            if (!window.AnyWP) return;
+            
+            const testData = {
+                timestamp: Date.now(),
+                random: Math.random(),
+                message: '这是测试数据'
+            };
+            
+            window.AnyWP.saveState('test_data', JSON.stringify(testData));
+            addLog('state-log', `保存数据: ${JSON.stringify(testData)}`, 'success');
+            updateStat('saves');
+            updateStat('events');
+        }
+        
+        function testLoadState() {
+            if (!window.AnyWP) return;
+            
+            window.AnyWP.loadState('test_data', function(value) {
+                if (value) {
+                    addLog('state-log', `加载数据成功: ${value}`, 'success');
+                    try {
+                        const parsed = JSON.parse(value);
+                        addLog('state-log', `数据时间: ${new Date(parsed.timestamp).toLocaleString()}`, 'info');
+                    } catch (e) {
+                        addLog('state-log', '数据解析失败', 'error');
+                    }
+                } else {
+                    addLog('state-log', '没有找到保存的数据', 'error');
+                }
+                updateStat('events');
+            });
+        }
+        
+        function testClearState() {
+            if (!window.AnyWP) return;
+            
+            window.AnyWP.clearState();
+            addLog('state-log', '已清除所有保存的状态', 'info');
+            updateStat('events');
+        }
+        
+        // 拖拽功能测试
+        function initDraggables() {
+            if (!window.AnyWP) return;
+            
+            const boxes = document.querySelectorAll('.draggable-box');
+            boxes.forEach(box => {
+                const id = box.dataset.id;
+                
+                window.AnyWP.makeDraggable(box, {
+                    onDragStart: function() {
+                        box.classList.add('dragging');
+                        addLog('drag-log', `开始拖拽: ${id}`, 'info');
+                        updateStat('drags');
+                        updateStat('events');
+                    },
+                    onDragEnd: function(x, y) {
+                        box.classList.remove('dragging');
+                        addLog('drag-log', `拖拽结束: ${id} at (${x}, ${y})`, 'success');
+                        
+                        // 保存位置
+                        window.AnyWP.saveState(`pos_${id}`, JSON.stringify({x, y}));
+                    }
+                });
+                
+                // 恢复位置
+                window.AnyWP.loadState(`pos_${id}`, function(value) {
+                    if (value) {
+                        try {
+                            const pos = JSON.parse(value);
+                            box.style.position = 'absolute';
+                            box.style.left = pos.x + 'px';
+                            box.style.top = pos.y + 'px';
+                            addLog('drag-log', `恢复 ${id} 位置: (${pos.x}, ${pos.y})`, 'info');
+                        } catch (e) {}
+                    }
+                });
+            });
+            
+            addLog('drag-log', '拖拽功能已初始化', 'success');
+        }
+        
+        function testMouseEvents() {
+            if (!window.AnyWP) return;
+            
+            // 先清除之前的处理器，避免重复注册
+            window.AnyWP.clearHandlers();
+            
+            // 监听整个拖拽容器区域的点击
+            window.AnyWP.onClick('#drag-container', function(x, y) {
+                addLog('drag-log', `检测到点击: (${x}, ${y})`, 'info');
+                updateStat('clicks');
+                updateStat('events');
+            }, {
+                immediate: true,
+                debug: true  // 显示调试边框
+            });
+            
+            addLog('drag-log', '鼠标事件监听已启动 (监听 #drag-container)', 'success');
+        }
+        
+        // JavaScript 桥接测试
+        function testMessageBridge() {
+            if (!window.AnyWP) return;
+            
+            const testMessage = {
+                type: 'TEST_MESSAGE',
+                timestamp: Date.now(),
+                data: '测试消息内容'
+            };
+            
+            // 通过 SDK 的 log 方法发送消息到 C++ 层
+            window.AnyWP.log('🔗 [Bridge Test] 发送测试消息: ' + JSON.stringify(testMessage));
+            
+            addLog('bridge-log', '✅ 消息已发送到 C++ 层', 'success');
+            addLog('bridge-log', '📄 消息内容: ' + JSON.stringify(testMessage), 'info');
+            addLog('bridge-log', '💡 查看方式: 在 debug_run.log 中搜索 "[Bridge Test]"', 'info');
+            updateStat('events');
+        }
+        
+        function testConsoleLog() {
+            // 发送不同级别的日志
+            console.log('📝 [日志转发测试] 这是一条普通日志');
+            console.warn('⚠️ [日志转发测试] 这是一条警告信息');
+            console.error('❌ [日志转发测试] 这是一条错误信息');
+            console.log('📊 [日志转发测试] 包含数据:', {test: true, value: 123});
+            
+            addLog('bridge-log', '✅ 已发送 4 条日志到 C++ 层', 'success');
+            addLog('bridge-log', '💡 查看方式: 在 debug_run.log 中搜索 "[日志转发测试]"', 'info');
+            addLog('bridge-log', '📄 日志级别: log, warn, error', 'info');
+            updateStat('events');
+        }
+        
+        function testOpenURL() {
+            if (!window.AnyWP) return;
+            
+            const testUrl = 'https://www.example.com';
+            window.AnyWP.openURL(testUrl);
+            addLog('bridge-log', '✅ 请求打开 URL: ' + testUrl, 'success');
+            addLog('bridge-log', '💡 如果配置允许，浏览器将打开此 URL', 'info');
+            updateStat('events');
+        }
+        
+        // 自动初始化拖拽
+        setTimeout(initDraggables, 1000);
+        setTimeout(testMouseEvents, 1500);
+    </script>
+</body>
+</html>
+

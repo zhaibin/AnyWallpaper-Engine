@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>基础点击测试 - AnyWP</title>
+  
+  <!-- 直接引入 SDK -->
+  <script src="../windows/anywp_sdk.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 60px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+      max-width: 600px;
+    }
+    
+    .status {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f0f0f0;
+      border-radius: 12px;
+      font-size: 14px;
+      text-align: left;
+    }
+    
+    .status-item {
+      margin: 8px 0;
+      font-weight: 600;
+    }
+    
+    h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    
+    .counter-display {
+      font-size: 120px;
+      font-weight: bold;
+      color: #667eea;
+      margin: 40px 0;
+      min-height: 140px;
+    }
+    
+    .button {
+      display: inline-block;
+      margin: 10px;
+      padding: 20px 50px;
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .button:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.6);
+    }
+    
+    .button:active {
+      transform: translateY(-2px);
+    }
+    
+    #log {
+      margin-top: 30px;
+      padding: 20px;
+      background: #000;
+      color: #0f0;
+      border-radius: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      text-align: left;
+      min-height: 200px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .log-entry {
+      margin: 5px 0;
+      padding: 5px;
+      border-bottom: 1px solid #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="status">
+      <div class="status-item">🚀 SDK: <span id="sdk-version">检测中...</span></div>
+      <div class="status-item">🔄 SPA Mode: <span id="spa-mode">检测中...</span></div>
+      <div class="status-item">📊 DPI: <span id="dpi-scale">检测中...</span></div>
+      <div class="status-item">🖱️ 处理器: <span id="handler-count">检测中...</span></div>
+    </div>
+    
+    <h1>基础点击测试</h1>
+    <div class="counter-display" id="counter">0</div>
+    
+    <div>
+      <button id="btn-increment" class="button">+ 增加</button>
+      <button id="btn-decrement" class="button">- 减少</button>
+      <button id="btn-reset" class="button">↻ 重置</button>
+    </div>
+    
+    <div id="log">
+      <div class="log-entry"><strong>📋 事件日志：</strong></div>
+    </div>
+  </div>
+
+  <script>
+    let count = 0;
+    
+    function log(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.textContent = `[${timestamp}] ${message}`;
+      document.getElementById('log').appendChild(entry);
+      console.log('[TEST]', message);
+    }
+    
+    function updateCounter() {
+      document.getElementById('counter').textContent = count;
+    }
+    
+    // 等待 SDK 加载
+    function waitForSDK() {
+      if (typeof window.AnyWP === 'undefined') {
+        log('等待 SDK 加载...');
+        setTimeout(waitForSDK, 100);
+        return;
+      }
+      
+      log('✅ SDK 已加载: v' + window.AnyWP.version);
+      
+      // 更新状态
+      document.getElementById('sdk-version').textContent = window.AnyWP.version;
+      document.getElementById('spa-mode').textContent = window.AnyWP._spaMode ? '✅ Enabled' : '❌ Disabled';
+      document.getElementById('dpi-scale').textContent = window.AnyWP.dpiScale + 'x';
+      
+      // 启用调试
+      window.AnyWP.enableDebug();
+      log('✅ 调试模式已启用');
+      
+      // 通知就绪
+      window.AnyWP.ready('基础点击测试');
+      log('✅ 通知 ready 完成');
+      
+      // 延迟注册以确保 DOM 就绪
+      setTimeout(registerHandlers, 1000);
+    }
+    
+    function registerHandlers() {
+      log('开始注册点击处理器...');
+      
+      // 增加按钮
+      window.AnyWP.onClick('#btn-increment', function(x, y) {
+        count++;
+        updateCounter();
+        log('✅ Increment 被点击！坐标: (' + x + ',' + y + ') 当前值: ' + count);
+      }, { debug: true });
+      
+      log('✅ Increment 按钮已注册');
+      
+      // 减少按钮
+      window.AnyWP.onClick('#btn-decrement', function(x, y) {
+        count--;
+        updateCounter();
+        log('✅ Decrement 被点击！坐标: (' + x + ',' + y + ') 当前值: ' + count);
+      }, { debug: true });
+      
+      log('✅ Decrement 按钮已注册');
+      
+      // 重置按钮
+      window.AnyWP.onClick('#btn-reset', function(x, y) {
+        count = 0;
+        updateCounter();
+        log('✅ Reset 被点击！坐标: (' + x + ',' + y + ')');
+      }, { debug: true });
+      
+      log('✅ Reset 按钮已注册');
+      
+      // 更新处理器数量
+      setTimeout(function() {
+        const handlerCount = window.AnyWP._clickHandlers.length;
+        document.getElementById('handler-count').textContent = handlerCount + ' 个';
+        log('✅ 总共注册了 ' + handlerCount + ' 个处理器');
+        
+        // 输出调试信息
+        log('==========================================');
+        log('🎯 请点击上方的按钮测试');
+        log('📌 确保鼠标穿透开启 (Mouse Transparent = ON)');
+        log('==========================================');
+      }, 500);
+    }
+    
+    // 页面加载完成后初始化
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', waitForSDK);
+    } else {
+      waitForSDK();
+    }
+  </script>
+</body>
+</html>
+
