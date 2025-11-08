@@ -8,17 +8,17 @@ const isProduction = process.env.NODE_ENV === 'production';
 export default [
   // Standard build (unminified)
   {
-    input: 'index.js',  // Keep using JS entry for now (will migrate incrementally)
+    input: 'index.ts',  // TypeScript entry point (100% TypeScript)
     output: {
       file: '../anywp_sdk.js',
       format: 'iife',
       name: 'AnyWPBundle',
-      banner: '// AnyWP Engine SDK v4.2.0 - JavaScript Bridge\n// Auto-injected into WebView2\n// React/Vue SPA Compatible\n// Built with TypeScript modular architecture\n',
+      banner: '// AnyWP Engine SDK v4.2.0 - JavaScript Bridge\n// Auto-injected into WebView2\n// React/Vue SPA Compatible\n// Built with TypeScript modular architecture (100% TS)\n',
       footer: '// Built from modular source - see windows/sdk/ for source code'
     },
     plugins: [
       resolve(),
-      // TypeScript plugin for .ts files (if any are imported)
+      // TypeScript plugin for .ts files
       typescript({
         tsconfig: './tsconfig.json',
         declaration: false,  // Don't emit declarations in main build
@@ -29,7 +29,7 @@ export default [
   
   // Minified build (production)
   ...(isProduction ? [{
-    input: 'index.js',
+    input: 'index.ts',
     output: {
       file: '../anywp_sdk.min.js',
       format: 'iife',

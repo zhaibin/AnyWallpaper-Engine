@@ -142,6 +142,7 @@ export type PersistedState = Record<string, any>;
 /**
  * Callback types
  */
+export type ClickCallback = (x: number, y: number) => void;
 export type MouseCallback = (detail: MouseEventDetail) => void;
 export type KeyboardCallback = (detail: KeyboardEventDetail) => void;
 export type VisibilityCallback = (visible: boolean) => void;
@@ -168,8 +169,9 @@ export interface AnyWPSDK {
     _dragState: DragState | null;
     _persistedState: PersistedState;
     _init(): void;
+    _log(message: string, always?: boolean): void;
     enableDebug(): void;
-    onClick(element: string | HTMLElement, callback: (x: number, y: number) => void, options?: ClickHandlerOptions): void;
+    onClick(element: string | HTMLElement, callback: ClickCallback, options?: ClickHandlerOptions): void;
     refreshBounds(): number;
     clearHandlers(): void;
     makeDraggable(element: string | HTMLElement, options?: DraggableOptions): void;

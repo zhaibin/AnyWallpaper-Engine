@@ -4,7 +4,7 @@ export const Animations = {
   /**
    * Auto-pause all animations for power saving
    */
-  pause(): void {
+  pause(_anyWP?: any): void {
     if ((window as any).__anyWP_animationsPaused) {
       return;
     }
@@ -73,7 +73,7 @@ export const Animations = {
   /**
    * Auto-resume all animations
    */
-  resume(): void {
+  resume(_anyWP?: any): void {
     if (!(window as any).__anyWP_animationsPaused) {
       return;
     }

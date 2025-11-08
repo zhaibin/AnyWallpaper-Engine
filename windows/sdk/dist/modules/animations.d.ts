@@ -2,10 +2,10 @@ export declare const Animations: {
     /**
      * Auto-pause all animations for power saving
      */
-    pause(): void;
+    pause(_anyWP?: any): void;
     /**
      * Auto-resume all animations
      */
-    resume(): void;
+    resume(_anyWP?: any): void;
 };
 //# sourceMappingURL=animations.d.ts.map

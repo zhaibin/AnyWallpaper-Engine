@@ -36,6 +36,11 @@ export const AnyWP: AnyWPSDK = {
     throw new Error('_init must be implemented');
   },
   
+  // Logging (will be implemented in index.ts)
+  _log(_message: string, _always?: boolean): void {
+    throw new Error('Not implemented');
+  },
+  
   // Placeholder methods (will be implemented by modules)
   enableDebug(): void {
     throw new Error('Not implemented');

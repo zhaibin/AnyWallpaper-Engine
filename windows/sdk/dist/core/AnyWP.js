@@ -22,6 +22,10 @@ export const AnyWP = {
     _init() {
         throw new Error('_init must be implemented');
     },
+    // Logging (will be implemented in index.ts)
+    _log(_message, _always) {
+        throw new Error('Not implemented');
+    },
     // Placeholder methods (will be implemented by modules)
     enableDebug() {
         throw new Error('Not implemented');

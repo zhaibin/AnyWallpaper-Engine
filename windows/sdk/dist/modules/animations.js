@@ -3,7 +3,7 @@ export const Animations = {
     /**
      * Auto-pause all animations for power saving
      */
-    pause() {
+    pause(_anyWP) {
         if (window.__anyWP_animationsPaused) {
             return;
         }
@@ -53,8 +53,8 @@ export const Animations = {
             if (!window.__anyWP_originalRAF) {
                 window.__anyWP_originalRAF = window.requestAnimationFrame;
                 window.__anyWP_originalCancelRAF = window.cancelAnimationFrame;
-                window.requestAnimationFrame = (callback) => 0;
-                window.cancelAnimationFrame = (id) => { };
+                window.requestAnimationFrame = (_callback) => 0;
+                window.cancelAnimationFrame = (_id) => { };
                 console.log('[AnyWP] requestAnimationFrame disabled');
             }
             console.log('[AnyWP] Auto-pause complete');
@@ -66,7 +66,7 @@ export const Animations = {
     /**
      * Auto-resume all animations
      */
-    resume() {
+    resume(_anyWP) {
         if (!window.__anyWP_animationsPaused) {
             return;
         }
