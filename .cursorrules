@@ -245,6 +245,56 @@ grep -r "newAPIName" docs/ README.md lib/
 - [ ] 示例代码可直接复制使用
 - [ ] 无过时信息
 
+#### 2.4 文档准确性与完整性检查（⚠️ 发版前必须）
+
+**语言规范检查**:
+- [ ] **根目录 README.md**: 确认全英文，无中文内容
+- [ ] **QUICK_INTEGRATION.md**: 确认全英文
+- [ ] **LICENSE**: 确认英文标准格式
+
+**链接正确性检查**:
+```bash
+# 检查所有文档中的链接
+grep -r "docs/" README.md CHANGELOG_CN.md
+grep -r "http" README.md docs/ | grep -E "\[.*\]\(.*\)"
+
+# 验证文件引用存在
+grep -r "example/" README.md | grep -oP '`\K[^`]+' | while read f; do test -f "$f" || echo "Missing: $f"; done
+```
+
+**内容完整性检查**:
+- [ ] 所有代码示例可运行（复制到测试项目验证）
+- [ ] 版本号一致：README.md、pubspec.yaml、CHANGELOG_CN.md
+- [ ] API 文档与源码一致：`lib/anywp_engine.dart` 中的方法在文档中都有说明
+- [ ] 示例文件路径正确：`examples/`、`docs/` 中引用的文件都存在
+- [ ] 截图和图片链接有效（如有）
+
+**交叉引用验证**:
+- [ ] README.md → docs/ 的链接正确
+- [ ] DEVELOPER_API_REFERENCE.md → 示例代码路径正确
+- [ ] FOR_FLUTTER_DEVELOPERS.md → API 列表与实际 API 一致
+- [ ] GitHub Release Notes → 下载链接正确
+
+**验证脚本**（批处理脚本）:
+```batch
+@echo off
+echo Checking documentation completeness...
+
+REM Check README language
+findstr /C:"中文" README.md >nul && (
+    echo [ERROR] README.md contains Chinese text
+    exit /b 1
+) || echo [OK] README.md is English only
+
+REM Check version consistency
+set VERSION_FILE=pubspec.yaml
+set README_FILE=README.md
+set CHANGELOG_FILE=CHANGELOG_CN.md
+
+REM More validation steps...
+echo [OK] Documentation check completed
+```
+
 ---
 
 ### 阶段 3️⃣：发布准备
@@ -916,7 +966,30 @@ grep "$api" "release/anywp_engine_v$version/lib/anywp_engine.dart"
 - [ ] pubspec.yaml 版本号正确（grep 找到版本号）
 - [ ] lib/anywp_engine.dart 包含新 API（grep 找到匹配）
 
-**6.3 教训（v1.2.0 事故）**:
+**6.3 语言规范验证（⚠️ 发版前必须）**:
+
+```bash
+# 验证 README.md 是否全英文
+findstr /C:"中文" release/anywp_engine_v$version/README.md
+# 如果找到中文，必须修改为英文
+
+# 验证链接正确性
+grep -r "docs/" release/anywp_engine_v$version/README.md
+grep -r "examples/" release/anywp_engine_v$version/README.md
+
+# 验证文件引用存在
+Test-Path "release/anywp_engine_v$version/examples/test_simple.html"
+Test-Path "release/anywp_engine_v$version/docs/DEVELOPER_API_REFERENCE.md"
+```
+
+**语言规范清单**:
+- [ ] README.md 全英文（无中文字符）
+- [ ] 代码注释使用英文
+- [ ] 错误信息使用英文
+- [ ] 所有文档链接有效（指向的文件存在）
+- [ ] 示例代码路径正确
+
+**6.4 教训（v1.2.0 事故）**:
 - ❌ **问题**: 缺少 .lib 文件 → 客户链接失败 `LNK1104`
 - ❌ **原因**: 构建脚本只显示警告，未中止构建
 - ✅ **修复**: 所有关键文件复制失败改为错误级别
@@ -1032,21 +1105,36 @@ git push origin v{版本号}
 
 ## 文档维护原则
 
+### 📝 文档语言规范（强制）
+
+**根目录文档（必须全英文）**:
+- `README.md` - **English only** - 项目主页，面向国际开发者
+- `QUICK_INTEGRATION.md` - **English only** - 快速集成指南
+- `LICENSE` - **English only** - 许可证文件
+
+**中文文档（仅限 docs/ 目录）**:
+- `CHANGELOG_CN.md` - 中文更新日志（根目录可保留）
+- `docs/*.md` - 技术文档可使用中文，建议提供英文版本
+
+**GitHub Release Notes**:
+- 建议使用英文或中英双语
+- 代码示例保持英文注释
+
 ### ✅ 必须保留的文档
 
 **根目录** (3个):
-- `README.md` - 项目主页 + 完整指南
-- `CHANGELOG_CN.md` - 更新日志
-- `QUICK_INTEGRATION.md` - 快速集成
+- `README.md` - **English only** - Project homepage + complete guide
+- `CHANGELOG_CN.md` - Chinese changelog
+- `QUICK_INTEGRATION.md` - **English only** - Quick integration guide
 
 **docs/** (22个):
-- Flutter 开发者文档
-- Web 开发者文档
-- 技术文档
-- 最佳实践
+- Flutter developer documentation
+- Web developer documentation
+- Technical documentation
+- Best practices
 
 **发布相关**:
-- `release/GITHUB_RELEASE_NOTES_v{版本号}.md` - 每个版本的发布说明
+- `release/GITHUB_RELEASE_NOTES_v{版本号}.md` - Release notes for each version
 
 ### ❌ 禁止创建的文档
 
@@ -1091,7 +1179,24 @@ git push origin main      # 推送到 GitHub
 - **添加功能**: 扩展现有脚本或添加参数
 - **特殊情况**: 必须获批准并更新文档
 - **原则**: 保持简洁，避免重复
-- **命名规范**: 全英文命名，避免编码问题
+
+**✅ 脚本编写规范（强制）**:
+1. **全英文编写**: 所有脚本、注释、输出信息必须使用英文
+2. **禁止 Emoji**: 避免使用任何 emoji 符号（✓、❌、🚀 等）
+3. **编码规范**: 使用 ASCII 或 UTF-8 without BOM
+4. **命名规范**: 全英文小写，使用下划线分隔（如 `build_release.bat`）
+5. **输出信息**: 使用简单英文，避免特殊字符
+
+**脚本输出示例**:
+```batch
+# ✅ 正确：简单英文
+echo [OK] Build completed successfully
+echo [ERROR] Missing required file: plugin.dll
+
+# ❌ 错误：中文或 emoji
+echo ✅ 构建成功
+echo [错误] 缺少文件
+```
 
 **现有脚本分类**:
 - **开发**: build.bat, run.bat, debug.bat, monitor_log.bat
