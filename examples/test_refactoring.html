@@ -364,12 +364,41 @@
                 
                 // 发送就绪消息
                 window.AnyWP.ready('重构测试页面');
+                
+                // 启用所有按钮的点击功能
+                enableButtonClicks();
             } else {
                 document.getElementById('sdk-status').textContent = '错误';
                 document.getElementById('sdk-status').className = 'status error';
                 addLog('main-log', 'SDK 加载失败！', 'error');
             }
         });
+        
+        // 启用按钮点击（解决壁纸模式下点击无反应的问题）
+        function enableButtonClicks() {
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                // 获取原始的 onclick 函数名
+                const onclickAttr = button.getAttribute('onclick');
+                if (onclickAttr) {
+                    // 移除原始 onclick，改用 SDK 的点击事件
+                    button.removeAttribute('onclick');
+                    
+                    // 使用 AnyWP.onClick 来处理点击
+                    window.AnyWP.onClick(button, function() {
+                        // 执行原始的函数
+                        try {
+                            eval(onclickAttr);
+                        } catch (e) {
+                            console.error('执行按钮函数失败:', e);
+                        }
+                    }, {
+                        immediate: true
+                    });
+                }
+            });
+            addLog('main-log', '已启用 ' + buttons.length + ' 个按钮的点击功能', 'success');
+        }
         
         // 状态持久化测试
         function testSaveState() {
