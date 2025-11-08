@@ -2056,6 +2056,11 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
 
 // Mouse Hook: Send mouse event to WebView (optimized for performance)
 void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type) {
+  // Prevent script execution during shutdown
+  if (wallpaper_instances_.empty() && !webview_) {
+    return;
+  }
+  
   // Multi-monitor support: Find which instance is at this point
   WallpaperInstance* instance = GetInstanceAtPoint(x, y);
   

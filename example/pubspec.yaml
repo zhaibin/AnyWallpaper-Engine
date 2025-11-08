@@ -11,6 +11,7 @@ dependencies:
   anywp_engine:
     path: ../
   window_manager: ^0.3.7
+  path: ^1.8.3
 
 dev_dependencies:
   flutter_test:
@@ -19,4 +20,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/examples/
 
