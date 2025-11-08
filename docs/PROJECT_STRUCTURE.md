@@ -22,17 +22,23 @@ AnyWallpaper Engine/
 │   ├── 📂 modules/                       # 功能模块 (v1.3.2+)
 │   │   ├── iframe_detector.cpp/h         # iframe 检测与坐标映射
 │   │   ├── sdk_bridge.cpp/h              # JavaScript SDK 注入与消息桥接
-│   │   ├── mouse_hook_manager.cpp/h      # 鼠标钩子管理（框架）
-│   │   ├── monitor_manager.cpp/h         # 多显示器管理（框架）
-│   │   └── power_manager.cpp/h           # 省电与性能优化（框架）
+│   │   ├── mouse_hook_manager.cpp/h      # 鼠标钩子管理（完整实现 + 错误处理）
+│   │   ├── monitor_manager.cpp/h         # 多显示器管理（完整实现 + 错误处理）
+│   │   └── power_manager.cpp/h           # 省电与性能优化（完整实现 + 错误处理）
 │   ├── 📂 utils/                         # 工具类 (v1.3.2+)
 │   │   ├── state_persistence.cpp/h       # 应用级状态持久化
 │   │   ├── url_validator.cpp/h           # URL 白名单/黑名单验证
-│   │   └── logger.cpp/h                  # 日志工具
+│   │   └── logger.cpp/h                  # 日志工具（线程安全、多级别 v4.9.0+）
+│   ├── 📂 test/                          # C++ 单元测试 (v4.9.0+)
+│   │   ├── test_framework.h              # 轻量级测试框架
+│   │   ├── unit_tests.cpp                # 单元测试用例
+│   │   ├── CMakeLists.txt                # 测试构建配置
+│   │   └── run_tests.bat                 # 测试运行脚本
 │   ├── 📂 sdk/                           # JavaScript SDK 源码 (v4.2.0+)
 │   │   ├── core/                         # 核心模块
 │   │   ├── modules/                      # 功能模块
 │   │   ├── utils/                        # 工具模块
+│   │   ├── __tests__/                    # TypeScript 单元测试
 │   │   └── rollup.config.js              # 构建配置
 │   ├── 📂 include/                       # 公共头文件
 │   │   └── anywp_engine/
@@ -124,18 +130,26 @@ AnyWallpaper Engine/
 
 | 类型 | 文档 | 用途 |
 |------|------|------|
-| **用户文档** | README_CN.md | 完整的中文使用指南 |
-| | QUICK_START.md | 快速开始（3 步上手） |
+| **用户文档** | QUICK_START.md | 快速开始（3 步上手） |
 | | TESTING_GUIDE.md | 详细测试步骤和检查点 |
-| | USAGE_EXAMPLES.md | 代码示例和使用场景 |
+| | API_USAGE_EXAMPLES.md | 代码示例和使用场景 |
 | | TROUBLESHOOTING.md | 常见问题和解决方案 |
+| **开发者文档** | FOR_FLUTTER_DEVELOPERS.md | Flutter 开发者导航 |
+| | DEVELOPER_API_REFERENCE.md | 完整 API 参考 |
+| | WEB_DEVELOPER_GUIDE_CN.md | Web 开发者指南 |
+| | BEST_PRACTICES.md | 最佳实践 |
 | **技术文档** | TECHNICAL_NOTES.md | 深度技术实现细节 |
 | | API_BRIDGE.md | JavaScript Bridge 完整文档 |
-| | BUILD_INFO.md | 编译和分发说明 |
-| **优化文档** | OPTIMIZATION_GUIDE.md | 优化策略和方案 |
-| | OPTIMIZATION_COMPLETED.md | P0/P1 优化实现报告 |
-| **开发文档** | GITHUB_SETUP.md | GitHub 推送指南 |
-| | FINAL_SUMMARY.md | 项目完成总结 |
+| | INTEGRATION_ARCHITECTURE.md | 集成架构 |
+| **集成与发布** | PACKAGE_USAGE_GUIDE_CN.md | 包使用指南 |
+| | PRECOMPILED_DLL_INTEGRATION.md | 预编译 DLL 集成 |
+| | RELEASE_GUIDE.md | 发布指南 |
+| | RELEASE_TEMPLATE.md | Release 模板 |
+| **其他** | CHEAT_SHEET_CN.md | 快速参考卡 |
+| | PROJECT_STRUCTURE.md | 项目结构说明 |
+| | SCRIPTS_REFERENCE.md | 脚本参考 |
+| | OPTIMIZATION_COMPLETE.md | 优化完成报告 |
+| | SDK_CHANGELOG.md | SDK 更新日志 |
 
 ### scripts/ - 脚本
 

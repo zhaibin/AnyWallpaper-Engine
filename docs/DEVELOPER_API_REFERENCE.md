@@ -553,7 +553,7 @@ class WallpaperManager {
 ## See Also
 
 - [Quick Start Guide](QUICK_START.md)
-- [Usage Examples](USAGE_EXAMPLES.md)
-- [Web Developer Guide](WEB_DEVELOPER_GUIDE.md)
+- [API Usage Examples](API_USAGE_EXAMPLES.md)
+- [Web Developer Guide](WEB_DEVELOPER_GUIDE_CN.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
 

@@ -353,7 +353,6 @@ Progman (Desktop Window)
 ## 📖 Documentation
 
 ### User Guides
-- [中文文档](docs/README_CN.md) - Chinese documentation
 - [快速开始](docs/QUICK_START.md) - Quick start guide
 - [测试指南](docs/TESTING_GUIDE.md) - Testing guide
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues

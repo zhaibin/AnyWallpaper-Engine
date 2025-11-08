@@ -22,7 +22,8 @@
 
 **你需要：** JavaScript SDK 文档、框架集成教程、示例代码
 
-**开始 →** [🌐 Web 开发者文档导航](FOR_WEB_DEVELOPERS.md)
+**开始 →** [🌐 Web 开发者文档导航（中文）](WEB_DEVELOPER_GUIDE_CN.md)  
+**或 →** [🌐 Web Developer Guide (English)](WEB_DEVELOPER_GUIDE.md)
 
 ---
 
@@ -43,10 +44,10 @@
 
 | 文档 | 用途 | 优先级 |
 |-----|------|--------|
-| [WEB_DEVELOPER_GUIDE_CN.md](WEB_DEVELOPER_GUIDE_CN.md) | JS SDK 完整指南 | ⭐⭐⭐ |
+| [WEB_DEVELOPER_GUIDE_CN.md](WEB_DEVELOPER_GUIDE_CN.md) | JS SDK 完整指南（中文） | ⭐⭐⭐ |
 | [WEB_DEVELOPER_GUIDE.md](WEB_DEVELOPER_GUIDE.md) | JS SDK Guide (EN) | ⭐⭐⭐ |
 | [API_BRIDGE.md](API_BRIDGE.md) | 技术实现原理 | ⭐ |
-| examples/*.html | 示例代码 | ⭐⭐ |
+| examples/*.html | 示例代码（9个） | ⭐⭐ |
 
 ### Technical & Architecture 🔧
 
@@ -89,12 +90,13 @@
 ### For Web Developers
 
 **Creating Wallpaper Content?**
-1. Read [Web Developer Guide](WEB_DEVELOPER_GUIDE.md)
-2. Check [SDK API Reference](SDK_API_REFERENCE.md)
-3. See working examples in [examples/](../examples/) folder
+1. Read [Web Developer Guide (CN)](WEB_DEVELOPER_GUIDE_CN.md)
+2. Read [Web Developer Guide (EN)](WEB_DEVELOPER_GUIDE.md)
+3. Check [API Bridge](API_BRIDGE.md)
+4. See working examples in [examples/](../examples/) folder
 
 **Available SDKs:**
-- AnyWP SDK v4.0.0 (JavaScript)
+- AnyWP SDK v4.2.0 (TypeScript 100%)
 - React/Vue/Angular compatible
 - SPA framework support
 - Full event handling
