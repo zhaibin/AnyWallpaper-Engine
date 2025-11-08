@@ -154,9 +154,11 @@ npm run test:coverage  # 生成覆盖率报告
 ### 阶段 1️⃣：功能开发与测试
 
 #### 1.1 开发阶段
-- [ ] 实现功能代码（Dart + C++ + JavaScript）
+- [ ] 实现功能代码（Dart + C++ + TypeScript/JavaScript）
 - [ ] 添加完整的文档注释
 - [ ] 错误处理和边界情况
+- [ ] **Web SDK 修改需构建**: `cd windows\sdk && npm run build`
+- [ ] **Web SDK 修改需测试**: `npm test` (单元测试)
 - [ ] 自动提交代码
 
 #### 1.2 编译测试
@@ -168,6 +170,7 @@ flutter build windows --debug
 - [ ] 无编译错误
 - [ ] 无 Linter 警告
 - [ ] DLL 正确生成
+- [ ] **SDK 已构建**: `windows/anywp_sdk.js` 存在且是最新的
 
 #### 1.3 功能测试
 ```bash
@@ -179,12 +182,14 @@ flutter build windows --debug
 - [ ] 无崩溃或异常
 - [ ] 内存占用合理（< 300 MB）
 - [ ] 测试至少 2 个测试页面（examples/）
+- [ ] **Web SDK 测试**: 拖拽、点击、状态持久化均正常
 
 #### 1.4 集成测试
 - [ ] 多显示器支持（如有多显示器）
 - [ ] 拖拽功能（test_draggable.html）
 - [ ] 状态持久化（拖拽位置保存/加载）
 - [ ] 应用隔离（检查存储目录 `%LOCALAPPDATA%\AnyWPEngine\`）
+- [ ] **TypeScript 单元测试**: `cd windows\sdk && npm test` (≥95% 通过率)
 
 ---
 
@@ -276,10 +281,20 @@ grep -r "newAPIName" docs/ README.md lib/
 - [ ] `include/anywp_engine/any_w_p_engine_plugin.h` - 公共头文件
 - [ ] `windows/src/anywp_engine_plugin.cpp` - **C++ 源码（必需！客户可选择自行编译）**
 - [ ] `windows/src/anywp_engine_plugin.h` - C++ 源码头文件
-- [ ] `windows/anywp_sdk.js` - JavaScript SDK
+- [ ] `windows/anywp_sdk.js` - **JavaScript SDK（构建产物）**
 - [ ] `windows/CMakeLists.txt` - CMake 配置（支持预编译/源码模式）
 - [ ] `windows/packages/` - WebView2 NuGet 包目录
 - [ ] `windows/packages.config` - NuGet 配置
+
+**🆕 TypeScript SDK 源码（v4.2.0+ 可选，推荐）**:
+- [ ] `windows/sdk/` - **TypeScript 源码目录**
+- [ ] `windows/sdk/package.json` - npm 依赖配置
+- [ ] `windows/sdk/tsconfig.json` - TypeScript 配置
+- [ ] `windows/sdk/core/` - 核心模块源码
+- [ ] `windows/sdk/modules/` - 功能模块源码
+- [ ] `windows/sdk/utils/` - 工具模块源码
+- [ ] `windows/sdk/types.ts` - 类型定义
+- [ ] `windows/sdk/__tests__/` - 单元测试（可选）
 
 **验证命令**（在项目根目录执行）:
 ```bash
@@ -294,7 +309,8 @@ Test-Path "release\anywp_engine_v{版本号}\lib\anywp_engine.dart"            #
 Test-Path "release\anywp_engine_v{版本号}\lib\dart\anywp_engine.dart"       # 向后兼容
 Test-Path "release\anywp_engine_v{版本号}\windows\src\anywp_engine_plugin.cpp"  # C++ 源码
 Test-Path "release\anywp_engine_v{版本号}\windows\src\anywp_engine_plugin.h"    # C++ 头文件
-Test-Path "release\anywp_engine_v{版本号}\windows\anywp_sdk.js"
+Test-Path "release\anywp_engine_v{版本号}\windows\anywp_sdk.js"            # SDK 构建产物
+Test-Path "release\anywp_engine_v{版本号}\windows\sdk\package.json"        # TS 源码（可选）
 Test-Path "release\anywp_engine_v{版本号}\windows\CMakeLists.txt"
 Test-Path "release\anywp_engine_v{版本号}\windows\packages\"
 
@@ -329,10 +345,30 @@ cmd /c "cd release\anywp_engine_v{版本号} && verify_precompiled.bat"
 - ✅ 无需手动操作，运行主构建脚本即可
 - ✅ 也可单独运行：`.\scripts\build_web_sdk.ps1 -Version "1.x.x"`
 
+**🆕 TypeScript SDK 注意事项（v4.2.0+）**：
+- ⚠️ **发布前必须构建**: 确保 `windows/anywp_sdk.js` 是最新版本
+- ⚠️ **验证构建时间**: 检查文件修改时间是否在最近修改 TypeScript 源码之后
+- ⚠️ **运行单元测试**: `cd windows\sdk && npm test` 确保 ≥95% 通过
+- 💡 **可选**: 包含 TypeScript 源码（`windows/sdk/`）供高级用户参考
+
+**构建步骤**（发布前）:
+```bash
+# 1. 构建 TypeScript SDK
+cd windows\sdk
+npm run build       # 生成 windows/anywp_sdk.js
+npm test           # 验证测试通过
+
+# 2. 返回项目根目录
+cd ..\..
+
+# 3. 运行 Release 构建
+.\scripts\build_release_v2.bat
+```
+
 **自动生成的内容**：
 ```
 release/anywp_web_sdk_v{版本号}.zip (~56 KB)
-├── sdk/anywp_sdk.js
+├── sdk/anywp_sdk.js  ← TypeScript 构建产物
 ├── examples/
 │   ├── test_simple.html
 │   ├── test_draggable.html
@@ -346,7 +382,7 @@ release/anywp_web_sdk_v{版本号}.zip (~56 KB)
 │   ├── WEB_DEVELOPER_GUIDE_CN.md
 │   ├── WEB_DEVELOPER_GUIDE.md
 │   └── API_USAGE_EXAMPLES.md
-├── README.md (自动生成)
+├── README.md (自动生成，说明 TypeScript 架构)
 └── LICENSE
 ```
 
