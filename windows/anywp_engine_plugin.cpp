@@ -1602,42 +1602,15 @@ if (!window.AnyWP) {
 
 // API Bridge: Inject SDK into page
 void AnyWPEnginePlugin::InjectAnyWallpaperSDK() {
+  // v1.4.0+: Delegate to SDKBridge module
   if (!webview_) return;
   
-  std::cout << "[AnyWP] [API] Injecting AnyWallpaper SDK..." << std::endl;
-  
-  // Load SDK script
-  std::string sdk_script = LoadSDKScript();
-  std::wstring wsdk_script(sdk_script.begin(), sdk_script.end());
-  
-  std::cout << "[AnyWP] [API] SDK script size: " << sdk_script.length() << " bytes" << std::endl;
-  
-  // Inject on every navigation (for future navigations)
-  webview_->AddScriptToExecuteOnDocumentCreated(
-    wsdk_script.c_str(),
-    Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
-      [](HRESULT result, LPCWSTR id) -> HRESULT {
-        if (SUCCEEDED(result)) {
-          std::wcout << L"[AnyWP] [API] SDK registered for future pages, ID: " << id << std::endl;
-        } else {
-          std::cout << "[AnyWP] [API] ERROR: Failed to register SDK: " << std::hex << result << std::endl;
-        }
-        return S_OK;
-      }).Get());
-  
-  // IMPORTANT: Also inject immediately for current page
-  std::cout << "[AnyWP] [API] Injecting SDK into current page..." << std::endl;
-  webview_->ExecuteScript(
-    wsdk_script.c_str(),
-    Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
-      [](HRESULT result, LPCWSTR resultObjectAsJson) -> HRESULT {
-        if (SUCCEEDED(result)) {
-          std::cout << "[AnyWP] [API] SDK executed successfully on current page" << std::endl;
-        } else {
-          std::cout << "[AnyWP] [API] ERROR: Failed to execute SDK: " << std::hex << result << std::endl;
-        }
-        return S_OK;
-      }).Get());
+  if (sdk_bridge_) {
+    sdk_bridge_->SetWebView(webview_);
+    sdk_bridge_->InjectSDK();
+  } else {
+    std::cout << "[AnyWP] [API] ERROR: SDKBridge module not initialized" << std::endl;
+  }
 }
 
 // API Bridge: Setup message bridge
