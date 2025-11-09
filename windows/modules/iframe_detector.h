@@ -40,8 +40,14 @@ public:
   // Update iframe data from JSON
   void UpdateIframes(const std::string& json_data);
   
+  // v1.4.0+: Static helper to update external iframe vector (for WallpaperInstance)
+  static bool UpdateIframeVector(const std::string& json_data, std::vector<IframeInfo>& target_iframes);
+  
   // Hit-test: find iframe at point (screen coordinates)
   IframeInfo* GetIframeAtPoint(int x, int y);
+  
+  // v1.4.0+: Static helper to find iframe in external vector
+  static IframeInfo* GetIframeAtPointInVector(int x, int y, std::vector<IframeInfo>& iframes);
   
   // Get all iframes
   const std::vector<IframeInfo>& GetIframes() const;
