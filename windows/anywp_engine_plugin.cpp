@@ -3641,8 +3641,7 @@ void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
   std::cout << "[AnyWP] [PowerSaving] Initial session state: remote=" 
             << is_remote_session_.load() << ", locked=" << is_session_locked_.load() << std::endl;
   
-  // Start fullscreen detection thread
-  StartFullscreenDetection();
+  // Note: Fullscreen detection is started by PowerManager::Enable() after initialization
   
   std::cout << "[AnyWP] [PowerSaving] Monitoring setup complete" << std::endl;
 }
@@ -3651,8 +3650,7 @@ void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
 void AnyWPEnginePlugin::CleanupPowerSavingMonitoring() {
   std::cout << "[AnyWP] [PowerSaving] Cleaning up monitoring..." << std::endl;
   
-  // Stop fullscreen detection
-  StopFullscreenDetection();
+  // Note: Fullscreen detection is stopped by PowerManager destructor
   
   // Cleanup window
   if (power_listener_hwnd_) {
@@ -3971,90 +3969,38 @@ bool AnyWPEnginePlugin::IsFullscreenAppActive() {
   return false;
 }
 
-// Start fullscreen detection thread
+// Start fullscreen detection thread (delegated to PowerManager)
 void AnyWPEnginePlugin::StartFullscreenDetection() {
-  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
   if (power_manager_) {
     try {
       power_manager_->StartFullscreenDetection();
-      return;  // Success, early return
+      std::cout << "[AnyWP] [Refactor] Fullscreen detection delegated to PowerManager" << std::endl;
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] [Refactor] PowerManager::StartFullscreenDetection() failed: " 
-                << e.what() << ", falling back to legacy implementation" << std::endl;
+      std::cout << "[AnyWP] [Refactor] ERROR: PowerManager::StartFullscreenDetection() failed: " 
+                << e.what() << std::endl;
     } catch (...) {
-      std::cout << "[AnyWP] [Refactor] PowerManager::StartFullscreenDetection() failed, "
-                << "falling back to legacy implementation" << std::endl;
+      std::cout << "[AnyWP] [Refactor] ERROR: PowerManager::StartFullscreenDetection() failed (unknown exception)" << std::endl;
     }
+  } else {
+    std::cout << "[AnyWP] [Refactor] ERROR: PowerManager not initialized" << std::endl;
   }
-  
-  // ========== Legacy implementation (fallback) ==========
-  std::cout << "[AnyWP] [PowerSaving] Starting fullscreen detection thread..." << std::endl;
-  
-  stop_fullscreen_detection_ = false;
-  
-  fullscreen_detection_thread_ = std::thread([this]() {
-    std::cout << "[AnyWP] [PowerSaving] Fullscreen detection thread started" << std::endl;
-    
-    while (!stop_fullscreen_detection_) {
-      if (auto_power_saving_enabled_) {
-        bool is_fullscreen = IsFullscreenAppActive();
-        
-        if (is_fullscreen && power_state_ != PowerState::FULLSCREEN_APP && power_state_ != PowerState::PAUSED) {
-          std::cout << "[AnyWP] [PowerSaving] Fullscreen app detected, pausing wallpaper" << std::endl;
-          PauseWallpaper("FULLSCREEN_APP");
-          power_state_ = PowerState::FULLSCREEN_APP;
-        } else if (!is_fullscreen && power_state_ == PowerState::FULLSCREEN_APP) {
-          std::cout << "[AnyWP] [PowerSaving] No fullscreen app" << std::endl;
-          
-          // Check session state before resuming
-          if (ShouldWallpaperBeActive()) {
-            std::cout << "[AnyWP] [PowerSaving] Session allows wallpaper, resuming..." << std::endl;
-            ResumeWallpaper("FULLSCREEN_APP");
-            power_state_ = PowerState::ACTIVE;
-          } else {
-            std::cout << "[AnyWP] [PowerSaving] Session doesn't allow wallpaper (locked/remote), keeping paused" << std::endl;
-            power_state_ = PowerState::ACTIVE;  // Reset state but keep paused
-          }
-        }
-        
-        // Also check user activity
-        UpdatePowerState();
-      }
-      
-      // Check every 2 seconds
-      std::this_thread::sleep_for(std::chrono::seconds(2));
-    }
-    
-    std::cout << "[AnyWP] [PowerSaving] Fullscreen detection thread stopped" << std::endl;
-  });
 }
 
-// Stop fullscreen detection thread
+// Stop fullscreen detection thread (delegated to PowerManager)
 void AnyWPEnginePlugin::StopFullscreenDetection() {
-  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
   if (power_manager_) {
     try {
       power_manager_->StopFullscreenDetection();
-      return;  // Success, early return
+      std::cout << "[AnyWP] [Refactor] Fullscreen detection stop delegated to PowerManager" << std::endl;
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] [Refactor] PowerManager::StopFullscreenDetection() failed: " 
-                << e.what() << ", falling back to legacy implementation" << std::endl;
+      std::cout << "[AnyWP] [Refactor] ERROR: PowerManager::StopFullscreenDetection() failed: " 
+                << e.what() << std::endl;
     } catch (...) {
-      std::cout << "[AnyWP] [Refactor] PowerManager::StopFullscreenDetection() failed, "
-                << "falling back to legacy implementation" << std::endl;
+      std::cout << "[AnyWP] [Refactor] ERROR: PowerManager::StopFullscreenDetection() failed (unknown exception)" << std::endl;
     }
+  } else {
+    std::cout << "[AnyWP] [Refactor] ERROR: PowerManager not initialized" << std::endl;
   }
-  
-  // ========== Legacy implementation (fallback) ==========
-  std::cout << "[AnyWP] [PowerSaving] Stopping fullscreen detection..." << std::endl;
-  
-  stop_fullscreen_detection_ = true;
-  
-  if (fullscreen_detection_thread_.joinable()) {
-    fullscreen_detection_thread_.join();
-  }
-  
-  std::cout << "[AnyWP] [PowerSaving] Fullscreen detection stopped" << std::endl;
 }
 
 // Pause wallpaper - GOAL: Reduce CPU/GPU usage while keeping wallpaper visible

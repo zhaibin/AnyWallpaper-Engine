@@ -251,8 +251,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // Fullscreen detection
   void StartFullscreenDetection();
   void StopFullscreenDetection();
-  std::thread fullscreen_detection_thread_;
-  std::atomic<bool> stop_fullscreen_detection_{false};
+  // Fullscreen detection moved to PowerManager module (v1.4.0+)
   
   // User activity monitoring
   DWORD last_user_input_time_ = 0;
