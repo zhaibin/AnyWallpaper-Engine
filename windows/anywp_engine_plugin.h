@@ -20,20 +20,13 @@
 // Forward declarations of modular classes
 #include "utils/url_validator.h"
 #include "modules/power_manager.h"  // v1.4.0+ Refactoring: PowerManager module
+#include "modules/monitor_manager.h"  // v1.4.0+ Refactoring: MonitorManager module
+#include "modules/mouse_hook_manager.h"  // v1.4.0+ Refactoring: MouseHookManager module
 
 namespace anywp_engine {
 
-// Monitor information
-struct MonitorInfo {
-  int index;
-  std::string device_name;
-  int left;
-  int top;
-  int width;
-  int height;
-  bool is_primary;
-  HMONITOR handle;
-};
+// v1.4.0+ Refactoring: Use MonitorInfo from MonitorManager module
+using MonitorInfo = anywp_engine::MonitorInfo;
 
 // iframe information for ad click detection
 struct IframeInfo {
@@ -281,6 +274,12 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // ========== v1.4.0+ Refactoring: Module Integration ==========
   // PowerManager module for centralized power management
   std::unique_ptr<PowerManager> power_manager_;
+  
+  // MonitorManager module for display management
+  std::unique_ptr<MonitorManager> monitor_manager_;
+  
+  // MouseHookManager module for mouse event handling
+  std::unique_ptr<MouseHookManager> mouse_hook_manager_;
 };
 
 }  // namespace anywp_engine

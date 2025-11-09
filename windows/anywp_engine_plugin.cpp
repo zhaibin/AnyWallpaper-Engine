@@ -350,6 +350,30 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   } catch (...) {
     std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception initializing PowerManager" << std::endl;
   }
+  
+  // ========== v1.4.0+ Refactoring: Initialize MonitorManager module ==========
+  std::cout << "[AnyWP] [Refactor] Initializing MonitorManager module..." << std::endl;
+  try {
+    monitor_manager_ = std::make_unique<MonitorManager>();
+    std::cout << "[AnyWP] [Refactor] MonitorManager module initialized successfully" << std::endl;
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize MonitorManager: " 
+              << e.what() << std::endl;
+  } catch (...) {
+    std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception initializing MonitorManager" << std::endl;
+  }
+  
+  // ========== v1.4.0+ Refactoring: Initialize MouseHookManager module ==========
+  std::cout << "[AnyWP] [Refactor] Initializing MouseHookManager module..." << std::endl;
+  try {
+    mouse_hook_manager_ = std::make_unique<MouseHookManager>();
+    std::cout << "[AnyWP] [Refactor] MouseHookManager module initialized successfully" << std::endl;
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize MouseHookManager: " 
+              << e.what() << std::endl;
+  } catch (...) {
+    std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception initializing MouseHookManager" << std::endl;
+  }
 }
 
 AnyWPEnginePlugin::~AnyWPEnginePlugin() {
@@ -367,6 +391,36 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
                 << e.what() << std::endl;
     } catch (...) {
       std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception cleaning up PowerManager" << std::endl;
+    }
+  }
+  
+  // ========== v1.4.0+ Refactoring: Cleanup MonitorManager module ==========
+  if (monitor_manager_) {
+    std::cout << "[AnyWP] [Refactor] Cleaning up MonitorManager module..." << std::endl;
+    try {
+      monitor_manager_->StopMonitoring();
+      monitor_manager_.reset();
+      std::cout << "[AnyWP] [Refactor] MonitorManager module cleaned up successfully" << std::endl;
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] ERROR: Failed to cleanup MonitorManager: " 
+                << e.what() << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception cleaning up MonitorManager" << std::endl;
+    }
+  }
+  
+  // ========== v1.4.0+ Refactoring: Cleanup MouseHookManager module ==========
+  if (mouse_hook_manager_) {
+    std::cout << "[AnyWP] [Refactor] Cleaning up MouseHookManager module..." << std::endl;
+    try {
+      mouse_hook_manager_->Uninstall();
+      mouse_hook_manager_.reset();
+      std::cout << "[AnyWP] [Refactor] MouseHookManager module cleaned up successfully" << std::endl;
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] ERROR: Failed to cleanup MouseHookManager: " 
+                << e.what() << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception cleaning up MouseHookManager" << std::endl;
     }
   }
   
@@ -3677,6 +3731,20 @@ void AnyWPEnginePlugin::UpdatePowerState() {
 
 // Check if fullscreen app is active
 bool AnyWPEnginePlugin::IsFullscreenAppActive() {
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
+  if (power_manager_) {
+    try {
+      return power_manager_->IsFullscreenAppActive();
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::IsFullscreenAppActive() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::IsFullscreenAppActive() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   HWND foreground = GetForegroundWindow();
   if (!foreground) {
     return false;

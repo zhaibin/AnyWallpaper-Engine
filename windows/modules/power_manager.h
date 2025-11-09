@@ -70,11 +70,13 @@ public:
   bool ShouldWallpaperBeActive() const;
   size_t GetCurrentMemoryUsage();
   void OptimizeMemoryUsage();
-
-private:
+  
+  // v1.4.0+ Refactoring: Methods made public for delegation support
   bool IsFullscreenAppActive();
   void StartFullscreenDetection();
   void StopFullscreenDetection();
+
+private:
   
   static LRESULT CALLBACK PowerSavingWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
   static PowerManager* instance_;
