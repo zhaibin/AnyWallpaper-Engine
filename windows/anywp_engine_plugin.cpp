@@ -3648,6 +3648,20 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
 
 // Check if wallpaper should be active based on current session state
 bool AnyWPEnginePlugin::ShouldWallpaperBeActive() {
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
+  if (power_manager_) {
+    try {
+      return power_manager_->ShouldWallpaperBeActive();
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::ShouldWallpaperBeActive() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::ShouldWallpaperBeActive() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   // Check tracked session state
   bool locked = is_session_locked_.load();
   bool remote = is_remote_session_.load();
@@ -3791,6 +3805,21 @@ bool AnyWPEnginePlugin::IsFullscreenAppActive() {
 
 // Start fullscreen detection thread
 void AnyWPEnginePlugin::StartFullscreenDetection() {
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
+  if (power_manager_) {
+    try {
+      power_manager_->StartFullscreenDetection();
+      return;  // Success, early return
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::StartFullscreenDetection() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::StartFullscreenDetection() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   std::cout << "[AnyWP] [PowerSaving] Starting fullscreen detection thread..." << std::endl;
   
   stop_fullscreen_detection_ = false;
@@ -3834,6 +3863,21 @@ void AnyWPEnginePlugin::StartFullscreenDetection() {
 
 // Stop fullscreen detection thread
 void AnyWPEnginePlugin::StopFullscreenDetection() {
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
+  if (power_manager_) {
+    try {
+      power_manager_->StopFullscreenDetection();
+      return;  // Success, early return
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::StopFullscreenDetection() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::StopFullscreenDetection() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   std::cout << "[AnyWP] [PowerSaving] Stopping fullscreen detection..." << std::endl;
   
   stop_fullscreen_detection_ = true;
@@ -4196,6 +4240,21 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
 
 // Optimize memory usage (aggressive for better results with safety checks)
 void AnyWPEnginePlugin::OptimizeMemoryUsage() {
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
+  if (power_manager_) {
+    try {
+      power_manager_->OptimizeMemoryUsage();
+      return;  // Success, early return
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::OptimizeMemoryUsage() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::OptimizeMemoryUsage() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   std::cout << "[AnyWP] [Memory] ========== OPTIMIZING MEMORY ==========" << std::endl;
   
   // SAFETY: Check if process handle is valid
@@ -4330,6 +4389,20 @@ void AnyWPEnginePlugin::ScheduleSafeMemoryOptimization(ICoreWebView2* webview) {
 
 // Get current process memory usage (with safety checks)
 size_t AnyWPEnginePlugin::GetCurrentMemoryUsage() {
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
+  if (power_manager_) {
+    try {
+      return power_manager_->GetCurrentMemoryUsage();
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::GetCurrentMemoryUsage() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::GetCurrentMemoryUsage() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   // SAFETY: Check process handle
   HANDLE process = GetCurrentProcess();
   if (!process) {
