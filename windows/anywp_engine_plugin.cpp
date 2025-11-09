@@ -338,10 +338,37 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   
   // Setup power saving monitoring
   SetupPowerSavingMonitoring();
+  
+  // ========== v1.4.0+ Refactoring: Initialize PowerManager module ==========
+  std::cout << "[AnyWP] [Refactor] Initializing PowerManager module..." << std::endl;
+  try {
+    power_manager_ = std::make_unique<PowerManager>();
+    std::cout << "[AnyWP] [Refactor] PowerManager module initialized successfully" << std::endl;
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize PowerManager: " 
+              << e.what() << std::endl;
+  } catch (...) {
+    std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception initializing PowerManager" << std::endl;
+  }
 }
 
 AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   std::cout << "[AnyWP] Plugin destructor - starting cleanup" << std::endl;
+  
+  // ========== v1.4.0+ Refactoring: Cleanup PowerManager module ==========
+  if (power_manager_) {
+    std::cout << "[AnyWP] [Refactor] Cleaning up PowerManager module..." << std::endl;
+    try {
+      power_manager_->Enable(false);
+      power_manager_.reset();
+      std::cout << "[AnyWP] [Refactor] PowerManager module cleaned up successfully" << std::endl;
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] ERROR: Failed to cleanup PowerManager: " 
+                << e.what() << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception cleaning up PowerManager" << std::endl;
+    }
+  }
   
   // Remove display change listener
   CleanupDisplayChangeListener();
@@ -3592,6 +3619,21 @@ bool AnyWPEnginePlugin::ShouldWallpaperBeActive() {
 
 // Update power state based on current system status
 void AnyWPEnginePlugin::UpdatePowerState() {
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
+  if (power_manager_) {
+    try {
+      power_manager_->UpdatePowerState();
+      return;  // Success, early return
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::UpdatePowerState() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] PowerManager::UpdatePowerState() failed with unknown exception, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   if (!auto_power_saving_enabled_) {
     return;
   }

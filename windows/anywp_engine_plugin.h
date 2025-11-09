@@ -19,6 +19,7 @@
 
 // Forward declarations of modular classes
 #include "utils/url_validator.h"
+#include "modules/power_manager.h"  // v1.4.0+ Refactoring: PowerManager module
 
 namespace anywp_engine {
 
@@ -276,6 +277,10 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   std::atomic<bool> is_session_locked_{false};     // Track lock state from WTS events
   std::atomic<bool> is_remote_session_{false};     // Track remote session state
   bool ShouldWallpaperBeActive();  // Check if user is in local desktop environment
+  
+  // ========== v1.4.0+ Refactoring: Module Integration ==========
+  // PowerManager module for centralized power management
+  std::unique_ptr<PowerManager> power_manager_;
 };
 
 }  // namespace anywp_engine
