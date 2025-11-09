@@ -333,8 +333,8 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   url_validator_.AddBlacklist("file:///c:/windows");
   url_validator_.AddBlacklist("file:///c:/program");
   
-  // Setup display change listener
-  SetupDisplayChangeListener();
+  // Note: Display change listener is set up by MonitorManager::StartMonitoring() after initialization
+  // Note: Power saving monitoring window is set up below (still needed for Windows session messages)
   
   // Setup power saving monitoring
   SetupPowerSavingMonitoring();
@@ -3233,89 +3233,37 @@ LRESULT CALLBACK AnyWPEnginePlugin::DisplayChangeWndProc(HWND hwnd, UINT message
   return DefWindowProcW(hwnd, message, wParam, lParam);
 }
 
-// Setup display change listener
+// Setup display change listener (delegated to MonitorManager)
 void AnyWPEnginePlugin::SetupDisplayChangeListener() {
-  // ========== v1.4.0+ Refactoring: Delegate to MonitorManager ==========
   if (monitor_manager_) {
     try {
       monitor_manager_->StartMonitoring();
       std::cout << "[AnyWP] [Refactor] MonitorManager monitoring started successfully" << std::endl;
-      return;  // Success, early return
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] [Refactor] MonitorManager::StartMonitoring() failed: " 
-                << e.what() << ", falling back to legacy implementation" << std::endl;
+      std::cout << "[AnyWP] [Refactor] ERROR: MonitorManager::StartMonitoring() failed: " 
+                << e.what() << std::endl;
     } catch (...) {
-      std::cout << "[AnyWP] [Refactor] MonitorManager::StartMonitoring() failed, "
-                << "falling back to legacy implementation" << std::endl;
+      std::cout << "[AnyWP] [Refactor] ERROR: MonitorManager::StartMonitoring() failed (unknown exception)" << std::endl;
     }
-  }
-  
-  // ========== Legacy implementation (fallback) ==========
-  std::cout << "[AnyWP] [DisplayChange] Setting up display change listener..." << std::endl;
-  
-  // Register window class
-  WNDCLASSEXW wc = {0};
-  wc.cbSize = sizeof(WNDCLASSEXW);
-  wc.lpfnWndProc = DisplayChangeWndProc;
-  wc.hInstance = GetModuleHandleW(nullptr);
-  wc.lpszClassName = L"AnyWPDisplayChangeListener";
-  
-  if (!RegisterClassExW(&wc)) {
-    DWORD error = GetLastError();
-    if (error != ERROR_CLASS_ALREADY_EXISTS) {
-      std::cout << "[AnyWP] [DisplayChange] Failed to register window class: " << error << std::endl;
-      return;
-    }
-  }
-  
-  // Create hidden top-level window to receive WM_DISPLAYCHANGE
-  // Note: HWND_MESSAGE windows don't receive WM_DISPLAYCHANGE, must use regular window
-  display_listener_hwnd_ = CreateWindowExW(
-    0,
-    L"AnyWPDisplayChangeListener",
-    L"AnyWP Display Change Listener",
-    WS_OVERLAPPED,  // Top-level window (but not visible)
-    CW_USEDEFAULT, CW_USEDEFAULT, 1, 1,  // Minimal size
-    nullptr,  // No parent (top-level)
-    nullptr,
-    GetModuleHandleW(nullptr),
-    nullptr
-  );
-  
-  // Don't show the window (keep it hidden)
-  if (display_listener_hwnd_) {
-    ShowWindow(display_listener_hwnd_, SW_HIDE);
-  }
-  
-  if (display_listener_hwnd_) {
-    std::cout << "[AnyWP] [DisplayChange] Listener window created: " << display_listener_hwnd_ << std::endl;
   } else {
-    std::cout << "[AnyWP] [DisplayChange] Failed to create listener window: " << GetLastError() << std::endl;
+    std::cout << "[AnyWP] [Refactor] ERROR: MonitorManager not initialized" << std::endl;
   }
 }
 
-// Cleanup display change listener
+// Cleanup display change listener (delegated to MonitorManager)
 void AnyWPEnginePlugin::CleanupDisplayChangeListener() {
-  // ========== v1.4.0+ Refactoring: Delegate to MonitorManager ==========
   if (monitor_manager_) {
     try {
       monitor_manager_->StopMonitoring();
       std::cout << "[AnyWP] [Refactor] MonitorManager monitoring stopped successfully" << std::endl;
-      return;  // Success, early return
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] [Refactor] MonitorManager::StopMonitoring() failed: " 
-                << e.what() << ", falling back to legacy implementation" << std::endl;
+      std::cout << "[AnyWP] [Refactor] ERROR: MonitorManager::StopMonitoring() failed: " 
+                << e.what() << std::endl;
     } catch (...) {
-      std::cout << "[AnyWP] [Refactor] MonitorManager::StopMonitoring() failed, "
-                << "falling back to legacy implementation" << std::endl;
+      std::cout << "[AnyWP] [Refactor] ERROR: MonitorManager::StopMonitoring() failed (unknown exception)" << std::endl;
     }
-  }
-  
-  // ========== Legacy implementation (fallback) ==========
-  if (display_listener_hwnd_) {
-    std::cout << "[AnyWP] [DisplayChange] Cleaning up display change listener..." << std::endl;
-    DestroyWindow(display_listener_hwnd_);
-    display_listener_hwnd_ = nullptr;
+  } else {
+    std::cout << "[AnyWP] [Refactor] ERROR: MonitorManager not initialized" << std::endl;
   }
 }
 
@@ -3410,22 +3358,10 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
   std::cout << "[AnyWP] [DisplayChange] NotifyMonitorChange completed" << std::endl;
 }
 
-// Thread-safe notification using message queue
+// Notify monitor change (simplified after MonitorManager refactoring)
 void AnyWPEnginePlugin::SafeNotifyMonitorChange() {
-  if (!display_listener_hwnd_) {
-    std::cout << "[AnyWP] [DisplayChange] ERROR: No listener window for safe notification" << std::endl;
-    return;
-  }
-  
-  std::cout << "[AnyWP] [DisplayChange] Posting WM_NOTIFY_MONITOR_CHANGE to message queue" << std::endl;
-  
-  // Post message to our own window's message queue
-  // This will be processed in the window's thread, which is safer for Flutter
-  if (PostMessageW(display_listener_hwnd_, WM_NOTIFY_MONITOR_CHANGE, 0, 0)) {
-    std::cout << "[AnyWP] [DisplayChange] Message posted successfully" << std::endl;
-  } else {
-    std::cout << "[AnyWP] [DisplayChange] ERROR: Failed to post message: " << GetLastError() << std::endl;
-  }
+  std::cout << "[AnyWP] [DisplayChange] Notifying monitor change..." << std::endl;
+  NotifyMonitorChange();
 }
 
 // Handle monitor count change (auto-start wallpaper on new monitors)

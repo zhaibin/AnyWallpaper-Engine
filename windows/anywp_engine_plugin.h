@@ -194,7 +194,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   std::mutex iframes_mutex_;
   
   // Display change monitoring
-  HWND display_listener_hwnd_ = nullptr;
+  // Display listener moved to MonitorManager module (v1.4.0+)
   static AnyWPEnginePlugin* display_change_instance_;
   std::string default_wallpaper_url_ = "";  // Default URL for auto-start on new monitors
   
