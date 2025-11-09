@@ -430,6 +430,30 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   } catch (...) {
     std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception initializing MouseHookManager" << std::endl;
   }
+  
+  // ========== v1.4.0+ Refactoring: Initialize IframeDetector module ==========
+  std::cout << "[AnyWP] [Refactor] Initializing IframeDetector module..." << std::endl;
+  try {
+    iframe_detector_ = std::make_unique<anywp_engine::IframeDetector>();
+    std::cout << "[AnyWP] [Refactor] IframeDetector module initialized successfully" << std::endl;
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize IframeDetector: " 
+              << e.what() << std::endl;
+  } catch (...) {
+    std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception initializing IframeDetector" << std::endl;
+  }
+  
+  // ========== v1.4.0+ Refactoring: Initialize SDKBridge module ==========
+  std::cout << "[AnyWP] [Refactor] Initializing SDKBridge module..." << std::endl;
+  try {
+    sdk_bridge_ = std::make_unique<anywp_engine::SDKBridge>();
+    std::cout << "[AnyWP] [Refactor] SDKBridge module initialized successfully" << std::endl;
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize SDKBridge: " 
+              << e.what() << std::endl;
+  } catch (...) {
+    std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception initializing SDKBridge" << std::endl;
+  }
 }
 
 AnyWPEnginePlugin::~AnyWPEnginePlugin() {
@@ -477,6 +501,34 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
                 << e.what() << std::endl;
     } catch (...) {
       std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception cleaning up MouseHookManager" << std::endl;
+    }
+  }
+  
+  // ========== v1.4.0+ Refactoring: Cleanup IframeDetector module ==========
+  if (iframe_detector_) {
+    std::cout << "[AnyWP] [Refactor] Cleaning up IframeDetector module..." << std::endl;
+    try {
+      iframe_detector_.reset();
+      std::cout << "[AnyWP] [Refactor] IframeDetector module cleaned up successfully" << std::endl;
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] ERROR: Failed to cleanup IframeDetector: " 
+                << e.what() << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception cleaning up IframeDetector" << std::endl;
+    }
+  }
+  
+  // ========== v1.4.0+ Refactoring: Cleanup SDKBridge module ==========
+  if (sdk_bridge_) {
+    std::cout << "[AnyWP] [Refactor] Cleaning up SDKBridge module..." << std::endl;
+    try {
+      sdk_bridge_.reset();
+      std::cout << "[AnyWP] [Refactor] SDKBridge module cleaned up successfully" << std::endl;
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] ERROR: Failed to cleanup SDKBridge: " 
+                << e.what() << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] ERROR: Unknown exception cleaning up SDKBridge" << std::endl;
     }
   }
   

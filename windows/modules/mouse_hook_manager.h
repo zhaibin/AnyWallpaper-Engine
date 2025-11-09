@@ -6,12 +6,12 @@
 #include <wrl.h>
 #include <functional>
 #include <vector>
+#include "iframe_detector.h"  // For IframeInfo
 
 namespace anywp_engine {
 
 // Forward declarations
 struct WallpaperInstance;
-struct IframeInfo;
 
 /**
  * MouseHookManager - Global mouse hook for desktop click handling

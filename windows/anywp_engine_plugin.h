@@ -22,23 +22,16 @@
 #include "modules/power_manager.h"  // v1.4.0+ Refactoring: PowerManager module
 #include "modules/monitor_manager.h"  // v1.4.0+ Refactoring: MonitorManager module
 #include "modules/mouse_hook_manager.h"  // v1.4.0+ Refactoring: MouseHookManager module
+#include "modules/iframe_detector.h"  // v1.4.0+ Refactoring: IframeDetector module
+#include "modules/sdk_bridge.h"  // v1.4.0+ Refactoring: SDKBridge module
 
 namespace anywp_engine {
 
 // v1.4.0+ Refactoring: Use MonitorInfo from MonitorManager module
 using MonitorInfo = anywp_engine::MonitorInfo;
 
-// iframe information for ad click detection
-struct IframeInfo {
-  std::string id;
-  std::string src;
-  std::string click_url;
-  int left;
-  int top;
-  int width;
-  int height;
-  bool visible;
-};
+// v1.4.0+ Refactoring: Use IframeInfo from IframeDetector module
+using IframeInfo = anywp_engine::IframeInfo;
 
 // Wallpaper instance for a specific monitor
 struct WallpaperInstance {
@@ -279,6 +272,8 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // MouseHookManager module for mouse event handling
   std::unique_ptr<MouseHookManager> mouse_hook_manager_;
+  std::unique_ptr<anywp_engine::IframeDetector> iframe_detector_;  // v1.4.0+
+  std::unique_ptr<anywp_engine::SDKBridge> sdk_bridge_;  // v1.4.0+
 };
 
 }  // namespace anywp_engine
