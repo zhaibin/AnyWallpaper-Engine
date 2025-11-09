@@ -15,6 +15,8 @@ export function initializeAnyWP(anyWP) {
     Debug.detectFromURL();
     SPA.detect(anyWP, ClickHandler);
     Events.setup(anyWP, ClickHandler, Animations);
+    // Note: WebMessage listener is now setup in index.ts (EARLY) before any initialization
+    // This ensures we catch all messages from C++ immediately when SDK is loaded
     // Enable debug mode automatically for testing
     anyWP._debugMode = true;
     console.log('[AnyWP] Debug mode ENABLED automatically');

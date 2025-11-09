@@ -1965,7 +1965,24 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
     MSLLHOOKSTRUCT* info = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
     POINT pt = info->pt;
     
-    // Check if click position is occluded by a top-level application window
+    // === v1.3.3 FIX: Always forward mousemove events without window detection ===
+    // This solves the issue where clicking desktop causes mouse tracking to fail
+    // Rationale: mousemove needs to work regardless of window focus/detection errors
+    if (wParam == WM_MOUSEMOVE) {
+      // Debug: Log every 100th mousemove to verify this code is executed
+      static int move_count = 0;
+      if (++move_count % 100 == 0) {
+        std::cout << "[AnyWP] [MouseHook] Forwarding mousemove #" << move_count 
+                  << " at (" << pt.x << "," << pt.y << ")" << std::endl;
+      }
+      
+      // Forward mousemove directly to WebView (skip window detection)
+      hook_instance_->SendClickToWebView(pt.x, pt.y, "mousemove");
+      
+      return CallNextHookEx(nullptr, nCode, wParam, lParam);
+    }
+    
+    // For mousedown/mouseup: Check if click position is occluded by a top-level application window
     HWND window_at_point = WindowFromPoint(pt);
     
     // Get window class name and title for debugging
@@ -2103,49 +2120,49 @@ void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type)
     return;
   }
   
-  // Dispatch both AnyWP:mouse AND AnyWP:click events (SDK v4.0.0 compatibility)
-  std::wstringstream script;
-  std::wstring wtype(event_type, event_type + strlen(event_type));
-  
-  script << L"(function() {"
-         << L"  console.log('[Native] Dispatching events at (' + " << x << L" + ',' + " << y << L" + ')');"
-         << L"  var mouseEvent = new CustomEvent('AnyWP:mouse', {"
-         << L"    detail: {"
-         << L"      type: '" << wtype << L"',"
-         << L"      x: " << x << L","
-         << L"      y: " << y << L","
-         << L"      button: 0"
-         << L"    }"
-         << L"  });"
-         << L"  window.dispatchEvent(mouseEvent);";
-  
-  // CRITICAL: Also dispatch AnyWP:click for onClick handlers
-  if (strcmp(event_type, "mouseup") == 0) {
-    script << L"  var clickEvent = new CustomEvent('AnyWP:click', {"
-           << L"    detail: {"
-           << L"      x: " << x << L","
-           << L"      y: " << y
-           << L"    }"
-           << L"  });"
-           << L"  console.log('[Native] Dispatching AnyWP:click event');"
-           << L"  window.dispatchEvent(clickEvent);";
-  }
-  
-  script << L"})();";
-  
-  // Execute with error handling to prevent abort
   if (!target_webview) {
     std::cout << "[AnyWP] [Click] ERROR: target_webview is null, cannot send click" << std::endl;
     return;
   }
   
+  // === v1.3.3 FIX: Use PostWebMessageAsJson instead of ExecuteScript ===
+  // PostWebMessageAsJson is more reliable and doesn't require page focus
+  
+  // Build JSON message
+  std::wstringstream json;
+  json << L"{"
+       << L"\"type\":\"mouseEvent\","
+       << L"\"eventType\":\"" << std::wstring(event_type, event_type + strlen(event_type)) << L"\","
+       << L"\"x\":" << x << L","
+       << L"\"y\":" << y << L","
+       << L"\"button\":0"
+       << L"}";
+  
   try {
-    HRESULT hr = target_webview->ExecuteScript(script.str().c_str(), nullptr);
+    // Debug: Log every 100th event
+    static int message_count = 0;
+    bool is_mousemove = (strcmp(event_type, "mousemove") == 0);
+    if (is_mousemove) {
+      message_count++;
+      if (message_count % 100 == 0) {
+        std::cout << "[AnyWP] [SendClick] Sending PostWebMessage #" << message_count << std::endl;
+      }
+    }
+    
+    HRESULT hr = target_webview->PostWebMessageAsJson(json.str().c_str());
+    
     if (FAILED(hr)) {
-      std::cout << "[AnyWP] [Click] WARNING: Failed to execute script: " << std::hex << hr << std::endl;
+      if (is_mousemove && message_count % 100 == 0) {
+        std::cout << "[AnyWP] [SendClick] ERROR: PostWebMessage failed with HRESULT: 0x" 
+                  << std::hex << hr << std::dec << std::endl;
+      }
+    } else {
+      if (is_mousemove && message_count % 100 == 0) {
+        std::cout << "[AnyWP] [SendClick] PostWebMessage succeeded #" << message_count << std::endl;
+      }
     }
   } catch (...) {
-    std::cout << "[AnyWP] [Click] EXCEPTION: Error executing click script" << std::endl;
+    std::cout << "[AnyWP] [Click] EXCEPTION: Error sending web message" << std::endl;
   }
 }
 
