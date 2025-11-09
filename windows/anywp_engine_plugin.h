@@ -185,7 +185,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   static Microsoft::WRL::ComPtr<ICoreWebView2Environment> shared_environment_;
   
   // Mouse Hook
-  HHOOK mouse_hook_ = nullptr;
+  // Mouse hook moved to MouseHookManager module (v1.4.0+)
   static AnyWPEnginePlugin* hook_instance_;
   bool enable_interaction_ = false;
   
