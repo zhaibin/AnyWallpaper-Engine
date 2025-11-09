@@ -3744,22 +3744,41 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
 
 // Check if wallpaper should be active based on current session state
 bool AnyWPEnginePlugin::ShouldWallpaperBeActive() {
-  // ========== v1.4.0+ Refactoring: Fully delegated to PowerManager ==========
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
   if (power_manager_) {
     try {
       return power_manager_->ShouldWallpaperBeActive();
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::ShouldWallpaperBeActive() failed: " 
-                << e.what() << std::endl;
-      return true;  // Safe default: allow wallpaper
+      std::cout << "[AnyWP] [Refactor] PowerManager::ShouldWallpaperBeActive() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
     } catch (...) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::ShouldWallpaperBeActive() unknown exception" << std::endl;
-      return true;
+      std::cout << "[AnyWP] [Refactor] PowerManager::ShouldWallpaperBeActive() failed, "
+                << "falling back to legacy implementation" << std::endl;
     }
   }
   
-  std::cout << "[AnyWP] ERROR: PowerManager not initialized!" << std::endl;
-  return true;  // Safe default
+  // ========== Legacy implementation (fallback) ==========
+  // Check tracked session state
+  bool locked = is_session_locked_.load();
+  bool remote = is_remote_session_.load();
+  
+  std::cout << "[AnyWP] [PowerSaving] Session check: locked=" << locked 
+            << ", remote=" << remote << std::endl;
+  
+  // Wallpaper should be active only if NOT locked
+  // Remote session is now ALLOWED (wallpaper will be recreated in new session)
+  if (locked) {
+    std::cout << "[AnyWP] [PowerSaving] → System is LOCKED, wallpaper should be PAUSED" << std::endl;
+    return false;
+  }
+  
+  // Allow wallpaper in both local and remote sessions
+  if (remote) {
+    std::cout << "[AnyWP] [PowerSaving] → In REMOTE session, wallpaper should be ACTIVE (will reinit)" << std::endl;
+  } else {
+    std::cout << "[AnyWP] [PowerSaving] → In LOCAL session, wallpaper should be ACTIVE" << std::endl;
+  }
+  return true;
 }
 
 // Update power state based on current system status
@@ -3822,58 +3841,148 @@ void AnyWPEnginePlugin::UpdatePowerState() {
 
 // Check if fullscreen app is active
 bool AnyWPEnginePlugin::IsFullscreenAppActive() {
-  // ========== v1.4.0+ Refactoring: Fully delegated to PowerManager ==========
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
   if (power_manager_) {
     try {
       return power_manager_->IsFullscreenAppActive();
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::IsFullscreenAppActive() failed: " 
-                << e.what() << std::endl;
-      return false;  // Safe default
+      std::cout << "[AnyWP] [Refactor] PowerManager::IsFullscreenAppActive() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
     } catch (...) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::IsFullscreenAppActive() unknown exception" << std::endl;
-      return false;
+      std::cout << "[AnyWP] [Refactor] PowerManager::IsFullscreenAppActive() failed, "
+                << "falling back to legacy implementation" << std::endl;
     }
   }
   
-  std::cout << "[AnyWP] ERROR: PowerManager not initialized!" << std::endl;
+  // ========== Legacy implementation (fallback) ==========
+  HWND foreground = GetForegroundWindow();
+  if (!foreground) {
+    return false;
+  }
+  
+  // Get window rect
+  RECT window_rect;
+  if (!GetWindowRect(foreground, &window_rect)) {
+    return false;
+  }
+  
+  // Get monitor rect that contains this window
+  HMONITOR monitor = MonitorFromWindow(foreground, MONITOR_DEFAULTTONEAREST);
+  MONITORINFO monitor_info = {0};
+  monitor_info.cbSize = sizeof(MONITORINFO);
+  
+  if (!GetMonitorInfoW(monitor, &monitor_info)) {
+    return false;
+  }
+  
+  // Check if window covers entire monitor (fullscreen)
+  bool is_fullscreen = 
+    window_rect.left <= monitor_info.rcMonitor.left &&
+    window_rect.top <= monitor_info.rcMonitor.top &&
+    window_rect.right >= monitor_info.rcMonitor.right &&
+    window_rect.bottom >= monitor_info.rcMonitor.bottom;
+  
+  if (is_fullscreen) {
+    // Exclude desktop windows
+    wchar_t class_name[256] = {0};
+    GetClassNameW(foreground, class_name, 256);
+    
+    if (wcscmp(class_name, L"Progman") == 0 ||
+        wcscmp(class_name, L"WorkerW") == 0 ||
+        wcscmp(class_name, L"Shell_TrayWnd") == 0) {
+      return false;
+    }
+    
+    return true;
+  }
+  
   return false;
 }
 
 // Start fullscreen detection thread
 void AnyWPEnginePlugin::StartFullscreenDetection() {
-  // ========== v1.4.0+ Refactoring: Fully delegated to PowerManager ==========
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
   if (power_manager_) {
     try {
       power_manager_->StartFullscreenDetection();
-      return;
+      return;  // Success, early return
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::StartFullscreenDetection() failed: " 
-                << e.what() << std::endl;
+      std::cout << "[AnyWP] [Refactor] PowerManager::StartFullscreenDetection() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
     } catch (...) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::StartFullscreenDetection() unknown exception" << std::endl;
+      std::cout << "[AnyWP] [Refactor] PowerManager::StartFullscreenDetection() failed, "
+                << "falling back to legacy implementation" << std::endl;
     }
-  } else {
-    std::cout << "[AnyWP] ERROR: PowerManager not initialized!" << std::endl;
   }
+  
+  // ========== Legacy implementation (fallback) ==========
+  std::cout << "[AnyWP] [PowerSaving] Starting fullscreen detection thread..." << std::endl;
+  
+  stop_fullscreen_detection_ = false;
+  
+  fullscreen_detection_thread_ = std::thread([this]() {
+    std::cout << "[AnyWP] [PowerSaving] Fullscreen detection thread started" << std::endl;
+    
+    while (!stop_fullscreen_detection_) {
+      if (auto_power_saving_enabled_) {
+        bool is_fullscreen = IsFullscreenAppActive();
+        
+        if (is_fullscreen && power_state_ != PowerState::FULLSCREEN_APP && power_state_ != PowerState::PAUSED) {
+          std::cout << "[AnyWP] [PowerSaving] Fullscreen app detected, pausing wallpaper" << std::endl;
+          PauseWallpaper("FULLSCREEN_APP");
+          power_state_ = PowerState::FULLSCREEN_APP;
+        } else if (!is_fullscreen && power_state_ == PowerState::FULLSCREEN_APP) {
+          std::cout << "[AnyWP] [PowerSaving] No fullscreen app" << std::endl;
+          
+          // Check session state before resuming
+          if (ShouldWallpaperBeActive()) {
+            std::cout << "[AnyWP] [PowerSaving] Session allows wallpaper, resuming..." << std::endl;
+            ResumeWallpaper("FULLSCREEN_APP");
+            power_state_ = PowerState::ACTIVE;
+          } else {
+            std::cout << "[AnyWP] [PowerSaving] Session doesn't allow wallpaper (locked/remote), keeping paused" << std::endl;
+            power_state_ = PowerState::ACTIVE;  // Reset state but keep paused
+          }
+        }
+        
+        // Also check user activity
+        UpdatePowerState();
+      }
+      
+      // Check every 2 seconds
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
+    
+    std::cout << "[AnyWP] [PowerSaving] Fullscreen detection thread stopped" << std::endl;
+  });
 }
 
 // Stop fullscreen detection thread
 void AnyWPEnginePlugin::StopFullscreenDetection() {
-  // ========== v1.4.0+ Refactoring: Fully delegated to PowerManager ==========
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
   if (power_manager_) {
     try {
       power_manager_->StopFullscreenDetection();
-      return;
+      return;  // Success, early return
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::StopFullscreenDetection() failed: " 
-                << e.what() << std::endl;
+      std::cout << "[AnyWP] [Refactor] PowerManager::StopFullscreenDetection() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
     } catch (...) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::StopFullscreenDetection() unknown exception" << std::endl;
+      std::cout << "[AnyWP] [Refactor] PowerManager::StopFullscreenDetection() failed, "
+                << "falling back to legacy implementation" << std::endl;
     }
-  } else {
-    std::cout << "[AnyWP] ERROR: PowerManager not initialized!" << std::endl;
   }
+  
+  // ========== Legacy implementation (fallback) ==========
+  std::cout << "[AnyWP] [PowerSaving] Stopping fullscreen detection..." << std::endl;
+  
+  stop_fullscreen_detection_ = true;
+  
+  if (fullscreen_detection_thread_.joinable()) {
+    fullscreen_detection_thread_.join();
+  }
+  
+  std::cout << "[AnyWP] [PowerSaving] Fullscreen detection stopped" << std::endl;
 }
 
 // Pause wallpaper - GOAL: Reduce CPU/GPU usage while keeping wallpaper visible
@@ -4227,20 +4336,109 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
 
 // Optimize memory usage (aggressive for better results with safety checks)
 void AnyWPEnginePlugin::OptimizeMemoryUsage() {
-  // ========== v1.4.0+ Refactoring: Fully delegated to PowerManager ==========
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
   if (power_manager_) {
     try {
       power_manager_->OptimizeMemoryUsage();
-      return;
+      return;  // Success, early return
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::OptimizeMemoryUsage() failed: " 
-                << e.what() << std::endl;
+      std::cout << "[AnyWP] [Refactor] PowerManager::OptimizeMemoryUsage() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
     } catch (...) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::OptimizeMemoryUsage() unknown exception" << std::endl;
+      std::cout << "[AnyWP] [Refactor] PowerManager::OptimizeMemoryUsage() failed, "
+                << "falling back to legacy implementation" << std::endl;
     }
-  } else {
-    std::cout << "[AnyWP] ERROR: PowerManager not initialized!" << std::endl;
   }
+  
+  // ========== Legacy implementation (fallback) ==========
+  std::cout << "[AnyWP] [Memory] ========== OPTIMIZING MEMORY ==========" << std::endl;
+  
+  // SAFETY: Check if process handle is valid
+  HANDLE process = GetCurrentProcess();
+  if (!process) {
+    std::cout << "[AnyWP] [Memory] ERROR: Invalid process handle" << std::endl;
+    return;
+  }
+  
+  size_t before = GetCurrentMemoryUsage();
+  if (before == 0) {
+    std::cout << "[AnyWP] [Memory] WARNING: Could not get memory usage" << std::endl;
+    return;
+  }
+  
+  std::cout << "[AnyWP] [Memory] Current usage: " << (before / 1024 / 1024) << " MB" << std::endl;
+  
+  // 1. Clear WebView cache
+  ClearWebViewCache();
+  
+  // 2. Aggressive JavaScript optimization with NULL checks
+  std::wstring aggressive_gc_script = L"(function() {"
+    L"  try {"
+    L"    // Clear console logs"
+    L"    if (console && console.clear) console.clear();"
+    L"    "
+    L"    // Clear any cached data"
+    L"    if (window.caches && caches.keys) {"
+    L"      caches.keys().then(function(names) {"
+    L"        if (names && names.forEach) {"
+    L"          names.forEach(function(name) { "
+    L"            if (caches.delete) caches.delete(name); "
+    L"          });"
+    L"        }"
+    L"      }).catch(function(e) { console.warn('Cache clear failed:', e); });"
+    L"    }"
+    L"    "
+    L"    // Force garbage collection if available"
+    L"    if (window.gc) window.gc();"
+    L"    "
+    L"    console.log('[AnyWP] Memory optimization complete');"
+    L"  } catch(e) {"
+    L"    console.error('[AnyWP] Optimization error:', e);"
+    L"  }"
+    L"})();";
+  
+  // Execute with instance mutex lock for safety
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      // SAFETY: Check webview is valid before using
+      if (instance.webview && instance.webview.Get()) {
+        instance.webview->ExecuteScript(aggressive_gc_script.c_str(), nullptr);
+      }
+    }
+  }
+  
+  // SAFETY: Check webview_ is valid
+  if (webview_ && webview_.Get()) {
+    webview_->ExecuteScript(aggressive_gc_script.c_str(), nullptr);
+  }
+  
+  // 3. Windows memory trim (multiple passes for better effect)
+  // SAFETY: Check each call succeeds
+  for (int i = 0; i < 3; i++) {
+    BOOL result = SetProcessWorkingSetSize(process, static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
+    if (!result) {
+      DWORD error = GetLastError();
+      std::cout << "[AnyWP] [Memory] WARNING: Memory trim pass " << (i+1) << " failed, error: " << error << std::endl;
+      break;  // Stop on failure
+    }
+    Sleep(100);  // Small delay between passes
+  }
+  
+  // Wait for optimization to complete
+  Sleep(500);
+  
+  size_t after = GetCurrentMemoryUsage();
+  
+  // SAFETY: Check for overflow
+  size_t freed = 0;
+  if (after > 0 && before > after) {
+    freed = before - after;
+  }
+  
+  std::cout << "[AnyWP] [Memory] After optimization: " << (after / 1024 / 1024) << " MB" << std::endl;
+  std::cout << "[AnyWP] [Memory] Freed: " << (freed / 1024 / 1024) << " MB" << std::endl;
+  std::cout << "[AnyWP] [Memory] ========== OPTIMIZATION COMPLETE ==========" << std::endl;
 }
 
 // Configure WebView2 memory limits
@@ -4287,21 +4485,45 @@ void AnyWPEnginePlugin::ScheduleSafeMemoryOptimization(ICoreWebView2* webview) {
 
 // Get current process memory usage (with safety checks)
 size_t AnyWPEnginePlugin::GetCurrentMemoryUsage() {
-  // ========== v1.4.0+ Refactoring: Fully delegated to PowerManager ==========
+  // ========== v1.4.0+ Refactoring: Delegate to PowerManager ==========
   if (power_manager_) {
     try {
       return power_manager_->GetCurrentMemoryUsage();
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::GetCurrentMemoryUsage() failed: " 
-                << e.what() << std::endl;
-      return 0;  // Return safe default
+      std::cout << "[AnyWP] [Refactor] PowerManager::GetCurrentMemoryUsage() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
     } catch (...) {
-      std::cout << "[AnyWP] CRITICAL: PowerManager::GetCurrentMemoryUsage() unknown exception" << std::endl;
+      std::cout << "[AnyWP] [Refactor] PowerManager::GetCurrentMemoryUsage() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
+  // SAFETY: Check process handle
+  HANDLE process = GetCurrentProcess();
+  if (!process) {
+    std::cout << "[AnyWP] [Memory] ERROR: Invalid process handle in GetCurrentMemoryUsage" << std::endl;
+    return 0;
+  }
+  
+  PROCESS_MEMORY_COUNTERS_EX pmc = {0};
+  pmc.cb = sizeof(pmc);
+  
+  // SAFETY: Check if GetProcessMemoryInfo succeeds
+  if (GetProcessMemoryInfo(process, 
+                          reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), 
+                          sizeof(pmc))) {
+    // SAFETY: Validate returned value is reasonable (<10GB)
+    if (pmc.WorkingSetSize > 0 && pmc.WorkingSetSize < (10ULL * 1024 * 1024 * 1024)) {
+      return pmc.WorkingSetSize;
+    } else {
+      std::cout << "[AnyWP] [Memory] WARNING: Unreasonable memory value: " << pmc.WorkingSetSize << std::endl;
       return 0;
     }
   }
   
-  std::cout << "[AnyWP] ERROR: PowerManager not initialized!" << std::endl;
+  DWORD error = GetLastError();
+  std::cout << "[AnyWP] [Memory] ERROR: GetProcessMemoryInfo failed, error: " << error << std::endl;
   return 0;
 }
 
