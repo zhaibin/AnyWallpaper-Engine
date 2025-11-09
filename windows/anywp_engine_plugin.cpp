@@ -343,23 +343,7 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   std::cout << "[AnyWP] [Refactor] Initializing PowerManager module..." << std::endl;
   try {
     power_manager_ = std::make_unique<PowerManager>();
-    
-    // Configure PowerManager callbacks to connect with main plugin
-    power_manager_->SetOnPause([this](const std::string& reason) {
-      std::cout << "[AnyWP] [Refactor] PowerManager callback: Pause requested (" << reason << ")" << std::endl;
-      this->PauseWallpaper(reason);
-    });
-    
-    power_manager_->SetOnResume([this](const std::string& reason) {
-      std::cout << "[AnyWP] [Refactor] PowerManager callback: Resume requested (" << reason << ")" << std::endl;
-      this->ResumeWallpaper(reason);
-    });
-    
-    power_manager_->SetOnStateChanged([this](auto old_state, auto new_state) {
-      std::cout << "[AnyWP] [Refactor] PowerManager callback: State changed" << std::endl;
-    });
-    
-    std::cout << "[AnyWP] [Refactor] PowerManager module initialized successfully with callbacks" << std::endl;
+    std::cout << "[AnyWP] [Refactor] PowerManager module initialized successfully" << std::endl;
   } catch (const std::exception& e) {
     std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize PowerManager: " 
               << e.what() << std::endl;
@@ -371,15 +355,7 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   std::cout << "[AnyWP] [Refactor] Initializing MonitorManager module..." << std::endl;
   try {
     monitor_manager_ = std::make_unique<MonitorManager>();
-    
-    // Configure MonitorManager callbacks to connect with main plugin
-    monitor_manager_->SetOnMonitorChanged([this](const std::vector<MonitorInfo>& monitors) {
-      std::cout << "[AnyWP] [Refactor] MonitorManager callback: Monitors changed, count=" 
-                << monitors.size() << std::endl;
-      this->HandleDisplayChange();
-    });
-    
-    std::cout << "[AnyWP] [Refactor] MonitorManager module initialized successfully with callbacks" << std::endl;
+    std::cout << "[AnyWP] [Refactor] MonitorManager module initialized successfully" << std::endl;
   } catch (const std::exception& e) {
     std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize MonitorManager: " 
               << e.what() << std::endl;
@@ -391,23 +367,7 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   std::cout << "[AnyWP] [Refactor] Initializing MouseHookManager module..." << std::endl;
   try {
     mouse_hook_manager_ = std::make_unique<MouseHookManager>();
-    
-    // Configure MouseHookManager callbacks to connect with main plugin
-    mouse_hook_manager_->SetClickCallback([this](int x, int y, const char* event_type) {
-      std::cout << "[AnyWP] [Refactor] MouseHookManager callback: Click at (" << x << ", " << y 
-                << ") type=" << event_type << std::endl;
-      this->SendClickToWebView(x, y, event_type);
-    });
-    
-    mouse_hook_manager_->SetIframeCallback([this](int x, int y, WallpaperInstance* instance) -> IframeInfo* {
-      return this->GetIframeAtPoint(x, y, instance);
-    });
-    
-    mouse_hook_manager_->SetInstanceCallback([this](int x, int y) -> WallpaperInstance* {
-      return this->GetInstanceAtPoint(x, y);
-    });
-    
-    std::cout << "[AnyWP] [Refactor] MouseHookManager module initialized successfully with callbacks" << std::endl;
+    std::cout << "[AnyWP] [Refactor] MouseHookManager module initialized successfully" << std::endl;
   } catch (const std::exception& e) {
     std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize MouseHookManager: " 
               << e.what() << std::endl;
