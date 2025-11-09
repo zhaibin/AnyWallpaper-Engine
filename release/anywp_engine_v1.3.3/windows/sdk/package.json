@@ -1,0 +1,44 @@
+{
+  "name": "anywp-sdk",
+  "version": "4.2.0",
+  "description": "AnyWP Engine JavaScript SDK - TypeScript Modular Architecture",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "npm run clean && npm run compile && rollup -c rollup.config.js",
+    "build:watch": "npm run compile -- --watch",
+    "build:production": "npm run clean && npm run compile && cross-env NODE_ENV=production rollup -c rollup.config.js",
+    "compile": "tsc",
+    "clean": "rimraf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules npx jest",
+    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules npx jest --watch",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules npx jest --coverage"
+  },
+  "keywords": [
+    "wallpaper",
+    "webview2",
+    "desktop",
+    "windows",
+    "typescript"
+  ],
+  "author": "AnyWP Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@jest/globals": "^30.2.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.11.5",
+    "cross-env": "^7.0.3",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "rimraf": "^5.0.5",
+    "rollup": "^4.9.4",
+    "ts-jest": "^29.4.5",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  }
+}
