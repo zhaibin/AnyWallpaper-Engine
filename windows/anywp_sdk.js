@@ -1313,48 +1313,55 @@ var AnyWPBundle = (function (exports) {
         // ========== CRITICAL: Setup WebMessage listener IMMEDIATELY ==========
         // This must be done BEFORE any other initialization to catch all messages from C++
         if (window.chrome && window.chrome.webview) {
-            console.log('[AnyWP] Setting up WebMessage listener (EARLY)');
-            window.chrome.webview.addEventListener('message', function (event) {
-                const data = event.data;
-                // Debug logging for all messages
-                if (data && data.type === 'mouseEvent' && data.eventType === 'mousemove') {
-                    // Log every 100th mousemove to avoid spam
-                    if (!(window._anywp_msg_count)) {
-                        window._anywp_msg_count = 0;
-                    }
-                    window._anywp_msg_count++;
-                    if (window._anywp_msg_count % 100 === 0) {
-                        console.log('[AnyWP] WebMessage received #' + window._anywp_msg_count + ': ' + data.eventType);
-                    }
-                }
-                else if (data && data.type === 'mouseEvent') {
-                    console.log('[AnyWP] WebMessage: ' + data.eventType + ' at (' + data.x + ',' + data.y + ')');
-                }
-                // Handle mouseEvent messages from C++
-                if (data && data.type === 'mouseEvent') {
-                    // Dispatch as CustomEvent for compatibility with existing code
-                    const mouseEvent = new CustomEvent('AnyWP:mouse', {
-                        detail: {
-                            type: data.eventType,
-                            x: data.x,
-                            y: data.y,
-                            button: data.button || 0
+            const globalAny = window;
+            if (globalAny._anywpEarlyMessageListenerRegistered) {
+                console.log('[AnyWP] WebMessage listener already registered (EARLY), skipping duplicate');
+            }
+            else {
+                console.log('[AnyWP] Setting up WebMessage listener (EARLY)');
+                globalAny._anywpEarlyMessageListenerRegistered = true;
+                window.chrome.webview.addEventListener('message', function (event) {
+                    const data = event.data;
+                    // Debug logging for all messages
+                    if (data && data.type === 'mouseEvent' && data.eventType === 'mousemove') {
+                        // Log every 100th mousemove to avoid spam
+                        if (!(window._anywp_msg_count)) {
+                            window._anywp_msg_count = 0;
                         }
-                    });
-                    window.dispatchEvent(mouseEvent);
-                    // Also dispatch click event for mouseup
-                    if (data.eventType === 'mouseup') {
-                        const clickEvent = new CustomEvent('AnyWP:click', {
+                        window._anywp_msg_count++;
+                        if (window._anywp_msg_count % 100 === 0) {
+                            console.log('[AnyWP] WebMessage received #' + window._anywp_msg_count + ': ' + data.eventType);
+                        }
+                    }
+                    else if (data && data.type === 'mouseEvent') {
+                        console.log('[AnyWP] WebMessage: ' + data.eventType + ' at (' + data.x + ',' + data.y + ')');
+                    }
+                    // Handle mouseEvent messages from C++
+                    if (data && data.type === 'mouseEvent') {
+                        // Dispatch as CustomEvent for compatibility with existing code
+                        const mouseEvent = new CustomEvent('AnyWP:mouse', {
                             detail: {
+                                type: data.eventType,
                                 x: data.x,
-                                y: data.y
+                                y: data.y,
+                                button: data.button || 0
                             }
                         });
-                        window.dispatchEvent(clickEvent);
+                        window.dispatchEvent(mouseEvent);
+                        // Also dispatch click event for mouseup
+                        if (data.eventType === 'mouseup') {
+                            const clickEvent = new CustomEvent('AnyWP:click', {
+                                detail: {
+                                    x: data.x,
+                                    y: data.y
+                                }
+                            });
+                            window.dispatchEvent(clickEvent);
+                        }
                     }
-                }
-            });
-            console.log('[AnyWP] WebMessage listener setup complete (EARLY)');
+                });
+                console.log('[AnyWP] WebMessage listener setup complete (EARLY)');
+            }
         }
         else {
             console.log('[AnyWP] chrome.webview not available');
