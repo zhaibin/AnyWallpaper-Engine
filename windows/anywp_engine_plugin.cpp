@@ -2793,6 +2793,23 @@ BOOL CALLBACK AnyWPEnginePlugin::MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonit
 
 // Get all monitors
 std::vector<MonitorInfo> AnyWPEnginePlugin::GetMonitors() {
+  // ========== v1.4.0+ Refactoring: Delegate to MonitorManager ==========
+  if (monitor_manager_) {
+    try {
+      std::vector<MonitorInfo> monitors = monitor_manager_->GetMonitors();
+      // Cache monitors list for backward compatibility
+      monitors_ = monitors;
+      return monitors;
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] MonitorManager::GetMonitors() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] MonitorManager::GetMonitors() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   std::cout << "[AnyWP] [Monitor] Enumerating monitors..." << std::endl;
   
   std::vector<MonitorInfo> monitors;
@@ -3120,6 +3137,22 @@ LRESULT CALLBACK AnyWPEnginePlugin::DisplayChangeWndProc(HWND hwnd, UINT message
 
 // Setup display change listener
 void AnyWPEnginePlugin::SetupDisplayChangeListener() {
+  // ========== v1.4.0+ Refactoring: Delegate to MonitorManager ==========
+  if (monitor_manager_) {
+    try {
+      monitor_manager_->StartMonitoring();
+      std::cout << "[AnyWP] [Refactor] MonitorManager monitoring started successfully" << std::endl;
+      return;  // Success, early return
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] MonitorManager::StartMonitoring() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] MonitorManager::StartMonitoring() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   std::cout << "[AnyWP] [DisplayChange] Setting up display change listener..." << std::endl;
   
   // Register window class
@@ -3165,6 +3198,22 @@ void AnyWPEnginePlugin::SetupDisplayChangeListener() {
 
 // Cleanup display change listener
 void AnyWPEnginePlugin::CleanupDisplayChangeListener() {
+  // ========== v1.4.0+ Refactoring: Delegate to MonitorManager ==========
+  if (monitor_manager_) {
+    try {
+      monitor_manager_->StopMonitoring();
+      std::cout << "[AnyWP] [Refactor] MonitorManager monitoring stopped successfully" << std::endl;
+      return;  // Success, early return
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] MonitorManager::StopMonitoring() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] MonitorManager::StopMonitoring() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   if (display_listener_hwnd_) {
     std::cout << "[AnyWP] [DisplayChange] Cleaning up display change listener..." << std::endl;
     DestroyWindow(display_listener_hwnd_);
@@ -3174,12 +3223,17 @@ void AnyWPEnginePlugin::CleanupDisplayChangeListener() {
 
 // Handle display change
 void AnyWPEnginePlugin::HandleDisplayChange() {
+  // ========== v1.4.0+ Refactoring: Note ==========
+  // This method is primarily coordination logic using already-delegated methods
+  // (GetMonitors, etc.), so we keep it in the main plugin for now.
+  // Future: could be moved to a dedicated DisplayChangeCoordinator module.
+  
   std::cout << "[AnyWP] [DisplayChange] ========== Handling display change ==========" << std::endl;
   
   // Wait a bit for system to stabilize
   Sleep(200);
   
-  // Update monitor list
+  // Update monitor list (GetMonitors already delegates to MonitorManager)
   std::vector<MonitorInfo> old_monitors = monitors_;
   std::vector<MonitorInfo> new_monitors = GetMonitors();
   
