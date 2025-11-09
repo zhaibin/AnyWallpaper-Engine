@@ -2036,6 +2036,11 @@ std::string AnyWPEnginePlugin::GetPluginVersion() {
 
 // Mouse Hook: Low-level mouse callback (optimized for performance)
 LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
+  // ========== v1.4.0+ Refactoring: Note ==========
+  // This is the legacy mouse hook callback function.
+  // When MouseHookManager is used, its own hook callback is used instead.
+  // This function serves as a fallback if MouseHookManager delegation fails.
+  
   // Mouse hook processes all clicks and decides whether to forward to wallpaper
   if (nCode >= 0 && hook_instance_) {
     // Skip if paused (performance optimization)
@@ -2221,6 +2226,27 @@ void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type)
 
 // Mouse Hook: Setup hook
 void AnyWPEnginePlugin::SetupMouseHook() {
+  // ========== v1.4.0+ Refactoring: Delegate to MouseHookManager ==========
+  if (mouse_hook_manager_) {
+    try {
+      bool success = mouse_hook_manager_->Install();
+      if (success) {
+        std::cout << "[AnyWP] [Refactor] MouseHookManager hook installed successfully" << std::endl;
+        return;  // Success, early return
+      } else {
+        std::cout << "[AnyWP] [Refactor] MouseHookManager::Install() returned false, "
+                  << "falling back to legacy implementation" << std::endl;
+      }
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] MouseHookManager::Install() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] MouseHookManager::Install() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   if (mouse_hook_) {
     std::cout << "[AnyWP] [Hook] Mouse hook already installed" << std::endl;
     return;
@@ -2243,6 +2269,22 @@ void AnyWPEnginePlugin::SetupMouseHook() {
 
 // Mouse Hook: Remove hook
 void AnyWPEnginePlugin::RemoveMouseHook() {
+  // ========== v1.4.0+ Refactoring: Delegate to MouseHookManager ==========
+  if (mouse_hook_manager_) {
+    try {
+      mouse_hook_manager_->Uninstall();
+      std::cout << "[AnyWP] [Refactor] MouseHookManager hook uninstalled successfully" << std::endl;
+      return;  // Success, early return
+    } catch (const std::exception& e) {
+      std::cout << "[AnyWP] [Refactor] MouseHookManager::Uninstall() failed: " 
+                << e.what() << ", falling back to legacy implementation" << std::endl;
+    } catch (...) {
+      std::cout << "[AnyWP] [Refactor] MouseHookManager::Uninstall() failed, "
+                << "falling back to legacy implementation" << std::endl;
+    }
+  }
+  
+  // ========== Legacy implementation (fallback) ==========
   if (mouse_hook_) {
     UnhookWindowsHookEx(mouse_hook_);
     mouse_hook_ = nullptr;
