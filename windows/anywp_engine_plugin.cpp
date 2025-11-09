@@ -532,16 +532,10 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
     }
   }
   
-  // Remove display change listener
-  CleanupDisplayChangeListener();
+  // v1.4.0+ Note: Display/Power/Mouse cleanup delegated to modules above
+  // Old cleanup methods removed to avoid double-cleanup errors
   
-  // Cleanup power saving monitoring
-  CleanupPowerSavingMonitoring();
-  
-  // Remove mouse hook
-  RemoveMouseHook();
-  
-  // P0: Cleanup
+  // P0: Cleanup wallpaper instances
   StopWallpaper();
   
   // P0-1: Cleanup all tracked resources
