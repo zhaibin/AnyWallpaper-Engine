@@ -343,7 +343,27 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   std::cout << "[AnyWP] [Refactor] Initializing PowerManager module..." << std::endl;
   try {
     power_manager_ = std::make_unique<PowerManager>();
-    std::cout << "[AnyWP] [Refactor] PowerManager module initialized successfully" << std::endl;
+    
+    // Configure PowerManager callbacks to connect with main plugin
+    power_manager_->SetOnPause([this](const std::string& reason) {
+      std::cout << "[AnyWP] [Refactor] PowerManager callback: Pause requested (" << reason << ")" << std::endl;
+      this->PauseWallpaper(reason);
+    });
+    
+    power_manager_->SetOnResume([this](const std::string& reason) {
+      std::cout << "[AnyWP] [Refactor] PowerManager callback: Resume requested (" << reason << ")" << std::endl;
+      this->ResumeWallpaper(reason);
+    });
+    
+    power_manager_->SetOnStateChanged([this](auto old_state, auto new_state) {
+      std::cout << "[AnyWP] [Refactor] PowerManager callback: State changed" << std::endl;
+    });
+    
+    // CRITICAL: Enable PowerManager to start power monitoring
+    power_manager_->Enable(true);
+    std::cout << "[AnyWP] [Refactor] PowerManager enabled and monitoring started" << std::endl;
+    
+    std::cout << "[AnyWP] [Refactor] PowerManager module initialized successfully with callbacks" << std::endl;
   } catch (const std::exception& e) {
     std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize PowerManager: " 
               << e.what() << std::endl;
@@ -355,7 +375,19 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   std::cout << "[AnyWP] [Refactor] Initializing MonitorManager module..." << std::endl;
   try {
     monitor_manager_ = std::make_unique<MonitorManager>();
-    std::cout << "[AnyWP] [Refactor] MonitorManager module initialized successfully" << std::endl;
+    
+    // Configure MonitorManager callbacks to connect with main plugin
+    monitor_manager_->SetOnMonitorChanged([this](const std::vector<MonitorInfo>& monitors) {
+      std::cout << "[AnyWP] [Refactor] MonitorManager callback: Monitors changed, count=" 
+                << monitors.size() << std::endl;
+      this->HandleDisplayChange();
+    });
+    
+    // CRITICAL: Start monitoring for display changes
+    monitor_manager_->StartMonitoring();
+    std::cout << "[AnyWP] [Refactor] MonitorManager monitoring started" << std::endl;
+    
+    std::cout << "[AnyWP] [Refactor] MonitorManager module initialized successfully with callbacks" << std::endl;
   } catch (const std::exception& e) {
     std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize MonitorManager: " 
               << e.what() << std::endl;
@@ -367,7 +399,31 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   std::cout << "[AnyWP] [Refactor] Initializing MouseHookManager module..." << std::endl;
   try {
     mouse_hook_manager_ = std::make_unique<MouseHookManager>();
-    std::cout << "[AnyWP] [Refactor] MouseHookManager module initialized successfully" << std::endl;
+    
+    // Configure MouseHookManager callbacks to connect with main plugin
+    mouse_hook_manager_->SetClickCallback([this](int x, int y, const char* event_type) {
+      std::cout << "[AnyWP] [Refactor] MouseHookManager callback: Click at (" << x << ", " << y 
+                << ") type=" << event_type << std::endl;
+      this->SendClickToWebView(x, y, event_type);
+    });
+    
+    mouse_hook_manager_->SetIframeCallback([this](int x, int y, WallpaperInstance* instance) -> IframeInfo* {
+      return this->GetIframeAtPoint(x, y, instance);
+    });
+    
+    mouse_hook_manager_->SetInstanceCallback([this](int x, int y) -> WallpaperInstance* {
+      return this->GetInstanceAtPoint(x, y);
+    });
+    
+    // CRITICAL: Install mouse hook to start capturing events
+    bool hook_installed = mouse_hook_manager_->Install();
+    if (hook_installed) {
+      std::cout << "[AnyWP] [Refactor] MouseHookManager hook installed successfully" << std::endl;
+    } else {
+      std::cout << "[AnyWP] [Refactor] WARNING: MouseHookManager hook installation failed" << std::endl;
+    }
+    
+    std::cout << "[AnyWP] [Refactor] MouseHookManager module initialized successfully with callbacks" << std::endl;
   } catch (const std::exception& e) {
     std::cout << "[AnyWP] [Refactor] ERROR: Failed to initialize MouseHookManager: " 
               << e.what() << std::endl;
@@ -3625,14 +3681,26 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
         case WTS_SESSION_LOCK:
           std::cout << "[AnyWP] [PowerSaving] Event: System LOCKED" << std::endl;
           display_change_instance_->is_session_locked_.store(true);
+          // Notify PowerManager module
+          if (display_change_instance_->power_manager_) {
+            display_change_instance_->power_manager_->SetSessionLocked(true);
+          }
           break;
         case WTS_SESSION_UNLOCK:
           std::cout << "[AnyWP] [PowerSaving] Event: System UNLOCKED" << std::endl;
           display_change_instance_->is_session_locked_.store(false);
+          // Notify PowerManager module
+          if (display_change_instance_->power_manager_) {
+            display_change_instance_->power_manager_->SetSessionLocked(false);
+          }
           break;
         case WTS_CONSOLE_CONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE CONNECTED (returned from remote desktop)" << std::endl;
           display_change_instance_->is_remote_session_.store(false);
+          // Notify PowerManager module
+          if (display_change_instance_->power_manager_) {
+            display_change_instance_->power_manager_->SetRemoteSession(false);
+          }
           // Check if wallpaper should be active (force_reinit will handle stop+rebuild)
           std::cout << "[AnyWP] [PowerSaving] Session switched, checking if wallpaper should be active..." << std::endl;
           if (display_change_instance_->ShouldWallpaperBeActive()) {
@@ -3648,6 +3716,10 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
         case WTS_CONSOLE_DISCONNECT:
           std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE DISCONNECTED (switched to remote desktop)" << std::endl;
           display_change_instance_->is_remote_session_.store(true);
+          // Notify PowerManager module
+          if (display_change_instance_->power_manager_) {
+            display_change_instance_->power_manager_->SetRemoteSession(true);
+          }
           // Check if wallpaper should be active (force_reinit will handle stop+rebuild)
           std::cout << "[AnyWP] [PowerSaving] Session switched, checking if wallpaper should be active..." << std::endl;
           if (display_change_instance_->ShouldWallpaperBeActive()) {

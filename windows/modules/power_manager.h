@@ -48,6 +48,10 @@ public:
   PowerState GetCurrentState() const;
   void UpdatePowerState();
   
+  // Session state (called by external listener)
+  void SetSessionLocked(bool locked);
+  void SetRemoteSession(bool remote);
+  
   // Manual pause/resume
   void Pause(const std::string& reason);
   void Resume(const std::string& reason, bool force_reinit = false);

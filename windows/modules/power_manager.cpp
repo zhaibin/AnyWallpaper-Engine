@@ -60,6 +60,18 @@ PowerManager::PowerState PowerManager::GetCurrentState() const {
   return current_state_;
 }
 
+void PowerManager::SetSessionLocked(bool locked) {
+  std::cout << "[AnyWP] [PowerManager] Session lock state changed: " << locked << std::endl;
+  is_session_locked_.store(locked);
+  UpdatePowerState();
+}
+
+void PowerManager::SetRemoteSession(bool remote) {
+  std::cout << "[AnyWP] [PowerManager] Remote session state changed: " << remote << std::endl;
+  is_remote_session_.store(remote);
+  UpdatePowerState();
+}
+
 void PowerManager::UpdatePowerState() {
   PowerState new_state = PowerState::ACTIVE;
   
@@ -90,6 +102,31 @@ void PowerManager::UpdatePowerState() {
         } catch (...) {
           std::cout << "[AnyWP] [PowerManager] ERROR: Unknown exception in state change callback" << std::endl;
         }
+      }
+      
+      // Auto pause/resume based on state transition
+      if (new_state != PowerState::ACTIVE && last_state_ == PowerState::ACTIVE) {
+        // Transitioning from ACTIVE to any paused state
+        std::string reason = "PowerManager: ";
+        switch (new_state) {
+          case PowerState::LOCKED: reason += "screen_locked"; break;
+          case PowerState::FULLSCREEN_APP: reason += "fullscreen_app"; break;
+          case PowerState::IDLE: reason += "user_idle"; break;
+          case PowerState::SCREEN_OFF: reason += "screen_off"; break;
+          default: reason += "unknown"; break;
+        }
+        Pause(reason);
+      } else if (new_state == PowerState::ACTIVE && last_state_ != PowerState::ACTIVE) {
+        // Transitioning from any paused state to ACTIVE
+        std::string reason = "PowerManager: ";
+        switch (last_state_) {
+          case PowerState::LOCKED: reason += "screen_unlocked"; break;
+          case PowerState::FULLSCREEN_APP: reason += "fullscreen_closed"; break;
+          case PowerState::IDLE: reason += "user_active"; break;
+          case PowerState::SCREEN_OFF: reason += "screen_on"; break;
+          default: reason += "unknown"; break;
+        }
+        Resume(reason);
       }
     }
   } catch (const std::exception& e) {
