@@ -1999,23 +1999,11 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
           wcsstr(rootClassName, L"Xaml") != nullptr  // System UI
         );
         
-        // Check if it's OUR WebView2 window (not other Chrome-based apps)
-        bool is_our_webview = false;
-        if (wcsstr(rootClassName, L"Chrome") != nullptr || wcsstr(className, L"Chrome") != nullptr) {
-          // Check if this is our wallpaper window by comparing with tracked windows
-          for (const auto& instance : hook_instance_->wallpaper_instances_) {
-            if (instance.webview_host_hwnd == root_window || 
-                instance.webview_host_hwnd == window_at_point) {
-              is_our_webview = true;
-              break;
-            }
-          }
-          if (!is_our_webview && hook_instance_->webview_host_hwnd_ == root_window) {
-            is_our_webview = true;
-          }
-        }
+        // Determine if the window belongs to our wallpaper (include descendants)
+        bool is_our_window = hook_instance_->IsOurWindow(window_at_point) ||
+                             hook_instance_->IsOurWindow(root_window);
         
-        if (!is_desktop_window && !is_our_webview) {
+        if (!is_desktop_window && !is_our_window) {
           // Check if it's a normal app window (has caption or is popup)
           bool has_window_style = (style & WS_CAPTION) || (style & WS_POPUP);
           
@@ -2201,6 +2189,37 @@ void AnyWPEnginePlugin::CancelActiveDrag() {
       instance.webview->ExecuteScript(script.c_str(), nullptr);
     }
   }
+}
+
+bool AnyWPEnginePlugin::IsOurWindow(HWND hwnd) {
+  if (!hwnd || !IsWindow(hwnd)) {
+    return false;
+  }
+  
+  auto check_candidate = [hwnd](HWND candidate) -> bool {
+    if (!candidate || !IsWindow(candidate)) {
+      return false;
+    }
+    
+    if (candidate == hwnd) {
+      return true;
+    }
+    
+    return IsChild(candidate, hwnd) != FALSE;
+  };
+  
+  if (check_candidate(webview_host_hwnd_) || check_candidate(worker_w_hwnd_)) {
+    return true;
+  }
+  
+  std::lock_guard<std::mutex> lock(instances_mutex_);
+  for (const auto& instance : wallpaper_instances_) {
+    if (check_candidate(instance.webview_host_hwnd) || check_candidate(instance.worker_w_hwnd)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 // iframe Ad Detection: Handle iframe data from JavaScript

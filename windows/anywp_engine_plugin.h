@@ -161,6 +161,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void HandleIframeDataMessage(const std::string& json_data, WallpaperInstance* instance);
   IframeInfo* GetIframeAtPoint(int x, int y, WallpaperInstance* instance);
   WallpaperInstance* GetInstanceAtPoint(int x, int y);
+  bool IsOurWindow(HWND hwnd);
 
   // Legacy single-monitor members (kept for compatibility)
   HWND webview_host_hwnd_ = nullptr;
