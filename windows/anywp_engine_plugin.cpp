@@ -1965,24 +1965,8 @@ LRESULT CALLBACK AnyWPEnginePlugin::LowLevelMouseProc(int nCode, WPARAM wParam, 
     MSLLHOOKSTRUCT* info = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
     POINT pt = info->pt;
     
-    // === v1.3.3 FIX: Always forward mousemove events without window detection ===
-    // This solves the issue where clicking desktop causes mouse tracking to fail
-    // Rationale: mousemove needs to work regardless of window focus/detection errors
-    if (wParam == WM_MOUSEMOVE) {
-      // Debug: Log every 100th mousemove to verify this code is executed
-      static int move_count = 0;
-      if (++move_count % 100 == 0) {
-        std::cout << "[AnyWP] [MouseHook] Forwarding mousemove #" << move_count 
-                  << " at (" << pt.x << "," << pt.y << ")" << std::endl;
-      }
-      
-      // Forward mousemove directly to WebView (skip window detection)
-      hook_instance_->SendClickToWebView(pt.x, pt.y, "mousemove");
-      
-      return CallNextHookEx(nullptr, nCode, wParam, lParam);
-    }
-    
-    // For mousedown/mouseup: Check if click position is occluded by a top-level application window
+    // Check if click position is occluded by a top-level application window
+    // This applies to all mouse events (mousemove, mousedown, mouseup)
     HWND window_at_point = WindowFromPoint(pt);
     
     // Get window class name and title for debugging
