@@ -206,11 +206,17 @@ bool PowerManager::ShouldWallpaperBeActive() const {
 }
 
 size_t PowerManager::GetCurrentMemoryUsage() {
-  PROCESS_MEMORY_COUNTERS_EX pmc;
+  PROCESS_MEMORY_COUNTERS_EX pmc = {0};
+  pmc.cb = sizeof(pmc);
+  
   if (GetProcessMemoryInfo(GetCurrentProcess(), 
                            reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), 
                            sizeof(pmc))) {
-    return pmc.WorkingSetSize / (1024 * 1024);  // Convert to MB
+    // Return bytes (caller will convert to MB)
+    // Validate reasonable value (<10GB)
+    if (pmc.WorkingSetSize > 0 && pmc.WorkingSetSize < (10ULL * 1024 * 1024 * 1024)) {
+      return pmc.WorkingSetSize;
+    }
   }
   return 0;
 }
