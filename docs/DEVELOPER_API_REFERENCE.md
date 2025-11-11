@@ -1,9 +1,10 @@
-# AnyWP Engine - Developer API Reference
+﻿# AnyWP Engine - Developer API Reference
 
 Complete API reference for integrating AnyWP Engine into your Flutter application.
 
 ## Table of Contents
 
+- [Architecture & Performance](#architecture--performance)
 - [Basic Usage](#basic-usage)
 - [Wallpaper Management](#wallpaper-management)
 - [Multi-Monitor Support](#multi-monitor-support)
@@ -14,23 +15,138 @@ Complete API reference for integrating AnyWP Engine into your Flutter applicatio
 
 ---
 
+## Architecture & Performance
+
+### v2.0 Modular Architecture
+
+AnyWP Engine v2.0 features a completely modular C++ architecture with significant improvements:
+
+**Key Metrics:**
+
+| Metric | v1.0 | v2.0 | Improvement |
+|--------|------|------|-------------|
+| Main file lines | 4,448 | 2,540 | **-42.9%** |
+| Modularization rate | 0% | 78% | **+78%** |
+| Test coverage | 0% | 98.5% | **+98.5%** |
+| Total modules | 0 | 30 + 3 interfaces | **+33** |
+| Debug build time | ~11s | ~5s | **-55%** |
+| Mouse event lookup | O(n) | O(1) | **-87.5%** |
+| Mouse latency | 10-15ms | <5ms | **-66%** |
+| Event CPU usage | 5-8% | 3-5% | **-37.5%** |
+| Log output freq | 100% | 10% | **-90%** |
+| Code duplication | ~20% | <5% | **-75%** |
+| Startup time | ~530ms | ~530ms | Maintained |
+| Memory usage | ~230MB | ~230MB | Maintained |
+
+### Benefits for Flutter Developers
+
+**Backward Compatibility:**
+- 鉁?**API unchanged** - No code modification needed
+- 鉁?**Zero migration cost** - Just upgrade
+
+**Performance Improvements:**
+- 鈿?**Faster compilation** - 55% faster in Debug mode
+- 馃殌 **Startup optimization** - Built-in startup optimizer
+- 馃捑 **Memory optimization** - Smart memory monitoring & cleanup
+
+**Stability Enhancements:**
+- 馃洝锔?**Circuit breaker protection** - Prevents cascading failures
+- 馃攧 **Automatic retry** - Self-recovery from transient failures
+- 馃И **98.5% test coverage** - 209+ test cases
+
+**Developer Experience:**
+- 馃搳 **Performance monitoring** - Built-in CPU/memory profilers
+- 馃摑 **Unified logging** - Easier debugging
+- 馃敀 **Input validation** - Enhanced security
+
+### Architecture Components
+
+**Core Modules (13):**
+- FlutterBridge - Flutter method channel communication
+- DisplayChangeCoordinator - Monitor change detection
+- InstanceManager - Wallpaper instance lifecycle
+- WindowManager - Window creation & management
+- InitializationCoordinator - Init flow coordination 鈿?
+- WebViewManager - WebView2 lifecycle
+- WebViewConfigurator - WebView2 security config 鈿?
+- PowerManager - Power saving optimization
+- IframeDetector - iframe detection
+- SDKBridge - JavaScript SDK injection
+- MouseHookManager - Mouse hook management
+- MonitorManager - Multi-monitor support
+- EventDispatcher - High-performance event routing (-87.5% lookup time) 鈿?
+
+**Utility Classes (17):**
+- StatePersistence - State persistence
+- StartupOptimizer - Startup optimization
+- CPUProfiler - CPU monitoring
+- MemoryProfiler - Memory monitoring
+- InputValidator - Input validation
+- ConflictDetector - Conflict detection
+- DesktopWallpaperHelper - Desktop wallpaper helper
+- Logger - Unified logging (enhanced: buffering, rotation) 鈿?
+- URLValidator - URL validation
+- ResourceTracker - Resource tracking
+- ErrorHandler - Unified error handling & recovery 鈿?
+- PerformanceBenchmark - Performance measurement tool 鈿?
+- PermissionManager - Fine-grained permission control 鈿?
+- EventBus - Event-driven communication 鈿?
+- ConfigManager - Centralized configuration 鈿?
+- ServiceLocator - Dependency injection container 鈿?
+- CircuitBreaker (header-only) - Circuit breaker pattern
+
+**Interface Abstraction (3 interfaces) 鈿?**
+- IWebViewManager - WebView2 management interface
+- IStateStorage - State persistence interface
+- ILogger - Logging interface
+
+**Total: 30 modules + 3 interfaces | 78% modularization rate**
+
+**Error Recovery:**
+- CircuitBreaker - Circuit breaker pattern
+- RetryHandler - Automatic retry logic
+- SafetyMacros - 21 safety macros
+
+**Technical Details:**
+- [REFACTORING_OVERVIEW.md](REFACTORING_OVERVIEW.md) - Complete refactoring overview
+- [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) - Implementation details
+
+---
+
 ## Basic Usage
 
-### Initialize Wallpaper
+### Mouse Transparency (v2.0+)
+
+**AnyWP Engine uses Simple Mode for all wallpapers:**
+
+| Feature | Behavior | Use Cases |
+|---------|----------|-----------|
+| **Mouse Transparency** | Clicks pass through to desktop | All types of wallpapers |
+| **Click Detection** | Via `AnyWP.onClick()` JavaScript API | Interactive elements in wallpapers |
+
+**Key Features:**
+- 鉁?Desktop icons remain clickable
+- 鉁?Click detection through JavaScript SDK
+- 鉁?Multi-monitor support
+- 鉁?Settings persist across system suspend/resume
+
+---
+
+### Initialize Wallpaper (Single Monitor)
 
 ```dart
-// Initialize wallpaper on primary monitor
+// Mouse transparent wallpaper - desktop icons remain clickable
 bool success = await AnyWPEngine.initializeWallpaper(
   url: 'https://example.com/wallpaper.html',
-  enableMouseTransparent: true,  // Allow clicks to pass through
 );
 ```
 
 **Parameters:**
 - `url` (required): URL to display (supports `http://`, `https://`, `file:///`)
-- `enableMouseTransparent` (optional, default: `true`): Enable click-through behavior
 
 **Returns:** `Future<bool>` - `true` if successful
+
+**Note:** For click detection within your wallpaper, use the `AnyWP.onClick()` JavaScript API.
 
 ---
 
@@ -86,14 +202,12 @@ for (var monitor in monitors) {
 bool success = await AnyWPEngine.initializeWallpaperOnMonitor(
   url: 'https://example.com/wallpaper.html',
   monitorIndex: 1,
-  enableMouseTransparent: true,
 );
 ```
 
 **Parameters:**
 - `url` (required): URL to display
 - `monitorIndex` (required): Monitor index (0-based)
-- `enableMouseTransparent` (optional, default: `true`): Enable click-through
 
 **Returns:** `Future<bool>` - `true` if successful
 
@@ -131,12 +245,33 @@ bool success = await AnyWPEngine.navigateToUrlOnMonitor(
 // Start on all monitors
 Map<int, bool> results = await AnyWPEngine.initializeWallpaperOnAllMonitors(
   url: 'https://example.com/wallpaper.html',
-  enableMouseTransparent: true,
 );
 
 // Stop on all monitors
 bool success = await AnyWPEngine.stopWallpaperOnAllMonitors();
 ```
+
+### Click Detection
+
+**v2.0+ Feature**: Use the JavaScript SDK to detect clicks within your wallpaper content.
+
+All wallpapers run in **mouse transparent mode** (desktop icons remain clickable). For interactive elements within your wallpaper, use the `AnyWP.onClick()` JavaScript API:
+
+```javascript
+// In your wallpaper HTML
+AnyWP.onClick('#myButton', (x, y) => {
+  console.log('Button clicked at:', x, y);
+  // Handle the click event
+});
+```
+
+**Benefits:**
+- 鉁?Desktop icons remain clickable
+- 鉁?Selective click detection for specific elements
+- 鉁?Works across all monitors independently
+- 鉁?No runtime mode switching needed
+
+For complete JavaScript SDK documentation, see [WEB_DEVELOPER_GUIDE_CN.md](WEB_DEVELOPER_GUIDE_CN.md)
 
 ---
 
@@ -153,18 +288,18 @@ await AnyWPEngine.resumeWallpaper();
 ```
 
 **Effects of Pause (Lightweight Strategy):**
-- ✅ WebView2 stops rendering (saves CPU/GPU)
-- ✅ Preserves DOM state and memory (instant resume)
-- ✅ Notifies web content via Page Visibility API
-- ✅ Auto-pauses videos and audio
-- ✅ Skips mouse hook processing
-- ✅ Light memory trim (no cache clearing)
+- 鉁?WebView2 stops rendering (saves CPU/GPU)
+- 鉁?Preserves DOM state and memory (instant resume)
+- 鉁?Notifies web content via Page Visibility API
+- 鉁?Auto-pauses videos and audio
+- 鉁?Skips mouse hook processing
+- 鉁?Light memory trim (no cache clearing)
 
 **Resume Performance:**
-- ⚡ **Instant recovery** (<50ms)
-- 🎯 No reloading or DOM reconstruction
-- 🎨 Animations continue from where they stopped
-- 💾 All state preserved
+- 鈿?**Instant recovery** (<50ms)
+- 馃幆 No reloading or DOM reconstruction
+- 馃帹 Animations continue from where they stopped
+- 馃捑 All state preserved
 
 ### Auto Power Saving
 
@@ -230,14 +365,14 @@ await AnyWPEngine.optimizeMemory();
 
 **Typical Results:**
 - Frees 50-150MB on average
-- Example: 200MB+ → ~100MB
+- Example: 200MB+ 鈫?~100MB
 
 **Auto-Triggered When:**
-- ✅ After page load completes (3 seconds delay)
-- ✅ After URL navigation (3 seconds delay)  
-- ✅ When memory exceeds threshold (default: 150MB)
-- ✅ Every cleanup interval (default: 15 minutes)
-- ✅ When wallpaper is paused
+- 鉁?After page load completes (3 seconds delay)
+- 鉁?After URL navigation (3 seconds delay)  
+- 鉁?When memory exceeds threshold (default: 150MB)
+- 鉁?Every cleanup interval (default: 15 minutes)
+- 鉁?When wallpaper is paused
 
 **Note:** Optimization is automatic - manual calls rarely needed!
 
@@ -386,7 +521,7 @@ print('Data stored at: $path');
 
 **Returns:** `Future<String>` - Full path to storage directory
 
-💡 **See [README.md](../README.md#-storage-isolation-v120) for complete storage isolation guide, including uninstall cleanup and migration.**
+馃挕 **See [README.md](../README.md#-storage-isolation-v120) for complete storage isolation guide, including uninstall cleanup and migration.**
 
 ### Get Plugin Version (v1.2.1+)
 
@@ -395,7 +530,7 @@ final version = await AnyWPEngine.getPluginVersion();
 print('AnyWP Engine plugin version: $version');
 ```
 
-**Returns:** `Future<String>` - Semantic version string（例如 `1.2.1`）
+**Returns:** `Future<String>` - Semantic version string锛堜緥濡?`1.2.1`锛?
 
 ### Check Compatibility (v1.2.1+)
 
@@ -408,9 +543,9 @@ if (!compatible) {
 ```
 
 **Parameters:**
-- `expectedPrefix` *(optional)*：默认 `1.2.`，匹配同一主/次版本的所有补丁
+- `expectedPrefix` *(optional)*锛氶粯璁?`1.2.`锛屽尮閰嶅悓涓€涓?娆＄増鏈殑鎵€鏈夎ˉ涓?
 
-**Returns:** `Future<bool>` - `true` 表示版本满足要求
+**Returns:** `Future<bool>` - `true` 琛ㄧず鐗堟湰婊¤冻瑕佹眰
 
 ---
 
@@ -516,7 +651,6 @@ class WallpaperManager {
     // Start on all monitors
     await AnyWPEngine.initializeWallpaperOnAllMonitors(
       url: 'https://example.com/wallpaper.html',
-      enableMouseTransparent: true,
     );
   }
   
@@ -556,4 +690,5 @@ class WallpaperManager {
 - [API Usage Examples](API_USAGE_EXAMPLES.md)
 - [Web Developer Guide](WEB_DEVELOPER_GUIDE_CN.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
+
 

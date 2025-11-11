@@ -172,7 +172,6 @@ class _AutoTestAppState extends State<AutoTestApp> {
       final success = await AnyWPEngine.initializeWallpaperOnMonitor(
         url: url,
         monitorIndex: _monitor!.index,
-        enableMouseTransparent: true,
       );
       
       if (!success) {

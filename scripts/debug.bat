@@ -1,7 +1,7 @@
 @echo off
 REM ==========================================
 REM AnyWP Engine - Debug Script
-REM Run with output logging to debug_run.log
+REM Run with output logging to test_logs/debug_run.log
 REM ==========================================
 
 echo ================================
@@ -10,6 +10,9 @@ echo ================================
 echo.
 
 cd /d "%~dp0.."
+
+REM Create test_logs directory if not exists
+if not exist "test_logs" mkdir test_logs
 
 echo Stopping existing processes...
 taskkill /F /IM anywallpaper_engine_example.exe >nul 2>&1
@@ -31,11 +34,11 @@ if "%EXE_PATH%"=="" (
 )
 
 echo Starting with logging...
-echo Log file: %CD%\debug_run.log
+echo Log file: %CD%\test_logs\debug_run.log
 echo.
-%EXE_PATH% > debug_run.log 2>&1
+%EXE_PATH% > test_logs\debug_run.log 2>&1
 
 echo.
-echo Application exited. Check debug_run.log
+echo Application exited. Check test_logs\debug_run.log
 pause
 

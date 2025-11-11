@@ -46,7 +46,6 @@ class _MyAppState extends State<MyApp> with WindowListener {
   Map<int, TextEditingController> _monitorUrlControllers = {};  // Each monitor has its own URL
   Map<int, bool> _monitorLoading = {};  // Track loading state for each monitor
   bool _allMonitorsLoading = false;  // Track "Start All" / "Stop All" loading state
-  bool _mouseTransparent = true;  // Default: wallpaper mode (transparent)
   Timer? _monitorCheckTimer;  // Timer for polling monitor changes
   bool _isHandlingMonitorChange = false;  // Prevent overlapping monitor change handling
   
@@ -63,10 +62,8 @@ class _MyAppState extends State<MyApp> with WindowListener {
   
   // Quick test pages
   final List<Map<String, String>> _testPages = [
-    {'name': '🔧 Refactoring', 'file': 'test_refactoring.html', 'icon': '🔧'},
-    {'name': 'Simple', 'file': 'test_simple.html', 'icon': '🎨'},
-    {'name': 'Drag Debug', 'file': 'test_drag_debug.html', 'icon': '🔍'},
     {'name': 'API Test', 'file': 'test_api.html', 'icon': '⚙️'},
+    {'name': 'Simple', 'file': 'test_simple.html', 'icon': '🎨'},
     {'name': 'Click Test', 'file': 'test_basic_click.html', 'icon': '👆'},
     {'name': 'Visibility', 'file': 'test_visibility.html', 'icon': '👁️'},
     {'name': 'React', 'file': 'test_react.html', 'icon': '⚛️'},
@@ -208,7 +205,6 @@ class _MyAppState extends State<MyApp> with WindowListener {
             bool success = await AnyWPEngine.initializeWallpaperOnMonitor(
               url: urlToUse,
               monitorIndex: index,
-              enableMouseTransparent: _mouseTransparent,
             );
             
             print('[APP]    Result: ${success ? "✅ SUCCESS" : "❌ FAILED"}');
@@ -228,7 +224,6 @@ class _MyAppState extends State<MyApp> with WindowListener {
                 success = await AnyWPEngine.initializeWallpaperOnMonitor(
                   url: primaryUrl,
                   monitorIndex: index,
-                  enableMouseTransparent: _mouseTransparent,
                 );
                 
                 if (success) {
@@ -447,7 +442,6 @@ class _MyAppState extends State<MyApp> with WindowListener {
       final success = await AnyWPEngine.initializeWallpaperOnMonitor(
         url: url,
         monitorIndex: monitorIndex,
-        enableMouseTransparent: _mouseTransparent,
       );
 
       setState(() {
@@ -520,7 +514,6 @@ class _MyAppState extends State<MyApp> with WindowListener {
         final success = await AnyWPEngine.initializeWallpaperOnMonitor(
           url: url,
           monitorIndex: monitor.index,
-          enableMouseTransparent: _mouseTransparent,
         );
         
         setState(() {
@@ -981,18 +974,6 @@ class _MyAppState extends State<MyApp> with WindowListener {
                     ),
                   ],
                 ),
-                SizedBox(height: 12),
-                CheckboxListTile(
-                  title: const Text('Enable Mouse Transparency'),
-                  subtitle: const Text('Allow clicks to pass through to desktop'),
-                  value: _mouseTransparent,
-                  contentPadding: EdgeInsets.zero,
-                  onChanged: (value) {
-                    setState(() {
-                      _mouseTransparent = value ?? true;
-                    });
-                  },
-                ),
               ],
             ),
           ),
@@ -1253,16 +1234,15 @@ class _MyAppState extends State<MyApp> with WindowListener {
                   '4. Use "Start All" to apply to all monitors at once\n'
                   '5. Each monitor displays its own independent content!\n\n'
                   '💡 Quick Test Pages:\n'
+                  '  ⚙️ Complete API - Full API testing (integrated)\n'
                   '  🎨 Simple - Basic wallpaper test\n'
-                  '  🔍 Drag Debug - Drag & drop demo with detailed logs\n'
-                  '  ⚙️ API Test - Full API testing\n'
                   '  👆 Click Test - Click detection test\n'
                   '  👁️ Visibility - Power saving test\n'
                   '  ⚛️ React / 💚 Vue - SPA framework tests\n'
                   '  📺 iFrame Ads - Ad detection test\n\n'
                   '✨ Tips:\n'
                   '  • Click test page buttons to load URL, then click "Start"\n'
-                  '  • Mouse transparency works with drag & drop!\n'
+                  '  • Simple mode: Desktop icons remain clickable\n'
                   '  • Try different pages on different monitors',
                   style: TextStyle(color: Colors.grey[800], fontSize: 13),
                 ),

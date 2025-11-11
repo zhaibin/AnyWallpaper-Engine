@@ -14,24 +14,41 @@ AnyWallpaper Engine/
 │   └── anywp_engine.dart            # Flutter 插件接口
 │
 ├── 📂 windows/                      # Windows 平台实现
-│   ├── anywp_engine_plugin.cpp           # 核心 C++ 实现（重构后更精简）
+│   ├── anywp_engine_plugin.cpp           # 核心 C++ 实现（v2.0 精简至 2,558 行）
 │   ├── anywp_engine_plugin.h             # 插件头文件
 │   ├── anywp_sdk.js                      # JavaScript SDK
 │   ├── CMakeLists.txt                    # CMake 构建配置
 │   ├── packages.config                   # NuGet 包配置
-│   ├── 📂 modules/                       # 功能模块 (v1.3.2+)
-│   │   ├── iframe_detector.cpp/h         # iframe 检测与坐标映射
-│   │   ├── sdk_bridge.cpp/h              # JavaScript SDK 注入与消息桥接
-│   │   ├── mouse_hook_manager.cpp/h      # 鼠标钩子管理（完整实现 + 错误处理）
-│   │   ├── monitor_manager.cpp/h         # 多显示器管理（完整实现 + 错误处理）
-│   │   └── power_manager.cpp/h           # 省电与性能优化（完整实现 + 错误处理）
-│   ├── 📂 utils/                         # 工具类 (v1.3.2+)
-│   │   ├── state_persistence.cpp/h       # 应用级状态持久化
-│   │   ├── url_validator.cpp/h           # URL 白名单/黑名单验证
-│   │   └── logger.cpp/h                  # 日志工具（线程安全、多级别 v4.9.0+）
-│   ├── 📂 test/                          # C++ 单元测试 (v4.9.0+)
+│   ├── 📂 modules/                       # 核心功能模块 (v2.0+, 10个, 3,363 行)
+│   │   ├── flutter_bridge.cpp/h          # Flutter 方法通道通信 (659 lines, v2.0)
+│   │   ├── display_change_coordinator.cpp/h # 显示器变更检测 (317 lines, v2.0)
+│   │   ├── instance_manager.cpp/h        # 实例生命周期管理 (235 lines, v2.0)
+│   │   ├── window_manager.cpp/h          # 窗口创建管理 (204 lines, v2.0)
+│   │   ├── webview_manager.cpp/h         # WebView2 管理 (470 lines)
+│   │   ├── power_manager.cpp/h           # 省电优化 (482 lines)
+│   │   ├── iframe_detector.cpp/h         # iframe 检测 (360 lines)
+│   │   ├── sdk_bridge.cpp/h              # SDK 桥接 (245 lines)
+│   │   ├── mouse_hook_manager.cpp/h      # 鼠标钩子 (213 lines)
+│   │   └── monitor_manager.cpp/h         # 监视器枚举 (178 lines)
+│   ├── 📂 utils/                         # 工具类 (v2.0+, 10个 + 3个header-only, 2,647 行)
+│   │   ├── state_persistence.cpp/h       # 状态持久化 (591 lines)
+│   │   ├── startup_optimizer.cpp/h       # 启动优化 (347 lines, v3.0)
+│   │   ├── cpu_profiler.cpp/h            # CPU分析 (339 lines, v3.0)
+│   │   ├── memory_profiler.cpp/h         # 内存监控 (314 lines, v3.0)
+│   │   ├── input_validator.cpp/h         # 输入验证 (296 lines, v2.0)
+│   │   ├── conflict_detector.cpp/h       # 冲突检测 (172 lines)
+│   │   ├── desktop_wallpaper_helper.cpp/h # 桌面壁纸 (171 lines)
+│   │   ├── logger.cpp/h                  # 日志记录 (148 lines)
+│   │   ├── url_validator.cpp/h           # URL验证 (136 lines)
+│   │   ├── resource_tracker.cpp/h        # 资源追踪 (133 lines)
+│   │   ├── circuit_breaker.h             # 熔断器 (header-only, v2.0)
+│   │   ├── retry_handler.h               # 重试逻辑 (header-only, v2.0)
+│   │   └── safety_macros.h               # 安全宏 (header-only, v2.0)
+│   ├── 📂 test/                          # C++ 单元测试 (v2.0+, 2,083 行)
 │   │   ├── test_framework.h              # 轻量级测试框架
-│   │   ├── unit_tests.cpp                # 单元测试用例
+│   │   ├── unit_tests.cpp                # 核心单元测试 (1,387 lines)
+│   │   ├── webview_manager_tests.cpp     # WebView集成测试 (372 lines)
+│   │   ├── comprehensive_test.cpp        # 综合测试 (324 lines)
 │   │   ├── CMakeLists.txt                # 测试构建配置
 │   │   └── run_tests.bat                 # 测试运行脚本
 │   ├── 📂 sdk/                           # JavaScript SDK 源码 (v4.2.0+)
@@ -123,7 +140,7 @@ AnyWallpaper Engine/
 | `utils/logger.*` | 统一日志记录接口 |
 | **sdk/** | **JavaScript SDK 源码 (v4.2.0+)** |
 | `sdk/core/` | 核心模块（AnyWP 对象、初始化） |
-| `sdk/modules/` | 功能模块（事件、拖拽、存储等） |
+| `sdk/modules/` | 功能模块（事件、点击、存储等） |
 | `sdk/utils/` | 工具模块（坐标转换、调试等） |
 
 ### docs/ - 文档

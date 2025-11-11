@@ -34,21 +34,21 @@
 
 访问 [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)，下载：
 ```
-anywp_engine_v1.1.0.zip
+anywp_engine_v2.0.0.zip
 ```
 
 **2. 解压到项目根目录**
 ```
 YourProject/
 ├── pubspec.yaml
-└── anywp_engine_v1.1.0/
+└── anywp_engine_v2.0.0/
 ```
 
 **3. 在 pubspec.yaml 中引用**
 ```yaml
 dependencies:
   anywp_engine:
-    path: ./anywp_engine_v1.1.0
+    path: ./anywp_engine_v2.0.0
 ```
 
 **4. 获取依赖**

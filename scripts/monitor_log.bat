@@ -1,7 +1,7 @@
 @echo off
 REM ============================================================
 REM Purpose: Real-time monitor application log output
-REM Log files: debug_run.log or example/test_output.log
+REM Log files: test_logs/debug_run.log or test_logs/test_full_*.log
 REM ============================================================
 
 echo ===== AnyWP Engine - Log Monitor =====
@@ -18,13 +18,17 @@ echo ===== Latest Log (Last 50 Lines) =====
 echo.
 
 REM Priority: monitor debug_run.log first
-if exist "debug_run.log" (
-    powershell -Command "Get-Content debug_run.log -Tail 50 -ErrorAction SilentlyContinue"
-) else if exist "example\test_output.log" (
-    powershell -Command "Get-Content example\test_output.log -Tail 50 -ErrorAction SilentlyContinue"
+if exist "test_logs\debug_run.log" (
+    powershell -Command "Get-Content test_logs\debug_run.log -Tail 50 -ErrorAction SilentlyContinue"
 ) else (
-    echo Log file not found
-    echo Please run debug_run.bat or build_and_run.bat first
+    REM Find latest test_full log
+    for /f "delims=" %%i in ('dir /b /o-d "test_logs\test_full_*.log" 2^>nul') do (
+        powershell -Command "Get-Content test_logs\%%i -Tail 50 -ErrorAction SilentlyContinue"
+        goto :found
+    )
+    echo Log file not found in test_logs directory
+    echo Please run debug.bat or test_full.bat first
+    :found
 )
 
 goto loop

@@ -1,5 +1,47 @@
 ﻿# Troubleshooting Guide
 
+## Runtime Issues
+
+### SDK Not Loading / JavaScript Functions Not Working
+
+**Symptoms:**
+- Click events not detected
+- Visibility API not pausing video  
+- Drag & drop not working
+- Console shows: `WARNING: SDK file not found, using error shim`
+- SDK version shows `0.0.0-missing`
+
+**Root Cause:** Application launched with incorrect working directory.
+
+**Solution:**
+
+✅ **Always use provided scripts** (they set correct working directory):
+```bash
+# Development
+.\scripts\debug.bat      # With logging
+.\scripts\run.bat        # Quick run
+
+# From PowerShell (specify working directory)
+cd E:\Projects\AnyWallpaper\AnyWallpaper-Engine
+Start-Process -FilePath "example\build\windows\x64\runner\Debug\anywallpaper_engine_example.exe" -WorkingDirectory "$PWD"
+```
+
+❌ **Don't launch directly** from executable directory:
+```bash
+# Wrong! SDK won't load
+cd example\build\windows\x64\runner\Debug
+.\anywallpaper_engine_example.exe
+```
+
+**Why:** The application needs to find `windows\anywp_sdk.js` relative to project root.
+
+**Verify SDK Loading:** Check logs for:
+```
+[AnyWP] [SDKBridge] SDK loaded from: windows\anywp_sdk.js (size: 61209 bytes)
+```
+
+---
+
 ## Build Issues
 
 ### 1. Cannot find WebView2.h

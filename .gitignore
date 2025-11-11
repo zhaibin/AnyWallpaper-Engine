@@ -52,3 +52,6 @@ desktop.ini
 *.temp
 *~
 
+# Test logs directory
+test_logs/
+

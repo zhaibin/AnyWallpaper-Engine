@@ -30,12 +30,16 @@ if exist "%WEB_SDK_DIR%.zip" del /q "%WEB_SDK_DIR%.zip"
 REM Step 2: Build Release
 echo [Step 2/17] Building Release version...
 cd /d "%PROJECT_ROOT%\example"
-flutter build windows --release
-if errorlevel 1 (
-    echo ERROR: Build failed
-    pause
+call flutter build windows --release
+set BUILD_ERROR=%ERRORLEVEL%
+echo Build completed with exit code: %BUILD_ERROR%
+if %BUILD_ERROR% NEQ 0 (
+    echo ERROR: Build failed with code %BUILD_ERROR%
+    if not defined NO_PAUSE pause
     exit /b 1
 )
+cd /d "%PROJECT_ROOT%"
+echo Returned to project root: %CD%
 
 REM Step 3-16: Create package structure and copy files
 echo [Step 3/17] Creating package structure...

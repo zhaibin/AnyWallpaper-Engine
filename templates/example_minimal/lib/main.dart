@@ -48,7 +48,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final success = await AnyWPEngine.initializeWallpaper(
       url: 'https://www.bing.com',
-      enableMouseTransparent: true,
     );
 
     setState(() {
