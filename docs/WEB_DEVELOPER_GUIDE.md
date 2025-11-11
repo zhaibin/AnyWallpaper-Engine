@@ -84,6 +84,8 @@ This guide is for web developers who want to integrate their web pages into AnyW
 
 ### 1. Basic Integration (Static Web Page)
 
+**⚡ SDK Auto-Injection** - AnyWP Engine automatically injects the SDK into your web page. No manual script loading required.
+
 ```html
 <!DOCTYPE html>
 <html>
@@ -94,7 +96,7 @@ This guide is for web developers who want to integrate their web pages into AnyW
   <button id="myButton">Click Me</button>
 
   <script>
-    // SDK is auto-injected, use directly
+    // SDK is already injected, use window.AnyWP directly
     if (window.AnyWP) {
       // Notify wallpaper is ready
       AnyWP.ready('My Wallpaper');
@@ -109,6 +111,11 @@ This guide is for web developers who want to integrate their web pages into AnyW
 </body>
 </html>
 ```
+
+**💡 Important Notes**:
+- ✅ **No need** for `<script src="anywp_sdk.js"></script>`
+- ✅ SDK is injected when page loads
+- ✅ Always check `window.AnyWP` exists (best practice for compatibility)
 
 ---
 

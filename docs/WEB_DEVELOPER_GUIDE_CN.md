@@ -180,19 +180,19 @@ window.addEventListener('load', () => {
 
 ### 1. 基础集成（静态网页）
 
+**⚡ SDK 自动注入** - AnyWP Engine 会自动将 SDK 注入到您的网页中，无需手动加载任何脚本。
+
 ```html
 <!DOCTYPE html>
 <html>
 <head>
   <title>我的壁纸</title>
-  <!-- 加载 AnyWP SDK -->
-  <script src="../windows/anywp_sdk.js"></script>
 </head>
 <body>
   <button id="myButton">点击我</button>
 
   <script>
-    // SDK 自动初始化，直接使用
+    // SDK 已自动注入，直接使用 window.AnyWP
     if (window.AnyWP) {
       // 通知壁纸已就绪
       AnyWP.ready('我的壁纸');
@@ -207,6 +207,11 @@ window.addEventListener('load', () => {
 </body>
 </html>
 ```
+
+**💡 重要提示**：
+- ✅ **无需** `<script src="anywp_sdk.js"></script>`
+- ✅ SDK 会在页面加载时自动注入
+- ✅ 始终检查 `window.AnyWP` 是否存在（兼容性最佳实践）
 
 ---
 

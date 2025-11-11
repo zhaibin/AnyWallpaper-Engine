@@ -29,6 +29,7 @@ A Flutter Windows plugin that embeds WebView2 as a desktop wallpaper, displaying
 - 💾 **Memory Optimized** - Intelligent cleanup and state preservation
 
 ### JavaScript SDK (NEW ✨)
+- ⚡ **Auto-Injection** - SDK is automatically injected, no manual loading required
 - 💾 **State Persistence** - Save/load state across sessions to Windows Registry
 - 👁️ **Visibility API** - Detect wallpaper visibility changes
 - 🖱️ **Click Events** - Handle click events with `onClick()`
@@ -154,34 +155,51 @@ if (!compatible) {
 
 ### JavaScript SDK Usage (NEW ✨)
 
+**⚡ SDK is auto-injected** - No manual script loading required. Just use `window.AnyWP` directly in your web page.
+
 ```html
-<!-- Load SDK in your HTML -->
-<script src="../windows/anywp_sdk.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Wallpaper</title>
+</head>
+<body>
+  <div id="content">Hello Wallpaper!</div>
+  
+  <script>
+    // SDK is automatically available as window.AnyWP
+    if (window.AnyWP) {
+      // Notify wallpaper is ready
+      AnyWP.ready('My Wallpaper');
+      
+      // Save/Load custom state
+      AnyWP.saveState('settings', JSON.stringify({ theme: 'dark' }));
+      AnyWP.loadState('settings', (value) => {
+        const settings = JSON.parse(value);
+        console.log('Settings:', settings);
+      });
+      
+      // Monitor visibility (pause animations when hidden)
+      // Triggered on: lock/unlock, fullscreen apps, manual pause/resume
+      AnyWP.onVisibilityChange((visible) => {
+        if (visible) {
+          resumeAnimations();  // Resume when unlocked
+        } else {
+          pauseAnimations();  // Save power when locked
+        }
+      });
+      
+      // Handle clicks
+      AnyWP.onClick('#button', (x, y) => {
+        console.log('Clicked at:', x, y);
+      });
+    }
+  </script>
+</body>
+</html>
 ```
 
-```javascript
-// Save/Load custom state
-AnyWP.saveState('settings', JSON.stringify({ theme: 'dark' }));
-AnyWP.loadState('settings', (value) => {
-  const settings = JSON.parse(value);
-  console.log('Settings:', settings);
-});
-
-// Monitor visibility (pause animations when hidden) ✅ v4.2.1 增强
-// 触发时机：锁屏/解锁、全屏应用、手动暂停/恢复
-AnyWP.onVisibilityChange((visible) => {
-  if (visible) {
-    resumeAnimations();  // Resume when unlocked
-  } else {
-    pauseAnimations();  // Save power when locked
-  }
-});
-
-// Handle clicks
-AnyWP.onClick('#button', (x, y) => {
-  console.log('Clicked at:', x, y);
-});
-```
+**📖 Complete Web Developer Guide**: See [Web Developer Guide](docs/WEB_DEVELOPER_GUIDE_CN.md) for detailed SDK documentation.
 
 ## 🔥 Hot-Plug Display Support (NEW)
 
