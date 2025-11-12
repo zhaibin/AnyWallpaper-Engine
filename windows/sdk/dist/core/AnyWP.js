@@ -15,6 +15,7 @@ export const AnyWP = {
     _spaMode: false,
     _autoRefreshEnabled: true,
     _persistedState: {},
+    _onFlutterMessage: null,
     // Initialize (will be implemented in init.ts)
     _init() {
         throw new Error('_init must be implemented');
@@ -84,6 +85,36 @@ export const AnyWP = {
                 name: name
             });
         }
+    },
+    // ========================================
+    // Bidirectional Communication APIs
+    // ========================================
+    /**
+     * Send message to Flutter application
+     * (Will be implemented in webmessage module)
+     */
+    sendToFlutter(_type, _data) {
+        throw new Error('Not implemented - will be injected by webmessage module');
+    },
+    /**
+     * Register callback to receive messages from Flutter
+     *
+     * @param callback - Function to handle messages from Flutter
+     *
+     * @example
+     * ```typescript
+     * window.AnyWP.onMessage((message) => {
+     *   console.log('Received from Flutter:', message.type);
+     *
+     *   if (message.type === 'updateCarousel') {
+     *     // Update carousel with message.data
+     *   }
+     * });
+     * ```
+     */
+    onMessage(callback) {
+        console.log('[AnyWP] Registering Flutter message handler');
+        this._onFlutterMessage = callback;
     }
 };
 //# sourceMappingURL=AnyWP.js.map

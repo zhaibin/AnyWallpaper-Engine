@@ -122,6 +122,7 @@ export interface AnyWPSDK {
     _spaMode: boolean;
     _autoRefreshEnabled: boolean;
     _persistedState: PersistedState;
+    _onFlutterMessage: ((message: any) => void) | null;
     _init(): void;
     _log(message: string, always?: boolean): void;
     log(message: string): void;
@@ -139,6 +140,8 @@ export interface AnyWPSDK {
     setSPAMode(enabled: boolean): void;
     openURL(url: string): void;
     ready(name: string): void;
+    sendToFlutter(type: string, data?: any): boolean;
+    onMessage(callback: (message: any) => void): void;
 }
 /**
  * Global window extension
