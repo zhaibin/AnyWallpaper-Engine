@@ -59,7 +59,9 @@ void SDKBridge::InjectSDK() {
       }).Get());
   
   // IMPORTANT: Also inject immediately for current page
-  std::cout << "[AnyWP] [SDKBridge] Injecting SDK into current page..." << std::endl;
+  // Note: This may fail if page hasn't loaded yet, but AddScriptToExecuteOnDocumentCreated
+  // will ensure SDK is injected when page is created
+  std::cout << "[AnyWP] [SDKBridge] Attempting to inject SDK into current page..." << std::endl;
   webview_->ExecuteScript(
     wsdk_script.c_str(),
     Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
@@ -67,7 +69,36 @@ void SDKBridge::InjectSDK() {
         if (SUCCEEDED(result)) {
           std::cout << "[AnyWP] [SDKBridge] SDK executed successfully on current page" << std::endl;
         } else {
-          std::cout << "[AnyWP] [SDKBridge] ERROR: Failed to execute SDK: " << std::hex << result << std::endl;
+          std::cout << "[AnyWP] [SDKBridge] WARNING: Failed to execute SDK on current page (may not be loaded yet): " 
+                    << std::hex << result << std::endl;
+          std::cout << "[AnyWP] [SDKBridge] SDK will be injected via AddScriptToExecuteOnDocumentCreated when page loads" << std::endl;
+        }
+        return S_OK;
+      }).Get());
+  
+  // Add verification script to check if SDK is loaded
+  std::wstring verify_script = L"setTimeout(function() {"
+    L"  if (window.AnyWP && window.AnyWP.version) {"
+    L"    console.log('[AnyWP] SDK verification: SDK loaded successfully, version:', window.AnyWP.version);"
+    L"    if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {"
+    L"      window.chrome.webview.postMessage(JSON.stringify({type:'sdkReady', version: window.AnyWP.version}));"
+    L"    }"
+    L"  } else {"
+    L"    console.error('[AnyWP] SDK verification: SDK NOT loaded! window.AnyWP:', window.AnyWP);"
+    L"    if (window.chrome && window.chrome.webview && window.chrome.webview.postMessage) {"
+    L"      window.chrome.webview.postMessage(JSON.stringify({type:'sdkError', error:'SDK not found'}));"
+    L"    }"
+    L"  }"
+    L"}, 1000);";
+  
+  webview_->AddScriptToExecuteOnDocumentCreated(
+    verify_script.c_str(),
+    Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
+      [](HRESULT result, LPCWSTR id) -> HRESULT {
+        if (SUCCEEDED(result)) {
+          std::wcout << L"[AnyWP] [SDKBridge] SDK verification script registered, ID: " << id << std::endl;
+        } else {
+          std::cout << "[AnyWP] [SDKBridge] WARNING: Failed to register verification script: " << std::hex << result << std::endl;
         }
         return S_OK;
       }).Get());
@@ -125,8 +156,28 @@ void SDKBridge::UnregisterHandler(const std::string& message_type) {
 void SDKBridge::HandleMessage(const std::string& message) {
   std::cout << "[AnyWP] [SDKBridge] Received message: " << message << std::endl;
   
-  // Determine message type
+  // Determine message type first
   std::string type = GetMessageType(message);
+  
+  // Check for SDK verification messages (handle before other handlers)
+  if (type == "sdkReady" || message.find("\"type\":\"sdkReady\"") != std::string::npos) {
+    std::cout << "[AnyWP] [SDKBridge] ✅ SDK verification: SDK loaded successfully!" << std::endl;
+    // Extract version if present
+    std::string version = ExtractJsonValue(message, "version");
+    if (!version.empty()) {
+      std::cout << "[AnyWP] [SDKBridge] SDK version: " << version << std::endl;
+    }
+    return;
+  }
+  
+  if (type == "sdkError" || message.find("\"type\":\"sdkError\"") != std::string::npos) {
+    std::cout << "[AnyWP] [SDKBridge] ❌ SDK verification: SDK NOT loaded!" << std::endl;
+    std::string error = ExtractJsonValue(message, "error");
+    if (!error.empty()) {
+      std::cout << "[AnyWP] [SDKBridge] Error: " << error << std::endl;
+    }
+    return;
+  }
   
   if (type.empty()) {
     std::cout << "[AnyWP] [SDKBridge] Unknown message type (showing raw): " << message << std::endl;
@@ -245,6 +296,8 @@ std::string SDKBridge::GetMessageType(const std::string& message) {
   }
   
   // Fallback: check for known patterns
+  if (message.find("\"type\":\"sdkReady\"") != std::string::npos) return "sdkReady";
+  if (message.find("\"type\":\"sdkError\"") != std::string::npos) return "sdkError";
   if (message.find("\"type\":\"IFRAME_DATA\"") != std::string::npos) return "IFRAME_DATA";
   if (message.find("\"type\":\"OPEN_URL\"") != std::string::npos) return "OPEN_URL";
   if (message.find("\"type\":\"openURL\"") != std::string::npos) return "openURL";

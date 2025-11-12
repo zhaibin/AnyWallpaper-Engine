@@ -87,6 +87,20 @@ class _MyAppState extends State<MyApp> with WindowListener {
     });
     
     print('[APP] Monitor polling started (every 3 seconds)');
+    
+    // Auto-start wallpaper for SDK injection testing
+    // Wait for monitors to load, then auto-start
+    Future.delayed(Duration(seconds: 2), () {
+      if (mounted && _monitors.isNotEmpty) {
+        final testUrl = 'https://hkcw-web.pages.dev/wallpapers/theme1';
+        print('[APP] Auto-starting wallpaper for SDK injection test: $testUrl');
+        final monitorIndex = _monitors.first.index;
+        if (_monitorUrlControllers.containsKey(monitorIndex)) {
+          _monitorUrlControllers[monitorIndex]!.text = testUrl;
+          _startWallpaperOnMonitor(monitorIndex);
+        }
+      }
+    });
   }
   
   Future<void> _handleMonitorChange() async {
@@ -391,7 +405,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
           _monitorWallpapers[monitor.index] = false;
           _monitorLoading[monitor.index] = false;
           _monitorUrlControllers[monitor.index] = TextEditingController(
-            text: 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/test_simple.html',
+            text: 'https://hkcw-web.pages.dev/wallpapers/theme1',
           );
         }
       }

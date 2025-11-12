@@ -3,7 +3,7 @@
 ## 项目概览
 Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在桌面图标后方）。
 
-**技术栈**: Flutter 3.0+ | C++17 | WebView2 | CMake | JavaScript  
+**技术栈**: Flutter 3.0+ | C++17 | WebView2 | CMake | TypeScript  
 **命名**: 包名 `anywp_engine` | 类名 `AnyWPEngine` `AnyWPEnginePlugin`  
 **核心功能**: 壁纸嵌入 | 鼠标交互 | 元素拖拽 | 应用级存储隔离 | 省电优化
 
@@ -18,17 +18,15 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 ### C++
 - 类/方法 `PascalCase` | 成员变量 `snake_case_` | 常量 `UPPER_SNAKE_CASE`
 - 使用智能指针管理 COM | RAII 管理资源 | 检查 Win32 API 返回值
-- **模块化设计** (v1.3.2+): 按功能拆分为独立模块（`modules/`）和工具类（`utils/`）
-- 核心插件文件保持精简，复杂功能委托给专门模块
-- **错误处理** (v4.9.0+): 所有关键操作使用 try-catch，回调添加异常保护
-- **日志记录** (v4.9.0+): 使用 `Logger::Instance()` 统一记录，支持多级别和线程安全
-- **单元测试** (v4.9.0+): 新功能需添加测试用例到 `windows/test/`
+- **模块化设计**: 按功能拆分为独立模块（`modules/`）和工具类（`utils/`）
+- **错误处理**: 所有关键操作使用 try-catch，回调添加异常保护
+- **日志记录**: 使用 `Logger::Instance()` 统一记录，支持多级别和线程安全
+- **单元测试**: 新功能需添加测试用例到 `windows/test/`（覆盖率 ≥95%）
 
-### JavaScript/TypeScript
+### TypeScript/JavaScript
 - 全局 `window.AnyWP` | 方法 `lowerCamelCase`
-- 核心 API: `makeDraggable()` `saveState()` `loadState()` `onClick()`
-- **TypeScript SDK** (v4.2.0+): 100% TypeScript 重写，模块化架构
-- 类型定义在 `windows/sdk/types.ts` | 使用严格模式 (`strict: true`)
+- **TypeScript SDK**: 100% TypeScript，模块化架构，类型定义在 `windows/sdk/types.ts`
+- 使用严格模式 (`strict: true`)
 
 ---
 
@@ -37,57 +35,15 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 ```
 lib/                    # Dart API
 windows/                # C++ 实现 + anywp_sdk.js
-  ├── modules/          # 核心功能模块 (v2.1, 13个)
-  │   ├── flutter_bridge.cpp/h            # Flutter 方法通道通信
-  │   ├── display_change_coordinator.cpp/h # 显示器变更检测
-  │   ├── instance_manager.cpp/h          # 实例生命周期管理
-  │   ├── window_manager.cpp/h            # 窗口创建管理
-  │   ├── initialization_coordinator.cpp/h # 初始化流程协调
-  │   ├── webview_manager.cpp/h           # WebView2 管理
-  │   ├── webview_configurator.cpp/h      # WebView2 安全配置
-  │   ├── power_manager.cpp/h             # 省电优化
-  │   ├── iframe_detector.cpp/h           # iframe 检测
-  │   ├── sdk_bridge.cpp/h                # SDK 桥接
-  │   ├── mouse_hook_manager.cpp/h        # 鼠标钩子
-  │   ├── monitor_manager.cpp/h           # 监视器枚举
-  │   └── event_dispatcher.cpp/h          # 高性能事件路由 (v2.1.0+)
-  ├── utils/            # 工具类 (v2.1, 12个，含3个header-only)
-  │   ├── state_persistence.cpp/h      # 状态持久化
-  │   ├── startup_optimizer.cpp/h      # 启动优化
-  │   ├── cpu_profiler.cpp/h           # CPU分析
-  │   ├── memory_profiler.cpp/h        # 内存监控
-  │   ├── input_validator.cpp/h        # 输入验证
-  │   ├── conflict_detector.cpp/h      # 冲突检测
-  │   ├── desktop_wallpaper_helper.cpp/h # 桌面壁纸
-  │   ├── logger.cpp/h                 # 日志记录
-  │   ├── url_validator.cpp/h          # URL验证
-  │   ├── resource_tracker.cpp/h       # 资源追踪
-  │   ├── error_handler.cpp/h          # 统一错误处理 (v2.1.0+)
-  │   ├── circuit_breaker.h            # 熔断器 (header-only)
-  │   ├── retry_handler.h              # 重试逻辑 (header-only)
-  │   └── safety_macros.h              # 安全宏 (header-only)
+  ├── modules/          # 核心功能模块（13个）
+  ├── utils/            # 工具类（12个）
   ├── test/             # C++ 单元测试
-  │   ├── test_framework.h           # 轻量级测试框架
-  │   ├── unit_tests.cpp             # 单元测试用例
-  │   ├── CMakeLists.txt             # 测试构建配置
-  │   └── run_tests.bat              # 测试运行脚本
-  ├── sdk/              # 模块化 TypeScript SDK 源码
-  │   ├── __tests__/    # 单元测试 (Jest + TS)
-  │   ├── core/         # 核心模块 (AnyWP.ts, init.ts)
-  │   ├── modules/      # 功能模块 (events, click, storage, spa, animations)
-  │   ├── utils/        # 工具模块 (bounds, coordinates, debug)
-  │   ├── types.ts      # TypeScript 类型定义
-  │   ├── index.ts      # 入口文件 (TypeScript)
-  │   ├── tsconfig.json # TypeScript 配置
-  │   ├── jest.config.js # Jest 测试配置
-  │   ├── package.json  # 依赖配置
-  │   └── rollup.config.js  # 构建配置 (TS → JS)
-  ├── anywp_engine_plugin.cpp/h  # 主插件实现
-  └── anywp_sdk.js      # 构建后的单文件 SDK
+  ├── sdk/              # TypeScript SDK 源码
+  └── anywp_engine_plugin.cpp/h  # 主插件实现
 example/                # 示例应用
 examples/               # 测试 HTML
 docs/                   # 核心文档
-scripts/                # 构建脚本 + 测试脚本
+scripts/                # 构建脚本
 release/                # 发布包
 ```
 
@@ -95,17 +51,12 @@ release/                # 发布包
 
 ## 核心文档
 
-### 面向开发者（必读）
-- **Flutter**: `docs/FOR_FLUTTER_DEVELOPERS.md` (导航) + `docs/DEVELOPER_API_REFERENCE.md` (API)
-- **Web**: `docs/WEB_DEVELOPER_GUIDE_CN.md`
-- **集成**: `docs/PRECOMPILED_DLL_INTEGRATION.md`
-- **存储**: `README.md` 存储隔离章节 (v1.2.0+)
+**面向开发者**:
+- Flutter: `docs/FOR_FLUTTER_DEVELOPERS.md` + `docs/DEVELOPER_API_REFERENCE.md`
+- Web: `docs/WEB_DEVELOPER_GUIDE_CN.md`
+- 集成: `docs/PRECOMPILED_DLL_INTEGRATION.md`
 
-### 技术文档
-- `docs/TECHNICAL_NOTES.md` | `docs/API_BRIDGE.md` | `docs/INTEGRATION_ARCHITECTURE.md`
-
-### 用户文档
-- `README.md` | `docs/QUICK_START.md` | `docs/TROUBLESHOOTING.md`
+**技术文档**: `docs/TECHNICAL_NOTES.md` | `docs/API_BRIDGE.md`
 
 ---
 
@@ -114,9 +65,9 @@ release/                # 发布包
 ### 功能开发
 1. **实现功能**: 编写代码 + 完整错误处理 + 文档注释
 2. **本地测试**: 
-   - C++ 模块: `cd windows\test && run_tests.bat`
+   - C++: `cd windows\test && run_tests.bat`
    - Web SDK: `cd windows\sdk && npm test`
-   - 集成测试: `.\scripts\test_full.bat`
+   - 集成: `.\scripts\test_full.bat`
 3. **代码检查**: `flutter analyze` 确保无警告
 4. **自动提交**: 使用文件方式提交中文信息
 
@@ -126,564 +77,107 @@ release/                # 发布包
 - [ ] 单元测试覆盖率 ≥95%
 - [ ] 无 Linter 警告或错误
 
-### Web SDK 开发 (v4.2.0+ TypeScript 模块化)
-**源码位置**: `windows/sdk/` (100% TypeScript)
-
+### Web SDK 开发
 **开发步骤**:
-1. 修改 TypeScript 源码 (`sdk/core/`, `sdk/modules/`, `sdk/utils/`, `sdk/types.ts`)
+1. 修改 TypeScript 源码 (`windows/sdk/`)
 2. 运行单元测试: `cd windows\sdk && npm test`
 3. 构建生产 SDK: `npm run build` (生成 `windows/anywp_sdk.js`)
-4. 在 Flutter WebView2 中测试: `.\scripts\test_draggable.bat` 或 `.\scripts\test.bat`
+4. 在 Flutter WebView2 中测试: `.\scripts\test_full.bat`
 5. 提交: 同时提交 TS 源码和构建产物
 
-**快速构建**:
-```bash
-# 从项目根目录
-.\scripts\build_sdk.bat
-
-# 或从 windows/sdk 目录
-cd windows\sdk
-npm run build       # 构建生产版本
-npm test           # 运行单元测试
-npm run test:coverage  # 生成覆盖率报告
-```
+**快速构建**: `.\scripts\build_sdk.bat` 或 `cd windows\sdk && npm run build`
 
 **⚠️ 重要提示**:
-- SDK 功能依赖 **WebView2 Native 桥接**（`chrome.webview.postMessage`）
-- 不要创建浏览器测试脚本，必须在 Flutter 应用中测试
-- 测试脚本: `test_draggable.bat` | `test.bat` | `debug_run.bat`
-
-**TypeScript 模块说明**:
-- `core/AnyWP.ts` - 核心对象定义（类型安全）
-- `core/init.ts` - 初始化逻辑
-- `modules/events.ts` - 事件系统
-- `modules/click.ts` - 点击处理
-- `modules/drag.ts` - 拖拽功能
-- `modules/storage.ts` - 状态持久化
-- `modules/spa.ts` - SPA 框架支持
-- `modules/animations.ts` - 动画控制
-- `utils/bounds.ts` - 边界计算
-- `utils/coordinates.ts` - 坐标转换
-- `utils/debug.ts` - 调试工具
-- `types.ts` - 完整类型定义
-
-**单元测试**:
-- `__tests__/storage.test.ts` (16 tests)
-- `__tests__/animations.test.ts` (15 tests)
-- `__tests__/events.test.ts` (16 tests)
-- `__tests__/click.test.ts` (17 tests)
-- `__tests__/drag.test.ts` (20 tests)
-- `__tests__/spa.test.ts` (22 tests)
-- `__tests__/debug.test.ts` (7 tests)
-- `__tests__/bounds.test.ts` (4 tests)
-- `__tests__/coordinates.test.ts` (5 tests)
-- **测试覆盖**: 118 tests, 114 passing (96.6%), ~71% code coverage
+- SDK 功能依赖 WebView2 Native 桥接（`chrome.webview.postMessage`）
+- 必须在 Flutter 应用中测试，不要创建浏览器测试脚本
 
 ### 调试流程
 1. 编译运行：`.\scripts\debug.bat`
 2. 查看日志：`test_logs/debug_run.log` 或 `test_logs/test_full_*.log`
 3. 实时监控：`.\scripts\monitor_log.bat` (可选)
-4. 分析优化，重复测试
 
-**⚠️ 日志文件约定**: 所有测试和调试日志统一放在 `test_logs/` 目录下
-
-**⚠️ 重要提示**:
-- 使用 `Logger::Instance()` 统一记录日志
-- C++ 日志级别：Error, Warning, Info, Debug
-- 所有异常必须有 try-catch 保护
-- 回调函数需要额外的异常保护层
+**日志约定**: 所有测试和调试日志统一放在 `test_logs/` 目录下
 
 ---
 
-## 测试、上线、发版流程（必须遵守）
+## 发版流程
 
-### 阶段 1️⃣：功能开发与测试
+### Step 1: 版本号更新
+- [ ] `pubspec.yaml`: `version: x.x.x`
+- [ ] `CHANGELOG_CN.md`: 添加新版本条目
+- [ ] `.cursorrules` 底部版本号
+- [ ] `docs/PRECOMPILED_DLL_INTEGRATION.md`: 更新示例版本号
 
-#### 1.1 开发阶段
-- [ ] 实现功能代码（Dart + C++ + TypeScript/JavaScript）
-- [ ] 添加完整的文档注释
-- [ ] 错误处理和边界情况
-- [ ] **Web SDK 修改需构建**: `cd windows\sdk && npm run build`
-- [ ] **Web SDK 修改需测试**: `npm test` (单元测试)
-- [ ] 自动提交代码
-
-#### 1.2 编译测试
-```bash
-cd example
-flutter clean
-flutter build windows --debug
-```
-- [ ] 无编译错误
-- [ ] 无 Linter 警告
-- [ ] DLL 正确生成
-- [ ] **SDK 已构建**: `windows/anywp_sdk.js` 存在且是最新的
-
-#### 1.3 功能测试
-```bash
-.\scripts\test.bat  # 或 debug_run.bat
-```
-**必测项目**:
-- [ ] 基础功能正常（启动/停止壁纸）
-- [ ] 新功能工作正常
-- [ ] 无崩溃或异常
-- [ ] 内存占用合理（< 300 MB）
-- [ ] 测试至少 2 个测试页面（examples/）
-- [ ] **Web SDK 测试**: 拖拽、点击、状态持久化均正常
-
-#### 1.4 集成测试
-- [ ] 多显示器支持（如有多显示器）
-- [ ] 拖拽功能（test_draggable.html）
-- [ ] 状态持久化（拖拽位置保存/加载）
-- [ ] 应用隔离（检查存储目录 `%LOCALAPPDATA%\AnyWPEngine\`）
-- [ ] **TypeScript 单元测试**: `cd windows\sdk && npm test` (≥95% 通过率)
-
----
-
-### 阶段 2️⃣：文档更新（发布前必须）
-
-#### 2.1 核心文档同步
+### Step 2: 文档更新
 **新增 API 必须更新**:
-- [ ] `README.md` - 快速开始示例
-- [ ] `lib/anywp_engine.dart` - Dart 文档注释
-- [ ] `docs/DEVELOPER_API_REFERENCE.md` - API 参考章节
+- [ ] `lib/anywp_engine.dart` - 文档注释
+- [ ] `README.md` - 示例代码
+- [ ] `docs/DEVELOPER_API_REFERENCE.md` - API 章节
 - [ ] `docs/FOR_FLUTTER_DEVELOPERS.md` - API 列表
 
 **新增功能必须更新**:
 - [ ] `README.md` - Features 章节
-- [ ] `CHANGELOG_CN.md` - 新增更新日志条目
+- [ ] `CHANGELOG_CN.md` - 更新日志条目
 
-#### 2.2 ⚠️ 文档版本号更新（重要！v2.0.0+ 新增）
-
-**必须更新所有文档中的版本号示例**，避免开发者需要手动修改：
+### Step 3: 编译测试
+```bash
+cd example
+flutter clean
+flutter pub get
+flutter build windows --debug
+flutter build windows --release
+.\scripts\test_full.bat
+```
 
 **检查清单**:
-- [ ] `docs/PRECOMPILED_DLL_INTEGRATION.md` - 所有示例中的版本号更新为最新版本
-  - 目录路径：`packages/anywp_engine_v{最新版本}/`
-  - 脚本路径：`packages\anywp_engine_v{最新版本}\setup_precompiled.bat`
-  - pubspec.yaml 路径：`path: ./packages/anywp_engine_v{最新版本}`
-  - CMakeLists.txt 配置：`packages/anywp_engine_v{最新版本}`
-  - 版本更新示例：所有命令和路径更新为最新版本
-  - 常见问题解答：DLL 路径更新为最新版本
-  - 集成清单：下载包名更新为 `anywp_engine_v{最新版本}.zip`
-  - 文档版本号：更新为最新版本
+- [ ] Debug/Release 构建成功
+- [ ] 无 Linter 警告：`flutter analyze`
+- [ ] 功能测试通过（至少 2 个测试页面）
+- [ ] 验证 .lib 文件已生成
 
-**验证命令**:
-```bash
-# 搜索文档中所有旧版本号引用（替换为实际旧版本号）
-grep -r "anywp_engine_v1\.[0-9]" docs/PRECOMPILED_DLL_INTEGRATION.md
-
-# 验证新版本号已更新（替换为实际新版本号）
-grep -r "anywp_engine_v{最新版本}" docs/PRECOMPILED_DLL_INTEGRATION.md
-```
-
-**更新步骤**:
-1. 搜索文档中所有旧版本号引用（如 `anywp_engine_v1.2.1`）
-2. 批量替换为新版本号（如 `anywp_engine_v2.0.0`）
-3. 验证所有示例代码中的版本号已更新
-4. 检查文档底部的版本号和更新日期
-
-**⚠️ 教训（v2.0.0）**:
-- ❌ **问题**: 文档默认示例仍指向旧目录名 `anywp_engine_v1.2.1`
-- ❌ **影响**: 开发者需要手动修改版本号才能使用文档示例
-- ✅ **解决方案**: 发版前必须检查并更新所有文档中的版本号示例
-- 📝 **结论**: 文档版本号更新应作为发版流程的强制步骤
-
-#### 2.3 示例代码更新
-- [ ] `README.md` 快速开始代码可运行
-- [ ] `docs/DEVELOPER_API_REFERENCE.md` 示例代码完整
-- [ ] 版本标注清晰（如 `v1.2.0+`）
-
-#### 2.4 文档验证
-```bash
-# 验证新 API 是否覆盖
-grep -r "newAPIName" docs/ README.md lib/
-
-# 验证文档版本号已更新
-grep -r "anywp_engine_v{最新版本}" docs/PRECOMPILED_DLL_INTEGRATION.md
-```
-- [ ] 所有核心文档包含新功能
-- [ ] 示例代码可直接复制使用
-- [ ] 无过时信息
-- [ ] **文档版本号已更新**（v2.0.0+ 新增）
-
-#### 2.4 文档准确性与完整性检查（⚠️ 发版前必须）
-
-**语言规范检查**:
-- [ ] **根目录 README.md**: 确认全英文，无中文内容
-- [ ] **QUICK_INTEGRATION.md**: 确认全英文
-- [ ] **LICENSE**: 确认英文标准格式
-
-**链接正确性检查**:
-```bash
-# 检查所有文档中的链接
-grep -r "docs/" README.md CHANGELOG_CN.md
-grep -r "http" README.md docs/ | grep -E "\[.*\]\(.*\)"
-
-# 验证文件引用存在
-grep -r "example/" README.md | grep -oP '`\K[^`]+' | while read f; do test -f "$f" || echo "Missing: $f"; done
-```
-
-**内容完整性检查**:
-- [ ] 所有代码示例可运行（复制到测试项目验证）
-- [ ] 版本号一致：README.md、pubspec.yaml、CHANGELOG_CN.md
-- [ ] API 文档与源码一致：`lib/anywp_engine.dart` 中的方法在文档中都有说明
-- [ ] 示例文件路径正确：`examples/`、`docs/` 中引用的文件都存在
-- [ ] 截图和图片链接有效（如有）
-
-**交叉引用验证**:
-- [ ] README.md → docs/ 的链接正确
-- [ ] DEVELOPER_API_REFERENCE.md → 示例代码路径正确
-- [ ] FOR_FLUTTER_DEVELOPERS.md → API 列表与实际 API 一致
-- [ ] GitHub Release Notes → 下载链接正确
-
-**验证脚本**（批处理脚本）:
-```batch
-@echo off
-echo Checking documentation completeness...
-
-REM Check README language
-findstr /C:"中文" README.md >nul && (
-    echo [ERROR] README.md contains Chinese text
-    exit /b 1
-) || echo [OK] README.md is English only
-
-REM Check version consistency
-set VERSION_FILE=pubspec.yaml
-set README_FILE=README.md
-set CHANGELOG_FILE=CHANGELOG_CN.md
-
-REM More validation steps...
-echo [OK] Documentation check completed
-```
-
----
-
-### 阶段 3️⃣：发布准备
-
-#### 3.1 版本号更新
-**必须同步更新**:
-- [ ] `pubspec.yaml` - version: `2.x.0`
-- [ ] `scripts/release.bat` - 脚本自动读取 `pubspec.yaml` 中的版本号（无需手动修改）
-- [ ] `CHANGELOG_CN.md` - 添加新版本条目
-- [ ] `.cursorrules` 底部版本号
-- [ ] **文档版本号** - `docs/PRECOMPILED_DLL_INTEGRATION.md` 中的示例版本号（已在 2.2 步骤完成）
-
-#### 3.2 CHANGELOG 完整性
-**必须包含**:
-- [ ] 版本号和日期：`## [4.x.0] - YYYY-MM-DD - 标题`
-- [ ] 新增功能：`### ✨ 新增功能`
-- [ ] 重构改进：`### 🔄 重构改进`（如有）
-- [ ] 文档更新：`### 📚 文档更新`
-- [ ] 使用示例：`### 🎯 使用示例`
-- [ ] 技术细节：`### 🔧 技术细节`（如有重大改动）
-
-#### 3.3 Release 构建
-
-**步骤**:
+### Step 4: 构建发布包
 ```bash
 .\scripts\release.bat
 ```
 
-**注意**: `release.bat` 脚本会自动从 `pubspec.yaml` 读取版本号，无需手动配置。
+**构建后检查**:
+- [ ] 构建成功（ERROR_COUNT = 0）
+- [ ] DLL/LIB 文件生成
+- [ ] ZIP 文件生成（Flutter 包 + Web SDK 包）
 
-**构建完成后检查**:
-- [ ] 构建成功无错误（ERROR_COUNT = 0）
-- [ ] DLL 文件生成（`release/anywp_engine_v{版本号}/bin/`）
-- [ ] ⚠️ **LIB 文件生成**（`release/anywp_engine_v{版本号}/lib/anywp_engine_plugin.lib`）
-- [ ] 目录结构完整（bin, lib, include, sdk, windows）
-- [ ] 文档文件齐全（README, CHANGELOG, LICENSE, PRECOMPILED_README, pubspec.yaml）
+**⚠️ 关键文件验证**（必须全部存在）:
+- `bin/anywp_engine_plugin.dll` + `bin/WebView2Loader.dll`
+- `lib/anywp_engine_plugin.lib` ⚠️ 最易遗漏
+- `lib/anywp_engine.dart` (标准位置)
+- `windows/anywp_sdk.js` (SDK 构建产物)
+- `windows/CMakeLists.txt`
 
-**❌ 如果构建脚本显示警告但继续**:
-- 立即停止，检查构建日志
-- 所有关键文件的复制失败都应该是错误，而非警告
-- 修复 `build_release_v2.bat` 中的错误处理逻辑
-- 如需无人值守执行，可先设置 `NO_PAUSE=1`：`cmd /c "set NO_PAUSE=1 && .\scripts\build_release_v2.bat"`
-- `Compress-Archive` 请使用绝对路径（例如 `E:\Projects\...`），避免 PowerShell “路径不存在”的误判
+**验证命令**: `.\scripts\verify_release.bat {版本号}`
 
-#### 3.4 发布包验证
-
-**文档检查**:
-- [ ] `release/anywp_engine_v{版本号}/README.md` 包含新功能
-- [ ] `release/anywp_engine_v{版本号}/CHANGELOG_CN.md` 包含新版本
-- [ ] `release/anywp_engine_v{版本号}/pubspec.yaml` 版本号正确
-- [ ] `release/anywp_engine_v{版本号}/lib/anywp_engine.dart` 包含新 API（标准位置）
-- [ ] 验证新 API 在发布包文档中的覆盖度
-
-**⚠️ 关键文件检查（v1.2.1+ 新增）**:
-
-**必须存在的文件**（缺一不可）：
-- [ ] `bin/anywp_engine_plugin.dll` - 运行时 DLL
-- [ ] `bin/WebView2Loader.dll` - WebView2 运行时
-- [ ] `lib/anywp_engine_plugin.lib` - **链接库（必需！客户集成时链接器需要）**
-- [ ] `lib/anywp_engine.dart` - Dart 源码（标准位置）
-- [ ] `lib/dart/anywp_engine.dart` - Dart 源码（向后兼容）
-- [ ] `include/anywp_engine/any_w_p_engine_plugin.h` - 公共头文件
-- [ ] `windows/src/anywp_engine_plugin.cpp` - **C++ 源码（必需！客户可选择自行编译）**
-- [ ] `windows/src/anywp_engine_plugin.h` - C++ 源码头文件
-- [ ] `windows/anywp_sdk.js` - **JavaScript SDK（构建产物）**
-- [ ] `windows/CMakeLists.txt` - CMake 配置（支持预编译/源码模式）
-- [ ] `windows/packages/` - WebView2 NuGet 包目录
-- [ ] `windows/packages.config` - NuGet 配置
-
-**🆕 TypeScript SDK 源码（v4.2.0+ 可选，推荐）**:
-- [ ] `windows/sdk/` - **TypeScript 源码目录**
-- [ ] `windows/sdk/package.json` - npm 依赖配置
-- [ ] `windows/sdk/tsconfig.json` - TypeScript 配置
-- [ ] `windows/sdk/core/` - 核心模块源码
-- [ ] `windows/sdk/modules/` - 功能模块源码
-- [ ] `windows/sdk/utils/` - 工具模块源码
-- [ ] `windows/sdk/types.ts` - 类型定义
-- [ ] `windows/sdk/__tests__/` - 单元测试（可选）
-
-**验证命令**（在项目根目录执行）:
-```bash
-# 验证文档覆盖度（替换 newAPIName 为实际 API 名称）
-grep -r "newAPIName" release/anywp_engine_v{版本号}/
-
-# ⚠️ 验证关键文件存在（必须全部返回 True）
-Test-Path "release\anywp_engine_v{版本号}\bin\anywp_engine_plugin.dll"
-Test-Path "release\anywp_engine_v{版本号}\bin\WebView2Loader.dll"
-Test-Path "release\anywp_engine_v{版本号}\lib\anywp_engine_plugin.lib"      # 最易遗漏！
-Test-Path "release\anywp_engine_v{版本号}\lib\anywp_engine.dart"            # 标准位置
-Test-Path "release\anywp_engine_v{版本号}\lib\dart\anywp_engine.dart"       # 向后兼容
-Test-Path "release\anywp_engine_v{版本号}\windows\src\anywp_engine_plugin.cpp"  # C++ 源码
-Test-Path "release\anywp_engine_v{版本号}\windows\src\anywp_engine_plugin.h"    # C++ 头文件
-Test-Path "release\anywp_engine_v{版本号}\windows\anywp_sdk.js"            # SDK 构建产物
-Test-Path "release\anywp_engine_v{版本号}\windows\sdk\package.json"        # TS 源码（可选）
-Test-Path "release\anywp_engine_v{版本号}\windows\CMakeLists.txt"
-Test-Path "release\anywp_engine_v{版本号}\windows\packages\"
-
-# 运行发布包自检脚本（推荐）
-cmd /c "cd release\anywp_engine_v{版本号} && verify_precompiled.bat"
-```
-
-**❌ 如果缺少任何关键文件**：
-1. **立即停止发布流程** - 不完整的包会导致客户集成失败
-2. 重新运行 `.\scripts\release.bat` 并检查错误日志
-3. 如果仍然缺少，手动复制并调查原因：
-   - `.lib` 文件：从 `example\build\windows\x64\plugins\anywp_engine\Release\`
-   - `.cpp/.h` 文件：从 `windows\`
-   - 其他文件：参考构建脚本路径
-4. 确保 `release.bat` 中所有复制操作都是 **错误级别** 而非警告
-5. 记录问题到 CHANGELOG，避免下次发生
-
-**⚠️ 客户反馈的常见集成错误**：
-- `LNK1104: 无法打开文件 anywp_engine_plugin-NOTFOUND.obj` → 缺少 .lib 文件
-- `Source file not found` → 缺少 .cpp 源文件
-- `IMPORTED_IMPLIB not found` → .lib 文件路径不正确
-- Dart 文件找不到 → Dart 文件不在标准 lib/ 目录
-
-**额外验收（强烈建议）**：
-- 在全新 Flutter 工程中执行 `release/anywp_engine_v{版本号}/setup_precompiled.bat`
-- 运行 `release/anywp_engine_v{版本号}/example_minimal`，确认壁纸可启动/停止
-
-#### 3.5 创建 Web SDK 独立发布包（v1.3.1+ 自动化）
-
-**⚠️ 重要变更（v1.3.1+）**：
-- ✅ **现已自动化**：`release.bat` 脚本在步骤 17/17 自动生成 Web SDK 包
-- ✅ 无需手动操作，运行主构建脚本即可
-- ✅ 脚本自动从 `pubspec.yaml` 读取版本号
-
-**🆕 TypeScript SDK 注意事项（v4.2.0+）**：
-- ⚠️ **发布前必须构建**: 确保 `windows/anywp_sdk.js` 是最新版本
-- ⚠️ **验证构建时间**: 检查文件修改时间是否在最近修改 TypeScript 源码之后
-- ⚠️ **运行单元测试**: `cd windows\sdk && npm test` 确保 ≥95% 通过
-- 💡 **可选**: 包含 TypeScript 源码（`windows/sdk/`）供高级用户参考
-
-**构建步骤**（发布前）:
-```bash
-# 1. 构建 TypeScript SDK
-cd windows\sdk
-npm run build       # 生成 windows/anywp_sdk.js
-npm test           # 验证测试通过
-
-# 2. 返回项目根目录
-cd ..\..
-
-# 3. 运行 Release 构建
-.\scripts\release.bat
-```
-
-**自动生成的内容**：
-```
-release/anywp_web_sdk_v{版本号}.zip (~56 KB)
-├── sdk/anywp_sdk.js  ← TypeScript 构建产物
-├── examples/
-│   ├── test_simple.html
-│   ├── test_draggable.html
-│   ├── test_api.html
-│   ├── test_click.html
-│   ├── test_visibility.html
-│   ├── test_react.html
-│   ├── test_vue.html
-│   └── test_iframe_ads.html
-├── docs/
-│   ├── WEB_DEVELOPER_GUIDE_CN.md
-│   ├── WEB_DEVELOPER_GUIDE.md
-│   └── API_USAGE_EXAMPLES.md
-├── README.md (自动生成，说明 TypeScript 架构)
-└── LICENSE
-```
-
-**验证命令**（在 release.bat 完成后）：
-```powershell
-# 验证 Web SDK 包存在
-Test-Path "release\anywp_web_sdk_v{版本号}.zip"
-
-# 验证文件大小（应约 56 KB）
-Get-Item "release\anywp_web_sdk_v{版本号}.zip" | Select-Object Name, Length
-
-# 解压验证内容（可选）
-Expand-Archive "release\anywp_web_sdk_v{版本号}.zip" "release\temp_check" -Force
-Get-ChildItem "release\temp_check" -Recurse | Select-Object FullName
-```
-
-**检查清单**（自动验证）：
-- [ ] SDK 文件：`sdk/anywp_sdk.js`
-- [ ] 8个示例文件：`examples/test_*.html`
-- [ ] 3个文档文件：`docs/WEB_DEVELOPER_GUIDE*.md`, `API_USAGE_EXAMPLES.md`
-- [ ] README.md 自动生成（包含快速开始和 API 参考）
-- [ ] LICENSE 文件
-- [ ] ZIP 文件生成成功（~56 KB）
-
-#### 3.6 创建 GitHub Release Notes
-- [ ] 复制 `docs/RELEASE_TEMPLATE.md`
-- [ ] 修改为 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
-- [ ] 填写完整的功能说明、示例、测试结果
-- [ ] 包含升级指南和注意事项
-
----
-
-### 阶段 4️⃣：Git 提交与推送
-
-#### 4.1 Git 提交
+### Step 5: Git 提交与推送
 ```bash
 git add release/ CHANGELOG_CN.md pubspec.yaml docs/ README.md .cursorrules
 
-# 中文提交信息使用文件方式（避免乱码）
-write("commit_msg.txt", "release: 发布 v1.x.0 - 功能描述")
+# 中文提交使用文件方式（避免乱码）
+echo release: 发布 v{版本号} - 功能描述 > commit_msg.txt
+echo. >> commit_msg.txt
+echo 详细说明 >> commit_msg.txt
 git commit -F commit_msg.txt
-delete_file("commit_msg.txt")
-```
+del commit_msg.txt
 
-**检查**:
-- [ ] 所有发布相关文件已添加
-- [ ] 提交信息清晰描述版本和功能
-- [ ] 工作区干净（`git status` 无未提交）
-
-#### 4.2 推送到 GitHub
-```bash
-# 推送所有提交
 git push origin main
+
+# 创建并推送 Tag
+git tag -a v{版本号} -m "AnyWP Engine v{版本号}"
+git push origin v{版本号}
 ```
 
-**注意**: 
-- ❌ 不使用 `.\scripts\PUSH_TO_GITHUB.bat`（已废弃）
-- ✅ 直接使用 `git push origin main`
-- ⚠️ 中文提交信息已通过 `-F commit_msg.txt` 正确处理
-
-**验证**:
-- [ ] 推送成功无错误
-- [ ] GitHub 网页可见最新提交
-
----
-
-### 阶段 5️⃣：GitHub Release 发布
-
-#### 5.1 创建 Release
+### Step 6: GitHub Release
 1. 访问: `https://github.com/zhaibin/AnyWallpaper-Engine/releases/new`
-2. 填写信息:
-   - **Tag**: `v{版本号}` (例如 v1.2.0)
-   - **Target**: `main` branch
-   - **Title**: `AnyWP Engine v{版本号} - 功能描述`
-   - **Description**: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md` 内容
-3. **上传文件（v1.3.1+ 需要上传两个 ZIP）**:
-   - ⭐ **必须**：`release/anywp_engine_v{版本号}.zip` (Flutter 插件包，~16 MB)
-   - ⭐ **必须**：`release/anywp_web_sdk_v{版本号}.zip` (Web SDK 独立包，~56 KB)
-   - ⚠️ **不要遗漏 Web SDK 包**：Web 开发者依赖这个轻量级包
-4. 勾选 "Set as the latest release"
-5. 点击 "Publish release"
-
-**发布包说明**：
-- **Flutter Plugin 包**：面向 Flutter 开发者，包含 DLL、LIB、源码、文档
-- **Web SDK 包**：面向 Web 开发者，仅包含 JavaScript SDK + 示例 + 文档
-
-#### 5.2 发布后验证
-- [ ] Release 页面显示正常
-- [ ] ZIP 文件可下载
-- [ ] 发布说明格式正确
-- [ ] 标签创建成功
-
----
-
-### 阶段 6️⃣：发布后清理（可选）
-
-#### 6.1 清理临时文件
-```bash
-# 清理构建日志（可选，test_logs 目录已在 .gitignore 中）
-Remove-Item test_logs/*.log -ErrorAction SilentlyContinue
-Remove-Item build_release.log -ErrorAction SilentlyContinue
-```
-
-#### 6.2 通知用户（可选）
-- 在相关社区/论坛发布更新通知
-- 更新 pub.dev 包（如果发布到 pub.dev）
-
----
-
-## 文档完整性检查清单
-
-### 新增 API 发布前检查
-
-当新增任何 Dart API 方法时，**必须**在以下文档中添加：
-
-1. **Dart 源码文档**:
-   - [ ] `lib/anywp_engine.dart` - 完整文档注释
-   - [ ] 参数说明、返回值、使用示例
-
-2. **README.md**:
-   - [ ] Quick Start 示例代码中使用（如适用）
-   - [ ] 或在相关章节中说明
-
-3. **API 参考**:
-   - [ ] `docs/DEVELOPER_API_REFERENCE.md` - 新增章节或更新现有章节
-   - [ ] 完整的参数说明、返回值、示例代码
-
-4. **开发者导航**:
-   - [ ] `docs/FOR_FLUTTER_DEVELOPERS.md` - 在 API 列表中添加
-   - [ ] 如有重大功能，添加快速上手示例
-
-5. **CHANGELOG**:
-   - [ ] `CHANGELOG_CN.md` - 在新版本条目中说明
-   - [ ] 包含使用示例
-
-**验证命令**:
-```bash
-# 搜索新 API 是否在核心文档中
-grep -r "新API名称" README.md lib/ docs/DEVELOPER_API_REFERENCE.md docs/FOR_FLUTTER_DEVELOPERS.md
-```
-
-### 新增功能发布前检查
-
-当新增重大功能时，**必须**：
-
-1. **README.md**:
-   - [ ] Features 章节新增条目
-   - [ ] 如需要，新增专题章节（如 Storage Isolation）
-   - [ ] 快速开始示例更新（如适用）
-
-2. **CHANGELOG_CN.md**:
-   - [ ] 详细的功能说明
-   - [ ] 完整的使用示例
-   - [ ] 优势和技术细节
-
-3. **发布包文档**:
-   - [ ] 更新后的 README.md 复制到发布包
-   - [ ] 更新后的 CHANGELOG_CN.md 复制到发布包
-
-4. **测试验证**:
-   - [ ] 新功能在示例应用中可演示
-   - [ ] 相关测试页面可用（examples/）
+2. Tag: `v{版本号}` | Title: `AnyWP Engine v{版本号}`
+3. Description: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
+4. 上传两个 ZIP: Flutter 插件包 + Web SDK 包
+5. 勾选 "Set as the latest release"
 
 ---
 
@@ -697,11 +191,10 @@ grep -r "新API名称" README.md lib/ docs/DEVELOPER_API_REFERENCE.md docs/FOR_F
 - **不创建过程性文档**（测试报告、验证报告等）
 
 ### 代码质量要求
-- **所有公共 API**: 必须有完整的文档注释（Dart/C++/TypeScript）
+- **所有公共 API**: 必须有完整的文档注释
 - **错误处理**: 所有关键操作使用 try-catch
 - **日志记录**: 使用统一日志接口（`Logger::Instance()`）
-- **单元测试**: 新功能必须添加测试用例
-- **代码审查**: 遵循 `.cursorrules` 中的编码规范
+- **单元测试**: 新功能必须添加测试用例（覆盖率 ≥95%）
 
 ### 开发优先级
 1. **功能正确性** > 性能优化
@@ -709,7 +202,9 @@ grep -r "新API名称" README.md lib/ docs/DEVELOPER_API_REFERENCE.md docs/FOR_F
 3. **错误处理完整性** > 功能丰富度
 4. **测试覆盖率** > 开发速度
 
-### Git 提交规范
+---
+
+## Git 提交规范
 
 **提交信息格式**:
 ```
@@ -718,542 +213,105 @@ grep -r "新API名称" README.md lib/ docs/DEVELOPER_API_REFERENCE.md docs/FOR_F
 <body>
 ```
 
-**Type**:
-- `feat` - 新功能
-- `fix` - Bug 修复
-- `docs` - 文档更新
-- `refactor` - 重构
-- `chore` - 杂项（清理、配置等）
-- `release` - 发布版本
+**Type**: `feat` | `fix` | `docs` | `refactor` | `chore` | `release`
 
 **中文提交（必须使用文件方式）**:
 ```bash
-write("commit_msg.txt", "feat: 添加新功能\n\n详细说明...")
+echo "feat: 添加新功能" > commit_msg.txt
+echo "" >> commit_msg.txt
+echo "详细说明" >> commit_msg.txt
 git commit -F commit_msg.txt
-delete_file("commit_msg.txt")
+del commit_msg.txt
 ```
 
 **禁止**: `git commit -m "中文信息"` ❌ 会乱码
 
-### PowerShell 注意事项（⚠️ 重要！反复出现错误）
+---
 
-**🚫 严禁使用的语法（最常见的错误）**:
+## PowerShell 注意事项
 
-**❌❌❌ 错误 #1: 使用 && 操作符 ❌❌❌**
-```powershell
-# ❌ 绝对错误 - PowerShell 不支持 &&
-command1 && command2  # 这会导致语法错误！
+**🚫 严禁使用的语法**:
 
-# ✅ 正确方式 1：使用分号
-command1; command2
+1. **❌ 使用 && 操作符** - PowerShell 不支持
+   ```powershell
+   # ❌ 错误
+   command1 && command2
+   
+   # ✅ 正确：使用分号或换行
+   command1; command2
+   # 或
+   command1
+   command2
+   ```
 
-# ✅ 正确方式 2：使用换行
-command1
-command2
+2. **❌ Here-String (`@" ... "@`)** - 会导致编码问题
 
-# ✅ 正确方式 3：使用批处理脚本
-# 在 .bat 文件中可以使用 &&
-```
+3. **❌ 中文字符串中的特殊符号** - 会导致解析错误
 
-**其他禁止的语法**:
-2. **Here-String (`@" ... "@`)** - 在 PowerShell 中会导致编码和解析问题
-3. **中文字符串中的特殊符号** - `"`、`'`、`{}`、`✓`、`❌` 等会导致解析错误
-4. **复杂脚本块嵌套** - 超过 2 层嵌套会导致解析失败
-
-**✅ 安全的中文提交方式**:
-```powershell
-# 方式 1：使用 echo 重定向（推荐，最安全）
-echo "release: 发布 v1.3.1 - 功能描述" > commit_msg.txt
-echo "" >> commit_msg.txt
-echo "详细说明" >> commit_msg.txt
-git commit -F commit_msg.txt
-Remove-Item commit_msg.txt
-
-# 方式 2：使用 Set-Content（适合单行）
-Set-Content -Path "commit_msg.txt" -Value "release: 发布 v1.3.1" -Encoding UTF8
-git commit -F commit_msg.txt
-Remove-Item commit_msg.txt
-
-# 方式 3：使用批处理脚本（最可靠）
-# 创建 commit.bat:
-#   @echo off
-#   echo release: 发布 v1.3.1 - 功能描述 > commit_msg.txt
-#   echo. >> commit_msg.txt
-#   echo 详细说明 >> commit_msg.txt
-#   git commit -F commit_msg.txt
-#   del commit_msg.txt
-```
-
-**❌ 错误示例（会导致乱码或失败）**:
-```powershell
-# ❌❌❌ 错误 1：使用 && 操作符（最常见的错误！）
-echo "text" > file.txt && git add file.txt  # PowerShell 不支持 &&
-
-# ✅ 正确：使用分号或换行
-echo "text" > file.txt; git add file.txt
-# 或
-echo "text" > file.txt
-git add file.txt
-
-# ❌ 错误 2：使用 Here-String
-@"
-release: 发布 v1.3.1
-"@ | Out-File -FilePath "commit_msg.txt" -Encoding UTF8  # ❌ 会导致编码问题
-
-# ❌ 错误 3：直接使用 -m 参数
-git commit -m "release: 发布 v1.3.1"  # ❌ 中文会乱码
-
-# ❌ 错误 4：特殊符号
-Write-Host "发现 ✓"  # ❌ 特殊符号导致解析错误
-```
-
-**⚠️ 特别提醒**:
-- **PowerShell 命令分隔**: 使用 `;` 或换行，**永远不要使用 `&&`**
-- **批处理脚本**: 如果需要使用 `&&`，请使用 .bat 文件
-- **命令链接**: PowerShell 使用 `|` (管道) 或 `;` (顺序执行)
-
-**常见问题**:
-
-1. **中文字符串中的引号问题**
-```powershell
-# ❌ 错误：中文中包含引号
-Write-Host "发现 $($_.Count) 处新 API 引用 ✓"  # ✓ 会导致解析错误
-
-# ✅ 正确：避免在中文中使用特殊符号
-Write-Host "发现 $($_.Count) 处新 API 引用"
-```
-
-2. **复杂脚本块解析失败**
-```powershell
-# ❌ 错误：单行多层嵌套
-foreach ($item in $list) { if ($x) { Write-Host "..." } }
-
-# ✅ 正确：使用简单命令或批处理脚本
-Get-ChildItem | Where-Object Name -like "*.dll"
-```
-
-3. **转义字符问题**
-```powershell
-# ❌ 错误：未转义的特殊字符
-"包含 { 或 } 的字符串"
-
-# ✅ 正确：避免使用或正确转义
-"包含花括号的字符串"
-```
-
-**推荐做法（严格遵守）**:
-- ✅ **优先使用批处理脚本（.bat）** 处理所有复杂逻辑和中文文本
-- ✅ **PowerShell 仅用于最简单的命令**: Test-Path, Copy-Item, Remove-Item（无中文输出）
-- ✅ **中文提交信息**: 使用 `echo > file` 或批处理脚本，**禁止 Here-String**
-- ✅ **文件读写**: 使用 `Get-Content -Raw -Encoding UTF8` 读取，`Set-Content -Encoding UTF8` 写入
-- ✅ **避免 PowerShell 管道复杂度**: 不超过 1 级管道，使用批处理脚本替代
-
-**验证脚本模板**（批处理脚本，而非 PowerShell）:
-```batch
-@echo off
-setlocal enabledelayedexpansion
-
-set "VERSION=1.3.1"
-set "BASE_PATH=release\anywp_engine_v%VERSION%"
-
-echo 验证关键文件...
-
-if not exist "%BASE_PATH%\bin\anywp_engine_plugin.dll" (
-    echo [ERROR] 缺少: bin\anywp_engine_plugin.dll
-    exit /b 1
-)
-
-if not exist "%BASE_PATH%\lib\anywp_engine_plugin.lib" (
-    echo [ERROR] 缺少: lib\anywp_engine_plugin.lib
-    exit /b 1
-)
-
-echo [OK] 所有关键文件验证通过
-exit /b 0
-```
-
-**教训总结（v1.3.2+ 反复出现的问题）**:
-- ❌ **问题 1（最频繁）**: PowerShell 使用 `&&` 操作符 → 语法错误
-- ❌ **问题 2**: PowerShell Here-String 导致提交信息乱码
-- ❌ **问题 3**: 中文字符串中的特殊符号（✓、❌）导致解析失败
-- ❌ **问题 4**: 复杂脚本块在文档中被误解析
-- ✅ **解决方案**: 
-  - **命令分隔**: 使用 `;` 或换行，不用 `&&`
-  - **中文操作**: 使用批处理脚本
-  - **PowerShell**: 仅用于最简单的文件操作
-- 📝 **结论**: 
-  - **永远不要在 PowerShell 中使用 `&&`**
-  - **永远不要在 PowerShell 中使用 Here-String 处理中文**
-  - **复杂逻辑请使用批处理脚本**
+**✅ 推荐做法**:
+- **优先使用批处理脚本（.bat）** 处理复杂逻辑和中文文本
+- **PowerShell 仅用于简单命令**: Test-Path, Copy-Item, Remove-Item（无中文输出）
+- **中文提交信息**: 使用 `echo > file` 或批处理脚本，**禁止 Here-String**
 
 ---
 
-## 完整发版流程（严格遵守）
-
-### 📋 发版检查清单
-
-#### Step 1: 版本号更新
-- [ ] `pubspec.yaml`: `version: 2.x.0`
-- [ ] `scripts/release.bat`: 自动读取 `pubspec.yaml`（无需手动修改）
-- [ ] `.cursorrules` 底部: `版本: 2.x.0`
-- [ ] **文档版本号**: `docs/PRECOMPILED_DLL_INTEGRATION.md`（在 Step 3 中完成）
-
-#### Step 2: CHANGELOG 更新
-- [ ] 添加新版本条目：`## [4.x.0] - YYYY-MM-DD - 标题`
-- [ ] ✨ 新增功能（详细说明 + 示例）
-- [ ] 🔄 重构改进（如有）
-- [ ] 📚 文档更新
-- [ ] 🎯 使用示例
-- [ ] 🔧 技术细节（重大改动）
-
-#### Step 3: 核心文档同步
-**新增 API**:
-- [ ] `lib/anywp_engine.dart` - 文档注释
-- [ ] `README.md` - 示例代码
-- [ ] `docs/DEVELOPER_API_REFERENCE.md` - API 章节
-- [ ] `docs/FOR_FLUTTER_DEVELOPERS.md` - API 列表
-
-**新增功能**:
-- [ ] `README.md` - Features 章节
-- [ ] `README.md` - 专题章节（如需要）
-
-**⚠️ 文档版本号更新（v2.0.0+ 强制步骤）**:
-- [ ] `docs/PRECOMPILED_DLL_INTEGRATION.md` - 所有示例版本号更新为最新版本
-- [ ] 验证：`grep -r "anywp_engine_v{最新版本}" docs/PRECOMPILED_DLL_INTEGRATION.md`
-
-**验证**:
-```bash
-# 验证新 API 覆盖
-grep -r "新API" README.md lib/ docs/DEVELOPER_API_REFERENCE.md
-
-# 验证文档版本号已更新
-grep -r "anywp_engine_v{最新版本}" docs/PRECOMPILED_DLL_INTEGRATION.md
-```
-
-#### Step 4: 编译测试
-```bash
-# Debug 测试
-cd example
-flutter clean
-flutter pub get
-flutter build windows --debug
-
-# 运行功能测试
-.\scripts\test_full.bat
-
-# Release 构建（必须）
-flutter build windows --release
-```
-
-**检查清单**:
-- [ ] Debug 构建成功（无编译错误）
-- [ ] Release 构建成功（无编译错误）
-- [ ] 无 Linter 警告：`flutter analyze`
-- [ ] 功能测试通过（至少 2 个测试页面）
-- [ ] 无内存泄漏（< 300 MB）
-- [ ] ⚠️ **验证 .lib 文件已生成**：
-  ```bash
-  Test-Path "example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.lib"
-  ```
-
-#### Step 5: 构建发布包
-```bash
-# 确保在项目根目录执行
-.\scripts\release.bat
-```
-
-**构建后检查**:
-- [ ] 构建成功（ERROR_COUNT = 0）
-- [ ] 目录结构完整（bin, lib, include, sdk, windows）
-- [ ] DLL 文件正确（anywp_engine_plugin.dll, WebView2Loader.dll）
-- [ ] ZIP 文件生成（~16 MB Flutter 包 + ~56 KB Web SDK 包）
-
-**如果构建失败**:
-1. 检查 `example\build\windows\x64\Release\` 是否存在
-2. 确认 Flutter Release 构建成功
-3. 查看构建日志中的错误信息
-4. 手动复制缺失文件并修复构建脚本
-
-**⚠️ 重要提示**:
-- `release.bat` 脚本会自动从 `pubspec.yaml` 读取版本号
-- 确保 `pubspec.yaml` 中的版本号已更新
-- 脚本会创建 `release/anywp_engine_v{版本号}/` 和 `release/anywp_web_sdk_v{版本号}/` 目录
-
-#### Step 6: 发布包完整性验证（⚠️ 关键步骤）
-
-**6.1 关键文件验证（必须全部通过）**:
-
-**推荐方式：使用批处理脚本验证**
-
-创建 `scripts/verify_release.bat`:
-```batch
-@echo off
-setlocal enabledelayedexpansion
-
-if "%1"=="" (
-    echo Usage: verify_release.bat [version]
-    echo Example: verify_release.bat 1.3.1
-    exit /b 1
-)
-
-set "VERSION=%1"
-set "BASE_PATH=release\anywp_engine_v%VERSION%"
-
-echo 验证关键文件: %BASE_PATH%
-echo.
-
-set "ERROR_COUNT=0"
-
-call :CheckFile "bin\anywp_engine_plugin.dll"
-call :CheckFile "bin\WebView2Loader.dll"
-call :CheckFile "lib\anywp_engine_plugin.lib"
-call :CheckFile "lib\anywp_engine.dart"
-call :CheckFile "windows\anywp_sdk.js"
-call :CheckFile "windows\CMakeLists.txt"
-
-if %ERROR_COUNT%==0 (
-    echo.
-    echo [OK] 所有关键文件验证通过
-    exit /b 0
-) else (
-    echo.
-    echo [ERROR] 发现 %ERROR_COUNT% 个缺失文件
-    exit /b 1
-)
-
-:CheckFile
-if not exist "%BASE_PATH%\%~1" (
-    echo [X] 缺失: %~1
-    set /a ERROR_COUNT+=1
-) else (
-    echo [v] 存在: %~1
-)
-goto :eof
-```
-
-使用方式：
-```bash
-.\scripts\verify_release.bat 1.3.1
-```
-
-**手动验证** (简单命令):
-```powershell
-# ⚠️ 这些文件缺失会导致客户集成失败
-Test-Path "release\anywp_engine_v{版本号}\bin\anywp_engine_plugin.dll"    # 必需
-Test-Path "release\anywp_engine_v{版本号}\bin\WebView2Loader.dll"          # 必需
-Test-Path "release\anywp_engine_v{版本号}\lib\anywp_engine_plugin.lib"     # 必需（最易遗漏！）
-Test-Path "release\anywp_engine_v{版本号}\lib\anywp_engine.dart"           # 必需（标准位置）
-Test-Path "release\anywp_engine_v{版本号}\lib\dart\anywp_engine.dart"      # 必需（向后兼容）
-Test-Path "release\anywp_engine_v{版本号}\include\anywp_engine\any_w_p_engine_plugin.h"  # 必需
-Test-Path "release\anywp_engine_v{版本号}\sdk\anywp_sdk.js"                # 必需
-Test-Path "release\anywp_engine_v{版本号}\windows\CMakeLists.txt"          # 必需
-```
-
-**❌ 如果任何文件返回 False**:
-1. **停止发布流程**
-2. 手动复制缺失文件（临时修复）
-3. 调查 `build_release_v2.bat` 为何未复制
-4. 修复构建脚本并记录问题
-
-**6.2 文档验证**（使用 grep）:
+## 常用命令
 
 ```bash
-# 快速验证脚本（替换实际版本号和 API 名称）
-$version = "1.3.1"
-$api = "setApplicationName"  # 替换为实际新增的 API
+# 开发
+.\scripts\build.bat       # 构建并运行
+.\scripts\run.bat         # 快速运行
+.\scripts\debug.bat       # 调试模式
 
-# 1. 检查 README.md 包含新 API
-grep "$api" "release/anywp_engine_v$version/README.md"
+# 测试
+.\scripts\test_full.bat   # 全面测试
+cd windows\sdk && npm test # TypeScript 单元测试
+cd windows\test && run_tests.bat  # C++ 单元测试
 
-# 2. 检查 CHANGELOG 包含新版本
-grep "\[.*\].*$version" "release/anywp_engine_v$version/CHANGELOG_CN.md"
+# SDK
+.\scripts\build_sdk.bat   # 构建 Web SDK
 
-# 3. 检查版本号
-grep "version.*$version" "release/anywp_engine_v$version/pubspec.yaml"
-
-# 4. 检查 Dart 源码包含新 API
-grep "$api" "release/anywp_engine_v$version/lib/anywp_engine.dart"
+# 发布
+.\scripts\release.bat     # 构建 Release 包
+.\scripts\verify_release.bat {版本号}  # 验证发布包
 ```
 
-**检查清单**:
-- [ ] README.md 包含新功能（grep 找到匹配）
-- [ ] CHANGELOG_CN.md 包含新版本（grep 找到匹配）
-- [ ] pubspec.yaml 版本号正确（grep 找到版本号）
-- [ ] lib/anywp_engine.dart 包含新 API（grep 找到匹配）
+**日志目录**: `test_logs/` (所有测试和调试日志统一存放)
 
-**6.3 语言规范验证（⚠️ 发版前必须）**:
+---
 
-```bash
-# 验证 README.md 是否全英文
-findstr /C:"中文" release/anywp_engine_v$version/README.md
-# 如果找到中文，必须修改为英文
+## 代码架构
 
-# 验证链接正确性
-grep -r "docs/" release/anywp_engine_v$version/README.md
-grep -r "examples/" release/anywp_engine_v$version/README.md
+### C++ 模块化设计
+- **核心模块** (`windows/modules/`): 12个功能模块
+- **工具类** (`windows/utils/`): 12个工具类（含3个header-only）
+- **测试框架** (`windows/test/`): 轻量级测试框架 + 单元测试
 
-# 验证文件引用存在
-Test-Path "release/anywp_engine_v$version/examples/test_simple.html"
-Test-Path "release/anywp_engine_v$version/docs/DEVELOPER_API_REFERENCE.md"
-```
+**设计原则**:
+1. **单一职责**: 每个模块只负责一个核心功能
+2. **低耦合**: 模块之间通过接口交互
+3. **易测试**: 独立模块便于单元测试
+4. **完整文档**: 所有公共接口需要文档注释
+5. **错误恢复**: 关键操作使用 RetryHandler 和 CircuitBreaker
 
-**语言规范清单**:
-- [ ] README.md 全英文（无中文字符）
-- [ ] 代码注释使用英文
-- [ ] 错误信息使用英文
-- [ ] 所有文档链接有效（指向的文件存在）
-- [ ] 示例代码路径正确
-
-**6.4 教训（v1.2.0 事故）**:
-- ❌ **问题**: 缺少 .lib 文件 → 客户链接失败 `LNK1104`
-- ❌ **原因**: 构建脚本只显示警告，未中止构建
-- ✅ **修复**: 所有关键文件复制失败改为错误级别
-- 📝 **结论**: 预编译包验证必须自动化且严格
-
-#### Step 7: 创建 Release Notes
-```bash
-# 复制模板
-copy docs\RELEASE_TEMPLATE.md release\GITHUB_RELEASE_NOTES_v{版本号}.md
-```
-
-**必须包含的内容**:
-- [ ] **发布亮点**: 3-5 句话总结主要更新
-- [ ] **新增功能**: 详细说明 + 代码示例（每个功能）
-- [ ] **重构改进**: 性能优化、架构改进（如有）
-- [ ] **使用示例**: 完整可运行的示例代码
-- [ ] **升级指南**: 从上一版本升级的步骤
-- [ ] **测试结果**: 单元测试通过率、性能数据
-- [ ] **已知问题**: 当前限制和解决方案（如有）
-- [ ] **下载链接**: 两个 ZIP 包的说明
-
-**质量标准**:
-- 所有代码示例必须可直接复制运行
-- 技术术语保持一致（与文档同步）
-- 版本号、日期、链接无误
-
-#### Step 8: Git 提交
-```bash
-# 添加发布相关文件
-git add release/ CHANGELOG_CN.md pubspec.yaml docs/ README.md .cursorrules
-
-# 方式 1：使用 echo 重定向（推荐）
-echo release: 发布 v{版本号} - 功能描述 > commit_msg.txt
-echo. >> commit_msg.txt
-echo 详细说明： >> commit_msg.txt
-echo - 新增功能1 >> commit_msg.txt
-echo - 新增功能2 >> commit_msg.txt
-git commit -F commit_msg.txt
-del commit_msg.txt
-
-# 方式 2：使用批处理脚本
-# 创建 commit_release.bat:
-#   @echo off
-#   echo release: 发布 v1.3.1 - 功能描述 > commit_msg.txt
-#   echo. >> commit_msg.txt
-#   echo 详细说明 >> commit_msg.txt
-#   git commit -F commit_msg.txt
-#   del commit_msg.txt
-# 然后运行: .\commit_release.bat
-```
-
-**检查清单**:
-- [ ] 提交成功（无错误）
-- [ ] 工作区干净：`git status` 显示 "nothing to commit"
-- [ ] 提交信息清晰描述版本和功能
-- [ ] 所有发布相关文件已添加（release/, docs/, CHANGELOG_CN.md 等）
-
-#### Step 9: 推送到 GitHub
-```bash
-# 推送代码
-git push origin main
-```
-- [ ] 推送成功
-- [ ] GitHub 可见最新提交
-
-#### Step 9.5: 创建并推送 Git Tag（重要！）
-```bash
-# 创建 annotated tag（英文描述推荐）
-git tag -a v{版本号} -m "AnyWP Engine v{版本号} - feature description"
-
-# 如需中文描述，使用 echo 重定向
-echo AnyWP Engine v{版本号} - 功能描述 > tag_msg.txt
-echo. >> tag_msg.txt
-echo 详细说明 >> tag_msg.txt
-git tag -a v{版本号} -F tag_msg.txt
-del tag_msg.txt
-
-# 验证 tag 创建
-git tag -l
-
-# 推送 tag 到 GitHub
-git push origin v{版本号}
-```
-
-**重要提示**:
-- ⚠️ **必须先推送 tag，GitHub Release 才能基于 tag 创建**
-- 所有 Git 命令均在仓库根目录执行
-- Tag 描述尽量使用 ASCII 文本（避免编码问题）
-- **使用 echo 重定向，不要使用 PowerShell Here-String**
-
-**检查清单**:
-- [ ] Tag 创建成功：`git tag -l` 可见 v{版本号}
-- [ ] Tag 推送成功：显示 `[new tag] v{版本号} -> v{版本号}`
-- [ ] GitHub Tags 页面可见新 tag：https://github.com/zhaibin/AnyWallpaper-Engine/tags
-
-#### Step 10: 创建 GitHub Release
-1. [ ] 访问 GitHub Releases 页面
-2. [ ] 创建新 Release
-   - Tag: `v{版本号}`
-   - Title: `AnyWP Engine v{版本号} - 功能描述`
-   - Description: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
-3. [ ] 上传 ZIP: `release/anywp_engine_v{版本号}.zip`
-4. [ ] 勾选 "Set as the latest release"
-5. [ ] 发布成功
-
-#### Step 11: 发布后验证
-- [ ] Release 页面可访问
-- [ ] ZIP 文件可下载
-- [ ] 文档格式正确
-- [ ] 标签创建成功
+**添加新模块步骤**:
+1. 创建 `windows/modules/module_name.h/cpp` 或 `windows/utils/utility_name.h/cpp`
+2. 实现功能并遵循命名规范
+3. 添加完整的错误处理（try-catch）和日志记录（Logger::Instance()）
+4. 更新 `windows/CMakeLists.txt`
+5. 添加单元测试（覆盖率 ≥95%）
+6. 更新 CHANGELOG_CN.md
 
 ---
 
 ## 文档维护原则
 
-### 📝 文档语言规范（强制）
+### 文档语言规范
+- **根目录文档**: `README.md`、`QUICK_INTEGRATION.md`、`LICENSE` 必须全英文
+- **中文文档**: 仅限 `docs/` 目录和 `CHANGELOG_CN.md`
+- **GitHub Release Notes**: 建议英文或中英双语
 
-**根目录文档（必须全英文）**:
-- `README.md` - **English only** - 项目主页，面向国际开发者
-- `QUICK_INTEGRATION.md` - **English only** - 快速集成指南
-- `LICENSE` - **English only** - 许可证文件
-
-**中文文档（仅限 docs/ 目录）**:
-- `CHANGELOG_CN.md` - 中文更新日志（根目录可保留）
-- `docs/*.md` - 技术文档可使用中文，建议提供英文版本
-
-**GitHub Release Notes**:
-- 建议使用英文或中英双语
-- 代码示例保持英文注释
-
-### ✅ 必须保留的文档
-
-**根目录** (3个):
-- `README.md` - **English only** - Project homepage + complete guide
-- `CHANGELOG_CN.md` - Chinese changelog
-- `QUICK_INTEGRATION.md` - **English only** - Quick integration guide
-
-**docs/** (22个):
-- Flutter developer documentation
-- Web developer documentation
-- Technical documentation
-- Best practices
-
-**发布相关**:
-- `release/GITHUB_RELEASE_NOTES_v{版本号}.md` - Release notes for each version
-
-### ❌ 禁止创建的文档
-
-**过程性文档**:
+### 禁止创建的文档
 - ❌ `TEST_REPORT.md`
 - ❌ `VERIFICATION_REPORT.md`
 - ❌ `CHECKLIST.md`
@@ -1263,191 +321,4 @@ git push origin v{版本号}
 
 ---
 
-## 常用命令
-
-**脚本目录**: `scripts/` (10个脚本，全英文，无编码问题)  
-**完整文档**: `docs/SCRIPTS_REFERENCE.md`  
-**日志目录**: `test_logs/` (所有测试和调试日志统一存放)
-
-```bash
-# 开发
-.\scripts\build.bat       # 构建并运行
-.\scripts\run.bat         # 快速运行
-.\scripts\debug.bat       # 调试模式（日志：test_logs/debug_run.log）
-
-# 测试
-.\scripts\test_full.bat   # 全面测试（日志：test_logs/test_full_*.log）
-.\scripts\analyze.ps1     # 分析测试结果
-.\scripts\verify.bat      # 验证优化实现
-.\scripts\monitor_log.bat # 实时监控日志（监控 test_logs/ 目录）
-
-# SDK
-cd windows\sdk && npm run build     # 构建 Web SDK
-cd windows\sdk && npm test          # TypeScript 单元测试
-cd windows\test && run_tests.bat    # C++ 单元测试
-
-# 发布
-.\scripts\release.bat     # 构建 Release 包
-git push origin main      # 推送到 GitHub
-
-# 日志管理
-# 所有日志文件统一存放在 test_logs/ 目录下：
-#   - test_logs/debug_run.log          - debug.bat 运行日志
-#   - test_logs/test_full_*.log        - test_full.bat 测试报告
-#   - test_logs/build_*.log            - 构建日志（集成测试）
-#   - test_logs/app_output_*.log       - 应用输出日志
-#   - test_logs/analyze.log            - 代码分析日志
-# test_logs 目录已在 .gitignore 中，不会提交到仓库
-```
-
-**🚫 脚本政策** (v1.3.2+):
-- **禁止新增脚本**: 脚本集合已完整稳定（10 个脚本足够）
-- **添加功能**: 扩展现有脚本或添加参数
-- **特殊情况**: 必须获批准并更新文档
-- **原则**: 保持简洁，避免重复
-
-**✅ 脚本编写规范（强制）**:
-1. **全英文编写**: 所有脚本、注释、输出信息必须使用英文
-2. **禁止 Emoji**: 脚本中避免使用任何 emoji 符号（✓、❌、🚀 等），文档中可以使用
-3. **编码规范**: 使用 ASCII 或 UTF-8 without BOM
-4. **命名规范**: 全英文小写，使用下划线分隔（如 `build_release.bat`）
-5. **输出信息**: 使用简单英文，避免特殊字符
-
-**脚本输出示例**:
-```batch
-# ✅ 正确：简单英文
-echo [OK] Build completed successfully
-echo [ERROR] Missing required file: plugin.dll
-echo [INFO] Processing 5 files...
-
-# ❌ 错误：中文或 emoji
-echo ✅ 构建成功
-echo [错误] 缺少文件
-```
-
-**现有脚本分类**:
-- **开发**: build.bat, run.bat, debug.bat, monitor_log.bat
-- **发布**: release.bat, build_sdk.bat
-- **设置**: setup.bat
-- **测试**: test_full.bat, analyze.ps1, verify.bat
-
----
-
-## 代码架构 (v2.0)
-
-### C++ 模块化设计
-
-**重构成果**:
-- ✅ 主插件精简到 2,540 行
-- ✅ 模块化率 78%
-- ✅ 23 个独立模块（12 核心模块 + 11 工具类）
-- ✅ 单元测试覆盖完善
-
-**模块分类**:
-
-#### 核心模块 (`windows/modules/` - 12个)
-- `FlutterBridge` - Flutter 方法通道通信
-- `DisplayChangeCoordinator` - 显示器变更检测
-- `InstanceManager` - 实例生命周期管理
-- `WindowManager` - 窗口创建管理
-- `InitializationCoordinator` - 初始化流程协调
-- `WebViewManager` - WebView2 管理
-- `WebViewConfigurator` - WebView2 安全配置
-- `PowerManager` - 省电优化
-- `IframeDetector` - iframe 检测
-- `SDKBridge` - SDK 桥接
-- `MouseHookManager` - 鼠标钩子
-- `MonitorManager` - 监视器枚举
-
-#### 工具类 (`windows/utils/` - 11个)
-- `StatePersistence` - 状态持久化
-- `StartupOptimizer` - 启动优化
-- `CPUProfiler` - CPU分析
-- `MemoryProfiler` - 内存监控
-- `InputValidator` - 输入验证
-- `ConflictDetector` - 冲突检测
-- `DesktopWallpaperHelper` - 桌面壁纸
-- `Logger` - 日志记录
-- `URLValidator` - URL验证
-- `ResourceTracker` - 资源追踪
-- `CircuitBreaker` - 熔断器 (header-only)
-- `RetryHandler` - 重试逻辑 (header-only)
-- `SafetyMacros` - 安全宏 (header-only)
-
-#### 测试框架 (`windows/test/`)
-- `test_framework.h` - 轻量级测试框架
-- `unit_tests.cpp` - 核心单元测试 (1,387 lines)
-- `webview_manager_tests.cpp` - WebView集成测试 (372 lines)
-- `comprehensive_test.cpp` - 综合测试 (324 lines)
-- `CMakeLists.txt` - 测试构建配置
-- `run_tests.bat` - 测试运行脚本
-
-**设计原则**:
-1. **单一职责**: 每个模块只负责一个核心功能
-2. **低耦合**: 模块之间通过接口交互，减少依赖
-3. **易测试**: 独立模块便于单元测试和集成测试
-4. **向后兼容**: 重构不改变外部 API 行为
-5. **完整文档**: 所有公共接口需要文档注释
-6. **错误恢复**: 关键操作使用 RetryHandler 和 CircuitBreaker
-
-**添加新模块步骤**:
-1. 创建 `windows/modules/module_name.h/cpp` 或 `windows/utils/utility_name.h/cpp`
-2. 实现功能并遵循命名规范
-3. 添加完整的错误处理（try-catch）和日志记录（Logger::Instance()）
-4. 更新 `windows/CMakeLists.txt`，添加源文件到 `add_library`
-5. 在主插件文件中引入并使用模块
-6. 添加单元测试到 `windows/test/unit_tests.cpp`（目标覆盖率 ≥95%）
-7. 运行测试验证功能: `cd windows\test && run_tests.bat`
-8. 更新 CHANGELOG_CN.md
-
-**错误处理最佳实践**:
-```cpp
-try {
-  // 核心逻辑
-  if (callback_) {
-    try {
-      callback_(result);
-    } catch (const std::exception& e) {
-      Logger::Instance().Error("Module", 
-        "Callback failed: " + std::string(e.what()));
-    }
-  }
-} catch (const std::exception& e) {
-  Logger::Instance().Error("Module", 
-    "Operation failed: " + std::string(e.what()));
-  return false;
-}
-```
-
-**单元测试示例**:
-```cpp
-TEST_SUITE(YourModule) {
-  TEST_CASE(basic_functionality) {
-    YourModule module;
-    ASSERT_TRUE(module.Initialize());
-    ASSERT_EQUAL(expected, module.GetState());
-  }
-}
-```
-
----
-
-## 核心特性
-
-### 存储系统 (v1.2.0+)
-- **应用级隔离**: 每个应用独立目录 `%LOCALAPPDATA%\AnyWPEngine\[AppName]\`
-- **无残留卸载**: 删除应用目录即可
-- **向后兼容**: 默认使用 "Default" 应用名
-
-### 测试页面 (examples/)
-- 🎨 Simple - 基础测试
-- 🖱️ Draggable - 拖拽演示
-- ⚙️ API Test - 完整 API
-- 👆 Click Test - 点击检测
-- 👁️ Visibility - 省电测试
-- ⚛️ React / 💚 Vue - SPA 测试
-- 📺 iFrame Ads - 广告检测
-
----
-
-**版本**: 2.0.0 | **更新**: 2025-11-11
+**版本**: 2.0.0 | **更新**: 2025-01-XX

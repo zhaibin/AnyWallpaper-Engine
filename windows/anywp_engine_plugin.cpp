@@ -682,7 +682,21 @@ void AnyWPEnginePlugin::SetupWebView2WithManager(HWND hwnd, const std::string& u
             }
             
             try {
+              Logger::Instance().Info("Plugin", "Loading SDK script for injection...");
               std::string sdk_script = LoadSDKScript();
+              
+              if (sdk_script.empty() || sdk_script.find("0.0.0-missing") != std::string::npos) {
+                Logger::Instance().Error("Plugin", "SDK script is empty or error shim detected!");
+                LOG_AND_REPORT_ERROR("WebViewManager", "InjectSDK", 
+                  "SDK script not found or invalid",
+                  ErrorHandler::ErrorCategory::INITIALIZATION, 
+                  ErrorHandler::ErrorLevel::ERROR);
+                return E_FAIL;
+              }
+              
+              Logger::Instance().Info("Plugin", 
+                "SDK script loaded (" + std::to_string(sdk_script.length()) + " bytes), injecting...");
+              
               if (!webview_manager_->InjectSDK(sender, sdk_script)) {
                 LOG_AND_REPORT_ERROR("WebViewManager", "InjectSDK", 
                   "Failed to inject SDK",
@@ -690,6 +704,8 @@ void AnyWPEnginePlugin::SetupWebView2WithManager(HWND hwnd, const std::string& u
                   ErrorHandler::ErrorLevel::ERROR);
                 return E_FAIL;
               }
+              
+              Logger::Instance().Info("Plugin", "SDK injection completed successfully");
               
               // Send interaction mode after SDK is loaded
               // Determine the correct interaction mode for this specific monitor/webview
