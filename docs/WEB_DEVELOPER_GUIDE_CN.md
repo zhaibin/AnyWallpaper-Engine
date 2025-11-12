@@ -26,6 +26,42 @@
 
 ## 🆕 最新更新
 
+### v2.1.0 更新 (2025-11-12) 🎉
+
+**🔄 双向通信功能**
+- ✅ 新增 `AnyWP.sendToFlutter(type, data)` - 发送消息到 Flutter 应用
+- ✅ 新增 `AnyWP.onMessage(callback)` - 接收来自 Flutter 的消息
+- ✅ 支持任意自定义消息类型
+- ✅ 完整的消息协议规范 (MESSAGE_PROTOCOL.md)
+- ✅ 性能优化：消息延迟 < 10ms，吞吐 > 1000 msg/s
+
+**应用场景**：
+- 轮播状态同步到 Flutter UI
+- Flutter 控制壁纸播放/暂停
+- 错误信息上报
+- 心跳/状态查询
+- 自定义交互通信
+
+**示例**：
+```javascript
+// JavaScript → Flutter
+AnyWP.sendToFlutter('carouselStateChanged', {
+  currentIndex: 2,
+  totalImages: 10
+});
+
+// Flutter → JavaScript
+AnyWP.onMessage(function(message) {
+  if (message.type === 'play') {
+    carousel.play();
+  }
+});
+```
+
+详见：[双向通信 API](#sendtofluttertype-data--v210)
+
+---
+
 ### v2.0.0 更新 (2025-11-11) 🎉
 **日志系统增强**：
 - 📝 统一日志接口 - 所有模块使用统一的 logger
@@ -512,6 +548,182 @@ function animateCircle() {
 
 - **Q**: 锁屏后动画还在继续？
 - **A**: 检查是否在回调中正确停止了 `requestAnimationFrame`
+
+---
+
+##### `sendToFlutter(type, data)` 🆕 v2.1.0
+
+发送消息到 Flutter 应用。
+
+**参数**：
+- `type` (string, required) - 消息类型
+- `data` (object, optional) - 消息数据，默认为 `{}`
+
+**返回值**：
+- `boolean` - 成功返回 `true`，失败返回 `false`
+
+**消息格式**：
+自动构建为标准格式：
+```javascript
+{
+  "type": "yourType",
+  "timestamp": Date.now(),
+  "data": { /* your data */ }
+}
+```
+
+**示例**：
+```javascript
+// 发送轮播状态变化
+AnyWP.sendToFlutter('carouselStateChanged', {
+  currentIndex: 2,
+  totalImages: 10,
+  isPlaying: true,
+  currentImageUrl: 'https://example.com/image2.jpg'
+});
+
+// 发送错误信息
+AnyWP.sendToFlutter('error', {
+  code: 'IMAGE_LOAD_FAILED',
+  message: 'Failed to load image',
+  details: {
+    imageUrl: 'https://example.com/broken.jpg',
+    httpStatus: 404
+  }
+});
+
+// 发送自定义消息
+AnyWP.sendToFlutter('customEvent', {
+  action: 'userInteraction',
+  value: 123
+});
+```
+
+**WebView2 检测**：
+```javascript
+// 检查是否在 AnyWP Engine 中运行
+if (window.chrome && window.chrome.webview) {
+  AnyWP.sendToFlutter('ready', { version: '1.0.0' });
+} else {
+  console.warn('Not running in AnyWP Engine');
+}
+```
+
+---
+
+##### `onMessage(callback)` 🆕 v2.1.0
+
+接收来自 Flutter 的消息。
+
+**参数**：
+- `callback` (Function, required) - 接收消息的回调函数
+  - 参数：`message` (Object) - 消息对象 `{type, timestamp, data}`
+
+**示例**：
+```javascript
+// 注册消息处理器
+AnyWP.onMessage(function(message) {
+  console.log('Received from Flutter:', message);
+  
+  switch (message.type) {
+    case 'updateCarousel':
+      // 更新轮播池
+      const images = message.data.images;
+      const interval = message.data.interval;
+      updateCarousel(images, interval);
+      break;
+      
+    case 'play':
+      // 播放控制
+      carousel.play();
+      break;
+      
+    case 'pause':
+      // 暂停控制
+      carousel.pause();
+      break;
+      
+    case 'ping':
+      // 心跳响应
+      AnyWP.sendToFlutter('pong', {
+        requestId: message.data.requestId,
+        latency: Date.now() - message.timestamp
+      });
+      break;
+  }
+});
+```
+
+**完整双向通信示例**：
+```javascript
+// 初始化
+window.addEventListener('load', function() {
+  console.log('SDK loaded, version:', AnyWP.version);
+  
+  // 1. 设置消息接收
+  AnyWP.onMessage(function(message) {
+    console.log('📨 Received:', message.type);
+    handleFlutterMessage(message);
+  });
+  
+  // 2. 通知 Flutter 就绪
+  AnyWP.ready('MyWallpaper');
+  AnyWP.sendToFlutter('ready', {
+    version: '1.0.0',
+    features: ['carousel', 'interactive']
+  });
+  
+  // 3. 注册点击事件
+  AnyWP.onClick('.my-button', function(x, y) {
+    // 通知 Flutter 按钮被点击
+    AnyWP.sendToFlutter('buttonClicked', {
+      buttonId: 'my-button',
+      x: x,
+      y: y
+    });
+  });
+});
+
+// 处理 Flutter 消息
+function handleFlutterMessage(message) {
+  switch (message.type) {
+    case 'updateCarousel':
+      updateMyCarousel(message.data);
+      // 发送确认
+      AnyWP.sendToFlutter('carouselUpdated', {
+        success: true,
+        imageCount: message.data.images.length
+      });
+      break;
+      
+    case 'getState':
+      // Flutter 请求当前状态
+      AnyWP.sendToFlutter('stateResponse', {
+        currentIndex: carousel.currentIndex,
+        isPlaying: carousel.isPlaying
+      });
+      break;
+  }
+}
+```
+
+**消息协议**：
+详见 [MESSAGE_PROTOCOL.md](MESSAGE_PROTOCOL.md) 获取完整消息格式规范。
+
+**性能说明**：
+- 消息延迟：< 10ms（单向）
+- 消息吞吐：> 1000 msg/s
+- 消息大小：建议 < 10KB
+
+**常见问题**：
+- **Q**: 如何知道消息是否发送成功？
+- **A**: 检查 `sendToFlutter()` 的返回值，`true` 表示成功
+
+- **Q**: Flutter 发送的消息为什么收不到？
+- **A**: 确保已调用 `AnyWP.onMessage()` 注册回调，并且在 SDK 初始化之后
+
+- **Q**: 可以发送什么类型的消息？
+- **A**: 任何可以 JSON 序列化的数据，包括字符串、数字、数组、对象
 
 ---
 
