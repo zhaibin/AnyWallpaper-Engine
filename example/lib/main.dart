@@ -60,6 +60,11 @@ class _MyAppState extends State<MyApp> with WindowListener {
   int _memoryUsageMB = 0;
   bool _autoPowerSaving = true;
   
+  // Bidirectional communication
+  List<Map<String, dynamic>> _receivedMessages = [];
+  int _messagesSent = 0;
+  int _messagesReceived = 0;
+  
   // Quick test pages
   final List<Map<String, String>> _testPages = [
     {'name': 'API Test', 'file': 'test_api.html', 'icon': '⚙️'},
@@ -69,6 +74,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
     {'name': 'React', 'file': 'test_react.html', 'icon': '⚛️'},
     {'name': 'Vue', 'file': 'test_vue.html', 'icon': '💚'},
     {'name': 'iFrame Ads', 'file': 'test_iframe_ads.html', 'icon': '📺'},
+    {'name': 'Bidirectional', 'file': 'test_bidirectional.html', 'icon': '🔄'},
   ];
 
   @override
@@ -87,6 +93,39 @@ class _MyAppState extends State<MyApp> with WindowListener {
     });
     
     print('[APP] Monitor polling started (every 3 seconds)');
+    
+    // Setup bidirectional communication callback
+    AnyWPEngine.setOnMessageCallback((message) {
+      print('[APP] ✅ Received message from JavaScript:');
+      print('[APP]   Type: ${message['type']}');
+      print('[APP]   Data: ${message['data']}');
+      print('[APP]   Timestamp: ${message['timestamp']}');
+      
+      setState(() {
+        _messagesReceived++;
+        _receivedMessages.insert(0, {
+          'type': message['type'] ?? 'unknown',
+          'data': message['data'] ?? {},
+          'timestamp': DateTime.fromMillisecondsSinceEpoch(
+            message['timestamp'] ?? DateTime.now().millisecondsSinceEpoch
+          ),
+          'receivedAt': DateTime.now(),
+        });
+        
+        // Keep only last 50 messages
+        if (_receivedMessages.length > 50) {
+          _receivedMessages.removeLast();
+        }
+      });
+      
+      // Auto-reply to ping messages
+      if (message['type'] == 'pong') {
+        final requestId = message['data']['requestId'];
+        print('[APP] Received pong response: $requestId');
+      }
+    });
+    
+    print('[APP] Bidirectional communication callback set');
     
     // Auto-start wallpaper for SDK injection testing
     // Wait for monitors to load, then auto-start
@@ -1268,6 +1307,328 @@ class _MyAppState extends State<MyApp> with WindowListener {
     );
   }
 
+  // ========================================
+  // Bidirectional Communication Methods
+  // ========================================
+
+  Future<void> _sendTestMessage() async {
+    final success = await AnyWPEngine.sendMessage(
+      message: {
+        'type': 'ping',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'data': {
+          'requestId': 'flutter-${DateTime.now().millisecondsSinceEpoch}',
+          'message': 'Hello from Flutter!',
+        },
+      },
+    );
+
+    if (success) {
+      setState(() => _messagesSent++);
+      print('[APP] ✅ Test message sent successfully');
+    } else {
+      print('[APP] ❌ Failed to send test message');
+    }
+  }
+
+  Future<void> _sendCarouselUpdate() async {
+    final success = await AnyWPEngine.sendMessage(
+      message: {
+        'type': 'updateCarousel',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'data': {
+          'images': [
+            'https://example.com/image1.jpg',
+            'https://example.com/image2.jpg',
+            'https://example.com/image3.jpg',
+          ],
+          'interval': 30000,
+          'transition': 'fade',
+          'autoPlay': true,
+        },
+      },
+    );
+
+    if (success) {
+      setState(() => _messagesSent++);
+      print('[APP] ✅ Carousel update sent');
+    }
+  }
+
+  Future<void> _sendPlaybackControl(String action) async {
+    final success = await AnyWPEngine.sendMessage(
+      message: {
+        'type': action,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'data': {},
+      },
+    );
+
+    if (success) {
+      setState(() => _messagesSent++);
+      print('[APP] ✅ Playback control sent: $action');
+    }
+  }
+
+  Widget _buildCommunicationTab() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Statistics Card
+          Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '📊 通信统计',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatBox('发送', _messagesSent, Colors.blue),
+                      _buildStatBox('接收', _messagesReceived, Colors.green),
+                      _buildStatBox('消息', _receivedMessages.length, Colors.orange),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+
+          // Send Message Buttons
+          Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '📤 发送消息到 JavaScript',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _sendTestMessage,
+                        icon: Icon(Icons.send),
+                        label: Text('发送测试消息'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _sendCarouselUpdate,
+                        icon: Icon(Icons.view_carousel),
+                        label: Text('更新轮播'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () => _sendPlaybackControl('play'),
+                        icon: Icon(Icons.play_arrow),
+                        label: Text('播放'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () => _sendPlaybackControl('pause'),
+                        icon: Icon(Icons.pause),
+                        label: Text('暂停'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () => _sendPlaybackControl('stop'),
+                        icon: Icon(Icons.stop),
+                        label: Text('停止'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+
+          // Received Messages
+          Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '📥 接收到的消息',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _receivedMessages.clear();
+                            _messagesReceived = 0;
+                          });
+                        },
+                        icon: Icon(Icons.clear_all),
+                        label: Text('清空'),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Container(
+                    height: 400,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: _receivedMessages.isEmpty
+                        ? Center(
+                            child: Text(
+                              '暂无消息\n\n请在 JavaScript 页面中发送消息',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _receivedMessages.length,
+                            itemBuilder: (context, index) {
+                              final msg = _receivedMessages[index];
+                              return Card(
+                                margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: _getMessageColor(msg['type']),
+                                    child: Text(
+                                      '${index + 1}',
+                                      style: TextStyle(color: Colors.white, fontSize: 12),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    '${msg['type']}',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '时间: ${(msg['receivedAt'] as DateTime).toString().substring(11, 19)}',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                      if (msg['data'].toString().isNotEmpty)
+                                        Text(
+                                          '数据: ${msg['data']}',
+                                          style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                    ],
+                                  ),
+                                  isThreeLine: true,
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          SizedBox(height: 16),
+
+          // Help text
+          Card(
+            color: Colors.blue[50],
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '💡 使用提示',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '1. 在"Wallpaper"标签中启动"Bidirectional"测试页面\n'
+                    '2. 使用上方按钮发送消息到 JavaScript\n'
+                    '3. 在浏览器页面中点击按钮发送消息到 Flutter\n'
+                    '4. 查看下方接收到的消息列表',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatBox(String label, int value, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            value.toString(),
+            style: TextStyle(
+              fontSize: 24,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getMessageColor(String type) {
+    switch (type) {
+      case 'carouselStateChanged':
+        return Colors.blue;
+      case 'testMessage':
+        return Colors.green;
+      case 'heartbeat':
+      case 'pong':
+        return Colors.orange;
+      case 'error':
+        return Colors.red;
+      default:
+        return Colors.purple;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -1277,7 +1638,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
         useMaterial3: true,
       ),
       home: DefaultTabController(
-        length: 2,
+        length: 3,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('AnyWallpaper Engine'),
@@ -1286,6 +1647,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
               tabs: [
                 Tab(icon: Icon(Icons.monitor), text: 'Wallpaper'),
                 Tab(icon: Icon(Icons.tune), text: 'Optimization'),
+                Tab(icon: Icon(Icons.swap_horiz), text: 'Communication'),
               ],
             ),
           ),
@@ -1293,6 +1655,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
             children: [
               _buildMultiMonitorTab(),
               _buildOptimizationTab(),
+              _buildCommunicationTab(),
             ],
           ),
         ),
