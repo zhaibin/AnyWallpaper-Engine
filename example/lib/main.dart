@@ -96,32 +96,56 @@ class _MyAppState extends State<MyApp> with WindowListener {
     
     // Setup bidirectional communication callback
     AnyWPEngine.setOnMessageCallback((message) {
-      print('[APP] ✅ Received message from JavaScript:');
-      print('[APP]   Type: ${message['type']}');
-      print('[APP]   Data: ${message['data']}');
-      print('[APP]   Timestamp: ${message['timestamp']}');
-      
-      setState(() {
-        _messagesReceived++;
-        _receivedMessages.insert(0, {
-          'type': message['type'] ?? 'unknown',
-          'data': message['data'] ?? {},
-          'timestamp': DateTime.fromMillisecondsSinceEpoch(
-            message['timestamp'] ?? DateTime.now().millisecondsSinceEpoch
-          ),
-          'receivedAt': DateTime.now(),
+      try {
+        print('[APP] ✅ Received message from JavaScript:');
+        print('[APP]   Type: ${message['type']}');
+        print('[APP]   Raw message: $message');
+        
+        // Safe data extraction with defaults
+        final messageType = message['type']?.toString() ?? 'unknown';
+        final messageData = message['data'] is Map ? message['data'] as Map<String, dynamic> : 
+                           (message is Map ? Map<String, dynamic>.from(message) : <String, dynamic>{});
+        
+        // Parse timestamp safely
+        DateTime messageTimestamp;
+        try {
+          final ts = message['timestamp'];
+          if (ts is int) {
+            messageTimestamp = DateTime.fromMillisecondsSinceEpoch(ts);
+          } else if (ts is String) {
+            messageTimestamp = DateTime.fromMillisecondsSinceEpoch(int.parse(ts));
+          } else {
+            messageTimestamp = DateTime.now();
+          }
+        } catch (e) {
+          print('[APP] Warning: Failed to parse timestamp: $e');
+          messageTimestamp = DateTime.now();
+        }
+        
+        setState(() {
+          _messagesReceived++;
+          _receivedMessages.insert(0, {
+            'type': messageType,
+            'data': messageData,
+            'timestamp': messageTimestamp,
+            'receivedAt': DateTime.now(),
+          });
+          
+          // Keep only last 50 messages
+          if (_receivedMessages.length > 50) {
+            _receivedMessages.removeLast();
+          }
         });
         
-        // Keep only last 50 messages
-        if (_receivedMessages.length > 50) {
-          _receivedMessages.removeLast();
+        // Auto-reply to ping messages
+        if (messageType == 'pong' && messageData.containsKey('requestId')) {
+          final requestId = messageData['requestId'];
+          print('[APP] Received pong response: $requestId');
         }
-      });
-      
-      // Auto-reply to ping messages
-      if (message['type'] == 'pong') {
-        final requestId = message['data']['requestId'];
-        print('[APP] Received pong response: $requestId');
+      } catch (e, stackTrace) {
+        print('[APP] ❌ Error processing message: $e');
+        print('[APP] Stack trace: $stackTrace');
+        print('[APP] Raw message: $message');
       }
     });
     
