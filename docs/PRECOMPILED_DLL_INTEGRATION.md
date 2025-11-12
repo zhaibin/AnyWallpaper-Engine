@@ -42,7 +42,7 @@ YourProject/
 ├── windows/
 ├── pubspec.yaml
 └── packages/
-    └── anywp_engine_v1.2.1/  ← 解压到这里（建议放在 packages/）
+    └── anywp_engine_v2.0.0/  ← 解压到这里（建议放在 packages/）
     ├── bin/
         │   ├── anywp_engine_plugin.dll
         │   └── WebView2Loader.dll
@@ -67,13 +67,13 @@ YourProject/
 在 Flutter 项目根目录执行：
 
 ```powershell
-packages\anywp_engine_v1.2.1\setup_precompiled.bat
+packages\anywp_engine_v2.0.0\setup_precompiled.bat
 ```
 
 脚本会自动：
 
 - 验证关键文件是否齐全
-- 将预编译包复制到 `packages/anywp_engine_v1.2.1`
+- 将预编译包复制到 `packages/anywp_engine_v2.0.0`
 - 执行 `flutter pub get`
 
 ### 4. 手动在 pubspec.yaml 中引用（可选）
@@ -83,7 +83,7 @@ dependencies:
   flutter:
     sdk: flutter
   anywp_engine:
-    path: ./packages/anywp_engine_v1.2.1
+    path: ./packages/anywp_engine_v2.0.0
 ```
 
 ### 5. 获取依赖并构建
@@ -105,7 +105,7 @@ flutter build windows
 
 ```cmake
 # 引用预编译的 AnyWP Engine 插件
-set(ANYWP_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../packages/anywp_engine_v1.2.1")
+set(ANYWP_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../packages/anywp_engine_v2.0.0")
 
 if(EXISTS "${ANYWP_ENGINE_DIR}")
   # 添加插件库
@@ -263,24 +263,24 @@ class _WallpaperControllerState extends State<WallpaperController> {
 
 2. **删除旧版本**：
    ```bash
-   rmdir /s /q packages\anywp_engine_v1.9.9
+   rmdir /s /q packages\anywp_engine_v1.x.x
    ```
 
 3. **解压新版本**：
    ```bash
-   # 解压 anywp_engine_v2.0.0.zip 到 packages\anywp_engine_v1.2.1
+   # 解压 anywp_engine_v2.0.0.zip 到 packages\anywp_engine_v2.0.0
    ```
 
 4. **更新 pubspec.yaml**：
    ```yaml
    dependencies:
      anywp_engine:
-       path: ./packages/anywp_engine_v1.2.1  # 更新版本号
+       path: ./packages/anywp_engine_v2.0.0  # 更新版本号
    ```
 
 5. **复制新的 DLL（如需手动复制）**：
    ```bash
-   copy packages\anywp_engine_v1.2.1\bin\*.dll windows\plugins\anywp_engine\ /Y
+   copy packages\anywp_engine_v2.0.0\bin\*.dll windows\plugins\anywp_engine\ /Y
    ```
 
 6. **重新构建**：
@@ -342,10 +342,10 @@ flutter run -d windows
 **解决方案**：
 ```bash
 # 确认 DLL 文件存在
-dir packages\anywp_engine_v1.2.1\bin\*.dll
+dir packages\anywp_engine_v2.0.0\bin\*.dll
 
 # 手动复制到构建输出目录
-copy packages\anywp_engine_v1.2.1\bin\*.dll build\windows\runner\Release\ /Y
+copy packages\anywp_engine_v2.0.0\bin\*.dll build\windows\runner\Release\ /Y
 ```
 
 ### Q: 运行时提示 DLL 缺失？
@@ -361,7 +361,7 @@ copy packages\anywp_engine_v1.2.1\bin\*.dll build\windows\runner\Release\ /Y
 
 在 Flutter 控制台查看日志：
 ```
-[AnyWP] Using precompiled plugin version 1.1.0
+[AnyWP] Using precompiled plugin version 2.0.0
 ```
 
 ### Q: 可以混合使用源码和预编译 DLL 吗？
@@ -384,7 +384,7 @@ copy packages\anywp_engine_v1.2.1\bin\*.dll build\windows\runner\Release\ /Y
 
 ### 首次集成
 
-- [ ] 下载预编译包 (`anywp_engine_v1.1.0.zip`)
+- [ ] 下载预编译包 (`anywp_engine_v2.0.0.zip`)
 - [ ] 解压到项目根目录
 - [ ] 更新 `pubspec.yaml` 引用路径
 - [ ] 复制 DLL 到插件目录
@@ -421,6 +421,6 @@ copy packages\anywp_engine_v1.2.1\bin\*.dll build\windows\runner\Release\ /Y
 
 ---
 
-**版本**: 1.1.0  
-**更新日期**: 2025-11-05
+**版本**: 2.0.0  
+**更新日期**: 2025-11-11
 
