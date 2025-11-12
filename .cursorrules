@@ -143,16 +143,25 @@ flutter build windows --release
 **构建后检查**:
 - [ ] 构建成功（ERROR_COUNT = 0）
 - [ ] DLL/LIB 文件生成
-- [ ] ZIP 文件生成（Flutter 包 + Web SDK 包）
+- [ ] 生成 3 个 ZIP 文件：
+  - `anywp_engine_v{版本号}_precompiled.zip` - 预编译包（DLL + LIB + C API 头文件）
+  - `anywp_engine_v{版本号}_source.zip` - 完整源码包
+  - `anywp_web_sdk_v{版本号}.zip` - Web SDK 包
 
-**⚠️ 关键文件验证**（必须全部存在）:
+**⚠️ 预编译包验证**（必须全部存在）:
 - `bin/anywp_engine_plugin.dll` + `bin/WebView2Loader.dll`
 - `lib/anywp_engine_plugin.lib` ⚠️ 最易遗漏
-- `lib/anywp_engine.dart` (标准位置)
-- `windows/anywp_sdk.js` (SDK 构建产物)
+- `lib/dart/anywp_engine.dart`
+- `include/anywp_engine/anywp_engine_plugin_c_api.h` ⚠️ 新增纯C API头文件
 - `windows/CMakeLists.txt`
 
-**验证命令**: `.\scripts\verify_release.bat {版本号}`
+**⚠️ 源码包验证**（额外包含）:
+- `windows/anywp_engine_plugin.cpp/h` - 完整 C++ 源码
+- `windows/modules/` + `windows/utils/` - 所有模块和工具类
+- `windows/sdk/` + `windows/anywp_sdk.js` - TypeScript SDK 源码
+- `windows/packages/` - WebView2 依赖包
+
+**验证命令**: `.\scripts\verify_precompiled.bat {版本号}`
 
 ### Step 5: Git 提交与推送
 ```bash
@@ -176,8 +185,16 @@ git push origin v{版本号}
 1. 访问: `https://github.com/zhaibin/AnyWallpaper-Engine/releases/new`
 2. Tag: `v{版本号}` | Title: `AnyWP Engine v{版本号}`
 3. Description: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
-4. 上传两个 ZIP: Flutter 插件包 + Web SDK 包
+4. 上传 3 个 ZIP 文件：
+   - `anywp_engine_v{版本号}_precompiled.zip` - **推荐给 Flutter 开发者**
+   - `anywp_engine_v{版本号}_source.zip` - 完整源码（高级用户）
+   - `anywp_web_sdk_v{版本号}.zip` - Web 壁纸开发者
 5. 勾选 "Set as the latest release"
+
+**包说明**：
+- **Precompiled**: 最简单的集成方式，只包含必要的 DLL、LIB 和纯 C API 头文件，无需 WebView2 开发环境
+- **Source**: 包含完整源码、模块、工具类和 WebView2 依赖，适合需要自定义修改的开发者
+- **Web SDK**: 独立的 JavaScript SDK，供 HTML 壁纸开发者使用
 
 ---
 

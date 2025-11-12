@@ -80,3 +80,36 @@ set(anywp_engine_bundled_libraries
   PARENT_SCOPE
 )
 
+# ==========================================
+# INSTALL rules for precompiled DLL distribution
+# ==========================================
+
+# Define paths for precompiled binaries
+set(PRECOMPILED_DLL "${CMAKE_CURRENT_BINARY_DIR}/${PLUGIN_NAME}.dll")
+set(PRECOMPILED_LIB "${CMAKE_CURRENT_BINARY_DIR}/${PLUGIN_NAME}.lib")
+
+# WebView2Loader.dll path
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(WEBVIEW2_DLL "${WEBVIEW2_PACKAGE_DIR}/build/native/x64/WebView2Loader.dll")
+else()
+  set(WEBVIEW2_DLL "${WEBVIEW2_PACKAGE_DIR}/build/native/x86/WebView2Loader.dll")
+endif()
+
+# Install DLL files to bin/
+install(FILES "${PRECOMPILED_DLL}" DESTINATION bin
+        CONFIGURATIONS Release)
+install(FILES "${WEBVIEW2_DLL}" DESTINATION bin
+        CONFIGURATIONS Release)
+
+# Install LIB file to lib/
+install(FILES "${PRECOMPILED_LIB}" DESTINATION lib
+        CONFIGURATIONS Release)
+
+# Install C API header to include/anywp_engine/
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/anywp_engine_plugin_c_api.h"
+        DESTINATION include/anywp_engine)
+
+# Install full C++ header (optional, for source integration)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/anywp_engine_plugin.h"
+        DESTINATION include/anywp_engine)
+
