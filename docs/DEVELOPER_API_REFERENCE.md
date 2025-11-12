@@ -672,6 +672,160 @@ class WallpaperManager {
 
 ---
 
+## Bidirectional Communication (v2.1.0+)
+
+### sendMessage
+
+Send messages from Flutter to JavaScript wallpaper.
+
+**Signature:**
+```dart
+static Future<bool> sendMessage({
+  required Map<String, dynamic> message,
+  int? monitorIndex,
+}) async
+```
+
+**Parameters:**
+- `message` (Map<String, dynamic>, required) - Message object to send
+  - Recommended format: `{type: String, timestamp: int, data: Map}`
+  - Maximum size: 10KB (recommended), 100KB (maximum)
+- `monitorIndex` (int?, optional) - Target monitor index
+  - If null or -1: broadcast to all monitors
+  - If >= 0: send to specific monitor only
+
+**Returns:**
+- `Future<bool>` - true if sent successfully, false otherwise
+
+**Example:**
+```dart
+// Send to all monitors
+await AnyWPEngine.sendMessage(
+  message: {
+    'type': 'updateCarousel',
+    'timestamp': DateTime.now().millisecondsSinceEpoch,
+    'data': {
+      'images': ['url1.jpg', 'url2.jpg'],
+      'interval': 30000,
+    },
+  },
+);
+
+// Send to specific monitor
+await AnyWPEngine.sendMessage(
+  message: {
+    'type': 'play',
+    'timestamp': DateTime.now().millisecondsSinceEpoch,
+    'data': {},
+  },
+  monitorIndex: 0,
+);
+```
+
+**Message Protocol:**
+See [MESSAGE_PROTOCOL.md](MESSAGE_PROTOCOL.md) for complete message format specification.
+
+---
+
+### setOnMessageCallback
+
+Register callback to receive messages from JavaScript wallpaper.
+
+**Signature:**
+```dart
+static void setOnMessageCallback(
+  void Function(Map<String, dynamic> message) callback
+)
+```
+
+**Parameters:**
+- `callback` (Function, required) - Callback function
+  - Receives parsed JSON message as `Map<String, dynamic>`
+  - Called on UI thread (safe to use setState)
+  - Message format: `{type: String, timestamp: int, data: Map}`
+
+**Polling Mechanism:**
+- Automatically polls for messages every 100ms
+- Avoids InvokeMethod deadlock issue
+- Low overhead (only processes when messages exist)
+- Thread-safe message queue
+
+**Example:**
+```dart
+// Setup callback
+AnyWPEngine.setOnMessageCallback((message) {
+  print('Received: ${message['type']}');
+  
+  switch (message['type']) {
+    case 'carouselStateChanged':
+      final data = message['data'] as Map<String, dynamic>;
+      final currentIndex = data['currentIndex'] as int;
+      print('Carousel index: $currentIndex');
+      // Update UI
+      setState(() {
+        _currentIndex = currentIndex;
+      });
+      break;
+      
+    case 'error':
+      final data = message['data'] as Map<String, dynamic>;
+      final errorMsg = data['message'] as String;
+      print('Error: $errorMsg');
+      // Show error dialog
+      showDialog(...);
+      break;
+      
+    case 'ready':
+      print('Wallpaper ready: ${message['name']}');
+      break;
+  }
+});
+
+// Later: Send message to JavaScript
+await AnyWPEngine.sendMessage(
+  message: {
+    'type': 'ping',
+    'timestamp': DateTime.now().millisecondsSinceEpoch,
+    'data': {'requestId': 'req-001'},
+  },
+);
+```
+
+**Common Message Types:**
+- `ready` - Wallpaper initialization complete
+- `carouselStateChanged` - Carousel state update
+- `error` - Error occurred in JavaScript
+- `heartbeat` - Keep-alive ping
+- Custom types - Any string you define
+
+**Error Handling:**
+```dart
+AnyWPEngine.setOnMessageCallback((message) {
+  try {
+    // Process message
+    final type = message['type'] as String;
+    final data = message['data'] as Map<String, dynamic>;
+    
+    // Handle message...
+  } catch (e) {
+    print('Error processing message: $e');
+  }
+});
+```
+
+**Performance:**
+- Message latency: < 10ms (one-way)
+- Throughput: > 1000 msg/s
+- Queue capacity: 1000 messages
+- Polling interval: 100ms (fixed)
+
+**See Also:**
+- [MESSAGE_PROTOCOL.md](MESSAGE_PROTOCOL.md) - Complete message protocol specification
+- [WEB_DEVELOPER_GUIDE_CN.md](WEB_DEVELOPER_GUIDE_CN.md) - JavaScript SDK API
+- `examples/test_bidirectional.html` - Complete test example
+
+---
+
 ## Best Practices
 
 1. **Always check return values** for error handling
@@ -681,6 +835,9 @@ class WallpaperManager {
 5. **Monitor memory usage** in long-running applications
 6. **Handle monitor changes** gracefully
 7. **Test on multiple monitors** if supporting multi-monitor setups
+8. **Use message protocol** for Flutter ↔ JavaScript communication (v2.1.0+)
+9. **Handle message errors** gracefully with try-catch
+10. **Keep messages small** (< 10KB recommended)
 
 ---
 
