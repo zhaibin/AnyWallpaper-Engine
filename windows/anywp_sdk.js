@@ -8,7 +8,7 @@ var AnyWPBundle = (function (exports) {
 
     const AnyWP = {
         // Properties
-        version: '2.0.0',
+        version: '2.1.0',
         dpiScale: window.devicePixelRatio || 1,
         screenWidth: screen.width * (window.devicePixelRatio || 1),
         screenHeight: screen.height * (window.devicePixelRatio || 1),

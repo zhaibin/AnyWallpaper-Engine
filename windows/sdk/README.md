@@ -1,6 +1,6 @@
 # AnyWP Engine SDK - TypeScript Edition
 
-**Version**: 2.0.0  
+**Version**: 2.1.0  
 **Language**: TypeScript  
 **Build**: Modular architecture with Rollup  
 **Testing**: Jest + ts-jest  

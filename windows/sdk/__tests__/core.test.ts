@@ -8,7 +8,7 @@ import type { AnyWPSDK } from '../types';
 
 describe('Core - AnyWP object', () => {
   test('should have correct version', () => {
-    expect(AnyWP.version).toBe('2.0.0');
+    expect(AnyWP.version).toBe('2.1.0');
   });
   
   test('should have DPI scale', () => {
@@ -52,7 +52,7 @@ describe('Core - Initialization', () => {
   beforeEach(() => {
     // Create a mock AnyWP object
     mockAnyWP = {
-      version: '2.0.0',
+      version: '2.1.0',
       dpiScale: 1,
       screenWidth: 1920,
       screenHeight: 1080,
