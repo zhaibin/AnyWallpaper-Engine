@@ -118,6 +118,10 @@ void FlutterBridge::RegisterAllHandlers() {
   // Message communication
   RegisterHandler("sendMessage",
       [this](auto* args, auto result) { HandleSendMessage(args, std::move(result)); });
+  
+  // v2.1.0+ Bidirectional Communication: Get pending messages from JavaScript
+  RegisterHandler("getPendingMessages",
+      [this](auto* args, auto result) { HandleGetPendingMessages(args, std::move(result)); });
 
   Logger::Instance().Info("FlutterBridge",
     "Registered " + std::to_string(handlers_.size()) + " method handlers");
@@ -748,13 +752,35 @@ void FlutterBridge::HandleSendMessage(
   // 5. 返回结果
   if (all_success && sent_count > 0) {
     result->Success(flutter::EncodableValue(true));
-    Logger::Instance().Info("FlutterBridge", 
-                           "Message sent successfully to " + std::to_string(sent_count) + " instance(s)");
+    Logger::Instance().Info("FlutterBridge",
+      "Message sent successfully to " + std::to_string(sent_count) + " instance(s)");
   } else {
     result->Error("SEND_FAILED", 
                  "Failed to send message to some instances (" + 
                  std::to_string(sent_count) + "/" + 
                  std::to_string(target_instances.size()) + " succeeded)");
+  }
+}
+
+void FlutterBridge::HandleGetPendingMessages(
+    const flutter::EncodableMap* args,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  
+  try {
+    // Get pending messages from plugin
+    std::vector<std::string> messages = plugin_->GetPendingMessages();
+    
+    // Convert to Flutter list
+    flutter::EncodableList message_list;
+    for (const auto& message : messages) {
+      message_list.push_back(flutter::EncodableValue(message));
+    }
+    
+    result->Success(flutter::EncodableValue(message_list));
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("FlutterBridge", 
+      std::string("Exception in GetPendingMessages: ") + e.what());
+    result->Error("GET_MESSAGES_FAILED", e.what());
   }
 }
 

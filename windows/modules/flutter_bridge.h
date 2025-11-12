@@ -167,6 +167,10 @@ private:
   void HandleSendMessage(
       const flutter::EncodableMap* args,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  
+  void HandleGetPendingMessages(
+      const flutter::EncodableMap* args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   // ========================================
   // Helper Methods

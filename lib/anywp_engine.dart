@@ -51,6 +51,7 @@ class AnyWPEngine {
   
   // Callback for messages from JavaScript
   static void Function(Map<String, dynamic> message)? _onMessageCallback;
+  static Timer? _messagePollingTimer;
   
   /// Set callback for monitor change events
   static void setOnMonitorChangeCallback(void Function() callback) {
@@ -133,7 +134,51 @@ class AnyWPEngine {
     print('[AnyWPEngine] Setting up message callback');
     _onMessageCallback = callback;
     _setupMethodCallHandler();
-    print('[AnyWPEngine] Message callback setup complete');
+    _startMessagePolling();
+    print('[AnyWPEngine] Message callback and polling setup complete');
+  }
+  
+  /// Start polling for messages from JavaScript (avoids InvokeMethod deadlock)
+  static void _startMessagePolling() {
+    // Cancel existing timer if any
+    _messagePollingTimer?.cancel();
+    
+    // Poll for messages every 100ms
+    _messagePollingTimer = Timer.periodic(Duration(milliseconds: 100), (timer) async {
+      if (_onMessageCallback == null) {
+        timer.cancel();
+        return;
+      }
+      
+      try {
+        final messages = await _channel.invokeMethod<List>('getPendingMessages');
+        if (messages != null && messages.isNotEmpty) {
+          print('[AnyWPEngine] Retrieved ${messages.length} pending messages');
+          for (final messageJson in messages) {
+            if (messageJson is String) {
+              _processMessage(messageJson);
+            }
+          }
+        }
+      } catch (e) {
+        // Silently ignore errors to avoid spam
+      }
+    });
+    
+    print('[AnyWPEngine] Message polling started (100ms interval)');
+  }
+  
+  /// Process a single message
+  static void _processMessage(String messageJson) {
+    if (_onMessageCallback == null) return;
+    
+    try {
+      final message = jsonDecode(messageJson) as Map<String, dynamic>;
+      print('[AnyWPEngine] Processing message: ${message['type']}');
+      _onMessageCallback!(message);
+    } catch (e) {
+      print('[AnyWPEngine] ERROR: Failed to process message: $e');
+    }
   }
   
   /// Setup method call handler (internal)
