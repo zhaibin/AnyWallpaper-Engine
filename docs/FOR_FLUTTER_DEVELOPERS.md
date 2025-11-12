@@ -137,6 +137,10 @@ isCompatible(expectedPrefix) -> bool // 检查是否满足版本前缀
 // 回调机制
 setOnMonitorChangeCallback(callback)      // 显示器变化
 setOnPowerStateChangeCallback(callback)   // 电源状态变化
+
+// 双向通信 (v2.1.0+) ✨ 新增
+sendMessage(message, monitorIndex)         // 发送消息到 JavaScript
+setOnMessageCallback(callback)             // 接收来自 JavaScript 的消息
 ```
 
 **立即阅读** → [DEVELOPER_API_REFERENCE.md](DEVELOPER_API_REFERENCE.md)

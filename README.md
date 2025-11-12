@@ -33,6 +33,7 @@ A Flutter Windows plugin that embeds WebView2 as a desktop wallpaper, displaying
 - 💾 **State Persistence** - Save/load state across sessions to Windows Registry
 - 👁️ **Visibility API** - Detect wallpaper visibility changes
 - 🖱️ **Click Events** - Handle click events with `onClick()`
+- 🔄 **Bidirectional Communication** (v2.1 ✨) - Real-time Flutter ↔ JavaScript messaging
 - 🎮 **Framework Ready** - React, Vue, Angular supported
 
 ## 🚀 Quick Start
@@ -50,12 +51,12 @@ Download from [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/r
 
 ```powershell
 # Recommended: Run in Flutter project root directory
-packages\anywp_engine_v2.0.0\setup_precompiled.bat
+packages\anywp_engine_v2.1.0\setup_precompiled.bat
 ```
 
 `setup_precompiled.bat` will automatically:
 - ✅ Verify critical files (DLL / LIB / JS / CMake etc.)
-- ✅ Copy precompiled package to `packages/anywp_engine_v2.0.0`
+- ✅ Copy precompiled package to `packages/anywp_engine_v2.1.0`
 - ✅ Run `flutter pub get`
 
 Or manually add to `pubspec.yaml`:
@@ -63,7 +64,7 @@ Or manually add to `pubspec.yaml`:
 ```yaml
 dependencies:
   anywp_engine:
-    path: ./packages/anywp_engine_v2.0.0
+    path: ./packages/anywp_engine_v2.1.0
 ```
 
 🧰 Helper Scripts:
@@ -192,6 +193,22 @@ if (!compatible) {
       // Handle clicks
       AnyWP.onClick('#button', (x, y) => {
         console.log('Clicked at:', x, y);
+      });
+      
+      // 🔄 Bidirectional Communication (v2.1+)
+      // Send messages to Flutter
+      AnyWP.sendToFlutter('carouselStateChanged', {
+        currentIndex: 2,
+        totalImages: 10,
+        isPlaying: true
+      });
+      
+      // Receive messages from Flutter
+      AnyWP.onMessage((message) => {
+        console.log('From Flutter:', message.type);
+        if (message.type === 'play') {
+          startCarousel();
+        }
       });
     }
   </script>

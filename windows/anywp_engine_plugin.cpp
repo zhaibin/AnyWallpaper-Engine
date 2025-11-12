@@ -338,6 +338,12 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
       HandleClearStateWebMessage(msg);
     });
     Logger::Instance().Info("Refactor", "Registered 9 message handlers with SDKBridge");
+    
+    // v2.1.0+ Bidirectional Communication: Set Flutter callback for message forwarding
+    sdk_bridge_->SetFlutterCallback([this](const std::string& message) {
+      this->NotifyFlutterMessage(message);
+    });
+    Logger::Instance().Info("SDKBridge", "Flutter callback connected for bidirectional communication");
   });
   
   // Initialize WebViewManager module (v1.4.1+ Phase A) (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
@@ -2291,6 +2297,65 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
 void AnyWPEnginePlugin::SafeNotifyMonitorChange() {
   std::cout << "[AnyWP] [DisplayChange] Notifying monitor change..." << std::endl;
   NotifyMonitorChange();
+}
+
+// ========== Bidirectional Communication ==========
+
+// v2.1.0+: Notify Flutter of messages from JavaScript
+// NOTE: Uses message queue instead of InvokeMethod to avoid deadlock
+void AnyWPEnginePlugin::NotifyFlutterMessage(const std::string& message) {
+  Logger::Instance().Info("AnyWPEngine", "Queuing message from JavaScript");
+  Logger::Instance().Debug("AnyWPEngine", "  Message: " + message.substr(0, 100) + 
+                          (message.length() > 100 ? "..." : ""));
+
+  try {
+    // Validate message is not empty
+    if (message.empty()) {
+      Logger::Instance().Warning("AnyWPEngine", "NotifyFlutterMessage: empty message, skipping");
+      return;
+    }
+
+    // Add to message queue (thread-safe)
+    {
+      std::lock_guard<std::mutex> lock(messages_mutex_);
+      pending_messages_.push(message);
+      
+      // Limit queue size to prevent memory issues
+      if (pending_messages_.size() > 1000) {
+        Logger::Instance().Warning("AnyWPEngine", "Message queue size exceeded 1000, dropping oldest message");
+        pending_messages_.pop();
+      }
+    }
+
+    Logger::Instance().Info("AnyWPEngine", "Message queued successfully (queue size: " + 
+                           std::to_string(pending_messages_.size()) + ")");
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("AnyWPEngine", 
+      std::string("Exception during message queuing: ") + e.what());
+  } catch (...) {
+    Logger::Instance().Error("AnyWPEngine", 
+      "Unknown exception during message queuing");
+  }
+}
+
+// v2.1.0+: Get pending messages (called by Dart via polling)
+std::vector<std::string> AnyWPEnginePlugin::GetPendingMessages() {
+  std::vector<std::string> messages;
+  
+  std::lock_guard<std::mutex> lock(messages_mutex_);
+  
+  // Move all messages from queue to vector
+  while (!pending_messages_.empty()) {
+    messages.push_back(pending_messages_.front());
+    pending_messages_.pop();
+  }
+  
+  if (!messages.empty()) {
+    Logger::Instance().Info("AnyWPEngine", 
+      "Retrieved " + std::to_string(messages.size()) + " pending messages");
+  }
+  
+  return messages;
 }
 
 // v2.0.0+ Phase2: These methods have been moved to DisplayChangeCoordinator module

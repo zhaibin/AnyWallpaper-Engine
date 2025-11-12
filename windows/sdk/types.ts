@@ -144,6 +144,7 @@ export interface AnyWPSDK {
   _spaMode: boolean;
   _autoRefreshEnabled: boolean;
   _persistedState: PersistedState;
+  _onFlutterMessage: ((message: any) => void) | null;
   
   // Methods
   _init(): void;
@@ -163,6 +164,10 @@ export interface AnyWPSDK {
   setSPAMode(enabled: boolean): void;
   openURL(url: string): void;
   ready(name: string): void;
+  
+  // Bidirectional communication
+  sendToFlutter(type: string, data?: any): boolean;
+  onMessage(callback: (message: any) => void): void;
 }
 
 /**

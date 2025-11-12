@@ -273,9 +273,84 @@ function handleClickEvent(data, eventInit, viewportPos) {
     }
 }
 /**
+ * Send message to Flutter
+ *
+ * Sends a structured message to the Flutter application via chrome.webview.postMessage
+ *
+ * @param type - Message type (e.g., 'carouselStateChanged', 'wallpaperReady', 'error')
+ * @param data - Message data payload
+ * @returns true if message was sent, false if bridge not available
+ *
+ * @example
+ * ```typescript
+ * // Send carousel state change
+ * sendToFlutter('carouselStateChanged', {
+ *   currentIndex: 2,
+ *   totalImages: 10,
+ *   isPlaying: true
+ * });
+ *
+ * // Send error
+ * sendToFlutter('error', {
+ *   code: 'IMAGE_LOAD_FAILED',
+ *   message: 'Failed to load image',
+ *   details: { url: 'https://example.com/image.jpg' }
+ * });
+ * ```
+ */
+export function sendToFlutter(type, data = {}) {
+    if (!window.chrome?.webview) {
+        log.warn('chrome.webview not available, cannot send message to Flutter');
+        return false;
+    }
+    const message = {
+        type: type,
+        timestamp: Date.now(),
+        data: data
+    };
+    log.info('[SendToFlutter] Sending message:', type);
+    log.debug('[SendToFlutter] Message data:', message);
+    try {
+        window.chrome.webview.postMessage(message);
+        return true;
+    }
+    catch (error) {
+        log.error('[SendToFlutter] Error sending message:', error);
+        return false;
+    }
+}
+/**
+ * Setup listener for messages from Flutter
+ *
+ * Listens for CustomEvent 'AnyWP:message' dispatched by Flutter
+ * and allows user code to handle these messages
+ */
+export function setupFlutterMessageListener() {
+    log.info('Setting up Flutter message listener');
+    window.addEventListener('AnyWP:message', (event) => {
+        const customEvent = event;
+        const message = customEvent.detail;
+        log.info('[FlutterMessage] Received message from Flutter:', message?.type || 'unknown');
+        log.debug('[FlutterMessage] Message details:', message);
+        // Dispatch to user-registered handler if available
+        const AnyWP = window.AnyWP;
+        if (AnyWP && AnyWP._onFlutterMessage) {
+            try {
+                AnyWP._onFlutterMessage(message);
+            }
+            catch (error) {
+                log.error('[FlutterMessage] Error in user message handler:', error);
+            }
+        }
+    });
+    log.info('Flutter message listener setup complete');
+}
+/**
  * WebMessage Module
  */
 export const WebMessage = {
-    setup: setupWebMessageListener
+    setup: setupWebMessageListener,
+    setupFlutterListener: setupFlutterMessageListener,
+    sendToFlutter: sendToFlutter
 };
 //# sourceMappingURL=webmessage.js.map

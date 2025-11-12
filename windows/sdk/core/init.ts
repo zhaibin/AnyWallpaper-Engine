@@ -6,6 +6,7 @@ import { ClickHandler } from '../modules/click';
 import { Animations } from '../modules/animations';
 import { initWallpaperController } from '../modules/wallpaper';
 import { initLogger, logger } from '../utils/logger';
+import { setupFlutterMessageListener, sendToFlutter } from '../modules/webmessage';
 import type { AnyWPSDK } from '../types';
 
 export function initializeAnyWP(anyWP: AnyWPSDK): void {
@@ -28,6 +29,13 @@ export function initializeAnyWP(anyWP: AnyWPSDK): void {
   
   // Note: WebMessage listener is now setup in index.ts (EARLY) before any initialization
   // This ensures we catch all messages from C++ immediately when SDK is loaded
+  
+  // v2.1.0+ Setup Flutter message listener for bidirectional communication
+  setupFlutterMessageListener();
+  
+  // v2.1.0+ Inject sendToFlutter method to AnyWP object
+  anyWP.sendToFlutter = sendToFlutter;
+  logger.info('Bidirectional communication enabled (Flutter ↔ JavaScript)');
   
   // Enable debug mode automatically for testing
   anyWP._debugMode = true;

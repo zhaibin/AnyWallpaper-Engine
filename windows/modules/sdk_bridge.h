@@ -54,6 +54,16 @@ public:
   // Utility
   std::string ExtractJsonValue(const std::string& json, const std::string& key);
 
+  // ========================================
+  // Flutter Message Forwarding
+  // ========================================
+  
+  // 设置 Flutter 回调（用于转发消息）
+  void SetFlutterCallback(std::function<void(const std::string&)> callback);
+  
+  // 转发消息到 Flutter
+  void ForwardMessageToFlutter(const std::string& message);
+
 private:
   std::string LoadSDKScript();
   std::string GetMessageType(const std::string& message);
@@ -64,6 +74,9 @@ private:
   // Performance optimization: Cache SDK script to avoid repeated file I/O
   static std::string cached_sdk_script_;
   static bool sdk_script_loaded_;
+  
+  // Flutter callback function
+  std::function<void(const std::string&)> flutter_callback_;
 };
 
 }  // namespace anywp_engine

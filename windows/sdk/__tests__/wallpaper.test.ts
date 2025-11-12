@@ -28,6 +28,7 @@ describe('Wallpaper module', () => {
       _spaMode: false,
       _autoRefreshEnabled: true,
       _persistedState: {},
+      _onFlutterMessage: null,
       _init: jest.fn(),
       _log: jest.fn(),
       log: jest.fn(),
@@ -44,7 +45,9 @@ describe('Wallpaper module', () => {
       _notifyVisibilityChange: jest.fn(),
       setSPAMode: jest.fn(),
       openURL: jest.fn(),
-      ready: jest.fn()
+      ready: jest.fn(),
+      sendToFlutter: jest.fn(() => true),
+      onMessage: jest.fn()
     };
     
     // Mock chrome.webview

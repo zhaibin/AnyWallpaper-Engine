@@ -23,6 +23,7 @@ var AnyWPBundle = (function (exports) {
         _spaMode: false,
         _autoRefreshEnabled: true,
         _persistedState: {},
+        _onFlutterMessage: null,
         // Initialize (will be implemented in init.ts)
         _init() {
             throw new Error('_init must be implemented');
@@ -92,6 +93,36 @@ var AnyWPBundle = (function (exports) {
                     name: name
                 });
             }
+        },
+        // ========================================
+        // Bidirectional Communication APIs
+        // ========================================
+        /**
+         * Send message to Flutter application
+         * (Will be implemented in webmessage module)
+         */
+        sendToFlutter(_type, _data) {
+            throw new Error('Not implemented - will be injected by webmessage module');
+        },
+        /**
+         * Register callback to receive messages from Flutter
+         *
+         * @param callback - Function to handle messages from Flutter
+         *
+         * @example
+         * ```typescript
+         * window.AnyWP.onMessage((message) => {
+         *   console.log('Received from Flutter:', message.type);
+         *
+         *   if (message.type === 'updateCarousel') {
+         *     // Update carousel with message.data
+         *   }
+         * });
+         * ```
+         */
+        onMessage(callback) {
+            console.log('[AnyWP] Registering Flutter message handler');
+            this._onFlutterMessage = callback;
         }
     };
 
@@ -1131,168 +1162,6 @@ var AnyWPBundle = (function (exports) {
         logger.setLevel(isDevelopment ? LogLevel.DEBUG : LogLevel.INFO);
     }
 
-    // Initialization module
-    function initializeAnyWP(anyWP) {
-        // Initialize logger first
-        initLogger();
-        logger.info('========================================');
-        logger.info('AnyWP Engine v' + anyWP.version + ' (Simple Mode)');
-        logger.info('========================================');
-        logger.info('Screen: ' + anyWP.screenWidth + 'x' + anyWP.screenHeight);
-        logger.info('DPI Scale: ' + anyWP.dpiScale + 'x');
-        logger.info('========================================');
-        Debug.detectFromURL();
-        SPA.detect(anyWP, ClickHandler);
-        Events.setup(anyWP, ClickHandler, Animations);
-        // Initialize wallpaper controller (v2.0.1+)
-        initWallpaperController(anyWP);
-        // Note: WebMessage listener is now setup in index.ts (EARLY) before any initialization
-        // This ensures we catch all messages from C++ immediately when SDK is loaded
-        // Enable debug mode automatically for testing
-        anyWP._debugMode = true;
-        logger.info('Debug mode ENABLED automatically');
-    }
-
-    // State persistence module
-    const log$1 = logger.scope('Storage');
-    const Storage = {
-        /**
-         * Load state from native storage
-         */
-        load(anyWP, key, callback) {
-            log$1.debug('Loading state for key:', key);
-            // Check local cache first
-            if (anyWP._persistedState[key]) {
-                log$1.debug('Found in cache:', anyWP._persistedState[key]);
-                callback(anyWP._persistedState[key]);
-                return;
-            }
-            // Request from native layer
-            if (window.chrome?.webview) {
-                log$1.debug('Requesting state from native layer...');
-                let resolved = false;
-                let timeoutId;
-                const handler = (event) => {
-                    if (event.detail && event.detail.type === 'stateLoaded' && event.detail.key === key) {
-                        log$1.debug('Received stateLoaded event:', event.detail);
-                        window.removeEventListener('AnyWP:stateLoaded', handler);
-                        if (timeoutId !== undefined) {
-                            clearTimeout(timeoutId);
-                        }
-                        resolved = true;
-                        const value = event.detail.value ? JSON.parse(event.detail.value) : null;
-                        anyWP._persistedState[key] = value;
-                        log$1.info('State loaded successfully:', value);
-                        callback(value);
-                    }
-                };
-                window.addEventListener('AnyWP:stateLoaded', handler);
-                window.chrome.webview.postMessage({
-                    type: 'loadState',
-                    key: key
-                });
-                timeoutId = window.setTimeout(() => {
-                    if (!resolved) {
-                        window.removeEventListener('AnyWP:stateLoaded', handler);
-                        log$1.warn('loadState timeout for key:', key);
-                        callback(null);
-                    }
-                }, 1000);
-            }
-            else {
-                log$1.warn('chrome.webview not available, using localStorage');
-                try {
-                    const stored = localStorage.getItem('AnyWP_' + key);
-                    const value = stored ? JSON.parse(stored) : null;
-                    anyWP._persistedState[key] = value;
-                    log$1.info('Loaded from localStorage:', value);
-                    callback(value);
-                }
-                catch (e) {
-                    log$1.error('Failed to load state:', e);
-                    callback(null);
-                }
-            }
-        },
-        /**
-         * Save custom state
-         */
-        save(anyWP, key, value) {
-            anyWP._persistedState[key] = value;
-            if (window.chrome?.webview) {
-                window.chrome.webview.postMessage({
-                    type: 'saveState',
-                    key: key,
-                    value: JSON.stringify(value)
-                });
-                Debug.log('Saved state for ' + key);
-            }
-            else {
-                try {
-                    localStorage.setItem('AnyWP_' + key, JSON.stringify(value));
-                    Debug.log('Saved state to localStorage for ' + key);
-                }
-                catch (e) {
-                    console.warn('[AnyWP] Failed to save state:', e);
-                }
-            }
-        },
-        /**
-         * Clear all saved state
-         */
-        clear(anyWP) {
-            anyWP._persistedState = {};
-            if (window.chrome?.webview) {
-                window.chrome.webview.postMessage({
-                    type: 'clearState'
-                });
-                Debug.log('Cleared all saved state');
-            }
-            else {
-                try {
-                    const keys = Object.keys(localStorage);
-                    keys.forEach((key) => {
-                        if (key.startsWith('AnyWP_')) {
-                            localStorage.removeItem(key);
-                        }
-                    });
-                    Debug.log('Cleared localStorage state');
-                }
-                catch (e) {
-                    console.warn('[AnyWP] Failed to clear state:', e);
-                }
-            }
-        },
-        /**
-         * Save element position
-         */
-        saveElementPosition(anyWP, key, x, y) {
-            const position = { left: x, top: y };
-            log$1.debug('Saving position for ' + key + ': ', position);
-            anyWP._persistedState[key] = position;
-            if (window.chrome?.webview) {
-                const msg = {
-                    type: 'saveState',
-                    key: key,
-                    value: JSON.stringify(position)
-                };
-                log$1.debug('Sending saveState message:', msg);
-                window.chrome.webview.postMessage(msg);
-                log$1.debug('Message sent successfully');
-            }
-            else {
-                log$1.warn('chrome.webview not available, using localStorage');
-                try {
-                    localStorage.setItem('AnyWP_' + key, JSON.stringify(position));
-                    log$1.info('Saved to localStorage for ' + key);
-                }
-                catch (e) {
-                    log$1.error('Failed to save state:', e);
-                }
-            }
-        }
-    };
-
     const Coordinates = {
         /**
          * Convert screen coordinates (physical pixels) to viewport CSS coordinates
@@ -1389,7 +1258,7 @@ var AnyWPBundle = (function (exports) {
      * - Handle CustomEvent dispatching for backward compatibility
      */
     // Create scoped logger for WebMessage module
-    const log = logger.scope('WebMessage');
+    const log$1 = logger.scope('WebMessage');
     /**
      * Element cache for performance optimization
      * WeakMap allows automatic garbage collection when elements are removed from DOM
@@ -1407,19 +1276,19 @@ var AnyWPBundle = (function (exports) {
      */
     function setupWebMessageListener() {
         if (!window.chrome || !window.chrome.webview) {
-            log.info('chrome.webview not available');
+            log$1.info('chrome.webview not available');
             return;
         }
         const globalAny = window;
         // Prevent duplicate listener registration
         if (globalAny._anywpEarlyMessageListenerRegistered) {
-            log.warn('WebMessage listener already registered (EARLY), skipping duplicate');
+            log$1.warn('WebMessage listener already registered (EARLY), skipping duplicate');
             return;
         }
-        log.info('Setting up WebMessage listener (EARLY)');
+        log$1.info('Setting up WebMessage listener (EARLY)');
         globalAny._anywpEarlyMessageListenerRegistered = true;
         window.chrome.webview.addEventListener('message', handleWebMessage);
-        log.info('WebMessage listener setup complete (EARLY)');
+        log$1.info('WebMessage listener setup complete (EARLY)');
     }
     /**
      * Main WebMessage event handler
@@ -1427,7 +1296,7 @@ var AnyWPBundle = (function (exports) {
     function handleWebMessage(event) {
         const data = event.data;
         if (!data) {
-            log.warn('Received empty WebMessage');
+            log$1.warn('Received empty WebMessage');
             return;
         }
         try {
@@ -1440,7 +1309,7 @@ var AnyWPBundle = (function (exports) {
             // Add other message type handlers here as needed
         }
         catch (error) {
-            log.error('Error handling WebMessage:', error);
+            log$1.error('Error handling WebMessage:', error);
         }
     }
     /**
@@ -1454,11 +1323,11 @@ var AnyWPBundle = (function (exports) {
             }
             window._anywp_msg_count++;
             if (window._anywp_msg_count % 100 === 0) {
-                log.debug('WebMessage received #' + window._anywp_msg_count + ': ' + data.eventType);
+                log$1.debug('WebMessage received #' + window._anywp_msg_count + ': ' + data.eventType);
             }
         }
         else if (data.type === 'mouseEvent') {
-            log.debug('WebMessage: ' + data.eventType + ' at (' + data.x + ',' + data.y + ')');
+            log$1.debug('WebMessage: ' + data.eventType + ' at (' + data.x + ',' + data.y + ')');
         }
     }
     /**
@@ -1470,7 +1339,7 @@ var AnyWPBundle = (function (exports) {
             // C++ sends physical screen pixels, but we need CSS viewport coordinates
             const AnyWP = window.AnyWP;
             const viewportPos = Coordinates.screenToViewport(data.x, data.y, AnyWP.dpiScale);
-            log.debug('[CoordinateConversion] Screen (' + data.x + ',' + data.y + ') -> Viewport (' +
+            log$1.debug('[CoordinateConversion] Screen (' + data.x + ',' + data.y + ') -> Viewport (' +
                 Math.round(viewportPos.x) + ',' + Math.round(viewportPos.y) + ') DPI:' + AnyWP.dpiScale);
             // v2.0.4+ Dispatch REAL MouseEvent to document for proper DOM interaction
             const eventInit = {
@@ -1493,7 +1362,7 @@ var AnyWPBundle = (function (exports) {
             handleClickEvent(data, eventInit, viewportPos);
         }
         catch (e) {
-            log.error('Error handling mouse event:', e);
+            log$1.error('Error handling mouse event:', e);
         }
     }
     /**
@@ -1507,7 +1376,7 @@ var AnyWPBundle = (function (exports) {
         // Log every 50th mousemove for debugging
         window._mousemove_count = (window._mousemove_count || 0) + 1;
         if (window._mousemove_count % 50 === 0) {
-            log.debug('[DOMDispatch] mousemove #' + window._mousemove_count +
+            log$1.debug('[DOMDispatch] mousemove #' + window._mousemove_count +
                 ' at viewport (' + Math.round(eventInit.clientX) + ',' + Math.round(eventInit.clientY) + ')');
         }
         // Still dispatch CustomEvent for backward compatibility
@@ -1544,7 +1413,7 @@ var AnyWPBundle = (function (exports) {
             }
             cachedInteractiveElements = candidates;
             lastDOMUpdate = now;
-            log.debug('[ElementCache] Updated interactive elements cache:', candidates.length, 'elements');
+            log$1.debug('[ElementCache] Updated interactive elements cache:', candidates.length, 'elements');
         }
         return cachedInteractiveElements;
     }
@@ -1571,11 +1440,11 @@ var AnyWPBundle = (function (exports) {
         // elementFromPoint() doesn't work reliably when wallpaper is below desktop icons
         let targetElement = null;
         const findElementAtPoint = (x, y) => {
-            log.debug('[ElementFinder] Searching at viewport coordinates:', x, y);
-            log.debug('[ElementFinder] Window size:', window.innerWidth, 'x', window.innerHeight);
+            log$1.debug('[ElementFinder] Searching at viewport coordinates:', x, y);
+            log$1.debug('[ElementFinder] Window size:', window.innerWidth, 'x', window.innerHeight);
             // Use cached interactive elements
             const candidates = getInteractiveElements();
-            log.debug('[ElementFinder] Found', candidates.length, 'interactive elements (cached)');
+            log$1.debug('[ElementFinder] Found', candidates.length, 'interactive elements (cached)');
             // Find the topmost element at the given coordinates
             let found = null;
             let maxZIndex = -Infinity;
@@ -1584,10 +1453,10 @@ var AnyWPBundle = (function (exports) {
                 const rect = getElementBounds(elem);
                 const isInside = x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
                 if (isInside) {
-                    log.debug('[ElementFinder] HIT:', elem.tagName, elem.id || elem.className, 'rect:', Math.round(rect.left), Math.round(rect.top), Math.round(rect.right), Math.round(rect.bottom));
+                    log$1.debug('[ElementFinder] HIT:', elem.tagName, elem.id || elem.className, 'rect:', Math.round(rect.left), Math.round(rect.top), Math.round(rect.right), Math.round(rect.bottom));
                     const style = window.getComputedStyle(elem);
                     const zIndex = style.zIndex === 'auto' ? 0 : parseInt(style.zIndex);
-                    log.debug('[ElementFinder]   zIndex:', zIndex);
+                    log$1.debug('[ElementFinder]   zIndex:', zIndex);
                     if (zIndex >= maxZIndex) {
                         maxZIndex = zIndex;
                         found = elem;
@@ -1595,10 +1464,10 @@ var AnyWPBundle = (function (exports) {
                 }
             }
             if (found) {
-                log.debug('[ElementFinder] Selected element:', found.tagName, found.id || found.className, 'zIndex:', maxZIndex);
+                log$1.debug('[ElementFinder] Selected element:', found.tagName, found.id || found.className, 'zIndex:', maxZIndex);
             }
             else {
-                log.debug('[ElementFinder] No interactive element found at coordinates');
+                log$1.debug('[ElementFinder] No interactive element found at coordinates');
             }
             return found;
         };
@@ -1607,22 +1476,22 @@ var AnyWPBundle = (function (exports) {
         const mouseEvent = new MouseEvent(data.eventType, eventInit);
         // Dispatch to the target element or document
         if (targetElement) {
-            log.debug('[DOMDispatch] Dispatching', data.eventType, 'to element:', targetElement.tagName, targetElement.id || targetElement.className);
+            log$1.debug('[DOMDispatch] Dispatching', data.eventType, 'to element:', targetElement.tagName, targetElement.id || targetElement.className);
             targetElement.dispatchEvent(mouseEvent);
         }
         else {
-            log.debug('[DOMDispatch] Dispatching', data.eventType, 'to document (no element found)');
+            log$1.debug('[DOMDispatch] Dispatching', data.eventType, 'to document (no element found)');
             document.dispatchEvent(mouseEvent);
         }
         // Log event details
         if (data.eventType === 'mousedown') {
-            log.info('[DOMDispatch] mousedown dispatched to', targetElement ? (targetElement.tagName + '#' + (targetElement.id || '?')) : 'document');
+            log$1.info('[DOMDispatch] mousedown dispatched to', targetElement ? (targetElement.tagName + '#' + (targetElement.id || '?')) : 'document');
         }
         else if (data.eventType === 'mouseup') {
-            log.info('[DOMDispatch] mouseup dispatched to', targetElement ? (targetElement.tagName + '#' + (targetElement.id || '?')) : 'document');
+            log$1.info('[DOMDispatch] mouseup dispatched to', targetElement ? (targetElement.tagName + '#' + (targetElement.id || '?')) : 'document');
         }
         else if (data.eventType === 'click') {
-            log.info('[DOMDispatch] click dispatched to', targetElement ? (targetElement.tagName + '#' + (targetElement.id || '?')) : 'document');
+            log$1.info('[DOMDispatch] click dispatched to', targetElement ? (targetElement.tagName + '#' + (targetElement.id || '?')) : 'document');
         }
         // Also dispatch CustomEvent for backward compatibility
         const customEvent = new CustomEvent('AnyWP:mouse', {
@@ -1646,10 +1515,252 @@ var AnyWPBundle = (function (exports) {
         }
     }
     /**
+     * Send message to Flutter
+     *
+     * Sends a structured message to the Flutter application via chrome.webview.postMessage
+     *
+     * @param type - Message type (e.g., 'carouselStateChanged', 'wallpaperReady', 'error')
+     * @param data - Message data payload
+     * @returns true if message was sent, false if bridge not available
+     *
+     * @example
+     * ```typescript
+     * // Send carousel state change
+     * sendToFlutter('carouselStateChanged', {
+     *   currentIndex: 2,
+     *   totalImages: 10,
+     *   isPlaying: true
+     * });
+     *
+     * // Send error
+     * sendToFlutter('error', {
+     *   code: 'IMAGE_LOAD_FAILED',
+     *   message: 'Failed to load image',
+     *   details: { url: 'https://example.com/image.jpg' }
+     * });
+     * ```
+     */
+    function sendToFlutter(type, data = {}) {
+        if (!window.chrome?.webview) {
+            log$1.warn('chrome.webview not available, cannot send message to Flutter');
+            return false;
+        }
+        const message = {
+            type: type,
+            timestamp: Date.now(),
+            data: data
+        };
+        log$1.info('[SendToFlutter] Sending message:', type);
+        log$1.debug('[SendToFlutter] Message data:', message);
+        try {
+            window.chrome.webview.postMessage(message);
+            return true;
+        }
+        catch (error) {
+            log$1.error('[SendToFlutter] Error sending message:', error);
+            return false;
+        }
+    }
+    /**
+     * Setup listener for messages from Flutter
+     *
+     * Listens for CustomEvent 'AnyWP:message' dispatched by Flutter
+     * and allows user code to handle these messages
+     */
+    function setupFlutterMessageListener() {
+        log$1.info('Setting up Flutter message listener');
+        window.addEventListener('AnyWP:message', (event) => {
+            const customEvent = event;
+            const message = customEvent.detail;
+            log$1.info('[FlutterMessage] Received message from Flutter:', message?.type || 'unknown');
+            log$1.debug('[FlutterMessage] Message details:', message);
+            // Dispatch to user-registered handler if available
+            const AnyWP = window.AnyWP;
+            if (AnyWP && AnyWP._onFlutterMessage) {
+                try {
+                    AnyWP._onFlutterMessage(message);
+                }
+                catch (error) {
+                    log$1.error('[FlutterMessage] Error in user message handler:', error);
+                }
+            }
+        });
+        log$1.info('Flutter message listener setup complete');
+    }
+    /**
      * WebMessage Module
      */
     const WebMessage = {
-        setup: setupWebMessageListener
+        setup: setupWebMessageListener,
+        setupFlutterListener: setupFlutterMessageListener,
+        sendToFlutter: sendToFlutter
+    };
+
+    // Initialization module
+    function initializeAnyWP(anyWP) {
+        // Initialize logger first
+        initLogger();
+        logger.info('========================================');
+        logger.info('AnyWP Engine v' + anyWP.version + ' (Simple Mode)');
+        logger.info('========================================');
+        logger.info('Screen: ' + anyWP.screenWidth + 'x' + anyWP.screenHeight);
+        logger.info('DPI Scale: ' + anyWP.dpiScale + 'x');
+        logger.info('========================================');
+        Debug.detectFromURL();
+        SPA.detect(anyWP, ClickHandler);
+        Events.setup(anyWP, ClickHandler, Animations);
+        // Initialize wallpaper controller (v2.0.1+)
+        initWallpaperController(anyWP);
+        // Note: WebMessage listener is now setup in index.ts (EARLY) before any initialization
+        // This ensures we catch all messages from C++ immediately when SDK is loaded
+        // v2.1.0+ Setup Flutter message listener for bidirectional communication
+        setupFlutterMessageListener();
+        // v2.1.0+ Inject sendToFlutter method to AnyWP object
+        anyWP.sendToFlutter = sendToFlutter;
+        logger.info('Bidirectional communication enabled (Flutter ↔ JavaScript)');
+        // Enable debug mode automatically for testing
+        anyWP._debugMode = true;
+        logger.info('Debug mode ENABLED automatically');
+    }
+
+    // State persistence module
+    const log = logger.scope('Storage');
+    const Storage = {
+        /**
+         * Load state from native storage
+         */
+        load(anyWP, key, callback) {
+            log.debug('Loading state for key:', key);
+            // Check local cache first
+            if (anyWP._persistedState[key]) {
+                log.debug('Found in cache:', anyWP._persistedState[key]);
+                callback(anyWP._persistedState[key]);
+                return;
+            }
+            // Request from native layer
+            if (window.chrome?.webview) {
+                log.debug('Requesting state from native layer...');
+                let resolved = false;
+                let timeoutId;
+                const handler = (event) => {
+                    if (event.detail && event.detail.type === 'stateLoaded' && event.detail.key === key) {
+                        log.debug('Received stateLoaded event:', event.detail);
+                        window.removeEventListener('AnyWP:stateLoaded', handler);
+                        if (timeoutId !== undefined) {
+                            clearTimeout(timeoutId);
+                        }
+                        resolved = true;
+                        const value = event.detail.value ? JSON.parse(event.detail.value) : null;
+                        anyWP._persistedState[key] = value;
+                        log.info('State loaded successfully:', value);
+                        callback(value);
+                    }
+                };
+                window.addEventListener('AnyWP:stateLoaded', handler);
+                window.chrome.webview.postMessage({
+                    type: 'loadState',
+                    key: key
+                });
+                timeoutId = window.setTimeout(() => {
+                    if (!resolved) {
+                        window.removeEventListener('AnyWP:stateLoaded', handler);
+                        log.warn('loadState timeout for key:', key);
+                        callback(null);
+                    }
+                }, 1000);
+            }
+            else {
+                log.warn('chrome.webview not available, using localStorage');
+                try {
+                    const stored = localStorage.getItem('AnyWP_' + key);
+                    const value = stored ? JSON.parse(stored) : null;
+                    anyWP._persistedState[key] = value;
+                    log.info('Loaded from localStorage:', value);
+                    callback(value);
+                }
+                catch (e) {
+                    log.error('Failed to load state:', e);
+                    callback(null);
+                }
+            }
+        },
+        /**
+         * Save custom state
+         */
+        save(anyWP, key, value) {
+            anyWP._persistedState[key] = value;
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage({
+                    type: 'saveState',
+                    key: key,
+                    value: JSON.stringify(value)
+                });
+                Debug.log('Saved state for ' + key);
+            }
+            else {
+                try {
+                    localStorage.setItem('AnyWP_' + key, JSON.stringify(value));
+                    Debug.log('Saved state to localStorage for ' + key);
+                }
+                catch (e) {
+                    console.warn('[AnyWP] Failed to save state:', e);
+                }
+            }
+        },
+        /**
+         * Clear all saved state
+         */
+        clear(anyWP) {
+            anyWP._persistedState = {};
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage({
+                    type: 'clearState'
+                });
+                Debug.log('Cleared all saved state');
+            }
+            else {
+                try {
+                    const keys = Object.keys(localStorage);
+                    keys.forEach((key) => {
+                        if (key.startsWith('AnyWP_')) {
+                            localStorage.removeItem(key);
+                        }
+                    });
+                    Debug.log('Cleared localStorage state');
+                }
+                catch (e) {
+                    console.warn('[AnyWP] Failed to clear state:', e);
+                }
+            }
+        },
+        /**
+         * Save element position
+         */
+        saveElementPosition(anyWP, key, x, y) {
+            const position = { left: x, top: y };
+            log.debug('Saving position for ' + key + ': ', position);
+            anyWP._persistedState[key] = position;
+            if (window.chrome?.webview) {
+                const msg = {
+                    type: 'saveState',
+                    key: key,
+                    value: JSON.stringify(position)
+                };
+                log.debug('Sending saveState message:', msg);
+                window.chrome.webview.postMessage(msg);
+                log.debug('Message sent successfully');
+            }
+            else {
+                log.warn('chrome.webview not available, using localStorage');
+                try {
+                    localStorage.setItem('AnyWP_' + key, JSON.stringify(position));
+                    log.info('Saved to localStorage for ' + key);
+                }
+                catch (e) {
+                    log.error('Failed to save state:', e);
+                }
+            }
+        }
     };
 
     // AnyWP Engine SDK - Main Entry Point

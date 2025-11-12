@@ -16,6 +16,7 @@
 #include <fstream>
 #include <psapi.h>
 #include <mutex>
+#include <queue>
 
 // Forward declarations of modular classes
 #include "utils/url_validator.h"
@@ -228,8 +229,18 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void NotifyMonitorChange();
   void SafeNotifyMonitorChange();  // Thread-safe version using message queue
   
+  // Message forwarding to Flutter (using queue to avoid InvokeMethod deadlock)
+  void NotifyFlutterMessage(const std::string& message);
+  
+  // Get pending messages (called by Dart via polling)
+  std::vector<std::string> GetPendingMessages();
+  
   // Custom window message for safe thread communication
   static constexpr UINT WM_NOTIFY_MONITOR_CHANGE = WM_USER + 100;
+  
+  // Message queue for JavaScript messages (thread-safe)
+  std::queue<std::string> pending_messages_;
+  std::mutex messages_mutex_;
   
   // ========== Power Saving & Optimization ==========
   

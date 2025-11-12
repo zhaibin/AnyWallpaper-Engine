@@ -184,12 +184,44 @@ void SDKBridge::HandleMessage(const std::string& message) {
     return;
   }
   
-  // Find and invoke handler
+  // v2.1.0+ Bidirectional Communication: Forward ALL messages to Flutter
+  // This allows Flutter to handle any message type from JavaScript
+  std::cout << "[AnyWP] [SDKBridge] Forwarding message to Flutter (type: " << type << ")" << std::endl;
+  ForwardMessageToFlutter(message);
+  
+  // Also invoke registered handler (if any) for backward compatibility
   auto it = handlers_.find(type);
   if (it != handlers_.end()) {
+    std::cout << "[AnyWP] [SDKBridge] Invoking registered handler for type: " << type << std::endl;
     it->second(message);
   } else {
-    std::cout << "[AnyWP] [SDKBridge] No handler registered for type: " << type << std::endl;
+    std::cout << "[AnyWP] [SDKBridge] No registered handler for type: " << type << " (message still forwarded to Flutter)" << std::endl;
+  }
+}
+
+// ========== Flutter Message Forwarding ==========
+
+void SDKBridge::SetFlutterCallback(std::function<void(const std::string&)> callback) {
+  flutter_callback_ = callback;
+  std::cout << "[AnyWP] [SDKBridge] Flutter callback registered" << std::endl;
+}
+
+void SDKBridge::ForwardMessageToFlutter(const std::string& message) {
+  if (!flutter_callback_) {
+    std::cout << "[AnyWP] [SDKBridge] WARNING: Flutter callback not set, cannot forward message" << std::endl;
+    return;
+  }
+
+  std::cout << "[AnyWP] [SDKBridge] Forwarding to Flutter: " << message.substr(0, 100) 
+            << (message.length() > 100 ? "..." : "") << std::endl;
+
+  try {
+    // 调用 Flutter 回调
+    flutter_callback_(message);
+    std::cout << "[AnyWP] [SDKBridge] Message forwarded successfully" << std::endl;
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [SDKBridge] ERROR: Exception during message forwarding: " 
+              << e.what() << std::endl;
   }
 }
 
