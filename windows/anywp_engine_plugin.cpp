@@ -2303,10 +2303,14 @@ void AnyWPEnginePlugin::SafeNotifyMonitorChange() {
 
 // v2.1.0+: Notify Flutter of messages from JavaScript
 void AnyWPEnginePlugin::NotifyFlutterMessage(const std::string& message) {
-  if (!method_channel_) {
-    Logger::Instance().Error("AnyWPEngine", 
-      "NotifyFlutterMessage: method_channel_ is nullptr, cannot forward message");
-    return;
+  // Thread-safe check for method_channel_
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    if (!method_channel_) {
+      Logger::Instance().Error("AnyWPEngine", 
+        "NotifyFlutterMessage: method_channel_ is nullptr, cannot forward message");
+      return;
+    }
   }
 
   Logger::Instance().Info("AnyWPEngine", "Notifying Flutter of message from JavaScript");
@@ -2314,11 +2318,17 @@ void AnyWPEnginePlugin::NotifyFlutterMessage(const std::string& message) {
                           (message.length() > 100 ? "..." : ""));
 
   try {
+    // Validate message is not empty
+    if (message.empty()) {
+      Logger::Instance().Warning("AnyWPEngine", "NotifyFlutterMessage: empty message, skipping");
+      return;
+    }
+
     // 构建参数
     flutter::EncodableMap args;
     args[flutter::EncodableValue("message")] = flutter::EncodableValue(message);
 
-    // 调用 Dart 方法 onMessage
+    // 调用 Dart 方法 onMessage (Flutter will handle thread marshalling)
     method_channel_->InvokeMethod(
         "onMessage",
         std::make_unique<flutter::EncodableValue>(args)

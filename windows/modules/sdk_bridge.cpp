@@ -184,25 +184,18 @@ void SDKBridge::HandleMessage(const std::string& message) {
     return;
   }
   
-  // Check if this message should be forwarded to Flutter
-  // Forward: carouselStateChanged, wallpaperReady, error, heartbeat*, sync*
-  if (type == "carouselStateChanged" || 
-      type == "wallpaperReady" ||
-      type == "error" ||
-      type.find("heartbeat") != std::string::npos ||
-      type.find("sync") != std::string::npos ||
-      type.find("Sync") != std::string::npos) {
-    
-    std::cout << "[AnyWP] [SDKBridge] Forwarding message to Flutter (type: " << type << ")" << std::endl;
-    ForwardMessageToFlutter(message);
-  }
+  // v2.1.0+ Bidirectional Communication: Forward ALL messages to Flutter
+  // This allows Flutter to handle any message type from JavaScript
+  std::cout << "[AnyWP] [SDKBridge] Forwarding message to Flutter (type: " << type << ")" << std::endl;
+  ForwardMessageToFlutter(message);
   
-  // Find and invoke handler
+  // Also invoke registered handler (if any) for backward compatibility
   auto it = handlers_.find(type);
   if (it != handlers_.end()) {
+    std::cout << "[AnyWP] [SDKBridge] Invoking registered handler for type: " << type << std::endl;
     it->second(message);
   } else {
-    std::cout << "[AnyWP] [SDKBridge] No handler registered for type: " << type << std::endl;
+    std::cout << "[AnyWP] [SDKBridge] No registered handler for type: " << type << " (message still forwarded to Flutter)" << std::endl;
   }
 }
 

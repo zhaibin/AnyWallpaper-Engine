@@ -677,14 +677,41 @@ void FlutterBridge::HandleSendMessage(
     }
 
     // 构建 JavaScript 代码：触发 CustomEvent
-    // Convert UTF-8 string to wide string using Windows API
-    int wide_size = MultiByteToWideChar(CP_UTF8, 0, message_json.c_str(), -1, nullptr, 0);
+    // Use JSON.parse() to safely parse the message string
+    // First, escape special characters in the JSON string
+    std::string escaped_json;
+    escaped_json.reserve(message_json.length() * 2);
+    for (char c : message_json) {
+      switch (c) {
+        case '\\': escaped_json += "\\\\"; break;
+        case '\"': escaped_json += "\\\""; break;
+        case '\n': escaped_json += "\\n"; break;
+        case '\r': escaped_json += "\\r"; break;
+        case '\t': escaped_json += "\\t"; break;
+        default: escaped_json += c; break;
+      }
+    }
+    
+    // Convert escaped UTF-8 string to wide string
+    int wide_size = MultiByteToWideChar(CP_UTF8, 0, escaped_json.c_str(), -1, nullptr, 0);
+    if (wide_size == 0) {
+      Logger::Instance().Error("FlutterBridge", "Failed to convert message to wide string");
+      all_success = false;
+      continue;
+    }
+    
     std::wstring message_wide(wide_size - 1, 0);
-    MultiByteToWideChar(CP_UTF8, 0, message_json.c_str(), -1, &message_wide[0], wide_size);
+    int result_size = MultiByteToWideChar(CP_UTF8, 0, escaped_json.c_str(), -1, &message_wide[0], wide_size);
+    if (result_size == 0) {
+      Logger::Instance().Error("FlutterBridge", "Failed to convert message to wide string (step 2)");
+      all_success = false;
+      continue;
+    }
     
     std::wstring script = L"(function() {\n"
                           L"  try {\n"
-                          L"    const message = " + message_wide + L";\n"
+                          L"    const messageStr = \"" + message_wide + L"\";\n"
+                          L"    const message = JSON.parse(messageStr);\n"
                           L"    const event = new CustomEvent('AnyWP:message', {\n"
                           L"      detail: message,\n"
                           L"      bubbles: true\n"
@@ -693,6 +720,7 @@ void FlutterBridge::HandleSendMessage(
                           L"    console.log('[AnyWP Engine] Message dispatched:', message);\n"
                           L"  } catch(e) {\n"
                           L"    console.error('[AnyWP Engine] Failed to dispatch message:', e);\n"
+                          L"    console.error('[AnyWP Engine] Message string:', \"" + message_wide + L"\");\n"
                           L"  }\n"
                           L"})();\n";
 
