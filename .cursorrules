@@ -252,19 +252,59 @@ flutter build windows --debug
 - [ ] `README.md` - Features 章节
 - [ ] `CHANGELOG_CN.md` - 新增更新日志条目
 
-#### 2.2 示例代码更新
+#### 2.2 ⚠️ 文档版本号更新（重要！v2.0.0+ 新增）
+
+**必须更新所有文档中的版本号示例**，避免开发者需要手动修改：
+
+**检查清单**:
+- [ ] `docs/PRECOMPILED_DLL_INTEGRATION.md` - 所有示例中的版本号更新为最新版本
+  - 目录路径：`packages/anywp_engine_v{最新版本}/`
+  - 脚本路径：`packages\anywp_engine_v{最新版本}\setup_precompiled.bat`
+  - pubspec.yaml 路径：`path: ./packages/anywp_engine_v{最新版本}`
+  - CMakeLists.txt 配置：`packages/anywp_engine_v{最新版本}`
+  - 版本更新示例：所有命令和路径更新为最新版本
+  - 常见问题解答：DLL 路径更新为最新版本
+  - 集成清单：下载包名更新为 `anywp_engine_v{最新版本}.zip`
+  - 文档版本号：更新为最新版本
+
+**验证命令**:
+```bash
+# 搜索文档中所有旧版本号引用（替换为实际旧版本号）
+grep -r "anywp_engine_v1\.[0-9]" docs/PRECOMPILED_DLL_INTEGRATION.md
+
+# 验证新版本号已更新（替换为实际新版本号）
+grep -r "anywp_engine_v{最新版本}" docs/PRECOMPILED_DLL_INTEGRATION.md
+```
+
+**更新步骤**:
+1. 搜索文档中所有旧版本号引用（如 `anywp_engine_v1.2.1`）
+2. 批量替换为新版本号（如 `anywp_engine_v2.0.0`）
+3. 验证所有示例代码中的版本号已更新
+4. 检查文档底部的版本号和更新日期
+
+**⚠️ 教训（v2.0.0）**:
+- ❌ **问题**: 文档默认示例仍指向旧目录名 `anywp_engine_v1.2.1`
+- ❌ **影响**: 开发者需要手动修改版本号才能使用文档示例
+- ✅ **解决方案**: 发版前必须检查并更新所有文档中的版本号示例
+- 📝 **结论**: 文档版本号更新应作为发版流程的强制步骤
+
+#### 2.3 示例代码更新
 - [ ] `README.md` 快速开始代码可运行
 - [ ] `docs/DEVELOPER_API_REFERENCE.md` 示例代码完整
 - [ ] 版本标注清晰（如 `v1.2.0+`）
 
-#### 2.3 文档验证
+#### 2.4 文档验证
 ```bash
 # 验证新 API 是否覆盖
 grep -r "newAPIName" docs/ README.md lib/
+
+# 验证文档版本号已更新
+grep -r "anywp_engine_v{最新版本}" docs/PRECOMPILED_DLL_INTEGRATION.md
 ```
 - [ ] 所有核心文档包含新功能
 - [ ] 示例代码可直接复制使用
 - [ ] 无过时信息
+- [ ] **文档版本号已更新**（v2.0.0+ 新增）
 
 #### 2.4 文档准确性与完整性检查（⚠️ 发版前必须）
 
@@ -322,10 +362,11 @@ echo [OK] Documentation check completed
 
 #### 3.1 版本号更新
 **必须同步更新**:
-- [ ] `pubspec.yaml` - version: `1.x.0`
-- [ ] `scripts/build_release_v2.bat` - VERSION=`1.x.0`
+- [ ] `pubspec.yaml` - version: `2.x.0`
+- [ ] `scripts/release.bat` - 脚本自动读取 `pubspec.yaml` 中的版本号（无需手动修改）
 - [ ] `CHANGELOG_CN.md` - 添加新版本条目
 - [ ] `.cursorrules` 底部版本号
+- [ ] **文档版本号** - `docs/PRECOMPILED_DLL_INTEGRATION.md` 中的示例版本号（已在 2.2 步骤完成）
 
 #### 3.2 CHANGELOG 完整性
 **必须包含**:
@@ -340,8 +381,10 @@ echo [OK] Documentation check completed
 
 **步骤**:
 ```bash
-.\scripts\build_release_v2.bat
+.\scripts\release.bat
 ```
+
+**注意**: `release.bat` 脚本会自动从 `pubspec.yaml` 读取版本号，无需手动配置。
 
 **构建完成后检查**:
 - [ ] 构建成功无错误（ERROR_COUNT = 0）
@@ -416,12 +459,12 @@ cmd /c "cd release\anywp_engine_v{版本号} && verify_precompiled.bat"
 
 **❌ 如果缺少任何关键文件**：
 1. **立即停止发布流程** - 不完整的包会导致客户集成失败
-2. 重新运行 `.\scripts\build_release_v2.bat` 并检查错误日志
+2. 重新运行 `.\scripts\release.bat` 并检查错误日志
 3. 如果仍然缺少，手动复制并调查原因：
    - `.lib` 文件：从 `example\build\windows\x64\plugins\anywp_engine\Release\`
    - `.cpp/.h` 文件：从 `windows\`
    - 其他文件：参考构建脚本路径
-4. 确保 `build_release_v2.bat` 中所有复制操作都是 **错误级别** 而非警告
+4. 确保 `release.bat` 中所有复制操作都是 **错误级别** 而非警告
 5. 记录问题到 CHANGELOG，避免下次发生
 
 **⚠️ 客户反馈的常见集成错误**：
@@ -437,9 +480,9 @@ cmd /c "cd release\anywp_engine_v{版本号} && verify_precompiled.bat"
 #### 3.5 创建 Web SDK 独立发布包（v1.3.1+ 自动化）
 
 **⚠️ 重要变更（v1.3.1+）**：
-- ✅ **现已自动化**：`build_release_v2.bat` 脚本在步骤 17/17 自动生成 Web SDK 包
+- ✅ **现已自动化**：`release.bat` 脚本在步骤 17/17 自动生成 Web SDK 包
 - ✅ 无需手动操作，运行主构建脚本即可
-- ✅ 也可单独运行：`.\scripts\build_web_sdk.ps1 -Version "1.x.x"`
+- ✅ 脚本自动从 `pubspec.yaml` 读取版本号
 
 **🆕 TypeScript SDK 注意事项（v4.2.0+）**：
 - ⚠️ **发布前必须构建**: 确保 `windows/anywp_sdk.js` 是最新版本
@@ -458,7 +501,7 @@ npm test           # 验证测试通过
 cd ..\..
 
 # 3. 运行 Release 构建
-.\scripts\build_release_v2.bat
+.\scripts\release.bat
 ```
 
 **自动生成的内容**：
@@ -482,7 +525,7 @@ release/anywp_web_sdk_v{版本号}.zip (~56 KB)
 └── LICENSE
 ```
 
-**验证命令**（在 build_release_v2.bat 完成后）：
+**验证命令**（在 release.bat 完成后）：
 ```powershell
 # 验证 Web SDK 包存在
 Test-Path "release\anywp_web_sdk_v{版本号}.zip"
@@ -850,9 +893,10 @@ exit /b 0
 ### 📋 发版检查清单
 
 #### Step 1: 版本号更新
-- [ ] `pubspec.yaml`: `version: 1.x.0`
-- [ ] `scripts/build_release_v2.bat`: `VERSION=1.x.0`
-- [ ] `.cursorrules` 底部: `版本: 1.x.0`
+- [ ] `pubspec.yaml`: `version: 2.x.0`
+- [ ] `scripts/release.bat`: 自动读取 `pubspec.yaml`（无需手动修改）
+- [ ] `.cursorrules` 底部: `版本: 2.x.0`
+- [ ] **文档版本号**: `docs/PRECOMPILED_DLL_INTEGRATION.md`（在 Step 3 中完成）
 
 #### Step 2: CHANGELOG 更新
 - [ ] 添加新版本条目：`## [4.x.0] - YYYY-MM-DD - 标题`
@@ -873,9 +917,17 @@ exit /b 0
 - [ ] `README.md` - Features 章节
 - [ ] `README.md` - 专题章节（如需要）
 
+**⚠️ 文档版本号更新（v2.0.0+ 强制步骤）**:
+- [ ] `docs/PRECOMPILED_DLL_INTEGRATION.md` - 所有示例版本号更新为最新版本
+- [ ] 验证：`grep -r "anywp_engine_v{最新版本}" docs/PRECOMPILED_DLL_INTEGRATION.md`
+
 **验证**:
 ```bash
+# 验证新 API 覆盖
 grep -r "新API" README.md lib/ docs/DEVELOPER_API_REFERENCE.md
+
+# 验证文档版本号已更新
+grep -r "anywp_engine_v{最新版本}" docs/PRECOMPILED_DLL_INTEGRATION.md
 ```
 
 #### Step 4: 编译测试
@@ -921,6 +973,11 @@ flutter build windows --release
 2. 确认 Flutter Release 构建成功
 3. 查看构建日志中的错误信息
 4. 手动复制缺失文件并修复构建脚本
+
+**⚠️ 重要提示**:
+- `release.bat` 脚本会自动从 `pubspec.yaml` 读取版本号
+- 确保 `pubspec.yaml` 中的版本号已更新
+- 脚本会创建 `release/anywp_engine_v{版本号}/` 和 `release/anywp_web_sdk_v{版本号}/` 目录
 
 #### Step 6: 发布包完整性验证（⚠️ 关键步骤）
 
