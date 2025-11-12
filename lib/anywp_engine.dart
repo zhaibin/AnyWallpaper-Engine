@@ -1,4 +1,5 @@
 ﻿import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 
 /// 显示器信息
@@ -48,6 +49,9 @@ class AnyWPEngine {
   // Callback for power state changes
   static void Function(String oldState, String newState)? _onPowerStateChangeCallback;
   
+  // Callback for messages from JavaScript
+  static void Function(Map<String, dynamic> message)? _onMessageCallback;
+  
   /// Set callback for monitor change events
   static void setOnMonitorChangeCallback(void Function() callback) {
     print('[AnyWPEngine] Setting up monitor change callback');
@@ -82,6 +86,56 @@ class AnyWPEngine {
     print('[AnyWPEngine] Power state change callback setup complete');
   }
   
+  /// Set callback for messages from JavaScript
+  /// 
+  /// The callback receives a map containing the message data from JavaScript.
+  /// This enables bidirectional communication between Flutter and the wallpaper.
+  /// 
+  /// Message format (standard):
+  /// ```json
+  /// {
+  ///   "id": "unique-message-id",
+  ///   "type": "message_type",
+  ///   "timestamp": 1699876543210,
+  ///   "data": { ... }
+  /// }
+  /// ```
+  /// 
+  /// Common message types:
+  /// - `carouselStateChanged`: Wallpaper carousel state updated
+  /// - `wallpaperReady`: Wallpaper initialization complete
+  /// - `error`: Error occurred in JavaScript
+  /// - `heartbeat`: Heartbeat/ping message
+  /// - Custom types defined by your wallpaper
+  /// 
+  /// Example:
+  /// ```dart
+  /// AnyWPEngine.setOnMessageCallback((message) {
+  ///   print('Received from JavaScript: ${message['type']}');
+  ///   
+  ///   switch (message['type']) {
+  ///     case 'carouselStateChanged':
+  ///       final data = message['data'] as Map<String, dynamic>;
+  ///       final currentIndex = data['currentIndex'] as int;
+  ///       print('Carousel index: $currentIndex');
+  ///       break;
+  ///       
+  ///     case 'error':
+  ///       final data = message['data'] as Map<String, dynamic>;
+  ///       print('Error: ${data['message']}');
+  ///       break;
+  ///   }
+  /// });
+  /// ```
+  static void setOnMessageCallback(
+    void Function(Map<String, dynamic> message) callback
+  ) {
+    print('[AnyWPEngine] Setting up message callback');
+    _onMessageCallback = callback;
+    _setupMethodCallHandler();
+    print('[AnyWPEngine] Message callback setup complete');
+  }
+  
   /// Setup method call handler (internal)
   static void _setupMethodCallHandler() {
     // Set method call handler for callbacks from native
@@ -108,6 +162,27 @@ class AnyWPEngine {
             print('[AnyWPEngine] Power state callback executed successfully');
           } else {
             print('[AnyWPEngine] WARNING: Power state callback is null!');
+          }
+        } else if (call.method == 'onMessage') {
+          final args = call.arguments as Map<dynamic, dynamic>;
+          final messageJson = args['message'] as String;
+          
+          print('[AnyWPEngine] Message received from JavaScript');
+          print('[AnyWPEngine] Raw message: $messageJson');
+          
+          if (_onMessageCallback != null) {
+            try {
+              // Parse JSON message
+              final message = jsonDecode(messageJson) as Map<String, dynamic>;
+              print('[AnyWPEngine] Parsed message type: ${message['type']}');
+              
+              _onMessageCallback!(message);
+              print('[AnyWPEngine] Message callback executed successfully');
+            } catch (e) {
+              print('[AnyWPEngine] ERROR: Failed to parse message JSON: $e');
+            }
+          } else {
+            print('[AnyWPEngine] WARNING: Message callback is null!');
           }
         } else {
           print('[AnyWPEngine] Unknown method: ${call.method}');
@@ -684,6 +759,100 @@ class AnyWPEngine {
       return false;
     }
     return version.startsWith(expectedPrefix);
+  }
+
+  // ========== Bidirectional Communication APIs ==========
+
+  /// Send message to JavaScript wallpaper
+  /// 
+  /// Sends a message to the JavaScript code running in the wallpaper.
+  /// This enables bidirectional communication between Flutter and the wallpaper.
+  /// 
+  /// Parameters:
+  /// - [message]: The message to send (will be JSON-encoded)
+  /// - [monitorIndex]: Optional monitor index (-1 or null = all monitors)
+  /// 
+  /// Message format (recommended):
+  /// ```dart
+  /// {
+  ///   'id': 'unique-message-id',
+  ///   'type': 'message_type',
+  ///   'timestamp': DateTime.now().millisecondsSinceEpoch,
+  ///   'data': { ... }
+  /// }
+  /// ```
+  /// 
+  /// Common message types (examples):
+  /// - `updateCarousel`: Update wallpaper carousel
+  /// - `addToCarousel`: Add item to carousel
+  /// - `play`/`pause`/`stop`: Control playback
+  /// - `setInterval`: Change carousel interval
+  /// - Custom types defined by your wallpaper
+  /// 
+  /// Returns: `true` if message sent successfully, `false` otherwise
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Send message to all monitors
+  /// await AnyWPEngine.sendMessage(
+  ///   message: {
+  ///     'id': 'msg-001',
+  ///     'type': 'updateCarousel',
+  ///     'timestamp': DateTime.now().millisecondsSinceEpoch,
+  ///     'data': {
+  ///       'images': [
+  ///         'https://example.com/img1.jpg',
+  ///         'https://example.com/img2.jpg',
+  ///       ],
+  ///       'interval': 30000,
+  ///       'transition': 'fade',
+  ///     },
+  ///   },
+  /// );
+  /// 
+  /// // Send message to specific monitor
+  /// await AnyWPEngine.sendMessage(
+  ///   message: {
+  ///     'type': 'play',
+  ///     'data': {},
+  ///   },
+  ///   monitorIndex: 0,
+  /// );
+  /// 
+  /// // Listen for responses
+  /// AnyWPEngine.setOnMessageCallback((message) {
+  ///   if (message['type'] == 'carouselStateChanged') {
+  ///     print('Carousel updated: ${message['data']}');
+  ///   }
+  /// });
+  /// ```
+  /// 
+  /// See also:
+  /// - [setOnMessageCallback] - Receive messages from JavaScript
+  static Future<bool> sendMessage({
+    required Map<String, dynamic> message,
+    int? monitorIndex,
+  }) async {
+    try {
+      // Convert message to JSON string
+      final messageJson = jsonEncode(message);
+      
+      // Build arguments
+      final args = <String, dynamic>{
+        'message': messageJson,
+      };
+      
+      // Add monitor index if specified
+      if (monitorIndex != null && monitorIndex >= 0) {
+        args['monitorIndex'] = monitorIndex;
+      }
+      
+      final result = await _channel.invokeMethod<bool>('sendMessage', args);
+      return result ?? false;
+    } catch (e) {
+      print('Error sending message: $e');
+      return false;
+    }
   }
 
 }

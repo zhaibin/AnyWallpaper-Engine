@@ -115,6 +115,10 @@ void FlutterBridge::RegisterAllHandlers() {
   RegisterHandler("getVersion",
       [this](auto* args, auto result) { HandleGetVersion(args, std::move(result)); });
 
+  // Message communication
+  RegisterHandler("sendMessage",
+      [this](auto* args, auto result) { HandleSendMessage(args, std::move(result)); });
+
   Logger::Instance().Info("FlutterBridge",
     "Registered " + std::to_string(handlers_.size()) + " method handlers");
 }
@@ -599,6 +603,131 @@ void FlutterBridge::HandleGetVersion(
   
   std::string version = plugin_->GetPluginVersion();
   result->Success(flutter::EncodableValue(version));
+}
+
+// ========================================
+// Message Communication Handlers
+// ========================================
+
+void FlutterBridge::HandleSendMessage(
+    const flutter::EncodableMap* args,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  
+  if (!args) {
+    result->Error("INVALID_ARGS", "Arguments must be a map");
+    return;
+  }
+
+  // 1. 获取消息参数
+  std::string message_json;
+  if (!GetStringArgument(args, "message", message_json, result)) {
+    return;  // Error already sent
+  }
+
+  // 2. 获取目标显示器索引（可选，-1 表示所有显示器）
+  int monitor_index = -1;
+  auto monitor_it = args->find(flutter::EncodableValue("monitorIndex"));
+  if (monitor_it != args->end() && !monitor_it->second.IsNull()) {
+    try {
+      monitor_index = std::get<int>(monitor_it->second);
+    } catch (const std::bad_variant_access&) {
+      // 忽略类型错误，使用默认值 -1
+      Logger::Instance().Warn("FlutterBridge", "monitorIndex is not an integer, using -1 (all monitors)");
+    }
+  }
+
+  Logger::Instance().Info("FlutterBridge", "sendMessage called");
+  Logger::Instance().Debug("FlutterBridge", "  Message: " + message_json);
+  Logger::Instance().Debug("FlutterBridge", "  Monitor: " + std::to_string(monitor_index));
+
+  // 3. 获取壁纸实例
+  std::vector<WallpaperInstance*> target_instances;
+  
+  if (monitor_index >= 0) {
+    // 发送到指定显示器
+    auto* instance = plugin_->GetInstanceForMonitor(monitor_index);
+    if (instance) {
+      target_instances.push_back(instance);
+    } else {
+      result->Error("INSTANCE_NOT_FOUND", 
+                   "No wallpaper instance for monitor " + std::to_string(monitor_index));
+      return;
+    }
+  } else {
+    // 发送到所有显示器
+    std::lock_guard<std::mutex> lock(plugin_->instances_mutex_);
+    for (auto& instance : plugin_->wallpaper_instances_) {
+      target_instances.push_back(&instance);
+    }
+  }
+
+  if (target_instances.empty()) {
+    result->Error("NO_INSTANCES", "No active wallpaper instances");
+    return;
+  }
+
+  // 4. 发送消息到 JavaScript
+  bool all_success = true;
+  int sent_count = 0;
+
+  for (auto* instance : target_instances) {
+    if (!instance || !instance->webview) {
+      all_success = false;
+      continue;
+    }
+
+    // 构建 JavaScript 代码：触发 CustomEvent
+    // Convert UTF-8 string to wide string using Windows API
+    int wide_size = MultiByteToWideChar(CP_UTF8, 0, message_json.c_str(), -1, nullptr, 0);
+    std::wstring message_wide(wide_size - 1, 0);
+    MultiByteToWideChar(CP_UTF8, 0, message_json.c_str(), -1, &message_wide[0], wide_size);
+    
+    std::wstring script = L"(function() {\n"
+                          L"  try {\n"
+                          L"    const message = " + message_wide + L";\n"
+                          L"    const event = new CustomEvent('AnyWP:message', {\n"
+                          L"      detail: message,\n"
+                          L"      bubbles: true\n"
+                          L"    });\n"
+                          L"    window.dispatchEvent(event);\n"
+                          L"    console.log('[AnyWP Engine] Message dispatched:', message);\n"
+                          L"  } catch(e) {\n"
+                          L"    console.error('[AnyWP Engine] Failed to dispatch message:', e);\n"
+                          L"  }\n"
+                          L"})();\n";
+
+    // 执行脚本
+    HRESULT hr = instance->webview->ExecuteScript(
+        script.c_str(),
+        Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
+            [](HRESULT error_code, LPCWSTR result_object_as_json) -> HRESULT {
+              if (FAILED(error_code)) {
+                Logger::Instance().Error("FlutterBridge", "ExecuteScript failed");
+              }
+              return S_OK;
+            }
+        ).Get()
+    );
+
+    if (SUCCEEDED(hr)) {
+      sent_count++;
+    } else {
+      all_success = false;
+      Logger::Instance().Error("FlutterBridge", "Failed to send message to instance");
+    }
+  }
+
+  // 5. 返回结果
+  if (all_success && sent_count > 0) {
+    result->Success(flutter::EncodableValue(true));
+    Logger::Instance().Info("FlutterBridge", 
+                           "Message sent successfully to " + std::to_string(sent_count) + " instance(s)");
+  } else {
+    result->Error("SEND_FAILED", 
+                 "Failed to send message to some instances (" + 
+                 std::to_string(sent_count) + "/" + 
+                 std::to_string(target_instances.size()) + " succeeded)");
+  }
 }
 
 // ========================================

@@ -338,6 +338,12 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
       HandleClearStateWebMessage(msg);
     });
     Logger::Instance().Info("Refactor", "Registered 9 message handlers with SDKBridge");
+    
+    // v2.1.0+ Bidirectional Communication: Set Flutter callback for message forwarding
+    sdk_bridge_->SetFlutterCallback([this](const std::string& message) {
+      this->NotifyFlutterMessage(message);
+    });
+    Logger::Instance().Info("SDKBridge", "Flutter callback connected for bidirectional communication");
   });
   
   // Initialize WebViewManager module (v1.4.1+ Phase A) (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
@@ -2291,6 +2297,41 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
 void AnyWPEnginePlugin::SafeNotifyMonitorChange() {
   std::cout << "[AnyWP] [DisplayChange] Notifying monitor change..." << std::endl;
   NotifyMonitorChange();
+}
+
+// ========== Bidirectional Communication ==========
+
+// v2.1.0+: Notify Flutter of messages from JavaScript
+void AnyWPEnginePlugin::NotifyFlutterMessage(const std::string& message) {
+  if (!method_channel_) {
+    Logger::Instance().Error("AnyWPEngine", 
+      "NotifyFlutterMessage: method_channel_ is nullptr, cannot forward message");
+    return;
+  }
+
+  Logger::Instance().Info("AnyWPEngine", "Notifying Flutter of message from JavaScript");
+  Logger::Instance().Debug("AnyWPEngine", "  Message: " + message.substr(0, 100) + 
+                          (message.length() > 100 ? "..." : ""));
+
+  try {
+    // 构建参数
+    flutter::EncodableMap args;
+    args[flutter::EncodableValue("message")] = flutter::EncodableValue(message);
+
+    // 调用 Dart 方法 onMessage
+    method_channel_->InvokeMethod(
+        "onMessage",
+        std::make_unique<flutter::EncodableValue>(args)
+    );
+
+    Logger::Instance().Info("AnyWPEngine", "Flutter notification sent successfully");
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("AnyWPEngine", 
+      std::string("Exception during Flutter notification: ") + e.what());
+  } catch (...) {
+    Logger::Instance().Error("AnyWPEngine", 
+      "Unknown exception during Flutter notification");
+  }
 }
 
 // v2.0.0+ Phase2: These methods have been moved to DisplayChangeCoordinator module

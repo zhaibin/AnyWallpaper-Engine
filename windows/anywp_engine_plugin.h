@@ -228,6 +228,9 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void NotifyMonitorChange();
   void SafeNotifyMonitorChange();  // Thread-safe version using message queue
   
+  // Message forwarding to Flutter
+  void NotifyFlutterMessage(const std::string& message);
+  
   // Custom window message for safe thread communication
   static constexpr UINT WM_NOTIFY_MONITOR_CHANGE = WM_USER + 100;
   

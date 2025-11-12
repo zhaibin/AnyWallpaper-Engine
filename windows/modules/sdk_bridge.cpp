@@ -184,12 +184,51 @@ void SDKBridge::HandleMessage(const std::string& message) {
     return;
   }
   
+  // Check if this message should be forwarded to Flutter
+  // Forward: carouselStateChanged, wallpaperReady, error, heartbeat*, sync*
+  if (type == "carouselStateChanged" || 
+      type == "wallpaperReady" ||
+      type == "error" ||
+      type.find("heartbeat") != std::string::npos ||
+      type.find("sync") != std::string::npos ||
+      type.find("Sync") != std::string::npos) {
+    
+    std::cout << "[AnyWP] [SDKBridge] Forwarding message to Flutter (type: " << type << ")" << std::endl;
+    ForwardMessageToFlutter(message);
+  }
+  
   // Find and invoke handler
   auto it = handlers_.find(type);
   if (it != handlers_.end()) {
     it->second(message);
   } else {
     std::cout << "[AnyWP] [SDKBridge] No handler registered for type: " << type << std::endl;
+  }
+}
+
+// ========== Flutter Message Forwarding ==========
+
+void SDKBridge::SetFlutterCallback(std::function<void(const std::string&)> callback) {
+  flutter_callback_ = callback;
+  std::cout << "[AnyWP] [SDKBridge] Flutter callback registered" << std::endl;
+}
+
+void SDKBridge::ForwardMessageToFlutter(const std::string& message) {
+  if (!flutter_callback_) {
+    std::cout << "[AnyWP] [SDKBridge] WARNING: Flutter callback not set, cannot forward message" << std::endl;
+    return;
+  }
+
+  std::cout << "[AnyWP] [SDKBridge] Forwarding to Flutter: " << message.substr(0, 100) 
+            << (message.length() > 100 ? "..." : "") << std::endl;
+
+  try {
+    // 调用 Flutter 回调
+    flutter_callback_(message);
+    std::cout << "[AnyWP] [SDKBridge] Message forwarded successfully" << std::endl;
+  } catch (const std::exception& e) {
+    std::cout << "[AnyWP] [SDKBridge] ERROR: Exception during message forwarding: " 
+              << e.what() << std::endl;
   }
 }
 
