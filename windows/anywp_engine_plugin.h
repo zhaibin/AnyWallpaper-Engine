@@ -235,13 +235,24 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // Get pending messages (called by Dart via polling)
   std::vector<std::string> GetPendingMessages();
   
+  // Get pending power state changes (called by Dart via polling)
+  std::vector<std::pair<std::string, std::string>> GetPendingPowerStateChanges();
+  
   // Custom window message for safe thread communication
   static constexpr UINT WM_NOTIFY_MONITOR_CHANGE = WM_USER + 100;
   
   // Message queue for JavaScript messages (thread-safe)
   std::queue<std::string> pending_messages_;
   std::mutex messages_mutex_;
-  
+
+  // Power state change queue (thread-safe, similar to message queue)
+  struct PowerStateChange {
+    std::string oldState;
+    std::string newState;
+  };
+  std::queue<PowerStateChange> pending_power_state_changes_;
+  std::mutex power_state_changes_mutex_;
+
   // ========== Power Saving & Optimization ==========
   
   // Power saving state (enum moved to public section)
@@ -266,6 +277,8 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   bool RestoreWallpaperConfiguration(const std::string& url);
   void NotifyPowerStateChange(PowerState newState);
   std::string PowerStateToString(PowerState state);
+  // v2.1.1+ Fix: Convert PowerManager::PowerState to AnyWPEnginePlugin::PowerState
+  PowerState ConvertPowerManagerState(anywp_engine::PowerManager::PowerState pm_state);
   void NotifyWebContentVisibility(bool visible);
   void ExecuteScriptToAllInstances(const std::wstring& script);  // Helper to execute script to all WebView instances
   

@@ -184,6 +184,29 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     
     power_manager_->SetOnStateChanged([this](auto old_state, auto new_state) {
       Logger::Instance().Info("PowerManager", "Callback: State changed");
+      std::cout << "[AnyWP] [PowerManager] State change callback: " 
+                << static_cast<int>(old_state) << " -> " 
+                << static_cast<int>(new_state) << std::endl;
+      
+      // v2.1.1+ Fix: Convert PowerManager::PowerState to AnyWPEnginePlugin::PowerState and notify Dart
+      try {
+        PowerState plugin_new_state = ConvertPowerManagerState(new_state);
+        std::cout << "[AnyWP] [PowerManager] Converted state: " 
+                  << static_cast<int>(plugin_new_state) << std::endl;
+        
+        // Notify Dart about state change (uses message queue to avoid thread safety issues)
+        std::cout << "[AnyWP] [PowerManager] Calling NotifyPowerStateChange..." << std::endl;
+        this->NotifyPowerStateChange(plugin_new_state);
+        std::cout << "[AnyWP] [PowerManager] NotifyPowerStateChange completed" << std::endl;
+      } catch (const std::exception& e) {
+        std::cerr << "[AnyWP] [PowerManager] ERROR in state change callback: " 
+                  << e.what() << std::endl;
+        Logger::Instance().Error("PowerManager", 
+          std::string("Exception in state change callback: ") + e.what());
+      } catch (...) {
+        std::cerr << "[AnyWP] [PowerManager] ERROR: Unknown exception in state change callback" << std::endl;
+        Logger::Instance().Error("PowerManager", "Unknown exception in state change callback");
+      }
     });
     
     // CRITICAL: Enable PowerManager to start power monitoring
@@ -2358,6 +2381,27 @@ std::vector<std::string> AnyWPEnginePlugin::GetPendingMessages() {
   return messages;
 }
 
+// v2.1.1+ Fix: Get pending power state changes (called by Dart via polling)
+std::vector<std::pair<std::string, std::string>> AnyWPEnginePlugin::GetPendingPowerStateChanges() {
+  std::vector<std::pair<std::string, std::string>> changes;
+  
+  std::lock_guard<std::mutex> lock(power_state_changes_mutex_);
+  
+  // Move all changes from queue to vector
+  while (!pending_power_state_changes_.empty()) {
+    const auto& change = pending_power_state_changes_.front();
+    changes.push_back({change.oldState, change.newState});
+    pending_power_state_changes_.pop();
+  }
+  
+  if (!changes.empty()) {
+    Logger::Instance().Info("AnyWPEngine", 
+      "Retrieved " + std::to_string(changes.size()) + " pending power state changes");
+  }
+  
+  return changes;
+}
+
 // v2.0.0+ Phase2: These methods have been moved to DisplayChangeCoordinator module
 // - HandleMonitorCountChange (~87 lines)
 // - UpdateWallpaperSizes (~68 lines)
@@ -3106,6 +3150,13 @@ void AnyWPEnginePlugin::NotifyWebContentVisibility(bool visible) {
   ExecuteScriptToAllInstances(visibility_script);
 }
 
+// v2.1.1+ Fix: Convert PowerManager::PowerState to AnyWPEnginePlugin::PowerState
+AnyWPEnginePlugin::PowerState AnyWPEnginePlugin::ConvertPowerManagerState(
+    anywp_engine::PowerManager::PowerState pm_state) {
+  // Both enums have the same values, so we can use static_cast
+  return static_cast<PowerState>(pm_state);
+}
+
 // Convert power state enum to string
 std::string AnyWPEnginePlugin::PowerStateToString(PowerState state) {
   switch (state) {
@@ -3120,31 +3171,63 @@ std::string AnyWPEnginePlugin::PowerStateToString(PowerState state) {
 }
 
 // Notify Dart side about power state changes
+// v2.1.1+ Fix: Use message queue instead of InvokeMethod to avoid thread safety issues
 void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
+  // Debug: Log current state before check
+  std::cout << "[AnyWP] [PowerSaving] NotifyPowerStateChange called: newState=" 
+            << static_cast<int>(newState) << " (" << PowerStateToString(newState) 
+            << "), current power_state_=" << static_cast<int>(power_state_) 
+            << " (" << PowerStateToString(power_state_) 
+            << "), last_power_state_=" << static_cast<int>(last_power_state_) 
+            << " (" << PowerStateToString(last_power_state_) << ")" << std::endl;
+  
   if (newState == power_state_) {
+    std::cout << "[AnyWP] [PowerSaving] No change detected, returning early" << std::endl;
     return;  // No change
   }
   
-  std::string oldStateStr = PowerStateToString(last_power_state_);
+  // Use current power_state_ as oldState, not last_power_state_
+  // This ensures we always report the actual transition
+  std::string oldStateStr = PowerStateToString(power_state_);
   std::string newStateStr = PowerStateToString(newState);
   
   std::cout << "[AnyWP] [PowerSaving] State changed: " << oldStateStr << " -> " << newStateStr << std::endl;
   
-  // Update states
+  // Update states: save current state as last, then update current
   last_power_state_ = power_state_;
   power_state_ = newState;
   
-  // Notify Dart if channel is available
-  if (method_channel_) {
-    flutter::EncodableMap args;
-    args[flutter::EncodableValue("oldState")] = flutter::EncodableValue(oldStateStr);
-    args[flutter::EncodableValue("newState")] = flutter::EncodableValue(newStateStr);
+  // v2.1.1+ Fix: Use message queue instead of direct InvokeMethod
+  // This avoids thread safety issues when called from window message handler
+  try {
+    PowerStateChange change;
+    change.oldState = oldStateStr;
+    change.newState = newStateStr;
     
-    auto args_value = std::make_unique<flutter::EncodableValue>(args);
+    // Add to queue (thread-safe)
+    {
+      std::lock_guard<std::mutex> lock(power_state_changes_mutex_);
+      pending_power_state_changes_.push(change);
+      
+      // Limit queue size to prevent memory issues
+      if (pending_power_state_changes_.size() > 100) {
+        Logger::Instance().Warning("AnyWPEngine", 
+          "Power state change queue size exceeded 100, dropping oldest change");
+        pending_power_state_changes_.pop();
+      }
+    }
     
-    std::cout << "[AnyWP] [PowerSaving] Notifying Dart about state change" << std::endl;
-    // Note: InvokeMethod may crash in some contexts, so we skip it for now
-    // method_channel_->InvokeMethod("onPowerStateChange", std::move(args_value));
+    std::cout << "[AnyWP] [PowerSaving] Power state change queued: " 
+              << oldStateStr << " -> " << newStateStr << std::endl;
+    Logger::Instance().Info("AnyWPEngine", 
+      "Power state change queued (queue size: " + 
+      std::to_string(pending_power_state_changes_.size()) + ")");
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("AnyWPEngine", 
+      std::string("Exception during power state change queuing: ") + e.what());
+  } catch (...) {
+    Logger::Instance().Error("AnyWPEngine", 
+      "Unknown exception during power state change queuing");
   }
 }
 

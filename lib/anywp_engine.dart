@@ -48,6 +48,7 @@ class AnyWPEngine {
   
   // Callback for power state changes
   static void Function(String oldState, String newState)? _onPowerStateChangeCallback;
+  static Timer? _powerStatePollingTimer;
   
   // Callback for messages from JavaScript
   static void Function(Map<String, dynamic> message)? _onMessageCallback;
@@ -84,7 +85,43 @@ class AnyWPEngine {
     print('[AnyWPEngine] Setting up power state change callback');
     _onPowerStateChangeCallback = callback;
     _setupMethodCallHandler();
+    _startPowerStatePolling();
     print('[AnyWPEngine] Power state change callback setup complete');
+  }
+  
+  /// Start polling for power state changes (v2.1.1+ Fix: avoids InvokeMethod deadlock)
+  static void _startPowerStatePolling() {
+    // Cancel existing timer if any
+    _powerStatePollingTimer?.cancel();
+    
+    // Poll for power state changes every 100ms
+    _powerStatePollingTimer = Timer.periodic(Duration(milliseconds: 100), (timer) async {
+      if (_onPowerStateChangeCallback == null) {
+        timer.cancel();
+        return;
+      }
+      
+      try {
+        final changes = await _channel.invokeMethod<List>('getPendingPowerStateChanges');
+        if (changes != null && changes.isNotEmpty) {
+          print('[AnyWPEngine] Retrieved ${changes.length} pending power state changes');
+          for (final changeData in changes) {
+            if (changeData is Map) {
+              final oldState = changeData['oldState'] as String?;
+              final newState = changeData['newState'] as String?;
+              if (oldState != null && newState != null) {
+                print('[AnyWPEngine] Power state changed: $oldState -> $newState');
+                _onPowerStateChangeCallback!(oldState, newState);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Silently ignore errors to avoid spam
+      }
+    });
+    
+    print('[AnyWPEngine] Power state polling started (100ms interval)');
   }
   
   /// Set callback for messages from JavaScript

@@ -94,6 +94,17 @@ class _MyAppState extends State<MyApp> with WindowListener {
     
     print('[APP] Monitor polling started (every 3 seconds)');
     
+    // v2.1.1+ Fix: Setup power state change callback (polling-based)
+    AnyWPEngine.setOnPowerStateChangeCallback((oldState, newState) {
+      print('[APP] [PowerState] State changed: $oldState -> $newState');
+      if (mounted) {
+        setState(() {
+          _powerState = '$oldState -> $newState';
+        });
+      }
+    });
+    print('[APP] Power state change callback registered');
+    
     // Setup bidirectional communication callback
     AnyWPEngine.setOnMessageCallback((message) {
       try {

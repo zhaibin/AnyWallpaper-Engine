@@ -122,6 +122,10 @@ void FlutterBridge::RegisterAllHandlers() {
   // v2.1.0+ Bidirectional Communication: Get pending messages from JavaScript
   RegisterHandler("getPendingMessages",
       [this](auto* args, auto result) { HandleGetPendingMessages(args, std::move(result)); });
+  
+  // v2.1.1+ Fix: Get pending power state changes (polling-based to avoid thread safety issues)
+  RegisterHandler("getPendingPowerStateChanges",
+      [this](auto* args, auto result) { HandleGetPendingPowerStateChanges(args, std::move(result)); });
 
   Logger::Instance().Info("FlutterBridge",
     "Registered " + std::to_string(handlers_.size()) + " method handlers");
@@ -781,6 +785,35 @@ void FlutterBridge::HandleGetPendingMessages(
     Logger::Instance().Error("FlutterBridge", 
       std::string("Exception in GetPendingMessages: ") + e.what());
     result->Error("GET_MESSAGES_FAILED", e.what());
+  }
+}
+
+// v2.1.1+ Fix: Get pending power state changes (polling-based to avoid thread safety issues)
+void FlutterBridge::HandleGetPendingPowerStateChanges(
+    const flutter::EncodableMap* args,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  
+  try {
+    // Get pending power state changes from plugin
+    std::vector<std::pair<std::string, std::string>> changes = 
+        plugin_->GetPendingPowerStateChanges();
+    
+    // Convert to Flutter list of maps
+    flutter::EncodableList change_list;
+    for (const auto& change : changes) {
+      flutter::EncodableMap change_map;
+      change_map[flutter::EncodableValue("oldState")] = 
+          flutter::EncodableValue(change.first);
+      change_map[flutter::EncodableValue("newState")] = 
+          flutter::EncodableValue(change.second);
+      change_list.push_back(flutter::EncodableValue(change_map));
+    }
+    
+    result->Success(flutter::EncodableValue(change_list));
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("FlutterBridge", 
+      std::string("Exception in GetPendingPowerStateChanges: ") + e.what());
+    result->Error("GET_POWER_STATE_CHANGES_FAILED", e.what());
   }
 }
 

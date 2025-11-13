@@ -2,6 +2,45 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [2.1.1] - 2025-11-13 - 🔧 Power State Callback 修复
+
+### 🐛 Bug 修复
+
+#### 修复 onPowerStateChange 回调不触发问题
+- **问题**: `onPowerStateChange` 回调在系统锁屏/解锁时不触发
+- **原因**: `InvokeMethod` 在窗口消息处理器中调用会导致线程安全问题（崩溃/死锁）
+- **解决方案**: 使用消息队列 + 轮询机制
+  - C++ 端：状态变化时加入队列（线程安全）
+  - Dart 端：每 100ms 轮询获取待处理的状态变化
+  - 避免了直接调用 `InvokeMethod` 的线程安全问题
+
+#### 修复状态显示问题
+- **问题**: 状态变化显示为 `LOCKED -> LOCKED` 而不是 `ACTIVE -> LOCKED`
+- **原因**: `oldState` 使用了 `last_power_state_` 而不是 `power_state_`
+- **修复**: 使用 `power_state_` 作为 `oldState`，确保显示正确的状态转换
+
+### 🔧 技术改进
+
+- **新增方法**: `getPendingPowerStateChanges` - 获取待处理的状态变化
+- **新增结构**: `PowerStateChange` - 存储状态变化信息
+- **新增成员**: `pending_power_state_changes_` 队列和 `power_state_changes_mutex_` 互斥锁
+- **改进日志**: 添加详细的调试日志，便于排查问题
+
+### 📝 代码变更
+
+- `windows/anywp_engine_plugin.h`: 添加状态变化队列相关成员
+- `windows/anywp_engine_plugin.cpp`: 实现消息队列机制和状态更新逻辑
+- `windows/modules/flutter_bridge.h/cpp`: 添加 `getPendingPowerStateChanges` 处理
+- `lib/anywp_engine.dart`: 实现轮询机制（100ms 间隔）
+- `example/lib/main.dart`: 添加状态变化回调示例
+
+### ✅ 测试验证
+
+- ✅ 锁屏/解锁事件正确检测
+- ✅ PowerManager 状态变化正确传递
+- ✅ Dart 回调正确触发
+- ✅ 状态转换显示正确（ACTIVE -> LOCKED -> ACTIVE）
+
 ## [2.1.1] - 2025-11-13 - 📚 集成文档完善
 
 ### 📚 文档更新
