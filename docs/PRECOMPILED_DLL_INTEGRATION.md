@@ -77,17 +77,17 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.1.0_precompiled.zip
+anywp_engine_v2.1.1_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.1.0_source.zip
+anywp_engine_v2.1.1_source.zip
 ```
 
 ### 2. 解压到项目目录
 
-将 ZIP 文件解压到你的项目根目录：
+将 ZIP 文件解压到你的项目根目录的 `packages/` 子目录：
 
 ```
 YourProject/
@@ -95,81 +95,90 @@ YourProject/
 ├── windows/
 ├── pubspec.yaml
 └── packages/
-    └── anywp_engine_v2.1.0_precompiled/  ← 解压到这里（建议放在 packages/）
+    └── anywp_engine/  ← 解压到这里（重命名为 anywp_engine）
         ├── bin/
         │   ├── anywp_engine_plugin.dll
         │   └── WebView2Loader.dll
         ├── lib/
-        │   └── dart/
-        │       └── anywp_engine.dart
+        │   ├── dart/
+        │   │   └── anywp_engine.dart
         │   └── anywp_engine_plugin.lib
         ├── include/
+        │   └── anywp_engine/
+        │       └── anywp_engine_plugin_c_api.h  ← 纯 C API 头文件
         ├── windows/
-        │   ├── anywp_sdk.js
-        │   ├── CMakeLists.txt
-        │   └── src/
-        │       └── anywp_engine_plugin.cpp
-        ├── setup_precompiled.bat
-        ├── verify_precompiled.bat
-        ├── generate_pubspec_snippet.bat
-        ├── example_minimal/
-        └── pubspec.yaml
+        │   └── CMakeLists.txt
+        ├── pubspec.yaml
+        ├── README.md
+        ├── INTEGRATION_GUIDE.md
+        ├── CHANGELOG_CN.md
+        └── LICENSE
 ```
 
-### 3. 一键安装预编译包（推荐）
+**重要提示**：建议将解压后的文件夹重命名为 `anywp_engine`（去掉版本号），这样升级时只需替换内容，无需修改 `pubspec.yaml`。
 
-在 Flutter 项目根目录执行：
+### 3. 在 pubspec.yaml 中引用
 
-```powershell
-packages\anywp_engine_v2.1.0_precompiled\setup_precompiled.bat
-```
-
-脚本会自动：
-
-- 验证关键文件是否齐全
-- 将预编译包复制到 `packages/anywp_engine_v2.1.0_precompiled`
-- 执行 `flutter pub get`
-
-### 4. 手动在 pubspec.yaml 中引用（可选）
+在你的 Flutter 项目的 `pubspec.yaml` 中添加依赖：
 
 ```yaml
 dependencies:
   flutter:
     sdk: flutter
   anywp_engine:
-    path: ./packages/anywp_engine_v2.1.0_precompiled
+    path: ./packages/anywp_engine
 ```
 
-### 5. 获取依赖并构建
+### 4. 获取依赖并构建
 
 ```bash
 flutter pub get
 flutter build windows
 ```
 
+**就这么简单！** Flutter 会自动处理插件的加载和 DLL 的复制。
+
 ---
 
-## 📥 方式二：直接引用 DLL（简化版）
+## 📥 方式二：使用 pubspec.yaml 的 git 引用（团队协作）
 
-如果你不想复制文件，可以直接在构建配置中引用 DLL。
+如果你的团队使用 Git 管理预编译包，可以这样引用：
+
+```yaml
+dependencies:
+  anywp_engine:
+    git:
+      url: https://github.com/your-org/anywp_engine_precompiled.git
+      ref: v2.1.0  # 或使用 main 分支
+```
+
+---
+
+## 📥 方式三：高级 - 自定义 CMake 配置
+
+⚠️ **注意**：只有在需要自定义构建流程时才使用此方式，大多数情况下方式一已足够。
+
+如果你需要自定义 CMake 配置，可以直接在项目的 `windows/CMakeLists.txt` 中引用预编译 DLL。
 
 ### 1. 修改 windows/CMakeLists.txt
 
 在 `windows/CMakeLists.txt` 文件末尾添加：
 
 ```cmake
+# ==========================================
 # 引用预编译的 AnyWP Engine 插件
-set(ANYWP_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../packages/anywp_engine_v2.1.0_precompiled")
+# ==========================================
+set(ANYWP_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../packages/anywp_engine")
 
 if(EXISTS "${ANYWP_ENGINE_DIR}")
-  # 添加插件库
+  # 添加插件库（IMPORTED 表示使用外部预编译库）
   add_library(anywp_engine_plugin SHARED IMPORTED)
   set_target_properties(anywp_engine_plugin PROPERTIES
     IMPORTED_LOCATION "${ANYWP_ENGINE_DIR}/bin/anywp_engine_plugin.dll"
     IMPORTED_IMPLIB "${ANYWP_ENGINE_DIR}/lib/anywp_engine_plugin.lib"
   )
   
-  # 包含头文件
+  # 包含纯 C API 头文件（无 C++ 依赖）
   target_include_directories(${BINARY_NAME} PRIVATE
     "${ANYWP_ENGINE_DIR}/include"
   )
@@ -177,7 +186,7 @@ if(EXISTS "${ANYWP_ENGINE_DIR}")
   # 链接插件
   target_link_libraries(${BINARY_NAME} PRIVATE anywp_engine_plugin)
   
-  # 复制 DLL 到输出目录
+  # 复制 DLL 到输出目录（确保运行时能找到）
   add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
       "${ANYWP_ENGINE_DIR}/bin/anywp_engine_plugin.dll"
@@ -187,18 +196,95 @@ if(EXISTS "${ANYWP_ENGINE_DIR}")
       "$<TARGET_FILE_DIR:${BINARY_NAME}>"
   )
   
-  message(STATUS "Using precompiled AnyWP Engine from ${ANYWP_ENGINE_DIR}")
+  message(STATUS "✅ Using precompiled AnyWP Engine from ${ANYWP_ENGINE_DIR}")
 else()
-  message(WARNING "Precompiled AnyWP Engine not found at ${ANYWP_ENGINE_DIR}")
+  message(FATAL_ERROR "❌ Precompiled AnyWP Engine not found at ${ANYWP_ENGINE_DIR}")
 endif()
 ```
 
-### 2. 构建项目
+### 2. 使用纯 C API（推荐）
+
+如果你需要在 C++ 代码中调用插件功能，使用纯 C API 头文件：
+
+```cpp
+// 在你的 C++ 代码中
+#include <anywp_engine/anywp_engine_plugin_c_api.h>
+
+// 注册插件（通常由 Flutter 框架自动调用）
+// 你不需要手动调用，除非有特殊需求
+void MyPluginRegistration(FlutterDesktopPluginRegistrarRef registrar) {
+  AnyWPEnginePluginRegisterWithRegistrar(registrar);
+}
+```
+
+**纯 C API 的优势**：
+- ✅ 无需引入 `<WebView2.h>` 和 C++ 类定义
+- ✅ 无需 WebView2 SDK 和 Visual Studio
+- ✅ 更简洁的接口，只暴露必要的注册函数
+- ✅ 避免 ABI 兼容性问题
+
+### 3. 构建项目
 
 ```bash
 flutter pub get
 flutter build windows
 ```
+
+---
+
+## 🔍 纯 C API vs 完整 C++ API
+
+AnyWP Engine 提供两种 API 接口：
+
+### 📘 纯 C API（推荐给预编译包用户）
+
+**文件**: `include/anywp_engine/anywp_engine_plugin_c_api.h`
+
+```cpp
+// 纯 C API - 简单清晰
+#include <anywp_engine/anywp_engine_plugin_c_api.h>
+
+// 只暴露一个注册函数
+void AnyWPEnginePluginRegisterWithRegistrar(
+    FlutterDesktopPluginRegistrarRef registrar);
+```
+
+**优势**：
+- ✅ **零依赖** - 不需要 `<WebView2.h>` 或其他 C++ 头文件
+- ✅ **简洁** - 只有一个函数，接口清晰
+- ✅ **稳定** - C ABI 稳定，避免 C++ 名称修饰问题
+- ✅ **快速编译** - 无需解析大量的 WebView2 类型定义
+
+**适用场景**：
+- Flutter 插件集成（大多数情况）
+- 不需要直接调用插件内部 C++ 类
+- 追求最小依赖和最快编译速度
+
+### 📕 完整 C++ API（仅源码包提供）
+
+**文件**: `windows/anywp_engine_plugin.h`
+
+```cpp
+// 完整 C++ API - 包含内部实现细节
+#include "anywp_engine_plugin.h"
+#include <WebView2.h>
+#include <wrl.h>
+
+// 暴露完整的 C++ 类定义
+class AnyWPEnginePlugin {
+  // ... 内部实现细节 ...
+};
+```
+
+**适用场景**：
+- 需要修改插件源码
+- 需要调用插件内部的 C++ 类
+- 需要深度集成或扩展功能
+
+**前置要求**：
+- WebView2 SDK
+- Visual Studio 2019+
+- C++17 支持
 
 ---
 
@@ -294,14 +380,9 @@ class _WallpaperControllerState extends State<WallpaperController> {
 
 | 文件 | 说明 | 必需 |
 |------|------|------|
-| `anywp_engine_plugin.h` | C++ API 头文件 | ⚠️ 高级用户 |
-| `anywp_engine_plugin_c_api.h` | C API 头文件 | ⚠️ 高级用户 |
+| `anywp_engine_plugin_c_api.h` | **纯 C API 头文件**（推荐） | ⚠️ 自定义 CMake 时需要 |
 
-### sdk/ - JavaScript SDK
-
-| 文件 | 说明 | 必需 |
-|------|------|------|
-| `anywp_sdk.js` | 壁纸 JavaScript SDK | ⚠️ Web 开发时需要 |
+**注意**：预编译包只包含纯 C API 头文件，不包含完整的 C++ API 头文件（`anywp_engine_plugin.h`）。完整的 C++ API 只在源码包中提供。
 
 ---
 
@@ -309,35 +390,49 @@ class _WallpaperControllerState extends State<WallpaperController> {
 
 ### 更新到新版本
 
-1. **下载新版本**：
+由于建议将文件夹重命名为 `anywp_engine`（无版本号），更新非常简单：
+
+1. **备份当前版本**（可选）：
    ```bash
-   # 下载新版本的 ZIP
-   # https://github.com/zhaibin/AnyWallpaper-Engine/releases
+   move packages\anywp_engine packages\anywp_engine_backup
    ```
 
-2. **删除旧版本**：
+2. **下载并解压新版本**：
+   - 访问 [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
+   - 下载最新的 `anywp_engine_v2.1.1_precompiled.zip`
+   - 解压到 `packages\anywp_engine`
+
+3. **重新构建**：
    ```bash
-   rmdir /s /q packages\anywp_engine_v1.x.x
+   flutter clean
+   flutter pub get
+   flutter build windows
    ```
 
-3. **解压新版本**：
+**无需修改 `pubspec.yaml`**，因为路径保持不变！
+
+### 如果使用了版本号文件夹
+
+如果你使用了带版本号的文件夹名（如 `anywp_engine_v2.1.1_precompiled`），更新步骤：
+
+1. **删除旧版本**：
    ```bash
-   # 解压 anywp_engine_v2.1.0_precompiled.zip 到 packages\anywp_engine_v2.1.0_precompiled
+   rmdir /s /q packages\anywp_engine_v2.1.0_precompiled
    ```
 
-4. **更新 pubspec.yaml**：
+2. **解压新版本**：
+   ```bash
+   # 解压 anywp_engine_v2.1.1_precompiled.zip 到 packages\
+   ```
+
+3. **更新 pubspec.yaml**：
    ```yaml
    dependencies:
      anywp_engine:
-       path: ./packages/anywp_engine_v2.1.0_precompiled  # 更新版本号
+       path: ./packages/anywp_engine_v2.1.1_precompiled  # 更新版本号
    ```
 
-5. **复制新的 DLL（如需手动复制）**：
-   ```bash
-   copy packages\anywp_engine_v2.1.0_precompiled\bin\*.dll windows\plugins\anywp_engine\ /Y
-   ```
-
-6. **重新构建**：
+4. **重新构建**：
    ```bash
    flutter clean
    flutter pub get
@@ -377,15 +472,20 @@ flutter run -d windows
 
 ---
 
-## 🚫 不需要的操作
+## 🚫 使用预编译包时不需要的操作
 
 使用预编译 DLL 时，**你不需要**：
 
-- ❌ 安装 WebView2 SDK (`setup_webview2.bat`)
-- ❌ 安装 Visual Studio
-- ❌ 配置 NuGet
-- ❌ 编译 C++ 代码
-- ❌ 修改 CMakeLists.txt（除非使用方式二）
+- ❌ **安装 WebView2 SDK** - DLL 已包含所有必要功能
+- ❌ **安装 Visual Studio** - 无需编译 C++ 代码
+- ❌ **配置 NuGet 或 CMake** - Flutter 会自动处理（使用方式一）
+- ❌ **手动复制 DLL** - Flutter 构建系统会自动复制（使用方式一）
+- ❌ **修改 windows/CMakeLists.txt** - 除非你使用方式三（高级用户）
+
+**你只需要**：
+1. 解压预编译包到 `packages/`
+2. 在 `pubspec.yaml` 中添加依赖
+3. 运行 `flutter pub get` 和 `flutter build windows`
 
 ---
 
@@ -393,34 +493,77 @@ flutter run -d windows
 
 ### Q: 构建时提示找不到 DLL？
 
+**可能原因**：
+- 预编译包路径不正确
+- `pubspec.yaml` 中的路径配置错误
+
 **解决方案**：
 ```bash
-# 确认 DLL 文件存在
-dir packages\anywp_engine_v2.1.0_precompiled\bin\*.dll
+# 1. 确认 DLL 文件存在
+dir packages\anywp_engine\bin\*.dll
 
-# 手动复制到构建输出目录
-copy packages\anywp_engine_v2.1.0_precompiled\bin\*.dll build\windows\runner\Release\ /Y
+# 2. 检查 pubspec.yaml 中的路径
+#    应该是: path: ./packages/anywp_engine
+
+# 3. 重新获取依赖
+flutter clean
+flutter pub get
+flutter build windows
 ```
 
-### Q: 运行时提示 DLL 缺失？
+### Q: 运行时提示 "无法加载 anywp_engine_plugin.dll"？
+
+**可能原因**：
+- WebView2 Runtime 未安装（Windows 10）
+- 缺少 Visual C++ 运行时库
 
 **解决方案**：
 ```bash
-# 检查 WebView2 Runtime 是否安装
-# Windows 11 自带，Windows 10 需要单独安装
-# 下载地址：https://developer.microsoft.com/microsoft-edge/webview2/
+# Windows 11: 自带 WebView2 Runtime，无需安装
+# Windows 10: 需要安装 WebView2 Runtime
+# 下载地址: https://developer.microsoft.com/microsoft-edge/webview2/
 ```
 
 ### Q: 如何验证使用的是预编译版本？
 
-在 Flutter 控制台查看日志：
-```
-[AnyWP] Using precompiled plugin version 2.0.0
+**方法 1 - 检查文件**：
+```bash
+# 预编译包只包含 DLL 和纯 C API 头文件，没有源码
+dir packages\anywp_engine\windows\*.cpp
+# 应该提示找不到文件
 ```
 
-### Q: 可以混合使用源码和预编译 DLL 吗？
+**方法 2 - 构建日志**：
+```bash
+flutter build windows --verbose
+# 查找类似输出：
+# "Using Flutter plugin anywp_engine from path"
+# 不应该看到 C++ 编译日志
+```
 
-**不建议**。要么完全使用源码，要么完全使用预编译 DLL，避免版本冲突。
+### Q: 可以同时使用预编译包和源码包吗？
+
+**不可以**。必须选择其中一种：
+- **预编译包**：快速、简单、无需编译
+- **源码包**：灵活、可定制、需要开发环境
+
+混合使用会导致版本冲突和编译错误。
+
+### Q: 预编译包支持哪些平台？
+
+- ✅ Windows x64（主要支持）
+- ❌ Windows x86（需要从源码编译）
+- ❌ Windows ARM64（需要从源码编译）
+
+如需其他平台，请使用源码包自行编译。
+
+### Q: 预编译包的 DLL 是 Debug 还是 Release 版本？
+
+**Release 版本** - 经过完整优化，适合生产环境：
+- 启用了编译器优化
+- 移除了调试符号
+- 体积更小，性能更好
+- 包含完整的错误处理和日志
 
 ---
 
@@ -438,19 +581,19 @@ copy packages\anywp_engine_v2.1.0_precompiled\bin\*.dll build\windows\runner\Rel
 
 ### 首次集成
 
-- [ ] 下载预编译包 (`anywp_engine_v2.1.0_precompiled.zip`)
-- [ ] 解压到项目根目录
-- [ ] 更新 `pubspec.yaml` 引用路径
-- [ ] 复制 DLL 到插件目录
+- [ ] 下载预编译包 (`anywp_engine_v2.1.1_precompiled.zip`)
+- [ ] 解压到项目的 `packages/anywp_engine` 目录
+- [ ] 在 `pubspec.yaml` 中添加依赖
 - [ ] 运行 `flutter pub get`
-- [ ] 运行 `flutter build windows`
-- [ ] 测试插件是否正常工作
+- [ ] 运行 `flutter build windows` 测试构建
+- [ ] 验证插件加载成功
 
 ### 后续开发
 
-- [ ] 引入 `package:anywp_engine/anywp_engine.dart`
+- [ ] 在代码中引入 `package:anywp_engine/anywp_engine.dart`
 - [ ] 调用 API 实现壁纸功能
 - [ ] 测试所有功能
+- [ ] 构建 Release 版本并测试
 - [ ] 部署到目标设备
 
 ---
@@ -459,8 +602,8 @@ copy packages\anywp_engine_v2.1.0_precompiled\bin\*.dll build\windows\runner\Rel
 
 - **完整文档**：[README.md](../README.md)
 - **API 参考**：[DEVELOPER_API_REFERENCE.md](DEVELOPER_API_REFERENCE.md)
+- **Web 开发指南**：[WEB_DEVELOPER_GUIDE_CN.md](WEB_DEVELOPER_GUIDE_CN.md)
 - **使用示例**：[API_USAGE_EXAMPLES.md](API_USAGE_EXAMPLES.md)
-- **故障排除**：[TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 - **发布页面**：[GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
 
 ---
@@ -469,12 +612,17 @@ copy packages\anywp_engine_v2.1.0_precompiled\bin\*.dll build\windows\runner\Rel
 
 遇到问题？
 
-- 📖 查看 [故障排除文档](TROUBLESHOOTING.md)
+- 📖 首先查看本文档的 [常见问题](#-常见问题) 部分
 - 🐛 提交 [GitHub Issue](https://github.com/zhaibin/AnyWallpaper-Engine/issues)
 - 💬 参与 [讨论区](https://github.com/zhaibin/AnyWallpaper-Engine/discussions)
 
 ---
 
-**版本**: 2.0.0  
-**更新日期**: 2025-11-11
+**版本**: 2.1.1  
+**更新日期**: 2025-11-13  
+**主要变更**:
+- 完善预编译包集成文档
+- 新增纯 C API 头文件支持
+- 创建独立的预编译包和源码包
+- 简化集成流程，移除对 WebView2 SDK 的依赖
 

@@ -1,87 +1,92 @@
-# AnyWP Engine v2.1.1 - Developer Experience Improvements
+# AnyWP Engine v2.1.1 - Documentation Improvements
 
-Release Date: November 13, 2025
+## 📚 Enhanced Integration Documentation
 
-## 🎯 Overview
+### Pure C API Documentation
+- **New Section**: "Pure C API vs Complete C++ API"
+  - Detailed comparison of API pros and cons
+  - Usage guide for pure C API
+  - Emphasis on zero dependencies and fast compilation
 
-This release focuses on improving the developer experience for Flutter developers integrating AnyWP Engine. Based on valuable feedback from the Flutter developer community, we've simplified the integration process, reduced package size, and enhanced CMake support.
+### Reorganized Integration Methods
+- **Method 1**: Standard Flutter Plugin Integration (Recommended)
+  - Use `pubspec.yaml` path reference
+  - Simplest and most standard approach
+  
+- **Method 2**: Git Reference (Team Collaboration)
+  - Suitable for teams using Git management
+  
+- **Method 3**: Custom CMake Configuration (Advanced)
+  - Includes detailed pure C API usage examples
+  - Complete CMake configuration instructions
 
----
+### Improved FAQ Section
+Added 6 high-quality FAQs:
+- Build-time DLL not found error
+- Runtime DLL loading error
+- How to verify using precompiled version (2 methods)
+- Can precompiled and source packages be used together?
+- Which platforms does the precompiled package support?
+- Is the DLL Debug or Release version?
 
-## ✨ What's New
+### Optimized Version Update Process
+- Recommend using folder name without version number (`anywp_engine`)
+- Simplified update steps (from 6 steps to 3 steps)
+- No need to modify `pubspec.yaml`
 
-### 1. Pure C API Header 🔌
+### Documentation Corrections
+- Removed references to non-existent script files (`setup_precompiled.bat`, etc.)
+- Updated to actual file structure
+- Added explicit annotation for pure C API header file
 
-**New File**: `windows/anywp_engine_plugin_c_api.h`
+## 📊 Documentation Quality Improvements
 
-- ✅ **Minimal Dependencies**: Only exposes the C registration function
-- ✅ **No C++ Complexity**: Hides all C++ classes and WebView2 dependencies  
-- ✅ **Easy Integration**: Uses `extern "C"` for C compatibility
-- ✅ **Opaque Pointers**: Avoids Flutter header dependencies
+- Documentation lines: 479 lines → 627 lines (+31%)
+- Integration methods: 2 → 3 (all real and usable)
+- FAQ count: 4 → 6 (more detailed)
+- New complete section on pure C API
 
-**Benefits**: Flutter developers no longer need WebView2 SDK for integration!
+## 📦 Package Contents
 
-### 2. CMake INSTALL Support 📦
+### 1. Precompiled Package (`anywp_engine_v2.1.1_precompiled.zip`)
+**Recommended for most Flutter developers**
 
-- ✅ Complete CMake INSTALL rules added (commented out to avoid Flutter build conflicts)
-- ✅ Available for manual `cmake --install` usage
-- ✅ Auto-install DLLs, LIB files, and headers
+- Only DLL, LIB, and pure C API header
+- No WebView2 SDK or Visual Studio required
+- ~400KB (reduced 83%)
 
-**Fixed**: Resolved IMPORTED library installation issues.
+### 2. Source Package (`anywp_engine_v2.1.1_source.zip`)
+**For advanced users who need customization**
 
-### 3. Dual Release Package Structure 📂
+- Includes everything in precompiled package
+- Full C++ source code
+- All modules and utilities
+- TypeScript SDK source
+- WebView2 packages
 
-#### **Precompiled Package** (`anywp_engine_v2.1.1_precompiled.zip`) - ⭐ **Recommended**
+### 3. Web SDK (`anywp_web_sdk_v2.1.1.zip`)
+**For HTML wallpaper developers**
 
-**Size**: ~5MB (83% smaller!)
+- Standalone JavaScript SDK
+- 14 test pages
+- Complete API documentation (English + Chinese)
 
-**Best For**:
-- ✅ Most Flutter developers  
-- ✅ Production deployments
-- ✅ CI/CD pipelines
+## 🎯 Impact
 
-#### **Source Package** (`anywp_engine_v2.1.1_source.zip`)
-
-**Best For**:
-- 🔧 Custom modifications needed
-- 🔧 Plugin debugging required
-- 🔧 Learning implementation details
-
----
-
-## 📊 Performance Improvements
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Package Size** | 30MB+ | ~5MB | ⬇️ 83% |
-| **Integration Steps** | 5+ steps | 3 steps | ⬇️ 40% |
-
----
-
-## 📦 Download Packages
-
-### For Most Flutter Developers ⭐
-
-**[anywp_engine_v2.1.1_precompiled.zip](anywp_engine_v2.1.1_precompiled.zip)**
-
-### For Advanced Users
-
-**[anywp_engine_v2.1.1_source.zip](anywp_engine_v2.1.1_source.zip)**
-
-### For Web Developers
-
-**[anywp_web_sdk_v2.1.1.zip](anywp_web_sdk_v2.1.1.zip)**
-
----
-
-## 🙏 Acknowledgments
-
-**Special Thanks** to the Flutter developer community for their valuable feedback!
-
----
+- ✅ Developers can better understand the advantages of pure C API
+- ✅ Three integration methods cover different use cases
+- ✅ FAQs cover common issues and solutions
+- ✅ Simpler version update process (3 steps)
+- ✅ Significantly improved documentation accuracy
 
 ## 📝 Full Changelog
 
-See [CHANGELOG_CN.md](https://github.com/zhaibin/AnyWallpaper-Engine/blob/main/CHANGELOG_CN.md#211) for the complete list of changes.
+See [CHANGELOG_CN.md](https://github.com/zhaibin/AnyWallpaper-Engine/blob/main/CHANGELOG_CN.md) for detailed Chinese changelog.
 
-**License**: MIT
+## 🙏 Acknowledgments
+
+Thanks to the Flutter developer community for providing valuable suggestions!
+
+---
+
+**Installation Guide**: See [INTEGRATION_GUIDE.md](https://github.com/zhaibin/AnyWallpaper-Engine/blob/main/docs/PRECOMPILED_DLL_INTEGRATION.md) in the precompiled package.
