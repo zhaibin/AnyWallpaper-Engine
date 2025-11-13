@@ -6,7 +6,7 @@ import { AnyWP } from '../core/AnyWP';
 import { initializeAnyWP } from '../core/init';
 describe('Core - AnyWP object', () => {
     test('should have correct version', () => {
-        expect(AnyWP.version).toBe('2.1.0');
+        expect(AnyWP.version).toBe('2.1.1');
     });
     test('should have DPI scale', () => {
         expect(AnyWP.dpiScale).toBeGreaterThan(0);
@@ -41,7 +41,7 @@ describe('Core - Initialization', () => {
     beforeEach(() => {
         // Create a mock AnyWP object
         mockAnyWP = {
-            version: '2.1.0',
+            version: '2.1.1',
             dpiScale: 1,
             screenWidth: 1920,
             screenHeight: 1080,
@@ -66,7 +66,7 @@ describe('Core - Initialization', () => {
     test('should log initialization message', () => {
         initializeAnyWP(mockAnyWP);
         // Logger now outputs with prefix [AnyWP] [INFO]
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[AnyWP]'), expect.stringContaining('[INFO]'), expect.stringContaining('AnyWP Engine v2.0.0'));
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[AnyWP]'), expect.stringContaining('[INFO]'), expect.stringContaining('AnyWP Engine v2.1.1'));
     });
     test('should log screen dimensions', () => {
         initializeAnyWP(mockAnyWP);

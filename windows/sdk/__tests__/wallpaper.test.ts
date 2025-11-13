@@ -14,7 +14,7 @@ describe('Wallpaper module', () => {
     
     // Mock AnyWP SDK
     mockSDK = {
-        version: '2.1.0',
+        version: '2.1.1',
       dpiScale: 1,
       screenWidth: 1920,
       screenHeight: 1080,

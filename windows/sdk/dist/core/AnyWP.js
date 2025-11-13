@@ -1,6 +1,6 @@
 export const AnyWP = {
     // Properties
-    version: '2.1.0',
+    version: '2.1.1',
     dpiScale: window.devicePixelRatio || 1,
     screenWidth: screen.width * (window.devicePixelRatio || 1),
     screenHeight: screen.height * (window.devicePixelRatio || 1),
