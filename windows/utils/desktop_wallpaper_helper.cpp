@@ -89,7 +89,7 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
   Logger::Instance().Warning("DesktopWallpaperHelper", 
     "No WorkerW with SHELLDLL_DefView found (total WorkerW: " + std::to_string(info_.workerw_count) + ")");
   
-  // Fallback: Check if SHELLDLL_DefView is in Progman
+  // Fallback 1: Check if SHELLDLL_DefView is in Progman
   if (info_.progman && HasSHELLDLL(info_.progman)) {
     Logger::Instance().Info("DesktopWallpaperHelper", 
       "SHELLDLL_DefView found in Progman, using Progman as wallpaper layer");
@@ -98,6 +98,32 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
     return true;
   }
   
+  // Fallback 2: Use first WorkerW found (if any)
+  if (info_.workerw_count > 0) {
+    // Find the first WorkerW
+    HWND first_workerw = FindWindowExW(nullptr, nullptr, L"WorkerW", nullptr);
+    if (first_workerw) {
+      Logger::Instance().Warning("DesktopWallpaperHelper", 
+        "No SHELLDLL_DefView found, using first WorkerW as fallback: " + 
+        std::to_string((long long)first_workerw));
+      info_.wallpaper_layer = first_workerw;
+      info_.found_shelldll = false;  // Mark that we didn't find proper structure
+      return true;
+    }
+  }
+  
+  // Fallback 3: Use Progman directly (last resort)
+  if (info_.progman) {
+    Logger::Instance().Warning("DesktopWallpaperHelper", 
+      "No WorkerW found, using Progman as fallback: " + 
+      std::to_string((long long)info_.progman));
+    info_.wallpaper_layer = info_.progman;
+    info_.found_shelldll = false;
+    return true;
+  }
+  
+  Logger::Instance().Error("DesktopWallpaperHelper", 
+    "Failed to find any suitable window for wallpaper layer");
   return false;
 }
 
