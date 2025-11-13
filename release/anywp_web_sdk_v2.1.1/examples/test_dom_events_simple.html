@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DOM 事件测试 - 超简化版</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    body {
+      background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+      font-family: Arial, sans-serif;
+      color: white;
+      padding: 20px;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    .big-button {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px;
+      height: 400px;
+      background: rgba(255, 255, 255, 0.95);
+      color: #333;
+      border: 5px solid white;
+      border-radius: 30px;
+      font-size: 48px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+    }
+    
+    .big-button:hover {
+      background: rgba(76, 175, 80, 0.95);
+      color: white;
+      transform: translate(-50%, -50%) scale(1.05);
+    }
+    
+    .big-button:active {
+      transform: translate(-50%, -50%) scale(0.95);
+    }
+    
+    .info {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.8);
+      padding: 20px;
+      border-radius: 10px;
+      font-size: 18px;
+    }
+    
+    .count {
+      font-size: 72px;
+      color: #4CAF50;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="info">
+    <div>DOM mousemove: <span id="domMove" style="color: #2196F3;">0</span></div>
+    <div>DOM click: <span id="domClick" style="color: #4CAF50;">0</span></div>
+    <div>AnyWP:mouse: <span id="anywpMouse" style="color: #FF9800;">0</span></div>
+    <div>WebMessage: <span id="webMsg" style="color: #9C27B0;">0</span></div>
+  </div>
+  
+  <div class="big-button" id="btn">
+    点击我！
+    <div class="count" id="clickCount">0</div>
+  </div>
+  
+  <script>
+    let domMoveCount = 0;
+    let domClickCount = 0;
+    let anywpMouseCount = 0;
+    let webMsgCount = 0;
+    let buttonClickCount = 0;
+    
+    // 1. DOM mousemove
+    document.addEventListener('mousemove', function(e) {
+      domMoveCount++;
+      document.getElementById('domMove').textContent = domMoveCount;
+      console.log('DOM mousemove:', e.clientX, e.clientY);
+    });
+    
+    // 2. DOM click
+    document.addEventListener('click', function(e) {
+      domClickCount++;
+      document.getElementById('domClick').textContent = domClickCount;
+      console.log('DOM click:', e.clientX, e.clientY);
+    });
+    
+    // 3. 按钮点击
+    document.getElementById('btn').addEventListener('click', function(e) {
+      buttonClickCount++;
+      document.getElementById('clickCount').textContent = buttonClickCount;
+      console.log('Button click:', buttonClickCount);
+      
+      // 视觉反馈
+      this.style.background = 'rgba(76, 175, 80, 0.95)';
+      this.style.color = 'white';
+      setTimeout(() => {
+        this.style.background = 'rgba(255, 255, 255, 0.95)';
+        this.style.color = '#333';
+      }, 200);
+    });
+    
+    // 4. AnyWP:mouse 事件
+    window.addEventListener('AnyWP:mouse', function(e) {
+      anywpMouseCount++;
+      document.getElementById('anywpMouse').textContent = anywpMouseCount;
+      if (e.detail.type !== 'mousemove' || anywpMouseCount % 50 === 0) {
+        console.log('AnyWP:mouse:', e.detail.type, e.detail.x, e.detail.y);
+      }
+    });
+    
+    // 5. 直接监听 WebMessage
+    if (window.chrome && window.chrome.webview) {
+      console.log('✅ chrome.webview available');
+      window.chrome.webview.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'mouseEvent') {
+          webMsgCount++;
+          document.getElementById('webMsg').textContent = webMsgCount;
+          if (event.data.eventType !== 'mousemove' || webMsgCount % 50 === 0) {
+            console.log('WebMessage:', event.data.eventType, event.data.x, event.data.y);
+          }
+        }
+      });
+    } else {
+      console.log('❌ chrome.webview NOT available');
+    }
+    
+    console.log('=== DOM Events Test Page Loaded ===');
+    console.log('Move mouse to test...');
+  </script>
+</body>
+</html>
+
+
