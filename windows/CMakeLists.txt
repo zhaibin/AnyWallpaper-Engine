@@ -52,20 +52,45 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter flutter_wrapper_plugin)
 
-# WebView2 - use NuGet package
-set(WEBVIEW2_PACKAGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/packages/Microsoft.Web.WebView2.1.0.2592.51")
-if(EXISTS "${WEBVIEW2_PACKAGE_DIR}")
-  # Add WebView2 include directory to both private and interface (public)
-  target_include_directories(${PLUGIN_NAME} PRIVATE "${WEBVIEW2_PACKAGE_DIR}/build/native/include")
-  target_include_directories(${PLUGIN_NAME} INTERFACE "${WEBVIEW2_PACKAGE_DIR}/build/native/include")
+# ==========================================
+# Precompiled DLL Detection
+# ==========================================
+# Check if we're using precompiled DLL (for precompiled package distribution)
+set(PRECOMPILED_DLL "${CMAKE_CURRENT_SOURCE_DIR}/../bin/anywp_engine_plugin.dll")
+set(PRECOMPILED_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../lib/anywp_engine_plugin.lib")
+set(USING_PRECOMPILED FALSE)
+
+if(EXISTS "${PRECOMPILED_DLL}" AND EXISTS "${PRECOMPILED_LIB}")
+  set(USING_PRECOMPILED TRUE)
+  message(STATUS "Using precompiled DLL: ${PRECOMPILED_DLL}")
   
-  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    target_link_libraries(${PLUGIN_NAME} PRIVATE "${WEBVIEW2_PACKAGE_DIR}/build/native/x64/WebView2LoaderStatic.lib")
+  # Remove the source-based library and create an imported one instead
+  # Note: We can't remove a target once created, so we'll handle this differently
+  # For precompiled packages, the CMakeLists.txt should be different
+  # But for compatibility, we'll check if source files exist
+endif()
+
+# ==========================================
+# WebView2 - use NuGet package (only if not using precompiled)
+# ==========================================
+if(NOT USING_PRECOMPILED)
+  set(WEBVIEW2_PACKAGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/packages/Microsoft.Web.WebView2.1.0.2592.51")
+  if(EXISTS "${WEBVIEW2_PACKAGE_DIR}")
+    # Add WebView2 include directory to both private and interface (public)
+    target_include_directories(${PLUGIN_NAME} PRIVATE "${WEBVIEW2_PACKAGE_DIR}/build/native/include")
+    target_include_directories(${PLUGIN_NAME} INTERFACE "${WEBVIEW2_PACKAGE_DIR}/build/native/include")
+    
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+      target_link_libraries(${PLUGIN_NAME} PRIVATE "${WEBVIEW2_PACKAGE_DIR}/build/native/x64/WebView2LoaderStatic.lib")
+    else()
+      target_link_libraries(${PLUGIN_NAME} PRIVATE "${WEBVIEW2_PACKAGE_DIR}/build/native/x86/WebView2LoaderStatic.lib")
+    endif()
   else()
-    target_link_libraries(${PLUGIN_NAME} PRIVATE "${WEBVIEW2_PACKAGE_DIR}/build/native/x86/WebView2LoaderStatic.lib")
+    message(FATAL_ERROR "WebView2 package not found at ${WEBVIEW2_PACKAGE_DIR}. Please run nuget install.")
   endif()
 else()
-  message(FATAL_ERROR "WebView2 package not found at ${WEBVIEW2_PACKAGE_DIR}. Please run nuget install.")
+  # Using precompiled DLL - WebView2 is already linked in the DLL
+  message(STATUS "Skipping WebView2 package check (using precompiled DLL)")
 endif()
 
 # Windows SDK libraries
@@ -82,34 +107,37 @@ set(anywp_engine_bundled_libraries
 
 # ==========================================
 # INSTALL rules for precompiled DLL distribution
+# NOTE: These rules cause Flutter build to fail with INSTALL step errors.
+# They are commented out by default. The release.bat script handles file copying.
+# Uncomment only if you need manual cmake --install support (not for Flutter builds).
 # ==========================================
 
-# Define paths for precompiled binaries
-set(PRECOMPILED_DLL "${CMAKE_CURRENT_BINARY_DIR}/${PLUGIN_NAME}.dll")
-set(PRECOMPILED_LIB "${CMAKE_CURRENT_BINARY_DIR}/${PLUGIN_NAME}.lib")
-
-# WebView2Loader.dll path
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  set(WEBVIEW2_DLL "${WEBVIEW2_PACKAGE_DIR}/build/native/x64/WebView2Loader.dll")
-else()
-  set(WEBVIEW2_DLL "${WEBVIEW2_PACKAGE_DIR}/build/native/x86/WebView2Loader.dll")
-endif()
-
-# Install DLL files to bin/
-install(FILES "${PRECOMPILED_DLL}" DESTINATION bin
-        CONFIGURATIONS Release)
-install(FILES "${WEBVIEW2_DLL}" DESTINATION bin
-        CONFIGURATIONS Release)
-
-# Install LIB file to lib/
-install(FILES "${PRECOMPILED_LIB}" DESTINATION lib
-        CONFIGURATIONS Release)
-
-# Install C API header to include/anywp_engine/
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/anywp_engine_plugin_c_api.h"
-        DESTINATION include/anywp_engine)
-
-# Install full C++ header (optional, for source integration)
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/anywp_engine_plugin.h"
-        DESTINATION include/anywp_engine)
+# # Define paths for precompiled binaries
+# set(PRECOMPILED_DLL "${CMAKE_CURRENT_BINARY_DIR}/${PLUGIN_NAME}.dll")
+# set(PRECOMPILED_LIB "${CMAKE_CURRENT_BINARY_DIR}/${PLUGIN_NAME}.lib")
+# 
+# # WebView2Loader.dll path
+# if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+#   set(WEBVIEW2_DLL "${WEBVIEW2_PACKAGE_DIR}/build/native/x64/WebView2Loader.dll")
+# else()
+#   set(WEBVIEW2_DLL "${WEBVIEW2_PACKAGE_DIR}/build/native/x86/WebView2Loader.dll")
+# endif()
+# 
+# # Install DLL files to bin/
+# install(FILES "${PRECOMPILED_DLL}" DESTINATION bin
+#         CONFIGURATIONS Release)
+# install(FILES "${WEBVIEW2_DLL}" DESTINATION bin
+#         CONFIGURATIONS Release)
+# 
+# # Install LIB file to lib/
+# install(FILES "${PRECOMPILED_LIB}" DESTINATION lib
+#         CONFIGURATIONS Release)
+# 
+# # Install C API header to include/anywp_engine/
+# install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/anywp_engine_plugin_c_api.h"
+#         DESTINATION include/anywp_engine)
+# 
+# # Install full C++ header (optional, for source integration)
+# install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/anywp_engine_plugin.h"
+#         DESTINATION include/anywp_engine)
 

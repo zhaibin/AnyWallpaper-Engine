@@ -2,7 +2,7 @@
 
 所有重要的项目变更都将记录在此文件中。
 
-## [2.1.3] - 2025-01-15 - 🔧 日志格式规范化
+## [2.1.3] - 2025-01-15 - 🔧 日志格式规范化 + 预编译包修复
 
 ### 🔧 代码质量改进
 
@@ -20,6 +20,20 @@
 - **统一**: 将所有中文注释改为英文
 - **规范**: 所有日志消息使用英文，符合国际化标准
 
+### 🐛 Bug 修复
+
+#### 预编译包 WebView2 依赖问题修复
+- **问题**: 预编译包中的 CMakeLists.txt 仍在查找 WebView2 packages 目录，导致构建失败
+- **原因**: 预编译包应使用预编译 DLL，无需重新编译和查找 WebView2 packages
+- **解决方案**: 
+  - 创建 `windows/CMakeLists.precompiled.txt` - 专门用于预编译包的 CMakeLists.txt
+  - 使用 `IMPORTED` 库直接链接预编译 DLL，跳过 WebView2 packages 检查
+  - 修改 `scripts/release.bat` 使预编译包使用专用的 CMakeLists.txt
+- **影响**: 
+  - ✅ 预编译包现在可以正常构建，无需 WebView2 SDK
+  - ✅ 简化了集成流程，真正实现零依赖集成
+  - ✅ 修复了 "WebView2 package not found" 错误
+
 ### 📝 代码变更
 
 - `windows/utils/logger.h`: 添加日志格式规范说明文档
@@ -31,6 +45,9 @@
 - `windows/modules/sdk_bridge.h`: 中文注释改为英文
 - `windows/modules/power_manager.h`: 中文注释改为英文
 - `windows/modules/memory_optimizer.h`: 中文注释改为英文
+- `windows/CMakeLists.txt`: 添加预编译 DLL 检测逻辑
+- `windows/CMakeLists.precompiled.txt`: 新增预编译包专用 CMakeLists.txt
+- `scripts/release.bat`: 修改为使用预编译 CMakeLists.txt
 
 ### 💡 影响
 
@@ -38,6 +55,7 @@
 - ✅ 国际化友好，支持多语言环境
 - ✅ 代码可读性提升，注释统一为英文
 - ✅ 符合国际化开发标准
+- ✅ 预编译包集成问题完全解决
 
 ## [2.1.2] - 2025-11-13 - ⚡ WebMessage 轮询优化
 
