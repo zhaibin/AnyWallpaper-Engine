@@ -82,12 +82,12 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.1.6_precompiled.zip
+anywp_engine_v2.1.7_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.1.6_source.zip
+anywp_engine_v2.1.7_source.zip
 ```
 
 ### 2. 解压到项目目录
@@ -473,7 +473,7 @@ class _WallpaperControllerState extends State<WallpaperController> {
 
 2. **解压新版本**：
    ```bash
-   # 解压 anywp_engine_v2.1.6_precompiled.zip 到 packages\
+   # 解压 anywp_engine_v2.1.7_precompiled.zip 到 packages\
    ```
 
 3. **更新 pubspec.yaml**：
@@ -756,7 +756,7 @@ verify.bat
 
 ### 首次集成
 
-- [ ] 下载预编译包 (`anywp_engine_v2.1.6_precompiled.zip`)
+- [ ] 下载预编译包 (`anywp_engine_v2.1.7_precompiled.zip`)
 - [ ] 解压到项目的 `packages/anywp_engine` 目录
 - [ ] 在 `pubspec.yaml` 中添加依赖
 - [ ] 运行 `flutter pub get`
@@ -793,10 +793,11 @@ verify.bat
 
 ---
 
-**Version**: 2.1.6  
-**Updated**: 2025-01-15  
+**Version**: 2.1.7  
+**Updated**: 2025-11-14  
 **主要变更**:
-- ✅ **预编译包使用专用 CMakeLists.txt** - 无需 WebView2 packages，真正零依赖
+- ✅ **移除 flutter 库依赖** - 预编译包 CMakeLists.txt 不再链接 flutter 和 flutter_wrapper_plugin
+- ✅ **修复 verify.bat 脚本** - 解决预编译包验证脚本执行错误
 - ✅ **集成文档包含在 ZIP 包中** - `INTEGRATION_GUIDE.md` 随包提供
 - ✅ **完善集成文档** - 详细说明预编译专用 CMakeLists.txt 的特点
 - ✅ **新增纯 C API 头文件支持** - 无 C++ 依赖

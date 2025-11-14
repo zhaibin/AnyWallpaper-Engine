@@ -359,4 +359,4 @@ cd windows\test && run_tests.bat  # C++ 单元测试
 
 ---
 
-**Version**: 2.1.6 | **Updated**: 2025-11-14
+**Version**: 2.1.7 | **Updated**: 2025-11-14

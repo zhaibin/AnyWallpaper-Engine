@@ -2,6 +2,29 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [2.1.7] - 2025-11-14 - 🐛 预编译包 CMakeLists.txt 修复
+
+### 🐛 核心修复
+
+#### 预编译包 CMakeLists.txt 依赖问题
+- **问题描述**: 预编译包的 `CMakeLists.txt` 链接了 `flutter` 和 `flutter_wrapper_plugin` 库，这些库需要 Flutter 临时构建路径，导致用户无法正确使用预编译包
+- **修复内容**:
+  - `windows/CMakeLists.precompiled.txt`: 移除 `flutter` 和 `flutter_wrapper_plugin` 的链接
+  - 预编译 DLL 已包含所有必要依赖，无需再次链接 Flutter 库
+  - 保留 Windows SDK 库（`shlwapi`, `version`）的链接
+- **影响**: 修复用户使用预编译包时的编译错误
+
+#### 预编译包验证脚本修复
+- **问题描述**: `verify.bat` 脚本执行时报错 `. was unexpected at this time.`
+- **修复内容**:
+  - 修复错误信息中未转义的括号：`error(s)` → `error^(s^)`
+  - 使用 `echo[` 替代 `echo.` 避免路径解析问题
+  - 添加目录检测，确保在正确位置运行脚本
+  - 创建 `scripts/verify_template.bat` 模板文件
+- **改进**: 提供更友好的错误提示和验证流程
+
+---
+
 ## [2.1.6] - 2025-11-14 - 🐛 修复 Windows 桌面架构兼容性
 
 ### 🐛 核心修复
