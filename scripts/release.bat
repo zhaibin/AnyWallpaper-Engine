@@ -20,9 +20,22 @@ set RELEASE_DIR=%PROJECT_ROOT%\release
 set PRECOMPILED_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_precompiled
 set SOURCE_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_source
 set WEB_SDK_DIR=%RELEASE_DIR%\anywp_web_sdk_v%VERSION%
+set TOTAL_STEPS=30
+set STEP=1
+set PWSH_CMD=pwsh
+where %PWSH_CMD% >nul 2>nul
+if ERRORLEVEL 1 set PWSH_CMD=powershell
 
-REM Step 1: Clean old release
-echo [Step 1/27] Cleaning old release...
+call :PrintStep "Checking version consistency..."
+%PWSH_CMD% -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%\scripts\check_version_consistency.ps1" -Version %VERSION%
+if ERRORLEVEL 1 (
+    echo ERROR: Version consistency check failed.
+    if not defined NO_PAUSE pause
+    exit /b 1
+)
+
+REM Step: Clean old release
+call :PrintStep "Cleaning old release..."
 if exist "%PRECOMPILED_DIR%" rmdir /s /q "%PRECOMPILED_DIR%"
 if exist "%PRECOMPILED_DIR%.zip" del /q "%PRECOMPILED_DIR%.zip"
 if exist "%SOURCE_DIR%" rmdir /s /q "%SOURCE_DIR%"
@@ -30,8 +43,8 @@ if exist "%SOURCE_DIR%.zip" del /q "%SOURCE_DIR%.zip"
 if exist "%WEB_SDK_DIR%" rmdir /s /q "%WEB_SDK_DIR%"
 if exist "%WEB_SDK_DIR%.zip" del /q "%WEB_SDK_DIR%.zip"
 
-REM Step 2: Build Release
-echo [Step 2/26] Building Release version...
+REM Step: Build Release
+call :PrintStep "Building Release version..."
 cd /d "%PROJECT_ROOT%\example"
 call flutter build windows --release
 set BUILD_ERROR=%ERRORLEVEL%
@@ -48,7 +61,7 @@ REM ==========================================
 REM Part A: Precompiled Package (DLL + LIB + Headers)
 REM ==========================================
 
-echo [Step 3/26] Creating precompiled package structure...
+call :PrintStep "Creating precompiled package structure..."
 mkdir "%PRECOMPILED_DIR%\bin"
 mkdir "%PRECOMPILED_DIR%\lib"
 mkdir "%PRECOMPILED_DIR%\include\anywp_engine"
@@ -56,20 +69,20 @@ mkdir "%PRECOMPILED_DIR%\windows"
 mkdir "%PRECOMPILED_DIR%\sdk"
 mkdir "%PRECOMPILED_DIR%\examples"
 
-echo [Step 4/26] Copying DLL files to precompiled package...
+call :PrintStep "Copying DLL files to precompiled package..."
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.dll" "%PRECOMPILED_DIR%\bin\"
 copy "%PROJECT_ROOT%\windows\packages\Microsoft.Web.WebView2.1.0.2592.51\build\native\x64\WebView2Loader.dll" "%PRECOMPILED_DIR%\bin\"
 
-echo [Step 5/26] Copying LIB file to precompiled package...
+call :PrintStep "Copying LIB file to precompiled package..."
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.lib" "%PRECOMPILED_DIR%\lib\"
 
-echo [Step 6/26] Copying Dart API to precompiled package...
+call :PrintStep "Copying Dart API to precompiled package..."
 mkdir "%PRECOMPILED_DIR%\lib\dart"
 copy "%PROJECT_ROOT%\lib\anywp_engine.dart" "%PRECOMPILED_DIR%\lib\dart\"
 REM Also copy to standard location for Flutter compatibility
 copy "%PROJECT_ROOT%\lib\anywp_engine.dart" "%PRECOMPILED_DIR%\lib\"
 
-echo [Step 7/26] Copying C API header to precompiled package...
+call :PrintStep "Copying C API header to precompiled package..."
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin_c_api.h" "%PRECOMPILED_DIR%\include\anywp_engine\"
 REM Create Flutter wrapper header (any_w_p_engine_plugin.h)
 (
@@ -81,16 +94,16 @@ echo #include "anywp_engine_plugin_c_api.h"
 echo #endif  // ANY_W_P_ENGINE_PLUGIN_H_
 ) > "%PRECOMPILED_DIR%\include\anywp_engine\any_w_p_engine_plugin.h"
 
-echo [Step 8/26] Copying CMakeLists.txt to precompiled package...
+call :PrintStep "Copying CMakeLists.txt to precompiled package..."
 copy "%PROJECT_ROOT%\windows\CMakeLists.precompiled.txt" "%PRECOMPILED_DIR%\windows\CMakeLists.txt"
 
-echo [Step 9/26] Copying Web SDK to precompiled package...
+call :PrintStep "Copying Web SDK to precompiled package..."
 copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%PRECOMPILED_DIR%\sdk\"
 
-echo [Step 10/26] Copying example HTML files to precompiled package...
+call :PrintStep "Copying example HTML files to precompiled package..."
 xcopy /E /I /Y "%PROJECT_ROOT%\examples\*.html" "%PRECOMPILED_DIR%\examples\"
 
-echo [Step 11/26] Copying documentation to precompiled package...
+call :PrintStep "Copying documentation to precompiled package..."
 copy "%PROJECT_ROOT%\README.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\CHANGELOG_CN.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\LICENSE" "%PRECOMPILED_DIR%\"
@@ -99,7 +112,7 @@ copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE_CN.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\pubspec.yaml" "%PRECOMPILED_DIR%\"
 
-echo [Step 12/26] Verifying precompiled package integrity...
+call :PrintStep "Verifying precompiled package integrity..."
 set VERIFY_ERROR=0
 if not exist "%PRECOMPILED_DIR%\lib\anywp_engine.dart" (
     echo [ERROR] Dart file not in standard location
@@ -121,7 +134,7 @@ if %VERIFY_ERROR%==1 (
     echo [SUCCESS] Package verification passed
 )
 
-echo [Step 13/26] Creating verify.bat script...
+call :PrintStep "Creating verify.bat script..."
 (
 echo @echo off
 echo echo Verifying AnyWP Engine precompiled package...
@@ -176,16 +189,16 @@ echo ^)
 echo pause
 ) > "%PRECOMPILED_DIR%\verify.bat"
 
-echo [Step 14/26] Creating precompiled ZIP package...
+call :PrintStep "Creating precompiled ZIP package..."
 cd /d "%PRECOMPILED_DIR%"
-powershell -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_engine_v%VERSION%_precompiled.zip' -Force"
+%PWSH_CMD% -NoLogo -NoProfile -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_engine_v%VERSION%_precompiled.zip' -Force"
 cd /d "%RELEASE_DIR%"
 
 REM ==========================================
 REM Part B: Source Package (Full source code)
 REM ==========================================
 
-echo [Step 15/26] Creating source package structure...
+call :PrintStep "Creating source package structure..."
 mkdir "%SOURCE_DIR%\bin"
 mkdir "%SOURCE_DIR%\lib"
 mkdir "%SOURCE_DIR%\include\anywp_engine"
@@ -195,15 +208,15 @@ mkdir "%SOURCE_DIR%\windows\utils"
 mkdir "%SOURCE_DIR%\windows\test"
 mkdir "%SOURCE_DIR%\windows\packages"
 
-echo [Step 16/26] Copying binaries to source package...
+call :PrintStep "Copying binaries to source package..."
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.dll" "%SOURCE_DIR%\bin\"
 copy "%PROJECT_ROOT%\windows\packages\Microsoft.Web.WebView2.1.0.2592.51\build\native\x64\WebView2Loader.dll" "%SOURCE_DIR%\bin\"
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.lib" "%SOURCE_DIR%\lib\"
 
-echo [Step 17/26] Copying Dart source to source package...
+call :PrintStep "Copying Dart source to source package..."
 copy "%PROJECT_ROOT%\lib\anywp_engine.dart" "%SOURCE_DIR%\lib\"
 
-echo [Step 18/26] Copying C++ source to source package...
+call :PrintStep "Copying C++ source to source package..."
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin.cpp" "%SOURCE_DIR%\windows\"
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin.h" "%SOURCE_DIR%\windows\"
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin_c_api.h" "%SOURCE_DIR%\windows\"
@@ -211,40 +224,40 @@ xcopy /E /I /Y "%PROJECT_ROOT%\windows\modules" "%SOURCE_DIR%\windows\modules"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\utils" "%SOURCE_DIR%\windows\utils"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\test" "%SOURCE_DIR%\windows\test"
 
-echo [Step 19/26] Copying headers to source package...
+call :PrintStep "Copying headers to source package..."
 copy "%PROJECT_ROOT%\windows\include\anywp_engine\any_w_p_engine_plugin.h" "%SOURCE_DIR%\include\anywp_engine\"
 
-echo [Step 20/26] Copying SDK to source package...
+call :PrintStep "Copying SDK to source package..."
 copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%SOURCE_DIR%\windows\"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\sdk" "%SOURCE_DIR%\windows\sdk"
 
-echo [Step 21/26] Copying CMake and WebView2 packages to source package...
+call :PrintStep "Copying CMake and WebView2 packages to source package..."
 copy "%PROJECT_ROOT%\windows\CMakeLists.txt" "%SOURCE_DIR%\windows\"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\packages" "%SOURCE_DIR%\windows\packages"
 copy "%PROJECT_ROOT%\windows\packages.config" "%SOURCE_DIR%\windows\"
 
-echo [Step 22/26] Copying documentation to source package...
+call :PrintStep "Copying documentation to source package..."
 copy "%PROJECT_ROOT%\README.md" "%SOURCE_DIR%\"
 copy "%PROJECT_ROOT%\CHANGELOG_CN.md" "%SOURCE_DIR%\"
 copy "%PROJECT_ROOT%\LICENSE" "%SOURCE_DIR%\"
 copy "%PROJECT_ROOT%\docs\PRECOMPILED_DLL_INTEGRATION.md" "%SOURCE_DIR%\INTEGRATION_GUIDE.md"
 copy "%PROJECT_ROOT%\pubspec.yaml" "%SOURCE_DIR%\"
 
-echo [Step 23/26] Creating source ZIP package...
+call :PrintStep "Creating source ZIP package..."
 cd /d "%SOURCE_DIR%"
-powershell -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_engine_v%VERSION%_source.zip' -Force"
+%PWSH_CMD% -NoLogo -NoProfile -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_engine_v%VERSION%_source.zip' -Force"
 cd /d "%RELEASE_DIR%"
 
 REM ==========================================
 REM Part C: Web SDK Package
 REM ==========================================
 
-echo [Step 24/26] Creating Web SDK package structure...
+call :PrintStep "Creating Web SDK package structure..."
 mkdir "%WEB_SDK_DIR%\sdk"
 mkdir "%WEB_SDK_DIR%\examples"
 mkdir "%WEB_SDK_DIR%\docs"
 
-echo [Step 25/26] Copying Web SDK files...
+call :PrintStep "Copying Web SDK files..."
 copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%WEB_SDK_DIR%\sdk\"
 xcopy /E /I /Y "%PROJECT_ROOT%\examples\*.html" "%WEB_SDK_DIR%\examples\"
 copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE_CN.md" "%WEB_SDK_DIR%\docs\"
@@ -252,7 +265,7 @@ copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE.md" "%WEB_SDK_DIR%\docs\"
 copy "%PROJECT_ROOT%\docs\API_USAGE_EXAMPLES.md" "%WEB_SDK_DIR%\docs\"
 copy "%PROJECT_ROOT%\LICENSE" "%WEB_SDK_DIR%\"
 
-echo [Step 26/26] Creating Web SDK README...
+call :PrintStep "Creating Web SDK README..."
 (
 echo # AnyWP Engine - Web SDK v%VERSION%
 echo.
@@ -282,10 +295,26 @@ echo.
 echo MIT License - See LICENSE file
 ) > "%WEB_SDK_DIR%\README.md"
 
-echo [Step 27/27] Creating Web SDK ZIP...
+call :PrintStep "Creating Web SDK ZIP..."
 cd /d "%WEB_SDK_DIR%"
-powershell -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_web_sdk_v%VERSION%.zip' -Force"
+%PWSH_CMD% -NoLogo -NoProfile -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_web_sdk_v%VERSION%.zip' -Force"
 cd /d "%RELEASE_DIR%"
+
+call :PrintStep "Generating GitHub release notes..."
+%PWSH_CMD% -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%\scripts\generate_release_notes.ps1" -Version %VERSION% -ProjectRoot "%PROJECT_ROOT%"
+if ERRORLEVEL 1 (
+    echo ERROR: Failed to generate release notes.
+    if not defined NO_PAUSE pause
+    exit /b 1
+)
+
+call :PrintStep "Preparing release commit template..."
+%PWSH_CMD% -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%\scripts\generate_commit_template.ps1" -Version %VERSION% -ProjectRoot "%PROJECT_ROOT%"
+if ERRORLEVEL 1 (
+    echo ERROR: Failed to generate commit template.
+    if not defined NO_PAUSE pause
+    exit /b 1
+)
 
 REM Summary
 echo.
@@ -305,6 +334,35 @@ echo   - Precompiled: For Flutter developers who want minimal integration
 echo   - Source: For developers who need to modify or rebuild from source
 echo   - Web SDK: For wallpaper developers (HTML/CSS/JS)
 echo.
+echo ========================================
+echo  Next Steps
+echo ========================================
+echo.
+echo 1. Verify packages:
+echo    .\scripts\verify_precompiled.bat %VERSION%
+echo.
+echo 2. Commit and push to Git (optional):
+echo    .\scripts\release_git.bat %VERSION%
+echo    Or manually:
+echo    git add release/ CHANGELOG_CN.md pubspec.yaml docs/ README.md .cursorrules
+echo    git commit -F release\commit_msg_v%VERSION%.txt
+echo    git push origin main
+echo    git tag -a v%VERSION% -m "AnyWP Engine v%VERSION%"
+echo    git push origin v%VERSION%
+echo.
+echo 3. Create GitHub Release:
+echo    - Visit: https://github.com/zhaibin/AnyWallpaper-Engine/releases/new
+echo    - Tag: v%VERSION%
+echo    - Description: Copy from release\GITHUB_RELEASE_NOTES_v%VERSION%.md
+echo    - Upload 3 ZIP files from release\ directory
+echo.
 
 if not defined NO_PAUSE pause
 
+goto :EOF
+
+
+:PrintStep
+echo [Step !STEP!/%TOTAL_STEPS%] %~1
+set /a STEP+=1
+goto :EOF

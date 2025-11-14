@@ -16,6 +16,7 @@ set PROJECT_ROOT=%~dp0..
 set RELEASE_DIR=%PROJECT_ROOT%\release
 set PRECOMPILED_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_precompiled
 set SOURCE_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_source
+set WEB_SDK_DIR=%RELEASE_DIR%\anywp_web_sdk_v%VERSION%
 
 echo ========================================
 echo  AnyWP Engine - Package Verification
@@ -29,7 +30,7 @@ REM ==========================================
 REM Verify Precompiled Package
 REM ==========================================
 
-echo [1/2] Verifying precompiled package...
+echo [1/3] Verifying precompiled package...
 echo.
 
 if not exist "%PRECOMPILED_DIR%" (
@@ -129,7 +130,7 @@ REM Verify Source Package
 REM ==========================================
 
 echo.
-echo [2/2] Verifying source package...
+echo [2/3] Verifying source package...
 echo.
 
 if not exist "%SOURCE_DIR%" (
@@ -229,6 +230,60 @@ if not exist "%SOURCE_DIR%.zip" (
     echo   [OK] anywp_engine_v%VERSION%_source.zip
 )
 
+echo.
+echo [3/3] Verifying Web SDK package...
+echo.
+
+if not exist "%WEB_SDK_DIR%" (
+    echo ERROR: Web SDK directory does not exist
+    set /a ERROR_COUNT+=1
+    goto summary
+)
+
+echo Checking Web SDK core files...
+if not exist "%WEB_SDK_DIR%\sdk\anywp_sdk.js" (
+    echo   [MISSING] sdk\anywp_sdk.js
+    set /a ERROR_COUNT+=1
+) else (
+    echo   [OK] sdk\anywp_sdk.js
+)
+
+if not exist "%WEB_SDK_DIR%\README.md" (
+    echo   [MISSING] README.md
+    set /a ERROR_COUNT+=1
+) else (
+    echo   [OK] README.md
+)
+
+if not exist "%WEB_SDK_DIR%\docs\WEB_DEVELOPER_GUIDE_CN.md" (
+    echo   [MISSING] docs\WEB_DEVELOPER_GUIDE_CN.md
+    set /a ERROR_COUNT+=1
+) else (
+    echo   [OK] docs\WEB_DEVELOPER_GUIDE_CN.md
+)
+
+if not exist "%WEB_SDK_DIR%\docs\WEB_DEVELOPER_GUIDE.md" (
+    echo   [MISSING] docs\WEB_DEVELOPER_GUIDE.md
+    set /a ERROR_COUNT+=1
+) else (
+    echo   [OK] docs\WEB_DEVELOPER_GUIDE.md
+)
+
+if not exist "%WEB_SDK_DIR%\examples" (
+    echo   [MISSING] examples\
+    set /a ERROR_COUNT+=1
+) else (
+    echo   [OK] examples\
+)
+
+echo Checking Web SDK ZIP package...
+if not exist "%WEB_SDK_DIR%.zip" (
+    echo   [MISSING] anywp_web_sdk_v%VERSION%.zip
+    set /a ERROR_COUNT+=1
+) else (
+    echo   [OK] anywp_web_sdk_v%VERSION%.zip
+)
+
 :summary
 
 REM ==========================================
@@ -248,6 +303,7 @@ if %ERROR_COUNT% EQU 0 (
     echo Ready for GitHub Release:
     echo   - anywp_engine_v%VERSION%_precompiled.zip
     echo   - anywp_engine_v%VERSION%_source.zip
+    echo   - anywp_web_sdk_v%VERSION%.zip
     exit /b 0
 ) else (
     echo Status: FAILED
