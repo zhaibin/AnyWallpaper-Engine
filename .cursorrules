@@ -140,6 +140,8 @@ flutter build windows --release
 .\scripts\release.bat
 ```
 
+**注意**: `release.bat` 会自动运行版本一致性检查，无需手动执行 `check_version_consistency.ps1`
+
 **构建后检查**:
 - [ ] 构建成功（ERROR_COUNT = 0）
 - [ ] DLL/LIB 文件生成
@@ -147,6 +149,8 @@ flutter build windows --release
   - `anywp_engine_v{版本号}_precompiled.zip` - 预编译包（DLL + LIB + C API 头文件）
   - `anywp_engine_v{版本号}_source.zip` - 完整源码包
   - `anywp_web_sdk_v{版本号}.zip` - Web SDK 包
+- [ ] `release/GITHUB_RELEASE_NOTES_v{版本号}.md` 自动生成
+- [ ] `release/commit_msg_v{版本号}.txt` 自动生成
 
 **⚠️ 预编译包验证**（必须全部存在）:
 - `bin/anywp_engine_plugin.dll` + `bin/WebView2Loader.dll`
@@ -161,18 +165,28 @@ flutter build windows --release
 - `windows/sdk/` + `windows/anywp_sdk.js` - TypeScript SDK 源码
 - `windows/packages/` - WebView2 依赖包
 
-**验证命令**: `.\scripts\verify_precompiled.bat {版本号}`
+**⚠️ Web SDK 包验证**:
+- `sdk/anywp_sdk.js`
+- `docs/WEB_DEVELOPER_GUIDE_CN.md`
+- `docs/WEB_DEVELOPER_GUIDE.md`
+- `examples/` 目录
+- `README.md`
+
+**验证命令**: `.\scripts\verify_precompiled.bat {版本号}`（自动验证预编译包、源码包与 Web SDK 包）
 
 ### Step 5: Git 提交与推送
+
+**方式一：自动化脚本（推荐）**
+```bash
+.\scripts\release_git.bat {版本号}
+```
+
+**方式二：手动执行**
 ```bash
 git add release/ CHANGELOG_CN.md pubspec.yaml docs/ README.md .cursorrules
 
 # 中文提交使用文件方式（避免乱码）
-echo release: 发布 v{版本号} - 功能描述 > commit_msg.txt
-echo. >> commit_msg.txt
-echo 详细说明 >> commit_msg.txt
-git commit -F commit_msg.txt
-del commit_msg.txt
+git commit -F release/commit_msg_v{版本号}.txt
 
 git push origin main
 
@@ -180,6 +194,13 @@ git push origin main
 git tag -a v{版本号} -m "AnyWP Engine v{版本号}"
 git push origin v{版本号}
 ```
+
+**自动化脚本功能**：
+- ✅ 自动检查提交模板文件是否存在
+- ✅ 自动添加需要提交的文件
+- ✅ 使用生成的提交模板进行提交
+- ✅ 自动创建并推送 Tag
+- ✅ 支持 `--no-push` 参数（仅本地提交，不推送）
 
 ### Step 6: GitHub Release
 1. 访问: `https://github.com/zhaibin/AnyWallpaper-Engine/releases/new`
@@ -338,4 +359,4 @@ cd windows\test && run_tests.bat  # C++ 单元测试
 
 ---
 
-**版本**: 2.1.4 | **更新**: 2025-01-15
+**版本**: 2.1.5 | **更新**: 2025-01-15

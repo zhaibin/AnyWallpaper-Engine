@@ -27,7 +27,14 @@
 确保以下文件中的版本号一致：
 - `pubspec.yaml` → `version: 1.1.0`
 - `CHANGELOG_CN.md` → 添加新版本条目
-- `scripts/build_release_v2.bat` → `set "VERSION=1.1.0"`
+- `.cursorrules` / `docs/PRECOMPILED_DLL_INTEGRATION.md` → 通过 `scripts/check_version_consistency.ps1` 自动校验
+
+### 4. 自动化工具快速总览
+
+- `scripts/check_version_consistency.ps1`：统一校验 `pubspec.yaml`、`CHANGELOG_CN.md`、`.cursorrules` 与预编译文档版本号。
+- `scripts/release.bat`：构建三类发布包并生成 `release/GITHUB_RELEASE_NOTES_v{版本号}.md` 与 `release/commit_msg_v{版本号}.txt`。
+- `scripts/verify_precompiled.bat`：验证预编译包、源码包与 Web SDK 包（含 `anywp_web_sdk_v{版本号}`）。
+- `scripts/generate_release_notes.ps1` / `scripts/generate_commit_template.ps1`：可独立运行以生成 GitHub Release Notes 与中文提交模板。
 
 ---
 
@@ -38,18 +45,18 @@
 在项目根目录打开 PowerShell 或 CMD：
 
 ```bash
-.\scripts\build_release_v2.bat
+.\scripts\release.bat
 ```
 
 **脚本会自动完成以下操作：**
 
-1. ✅ 清理旧的构建
-2. ✅ 运行 `flutter clean` 和 `flutter pub get`
+1. ✅ 自动检查版本一致性
+2. ✅ 清理旧的构建
 3. ✅ 构建 Release 版本
 4. ✅ 创建 Release 目录结构
-5. ✅ 复制 DLL 和相关文件
-6. ✅ 生成集成文档和 pubspec.yaml
-7. ✅ 打包成 ZIP 文件
+5. ✅ 复制 DLL / LIB / 文档
+6. ✅ 打包预编译包、源码包、Web SDK 包
+7. ✅ 生成 Release Notes 与中文提交模板
 
 ### 步骤 2：验证构建产物
 
@@ -215,7 +222,7 @@ git push origin v1.1.0
 
 ## 🐛 发布问题排查
 
-### Q: build_release_v2.bat 失败？
+### Q: release.bat 失败？
 
 **检查步骤**：
 ```bash
@@ -234,9 +241,9 @@ flutter build windows --release
 
 ### Q: ZIP 文件缺少某些文件？
 
-编辑 `scripts/build_release_v2.bat`，检查复制命令：
+编辑 `scripts/release.bat`，检查复制命令：
 ```bat
-copy "%BUILD_DIR%\..." "%RELEASE_DIR%\..." >nul
+copy "%PROJECT_ROOT%\..." "%TARGET_DIR%\..." >nul
 ```
 
 ### Q: 用户报告 DLL 无法加载？
