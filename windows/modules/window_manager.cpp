@@ -139,10 +139,29 @@ bool WindowManager::SetWallpaperZOrder(HWND hwnd, HWND worker_w) {
     return false;
   }
   
-  // Find SHELLDLL_DefView
+  // Try to find SHELLDLL_DefView recursively in worker_w
   HWND shelldll = FindSHELLDLL_DefView(worker_w);
+  
+  // If not found in worker_w, try Progman (common scenario after Windows 10 Fall Creators Update)
   if (!shelldll) {
-    std::cout << "[WindowManager] WARNING: Could not find SHELLDLL_DefView, Z-order may be incorrect" << std::endl;
+    HWND progman = FindWindowW(L"Progman", nullptr);
+    if (progman) {
+      shelldll = FindSHELLDLL_DefView(progman);
+      if (shelldll) {
+        std::cout << "[WindowManager] SHELLDLL_DefView found in Progman instead of WorkerW" << std::endl;
+      }
+    }
+  }
+  
+  if (!shelldll) {
+    std::cout << "[WindowManager] WARNING: Could not find SHELLDLL_DefView, trying HWND_BOTTOM fallback" << std::endl;
+    // Fallback: Just place window at bottom of Z-order
+    BOOL result = SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, 
+                                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    if (result) {
+      std::cout << "[WindowManager] Z-order set using HWND_BOTTOM fallback" << std::endl;
+      return true;
+    }
     return false;
   }
   
@@ -156,16 +175,40 @@ bool WindowManager::SetWallpaperZOrder(HWND hwnd, HWND worker_w) {
   } else {
     DWORD error = GetLastError();
     std::cout << "[WindowManager] WARNING: Failed to set Z-order, error: " << error << std::endl;
-    return false;
+    // Try fallback
+    result = SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, 
+                          SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    return result != FALSE;
   }
 }
 
-HWND WindowManager::FindSHELLDLL_DefView(HWND worker_w) {
-  if (!worker_w) {
+namespace {
+HWND FindChildWindowByClassRecursive(HWND parent, const wchar_t* class_name) {
+  if (!parent) {
     return nullptr;
   }
-  
-  return FindWindowExW(worker_w, nullptr, L"SHELLDLL_DefView", nullptr);
+
+  HWND child = nullptr;
+  while ((child = FindWindowExW(parent, child, nullptr, nullptr)) != nullptr) {
+    wchar_t current_class[256] = {0};
+    if (GetClassNameW(child, current_class, 256) > 0) {
+      if (_wcsicmp(current_class, class_name) == 0) {
+        return child;
+      }
+    }
+
+    HWND nested = FindChildWindowByClassRecursive(child, class_name);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return nullptr;
+}
+}  // namespace
+
+HWND WindowManager::FindSHELLDLL_DefView(HWND worker_w) {
+  return FindChildWindowByClassRecursive(worker_w, L"SHELLDLL_DefView");
 }
 
 bool WindowManager::CalculateWindowDimensions(

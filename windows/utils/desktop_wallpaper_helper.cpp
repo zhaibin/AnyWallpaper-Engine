@@ -25,9 +25,36 @@ bool DesktopWallpaperHelper::FindProgman() {
   return true;
 }
 
+HWND DesktopWallpaperHelper::FindChildWindowByClass(HWND parent, const wchar_t* class_name) {
+  if (!parent) {
+    return nullptr;
+  }
+
+  HWND child = nullptr;
+  while ((child = FindWindowExW(parent, child, nullptr, nullptr)) != nullptr) {
+    wchar_t current_class[256] = {0};
+    if (GetClassNameW(child, current_class, 256) > 0) {
+      if (_wcsicmp(current_class, class_name) == 0) {
+        return child;
+      }
+    }
+
+    HWND nested = FindChildWindowByClass(child, class_name);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return nullptr;
+}
+
 bool DesktopWallpaperHelper::HasSHELLDLL(HWND hwnd) {
-  HWND shelldll = FindWindowExW(hwnd, nullptr, L"SHELLDLL_DefView", nullptr);
-  return shelldll != nullptr;
+  HWND shelldll = FindChildWindowByClass(hwnd, L"SHELLDLL_DefView");
+  if (shelldll) {
+    info_.shelldll = shelldll;
+    return true;
+  }
+  return false;
 }
 
 bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
@@ -38,11 +65,11 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
   }
 
   // Send 0x052C message to Progman to create WorkerW windows
-  SendMessageW(info_.progman, 0x052C, 0, 0);
+  SendMessageTimeoutW(info_.progman, 0x052C, 0, 0, SMTO_NORMAL, 1000, nullptr);
   Logger::Instance().Info("DesktopWallpaperHelper", "Sent 0x052C to Progman");
   
   // Wait a bit for Windows to process
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
   
   return true;
 }
@@ -53,10 +80,14 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
   info_.found_shelldll = false;
   info_.icon_layer = nullptr;
   info_.wallpaper_layer = nullptr;
+  info_.shelldll = nullptr;
+
+  HWND last_workerw = nullptr;
 
   // Enumerate all WorkerW windows
   while ((hwnd = FindWindowExW(nullptr, hwnd, L"WorkerW", nullptr)) != nullptr) {
     info_.workerw_count++;
+    last_workerw = hwnd;
     
     Logger::Instance().Debug("DesktopWallpaperHelper", 
       "Found WorkerW #" + std::to_string(info_.workerw_count) + ": " + std::to_string((long long)hwnd));
@@ -68,6 +99,10 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
       
       Logger::Instance().Info("DesktopWallpaperHelper", 
         "Found icon layer (WorkerW with SHELLDLL_DefView): " + std::to_string((long long)hwnd));
+      if (info_.shelldll) {
+        Logger::Instance().Debug("DesktopWallpaperHelper", 
+          "SHELLDLL_DefView handle: " + std::to_string((long long)info_.shelldll));
+      }
       
       // The next WorkerW after the icon layer is the wallpaper layer
       HWND next_workerw = FindWindowExW(nullptr, hwnd, L"WorkerW", nullptr);
@@ -91,9 +126,25 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
   
   // Fallback 1: Check if SHELLDLL_DefView is in Progman
   if (info_.progman && HasSHELLDLL(info_.progman)) {
+    HWND shelldll = info_.shelldll;
+    HWND icon_parent = shelldll ? GetParent(shelldll) : nullptr;
+    if (icon_parent && icon_parent != info_.progman) {
+      info_.icon_layer = icon_parent;
+      Logger::Instance().Info("DesktopWallpaperHelper", 
+        "SHELLDLL_DefView parent is WorkerW: " + std::to_string((long long)icon_parent));
+    } else {
+      info_.icon_layer = info_.progman;
+    }
+
     Logger::Instance().Info("DesktopWallpaperHelper", 
-      "SHELLDLL_DefView found in Progman, using Progman as wallpaper layer");
+      "SHELLDLL_DefView found in Progman, attempting to find WorkerW behind it");
+
+    // When SHELLDLL is in Progman, we need WorkerW that is BEHIND Progman in Z-order
+    // Use Progman itself as the parent - this is the correct approach for this scenario
     info_.wallpaper_layer = info_.progman;
+    Logger::Instance().Info("DesktopWallpaperHelper", 
+      "Using Progman as wallpaper parent (SHELLDLL is inside Progman)");
+
     info_.found_shelldll = true;
     return true;
   }
@@ -129,6 +180,7 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
 
 bool DesktopWallpaperHelper::FindWorkerW(int timeout_ms) {
   Logger::Instance().Info("DesktopWallpaperHelper", "Starting WorkerW search...");
+  std::cout << "[DesktopWallpaperHelper] ========== WorkerW Search Start (v2.1.5+ Enhanced) ==========" << std::endl;
   
   // Step 1: Find Progman
   if (!FindProgman()) {
@@ -190,6 +242,7 @@ void DesktopWallpaperHelper::Reset() {
   info_.progman = nullptr;
   info_.icon_layer = nullptr;
   info_.wallpaper_layer = nullptr;
+  info_.shelldll = nullptr;
   info_.workerw_count = 0;
   info_.found_shelldll = false;
 }

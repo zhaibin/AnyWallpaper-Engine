@@ -13,6 +13,7 @@ struct WorkerWInfo {
   HWND progman = nullptr;         // Progman window
   HWND icon_layer = nullptr;      // WorkerW containing SHELLDLL_DefView (icon layer)
   HWND wallpaper_layer = nullptr; // Wallpaper layer WorkerW
+  HWND shelldll = nullptr;        // Cached SHELLDLL_DefView handle (for diagnostics)
   int workerw_count = 0;
   bool found_shelldll = false;
 };
@@ -92,6 +93,9 @@ private:
   
   // Helper: Check for SHELLDLL_DefView in window
   bool HasSHELLDLL(HWND hwnd);
+
+  // Helper: Find child window by class recursively
+  HWND FindChildWindowByClass(HWND parent, const wchar_t* class_name);
 };
 
 }  // namespace anywp_engine
