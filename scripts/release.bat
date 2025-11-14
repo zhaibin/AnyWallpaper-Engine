@@ -22,7 +22,7 @@ set SOURCE_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_source
 set WEB_SDK_DIR=%RELEASE_DIR%\anywp_web_sdk_v%VERSION%
 
 REM Step 1: Clean old release
-echo [Step 1/23] Cleaning old release...
+echo [Step 1/27] Cleaning old release...
 if exist "%PRECOMPILED_DIR%" rmdir /s /q "%PRECOMPILED_DIR%"
 if exist "%PRECOMPILED_DIR%.zip" del /q "%PRECOMPILED_DIR%.zip"
 if exist "%SOURCE_DIR%" rmdir /s /q "%SOURCE_DIR%"
@@ -31,7 +31,7 @@ if exist "%WEB_SDK_DIR%" rmdir /s /q "%WEB_SDK_DIR%"
 if exist "%WEB_SDK_DIR%.zip" del /q "%WEB_SDK_DIR%.zip"
 
 REM Step 2: Build Release
-echo [Step 2/23] Building Release version...
+echo [Step 2/26] Building Release version...
 cd /d "%PROJECT_ROOT%\example"
 call flutter build windows --release
 set BUILD_ERROR=%ERRORLEVEL%
@@ -48,7 +48,7 @@ REM ==========================================
 REM Part A: Precompiled Package (DLL + LIB + Headers)
 REM ==========================================
 
-echo [Step 3/23] Creating precompiled package structure...
+echo [Step 3/26] Creating precompiled package structure...
 mkdir "%PRECOMPILED_DIR%\bin"
 mkdir "%PRECOMPILED_DIR%\lib"
 mkdir "%PRECOMPILED_DIR%\include\anywp_engine"
@@ -56,30 +56,41 @@ mkdir "%PRECOMPILED_DIR%\windows"
 mkdir "%PRECOMPILED_DIR%\sdk"
 mkdir "%PRECOMPILED_DIR%\examples"
 
-echo [Step 4/23] Copying DLL files to precompiled package...
+echo [Step 4/26] Copying DLL files to precompiled package...
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.dll" "%PRECOMPILED_DIR%\bin\"
 copy "%PROJECT_ROOT%\windows\packages\Microsoft.Web.WebView2.1.0.2592.51\build\native\x64\WebView2Loader.dll" "%PRECOMPILED_DIR%\bin\"
 
-echo [Step 5/23] Copying LIB file to precompiled package...
+echo [Step 5/26] Copying LIB file to precompiled package...
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.lib" "%PRECOMPILED_DIR%\lib\"
 
-echo [Step 6/23] Copying Dart API to precompiled package...
+echo [Step 6/26] Copying Dart API to precompiled package...
 mkdir "%PRECOMPILED_DIR%\lib\dart"
 copy "%PROJECT_ROOT%\lib\anywp_engine.dart" "%PRECOMPILED_DIR%\lib\dart\"
+REM Also copy to standard location for Flutter compatibility
+copy "%PROJECT_ROOT%\lib\anywp_engine.dart" "%PRECOMPILED_DIR%\lib\"
 
-echo [Step 7/23] Copying C API header to precompiled package...
+echo [Step 7/26] Copying C API header to precompiled package...
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin_c_api.h" "%PRECOMPILED_DIR%\include\anywp_engine\"
+REM Create Flutter wrapper header (any_w_p_engine_plugin.h)
+(
+echo // Wrapper header for Flutter's generated plugin registrant
+echo // This file provides compatibility with Flutter's naming convention
+echo #ifndef ANY_W_P_ENGINE_PLUGIN_H_
+echo #define ANY_W_P_ENGINE_PLUGIN_H_
+echo #include "anywp_engine_plugin_c_api.h"
+echo #endif  // ANY_W_P_ENGINE_PLUGIN_H_
+) > "%PRECOMPILED_DIR%\include\anywp_engine\any_w_p_engine_plugin.h"
 
-echo [Step 8/23] Copying CMakeLists.txt to precompiled package...
+echo [Step 8/26] Copying CMakeLists.txt to precompiled package...
 copy "%PROJECT_ROOT%\windows\CMakeLists.precompiled.txt" "%PRECOMPILED_DIR%\windows\CMakeLists.txt"
 
-echo [Step 9/23] Copying Web SDK to precompiled package...
+echo [Step 9/26] Copying Web SDK to precompiled package...
 copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%PRECOMPILED_DIR%\sdk\"
 
-echo [Step 10/23] Copying example HTML files to precompiled package...
+echo [Step 10/26] Copying example HTML files to precompiled package...
 xcopy /E /I /Y "%PROJECT_ROOT%\examples\*.html" "%PRECOMPILED_DIR%\examples\"
 
-echo [Step 11/23] Copying documentation to precompiled package...
+echo [Step 11/26] Copying documentation to precompiled package...
 copy "%PROJECT_ROOT%\README.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\CHANGELOG_CN.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\LICENSE" "%PRECOMPILED_DIR%\"
@@ -88,15 +99,93 @@ copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE_CN.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\pubspec.yaml" "%PRECOMPILED_DIR%\"
 
-echo [Step 12/23] Creating precompiled ZIP package...
+echo [Step 12/26] Verifying precompiled package integrity...
+set VERIFY_ERROR=0
+if not exist "%PRECOMPILED_DIR%\lib\anywp_engine.dart" (
+    echo [ERROR] Dart file not in standard location
+    set VERIFY_ERROR=1
+)
+if not exist "%PRECOMPILED_DIR%\include\anywp_engine\any_w_p_engine_plugin.h" (
+    echo [ERROR] Flutter wrapper header missing
+    set VERIFY_ERROR=1
+)
+REM Verify CMakeLists.txt contains GLOBAL
+findstr /C:"IMPORTED GLOBAL" "%PRECOMPILED_DIR%\windows\CMakeLists.txt" >nul
+if errorlevel 1 (
+    echo [WARNING] CMakeLists.txt may be missing GLOBAL keyword
+)
+if %VERIFY_ERROR%==1 (
+    echo [FAILED] Package verification failed
+    exit /b 1
+) else (
+    echo [SUCCESS] Package verification passed
+)
+
+echo [Step 13/26] Creating verify.bat script...
+(
+echo @echo off
+echo echo Verifying AnyWP Engine precompiled package...
+echo echo.
+echo set ERROR_COUNT=0
+echo REM Check required DLL files
+echo if not exist "bin\anywp_engine_plugin.dll" ^(
+echo     echo [ERROR] Missing: bin\anywp_engine_plugin.dll
+echo     set /a ERROR_COUNT+=1
+echo ^)
+echo if not exist "bin\WebView2Loader.dll" ^(
+echo     echo [ERROR] Missing: bin\WebView2Loader.dll
+echo     set /a ERROR_COUNT+=1
+echo ^)
+echo REM Check LIB file
+echo if not exist "lib\anywp_engine_plugin.lib" ^(
+echo     echo [ERROR] Missing: lib\anywp_engine_plugin.lib
+echo     set /a ERROR_COUNT+=1
+echo ^)
+echo REM Check Dart file ^(standard location^)
+echo if not exist "lib\anywp_engine.dart" ^(
+echo     echo [ERROR] Missing: lib\anywp_engine.dart
+echo     set /a ERROR_COUNT+=1
+echo ^)
+echo REM Check header files
+echo if not exist "include\anywp_engine\anywp_engine_plugin_c_api.h" ^(
+echo     echo [ERROR] Missing: include\anywp_engine\anywp_engine_plugin_c_api.h
+echo     set /a ERROR_COUNT+=1
+echo ^)
+echo if not exist "include\anywp_engine\any_w_p_engine_plugin.h" ^(
+echo     echo [ERROR] Missing: include\anywp_engine\any_w_p_engine_plugin.h
+echo     set /a ERROR_COUNT+=1
+echo ^)
+echo REM Check CMakeLists.txt
+echo if not exist "windows\CMakeLists.txt" ^(
+echo     echo [ERROR] Missing: windows\CMakeLists.txt
+echo     set /a ERROR_COUNT+=1
+echo ^)
+echo REM Verify CMakeLists.txt contains GLOBAL
+echo findstr /C:"IMPORTED GLOBAL" "windows\CMakeLists.txt" ^>nul
+echo if errorlevel 1 ^(
+echo     echo [WARNING] CMakeLists.txt may be missing GLOBAL keyword
+echo ^)
+echo echo.
+echo if %%ERROR_COUNT%%==0 ^(
+echo     echo [SUCCESS] All required files are present!
+echo     echo Package is ready to use.
+echo ^) else ^(
+echo     echo [FAILED] Found %%ERROR_COUNT%% error^(s^).
+echo     echo Please re-download the package.
+echo ^)
+echo pause
+) > "%PRECOMPILED_DIR%\verify.bat"
+
+echo [Step 14/26] Creating precompiled ZIP package...
+cd /d "%PRECOMPILED_DIR%"
+powershell -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_engine_v%VERSION%_precompiled.zip' -Force"
 cd /d "%RELEASE_DIR%"
-powershell -Command "Compress-Archive -Path 'anywp_engine_v%VERSION%_precompiled\*' -DestinationPath 'anywp_engine_v%VERSION%_precompiled.zip' -Force"
 
 REM ==========================================
 REM Part B: Source Package (Full source code)
 REM ==========================================
 
-echo [Step 13/23] Creating source package structure...
+echo [Step 15/26] Creating source package structure...
 mkdir "%SOURCE_DIR%\bin"
 mkdir "%SOURCE_DIR%\lib"
 mkdir "%SOURCE_DIR%\include\anywp_engine"
@@ -106,15 +195,15 @@ mkdir "%SOURCE_DIR%\windows\utils"
 mkdir "%SOURCE_DIR%\windows\test"
 mkdir "%SOURCE_DIR%\windows\packages"
 
-echo [Step 14/23] Copying binaries to source package...
+echo [Step 16/26] Copying binaries to source package...
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.dll" "%SOURCE_DIR%\bin\"
 copy "%PROJECT_ROOT%\windows\packages\Microsoft.Web.WebView2.1.0.2592.51\build\native\x64\WebView2Loader.dll" "%SOURCE_DIR%\bin\"
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.lib" "%SOURCE_DIR%\lib\"
 
-echo [Step 15/23] Copying Dart source to source package...
+echo [Step 17/26] Copying Dart source to source package...
 copy "%PROJECT_ROOT%\lib\anywp_engine.dart" "%SOURCE_DIR%\lib\"
 
-echo [Step 16/23] Copying C++ source to source package...
+echo [Step 18/26] Copying C++ source to source package...
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin.cpp" "%SOURCE_DIR%\windows\"
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin.h" "%SOURCE_DIR%\windows\"
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin_c_api.h" "%SOURCE_DIR%\windows\"
@@ -122,39 +211,40 @@ xcopy /E /I /Y "%PROJECT_ROOT%\windows\modules" "%SOURCE_DIR%\windows\modules"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\utils" "%SOURCE_DIR%\windows\utils"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\test" "%SOURCE_DIR%\windows\test"
 
-echo [Step 17/23] Copying headers to source package...
+echo [Step 19/26] Copying headers to source package...
 copy "%PROJECT_ROOT%\windows\include\anywp_engine\any_w_p_engine_plugin.h" "%SOURCE_DIR%\include\anywp_engine\"
 
-echo [Step 18/23] Copying SDK to source package...
+echo [Step 20/26] Copying SDK to source package...
 copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%SOURCE_DIR%\windows\"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\sdk" "%SOURCE_DIR%\windows\sdk"
 
-echo [Step 19/23] Copying CMake and WebView2 packages to source package...
+echo [Step 21/26] Copying CMake and WebView2 packages to source package...
 copy "%PROJECT_ROOT%\windows\CMakeLists.txt" "%SOURCE_DIR%\windows\"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\packages" "%SOURCE_DIR%\windows\packages"
 copy "%PROJECT_ROOT%\windows\packages.config" "%SOURCE_DIR%\windows\"
 
-echo [Step 20/23] Copying documentation to source package...
+echo [Step 22/26] Copying documentation to source package...
 copy "%PROJECT_ROOT%\README.md" "%SOURCE_DIR%\"
 copy "%PROJECT_ROOT%\CHANGELOG_CN.md" "%SOURCE_DIR%\"
 copy "%PROJECT_ROOT%\LICENSE" "%SOURCE_DIR%\"
 copy "%PROJECT_ROOT%\docs\PRECOMPILED_DLL_INTEGRATION.md" "%SOURCE_DIR%\INTEGRATION_GUIDE.md"
 copy "%PROJECT_ROOT%\pubspec.yaml" "%SOURCE_DIR%\"
 
-echo [Step 21/23] Creating source ZIP package...
+echo [Step 23/26] Creating source ZIP package...
+cd /d "%SOURCE_DIR%"
+powershell -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_engine_v%VERSION%_source.zip' -Force"
 cd /d "%RELEASE_DIR%"
-powershell -Command "Compress-Archive -Path 'anywp_engine_v%VERSION%_source\*' -DestinationPath 'anywp_engine_v%VERSION%_source.zip' -Force"
 
 REM ==========================================
 REM Part C: Web SDK Package
 REM ==========================================
 
-echo [Step 20/23] Creating Web SDK package structure...
+echo [Step 24/26] Creating Web SDK package structure...
 mkdir "%WEB_SDK_DIR%\sdk"
 mkdir "%WEB_SDK_DIR%\examples"
 mkdir "%WEB_SDK_DIR%\docs"
 
-echo [Step 21/23] Copying Web SDK files...
+echo [Step 25/26] Copying Web SDK files...
 copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%WEB_SDK_DIR%\sdk\"
 xcopy /E /I /Y "%PROJECT_ROOT%\examples\*.html" "%WEB_SDK_DIR%\examples\"
 copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE_CN.md" "%WEB_SDK_DIR%\docs\"
@@ -162,7 +252,7 @@ copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE.md" "%WEB_SDK_DIR%\docs\"
 copy "%PROJECT_ROOT%\docs\API_USAGE_EXAMPLES.md" "%WEB_SDK_DIR%\docs\"
 copy "%PROJECT_ROOT%\LICENSE" "%WEB_SDK_DIR%\"
 
-echo [Step 22/23] Creating Web SDK README...
+echo [Step 26/26] Creating Web SDK README...
 (
 echo # AnyWP Engine - Web SDK v%VERSION%
 echo.
@@ -192,9 +282,10 @@ echo.
 echo MIT License - See LICENSE file
 ) > "%WEB_SDK_DIR%\README.md"
 
-echo [Step 23/23] Creating Web SDK ZIP...
+echo [Step 27/27] Creating Web SDK ZIP...
+cd /d "%WEB_SDK_DIR%"
+powershell -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_web_sdk_v%VERSION%.zip' -Force"
 cd /d "%RELEASE_DIR%"
-powershell -Command "Compress-Archive -Path 'anywp_web_sdk_v%VERSION%\*' -DestinationPath 'anywp_web_sdk_v%VERSION%.zip' -Force"
 
 REM Summary
 echo.
