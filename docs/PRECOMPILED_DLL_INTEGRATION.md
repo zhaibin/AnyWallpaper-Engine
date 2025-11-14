@@ -14,7 +14,8 @@
 - ✅ `bin/` - 预编译的 DLL 文件
 - ✅ `lib/` - LIB 文件 + Dart API
 - ✅ `include/anywp_engine/` - **纯 C API 头文件**（无 C++ 依赖）
-- ✅ `windows/CMakeLists.txt` - CMake 配置
+- ✅ `windows/CMakeLists.txt` - **预编译专用 CMakeLists.txt**（使用 IMPORTED 库，无需 WebView2 packages）
+- ✅ `INTEGRATION_GUIDE.md` - 完整集成指南（本文档）
 - ✅ 文档和许可证
 
 **优势**：
@@ -107,10 +108,10 @@ YourProject/
         │   └── anywp_engine/
         │       └── anywp_engine_plugin_c_api.h  ← 纯 C API 头文件
         ├── windows/
-        │   └── CMakeLists.txt
+        │   └── CMakeLists.txt  ← 预编译专用配置（无需 WebView2 packages）
         ├── pubspec.yaml
         ├── README.md
-        ├── INTEGRATION_GUIDE.md
+        ├── INTEGRATION_GUIDE.md  ← 完整集成指南（本文档）
         ├── CHANGELOG_CN.md
         └── LICENSE
 ```
@@ -138,6 +139,12 @@ flutter build windows
 
 **就这么简单！** Flutter 会自动处理插件的加载和 DLL 的复制。
 
+**技术细节**：
+- 预编译包中的 `windows/CMakeLists.txt` 使用 `IMPORTED` 库模式
+- 直接链接预编译的 DLL，无需编译 C++ 源码
+- 无需 WebView2 packages，因为 WebView2 已静态链接在 DLL 中
+- Flutter 构建系统会自动复制 DLL 到输出目录
+
 ---
 
 ## 📥 方式二：使用 pubspec.yaml 的 git 引用（团队协作）
@@ -156,9 +163,11 @@ dependencies:
 
 ## 📥 方式三：高级 - 自定义 CMake 配置
 
-⚠️ **注意**：只有在需要自定义构建流程时才使用此方式，大多数情况下方式一已足够。
+⚠️ **注意**：**v2.1.3+ 版本不再需要此方式**！预编译包已包含专用的 CMakeLists.txt，直接使用方式一即可。
 
-如果你需要自定义 CMake 配置，可以直接在项目的 `windows/CMakeLists.txt` 中引用预编译 DLL。
+**v2.1.3 之前的版本**：如果你需要自定义 CMake 配置，可以直接在项目的 `windows/CMakeLists.txt` 中引用预编译 DLL。
+
+**v2.1.3+ 版本**：预编译包中的 `windows/CMakeLists.txt` 已经是预编译专用配置，无需修改。如果你确实需要自定义配置，可以参考以下示例：
 
 ### 1. 修改 windows/CMakeLists.txt
 
@@ -196,11 +205,13 @@ if(EXISTS "${ANYWP_ENGINE_DIR}")
       "$<TARGET_FILE_DIR:${BINARY_NAME}>"
   )
   
-  message(STATUS "✅ Using precompiled AnyWP Engine from ${ANYWP_ENGINE_DIR}")
+  message(STATUS "Using precompiled AnyWP Engine from ${ANYWP_ENGINE_DIR}")
 else()
-  message(FATAL_ERROR "❌ Precompiled AnyWP Engine not found at ${ANYWP_ENGINE_DIR}")
+  message(FATAL_ERROR "Precompiled AnyWP Engine not found at ${ANYWP_ENGINE_DIR}")
 endif()
 ```
+
+**注意**：v2.1.3+ 版本的预编译包已经包含了这样的配置，你无需手动添加。只有在需要完全自定义构建流程时才使用此方式。
 
 ### 2. 使用纯 C API（推荐）
 
@@ -384,6 +395,28 @@ class _WallpaperControllerState extends State<WallpaperController> {
 
 **注意**：预编译包只包含纯 C API 头文件，不包含完整的 C++ API 头文件（`anywp_engine_plugin.h`）。完整的 C++ API 只在源码包中提供。
 
+### windows/ - CMake 配置
+
+| 文件 | 说明 | 特点 |
+|------|------|------|
+| `CMakeLists.txt` | **预编译专用 CMakeLists.txt** | ✅ 使用 IMPORTED 库<br>✅ 无需 WebView2 packages<br>✅ 无需编译 C++ 源码 |
+
+**重要说明**：预编译包中的 `windows/CMakeLists.txt` 是专门为预编译包设计的，与源码包中的 CMakeLists.txt 不同：
+
+**预编译包 CMakeLists.txt 特点**：
+- ✅ 使用 `add_library(anywp_engine_plugin SHARED IMPORTED)` 直接链接预编译 DLL
+- ✅ 不查找 WebView2 packages 目录（WebView2 已静态链接在 DLL 中）
+- ✅ 不编译任何 C++ 源码文件
+- ✅ 自动复制 DLL 到输出目录
+- ✅ 零依赖，只需要 Flutter SDK
+
+**源码包 CMakeLists.txt 特点**：
+- 需要 WebView2 packages 目录
+- 需要编译所有 C++ 源码文件
+- 需要 Visual Studio 和 WebView2 SDK
+
+这就是为什么预编译包可以**真正实现零依赖集成**的原因！
+
 ---
 
 ## 🔄 版本更新
@@ -511,6 +544,27 @@ flutter pub get
 flutter build windows
 ```
 
+### Q: 构建时提示 "WebView2 package not found"？
+
+**原因**：你使用的可能是旧版本的预编译包（v2.1.2 及之前），或者使用了源码包的 CMakeLists.txt。
+
+**解决方案**：
+1. **确保使用最新版本**（v2.1.3+）：
+   - 下载最新的 `anywp_engine_v2.1.3_precompiled.zip`
+   - v2.1.3 已修复此问题，使用预编译专用 CMakeLists.txt
+
+2. **验证 CMakeLists.txt**：
+   ```bash
+   # 检查预编译包中的 CMakeLists.txt 是否包含以下内容
+   findstr "IMPORTED" packages\anywp_engine\windows\CMakeLists.txt
+   # 应该找到 "SHARED IMPORTED" 字样
+   ```
+
+3. **如果仍然报错**：
+   - 确认使用的是预编译包，不是源码包
+   - 检查 `packages/anywp_engine/windows/CMakeLists.txt` 是否存在
+   - 重新解压预编译包，确保文件完整
+
 ### Q: 运行时提示 "无法加载 anywp_engine_plugin.dll"？
 
 **可能原因**：
@@ -533,12 +587,22 @@ dir packages\anywp_engine\windows\*.cpp
 # 应该提示找不到文件
 ```
 
-**方法 2 - 构建日志**：
+**方法 2 - 检查 CMakeLists.txt**：
+```bash
+# 预编译包的 CMakeLists.txt 应该包含 "IMPORTED"
+findstr "IMPORTED" packages\anywp_engine\windows\CMakeLists.txt
+# 应该找到 "SHARED IMPORTED" 字样
+# 不应该包含 "add_library.*\.cpp" 这样的源码编译语句
+```
+
+**方法 3 - 构建日志**：
 ```bash
 flutter build windows --verbose
 # 查找类似输出：
+# "Using precompiled AnyWP Engine DLL: ..."
 # "Using Flutter plugin anywp_engine from path"
-# 不应该看到 C++ 编译日志
+# 不应该看到 C++ 编译日志（如 "Compiling anywp_engine_plugin.cpp"）
+# 不应该看到 "WebView2 package not found" 错误
 ```
 
 ### Q: 可以同时使用预编译包和源码包吗？
@@ -621,8 +685,9 @@ flutter build windows --verbose
 **版本**: 2.1.3  
 **更新日期**: 2025-01-15  
 **主要变更**:
-- 完善预编译包集成文档
-- 新增纯 C API 头文件支持
-- 创建独立的预编译包和源码包
-- 简化集成流程，移除对 WebView2 SDK 的依赖
+- ✅ **预编译包使用专用 CMakeLists.txt** - 无需 WebView2 packages，真正零依赖
+- ✅ **集成文档包含在 ZIP 包中** - `INTEGRATION_GUIDE.md` 随包提供
+- ✅ **完善集成文档** - 详细说明预编译专用 CMakeLists.txt 的特点
+- ✅ **新增纯 C API 头文件支持** - 无 C++ 依赖
+- ✅ **创建独立的预编译包和源码包** - 简化集成流程
 
