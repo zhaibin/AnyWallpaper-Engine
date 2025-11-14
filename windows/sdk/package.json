@@ -6,7 +6,8 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "npm run clean && npm run compile && rollup -c rollup.config.js",
+    "build": "npm run clean && npm run compile && cross-env NODE_ENV=production rollup -c rollup.config.js",
+    "build:dev": "npm run clean && npm run compile && rollup -c rollup.config.js",
     "build:watch": "npm run compile -- --watch",
     "build:production": "npm run clean && npm run compile && cross-env NODE_ENV=production rollup -c rollup.config.js",
     "compile": "tsc",

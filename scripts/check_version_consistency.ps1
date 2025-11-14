@@ -26,10 +26,10 @@ try {
     if ($firstHeading) {
         $match = [Regex]::Match($firstHeading, '^## \[(?<ver>[^\]]+)\]')
         if (-not $match.Success -or $match.Groups['ver'].Value -ne $Version) {
-            $errors += "CHANGELOG_CN.md 顶部版本为 [$($match.Groups['ver'].Value)]，需更新为 [$Version]"
+            $errors += "CHANGELOG_CN.md top version is [$($match.Groups['ver'].Value)], need update to [$Version]"
         }
     } else {
-        $errors += "CHANGELOG_CN.md 中未找到任何版本段落"
+        $errors += "CHANGELOG_CN.md does not contain any version section"
     }
 } catch {
     $errors += $_.Exception.Message
@@ -38,33 +38,34 @@ try {
 # Check .cursorrules
 $cursorRulesPath = Join-Path $ProjectRoot '.cursorrules'
 if (Test-Path -Path $cursorRulesPath) {
-    $cursorMatch = Select-String -Path $cursorRulesPath -Pattern '\*\*版本\*\*:\s*(?<ver>\d+\.\d+\.\d+)' -AllMatches | Select-Object -First 1
+    $cursorMatch = Select-String -Path $cursorRulesPath -Pattern '\*\*Version\*\*:\s*(?<ver>\d+\.\d+\.\d+)' -AllMatches | Select-Object -First 1
     if ($cursorMatch) {
         $cursorVersion = $cursorMatch.Matches[0].Groups['ver'].Value
         if ($cursorVersion -ne $Version) {
-            $errors += ".cursorrules 标记版本为 [$cursorVersion]，需更新为 [$Version]"
+            $errors += ".cursorrules version is [$cursorVersion], need update to [$Version]"
         }
     } else {
-        $errors += ".cursorrules 中缺少版本标记（**版本**: x.x.x）"
+        $errors += ".cursorrules missing version marker (**Version**: x.x.x)"
     }
 } else {
-    $errors += ".cursorrules 文件缺失"
+    $errors += ".cursorrules file is missing"
 }
 
 # Check PRECOMPILED integration guide
 $integrationPath = Join-Path $ProjectRoot 'docs\PRECOMPILED_DLL_INTEGRATION.md'
 if (Test-Path -Path $integrationPath) {
-    $precompiledToken = ("anywp_engine_v{0}_precompiled" -f $Version)
-    if (-not (Select-String -Path $integrationPath -Pattern [Regex]::Escape($precompiledToken) -Quiet)) {
-        $errors += "docs/PRECOMPILED_DLL_INTEGRATION.md 未更新包名标记 ($precompiledToken)"
+    $precompiledToken = "anywp_engine_v{0}_precompiled" -f $Version
+    $escapedToken = [Regex]::Escape($precompiledToken)
+    if (-not (Select-String -Path $integrationPath -Pattern $escapedToken -Quiet)) {
+        $errors += "docs/PRECOMPILED_DLL_INTEGRATION.md need update package name ($precompiledToken)"
     }
 
-    $versionLinePattern = "\*\*版本\*\*:\s*$([Regex]::Escape($Version))"
+    $versionLinePattern = "\*\*Version\*\*:\s*$([Regex]::Escape($Version))"
     if (-not (Select-String -Path $integrationPath -Pattern $versionLinePattern -Quiet)) {
-        $errors += "docs/PRECOMPILED_DLL_INTEGRATION.md 未更新版本标签 (**版本**: $Version)"
+        $errors += "docs/PRECOMPILED_DLL_INTEGRATION.md need update version label (**Version**: $Version)"
     }
 } else {
-    $errors += "docs/PRECOMPILED_DLL_INTEGRATION.md 文件缺失"
+    $errors += "docs/PRECOMPILED_DLL_INTEGRATION.md file is missing"
 }
 
 if ($errors.Count -eq 0) {
@@ -73,8 +74,7 @@ if ($errors.Count -eq 0) {
 }
 
 Write-Host "Version consistency check failed:" -ForegroundColor Red
-foreach ($error in $errors) {
-    Write-Host " - $error"
+foreach ($err in $errors) {
+    Write-Host " - $err"
 }
 exit 1
-

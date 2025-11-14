@@ -106,15 +106,28 @@ set(anywp_engine_bundled_libraries
 )
 
 # ==========================================
-# Copy SDK file to output directory for development
+# Copy minified SDK file to plugin build directory (where DLL is built)
+# Use minified version for better performance
 # ==========================================
 add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory 
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../../../../windows"
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/windows"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_CURRENT_SOURCE_DIR}/anywp_sdk.js"
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../../../../windows/anywp_sdk.js"
-  COMMENT "Copying SDK file to development directory"
+    "${CMAKE_CURRENT_SOURCE_DIR}/anywp_sdk.min.js"
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/windows/anywp_sdk.js"
+  COMMENT "Copying minified SDK to plugin directory ($<CONFIG>)"
+  VERBATIM
+)
+
+# Copy SDK file to runner directory (where application runs)
+# This ensures the SDK is available at runtime
+add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory 
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../runner/$<CONFIG>/windows"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_SOURCE_DIR}/anywp_sdk.min.js"
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../runner/$<CONFIG>/windows/anywp_sdk.js"
+  COMMENT "Copying minified SDK to runner directory ($<CONFIG>)"
   VERBATIM
 )
 
