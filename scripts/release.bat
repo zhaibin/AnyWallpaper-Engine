@@ -22,7 +22,7 @@ set SOURCE_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_source
 set WEB_SDK_DIR=%RELEASE_DIR%\anywp_web_sdk_v%VERSION%
 
 REM Step 1: Clean old release
-echo [Step 1/20] Cleaning old release...
+echo [Step 1/23] Cleaning old release...
 if exist "%PRECOMPILED_DIR%" rmdir /s /q "%PRECOMPILED_DIR%"
 if exist "%PRECOMPILED_DIR%.zip" del /q "%PRECOMPILED_DIR%.zip"
 if exist "%SOURCE_DIR%" rmdir /s /q "%SOURCE_DIR%"
@@ -31,7 +31,7 @@ if exist "%WEB_SDK_DIR%" rmdir /s /q "%WEB_SDK_DIR%"
 if exist "%WEB_SDK_DIR%.zip" del /q "%WEB_SDK_DIR%.zip"
 
 REM Step 2: Build Release
-echo [Step 2/20] Building Release version...
+echo [Step 2/23] Building Release version...
 cd /d "%PROJECT_ROOT%\example"
 call flutter build windows --release
 set BUILD_ERROR=%ERRORLEVEL%
@@ -48,37 +48,47 @@ REM ==========================================
 REM Part A: Precompiled Package (DLL + LIB + Headers)
 REM ==========================================
 
-echo [Step 3/20] Creating precompiled package structure...
+echo [Step 3/23] Creating precompiled package structure...
 mkdir "%PRECOMPILED_DIR%\bin"
 mkdir "%PRECOMPILED_DIR%\lib"
 mkdir "%PRECOMPILED_DIR%\include\anywp_engine"
 mkdir "%PRECOMPILED_DIR%\windows"
+mkdir "%PRECOMPILED_DIR%\sdk"
+mkdir "%PRECOMPILED_DIR%\examples"
 
-echo [Step 4/20] Copying DLL files to precompiled package...
+echo [Step 4/23] Copying DLL files to precompiled package...
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.dll" "%PRECOMPILED_DIR%\bin\"
 copy "%PROJECT_ROOT%\windows\packages\Microsoft.Web.WebView2.1.0.2592.51\build\native\x64\WebView2Loader.dll" "%PRECOMPILED_DIR%\bin\"
 
-echo [Step 5/20] Copying LIB file to precompiled package...
+echo [Step 5/23] Copying LIB file to precompiled package...
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.lib" "%PRECOMPILED_DIR%\lib\"
 
-echo [Step 6/20] Copying Dart API to precompiled package...
+echo [Step 6/23] Copying Dart API to precompiled package...
 mkdir "%PRECOMPILED_DIR%\lib\dart"
 copy "%PROJECT_ROOT%\lib\anywp_engine.dart" "%PRECOMPILED_DIR%\lib\dart\"
 
-echo [Step 7/20] Copying C API header to precompiled package...
+echo [Step 7/23] Copying C API header to precompiled package...
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin_c_api.h" "%PRECOMPILED_DIR%\include\anywp_engine\"
 
-echo [Step 8/20] Copying CMakeLists.txt to precompiled package...
+echo [Step 8/23] Copying CMakeLists.txt to precompiled package...
 copy "%PROJECT_ROOT%\windows\CMakeLists.precompiled.txt" "%PRECOMPILED_DIR%\windows\CMakeLists.txt"
 
-echo [Step 9/20] Copying documentation to precompiled package...
+echo [Step 9/23] Copying Web SDK to precompiled package...
+copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%PRECOMPILED_DIR%\sdk\"
+
+echo [Step 10/23] Copying example HTML files to precompiled package...
+xcopy /E /I /Y "%PROJECT_ROOT%\examples\*.html" "%PRECOMPILED_DIR%\examples\"
+
+echo [Step 11/23] Copying documentation to precompiled package...
 copy "%PROJECT_ROOT%\README.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\CHANGELOG_CN.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\LICENSE" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\docs\PRECOMPILED_DLL_INTEGRATION.md" "%PRECOMPILED_DIR%\INTEGRATION_GUIDE.md"
+copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE_CN.md" "%PRECOMPILED_DIR%\"
+copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE.md" "%PRECOMPILED_DIR%\"
 copy "%PROJECT_ROOT%\pubspec.yaml" "%PRECOMPILED_DIR%\"
 
-echo [Step 10/20] Creating precompiled ZIP package...
+echo [Step 12/23] Creating precompiled ZIP package...
 cd /d "%RELEASE_DIR%"
 powershell -Command "Compress-Archive -Path 'anywp_engine_v%VERSION%_precompiled\*' -DestinationPath 'anywp_engine_v%VERSION%_precompiled.zip' -Force"
 
@@ -86,7 +96,7 @@ REM ==========================================
 REM Part B: Source Package (Full source code)
 REM ==========================================
 
-echo [Step 11/20] Creating source package structure...
+echo [Step 13/23] Creating source package structure...
 mkdir "%SOURCE_DIR%\bin"
 mkdir "%SOURCE_DIR%\lib"
 mkdir "%SOURCE_DIR%\include\anywp_engine"
@@ -96,15 +106,15 @@ mkdir "%SOURCE_DIR%\windows\utils"
 mkdir "%SOURCE_DIR%\windows\test"
 mkdir "%SOURCE_DIR%\windows\packages"
 
-echo [Step 12/20] Copying binaries to source package...
+echo [Step 14/23] Copying binaries to source package...
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.dll" "%SOURCE_DIR%\bin\"
 copy "%PROJECT_ROOT%\windows\packages\Microsoft.Web.WebView2.1.0.2592.51\build\native\x64\WebView2Loader.dll" "%SOURCE_DIR%\bin\"
 copy "%PROJECT_ROOT%\example\build\windows\x64\plugins\anywp_engine\Release\anywp_engine_plugin.lib" "%SOURCE_DIR%\lib\"
 
-echo [Step 13/20] Copying Dart source to source package...
+echo [Step 15/23] Copying Dart source to source package...
 copy "%PROJECT_ROOT%\lib\anywp_engine.dart" "%SOURCE_DIR%\lib\"
 
-echo [Step 14/20] Copying C++ source to source package...
+echo [Step 16/23] Copying C++ source to source package...
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin.cpp" "%SOURCE_DIR%\windows\"
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin.h" "%SOURCE_DIR%\windows\"
 copy "%PROJECT_ROOT%\windows\anywp_engine_plugin_c_api.h" "%SOURCE_DIR%\windows\"
@@ -112,26 +122,26 @@ xcopy /E /I /Y "%PROJECT_ROOT%\windows\modules" "%SOURCE_DIR%\windows\modules"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\utils" "%SOURCE_DIR%\windows\utils"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\test" "%SOURCE_DIR%\windows\test"
 
-echo [Step 15/20] Copying headers to source package...
+echo [Step 17/23] Copying headers to source package...
 copy "%PROJECT_ROOT%\windows\include\anywp_engine\any_w_p_engine_plugin.h" "%SOURCE_DIR%\include\anywp_engine\"
 
-echo [Step 16/20] Copying SDK to source package...
+echo [Step 18/23] Copying SDK to source package...
 copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%SOURCE_DIR%\windows\"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\sdk" "%SOURCE_DIR%\windows\sdk"
 
-echo [Step 17/20] Copying CMake and WebView2 packages to source package...
+echo [Step 19/23] Copying CMake and WebView2 packages to source package...
 copy "%PROJECT_ROOT%\windows\CMakeLists.txt" "%SOURCE_DIR%\windows\"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\packages" "%SOURCE_DIR%\windows\packages"
 copy "%PROJECT_ROOT%\windows\packages.config" "%SOURCE_DIR%\windows\"
 
-echo [Step 18/20] Copying documentation to source package...
+echo [Step 20/23] Copying documentation to source package...
 copy "%PROJECT_ROOT%\README.md" "%SOURCE_DIR%\"
 copy "%PROJECT_ROOT%\CHANGELOG_CN.md" "%SOURCE_DIR%\"
 copy "%PROJECT_ROOT%\LICENSE" "%SOURCE_DIR%\"
 copy "%PROJECT_ROOT%\docs\PRECOMPILED_DLL_INTEGRATION.md" "%SOURCE_DIR%\INTEGRATION_GUIDE.md"
 copy "%PROJECT_ROOT%\pubspec.yaml" "%SOURCE_DIR%\"
 
-echo [Step 19/20] Creating source ZIP package...
+echo [Step 21/23] Creating source ZIP package...
 cd /d "%RELEASE_DIR%"
 powershell -Command "Compress-Archive -Path 'anywp_engine_v%VERSION%_source\*' -DestinationPath 'anywp_engine_v%VERSION%_source.zip' -Force"
 

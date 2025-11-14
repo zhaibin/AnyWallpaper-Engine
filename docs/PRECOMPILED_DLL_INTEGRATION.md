@@ -11,18 +11,22 @@
 ### 1️⃣ **预编译包** (`anywp_engine_v{版本号}_precompiled.zip`) - 推荐
 
 **包含内容**：
-- ✅ `bin/` - 预编译的 DLL 文件
+- ✅ `bin/` - 预编译的 DLL 文件（包含 WebView2Loader.dll）
 - ✅ `lib/` - LIB 文件 + Dart API
 - ✅ `include/anywp_engine/` - **纯 C API 头文件**（无 C++ 依赖）
 - ✅ `windows/CMakeLists.txt` - **预编译专用 CMakeLists.txt**（使用 IMPORTED 库，无需 WebView2 packages）
-- ✅ `INTEGRATION_GUIDE.md` - 完整集成指南（本文档）
+- ✅ `sdk/anywp_sdk.js` - **Web SDK**（用于开发 HTML 壁纸）🆕
+- ✅ `examples/` - **示例 HTML 文件**（14 个示例）🆕
+- ✅ `INTEGRATION_GUIDE.md` - Flutter 集成指南（本文档）
+- ✅ `WEB_DEVELOPER_GUIDE_CN.md` / `WEB_DEVELOPER_GUIDE.md` - Web 开发者指南🆕
 - ✅ 文档和许可证
 
 **优势**：
 - ✨ **最小化依赖** - 只需要 Flutter SDK，无需 WebView2 开发环境
 - ✨ **简化集成** - 使用纯 C API，无需处理 C++ 类和依赖
 - ✨ **快速构建** - 跳过 C++ 编译步骤
-- ✨ **体积小** - 约 5MB（不含 WebView2 源码和模块）
+- ✨ **体积小** - 约 0.5MB（包含 Web SDK 和示例）
+- ✨ **一站式解决方案** - 包含 Flutter 插件和 Web SDK，可直接开发 HTML 壁纸🆕
 
 **适用场景**：
 - ✅ 大多数 Flutter 开发者（直接使用插件功能）
@@ -144,6 +148,8 @@ flutter build windows
 - 直接链接预编译的 DLL，无需编译 C++ 源码
 - 无需 WebView2 packages，因为 WebView2 已静态链接在 DLL 中
 - Flutter 构建系统会自动复制 DLL 到输出目录
+- **Web SDK 已包含**：`sdk/anywp_sdk.js` 可直接用于 HTML 壁纸开发
+- **示例文件已包含**：`examples/` 目录包含 14 个示例 HTML 文件
 
 ---
 
@@ -416,6 +422,18 @@ class _WallpaperControllerState extends State<WallpaperController> {
 - 需要 Visual Studio 和 WebView2 SDK
 
 这就是为什么预编译包可以**真正实现零依赖集成**的原因！
+
+### sdk/ - Web SDK
+
+| 文件 | 说明 | 用途 |
+|------|------|------|
+| `anywp_sdk.js` | **Web SDK JavaScript 文件** | ✅ 用于 HTML 壁纸开发<br>✅ 提供完整的 API（点击、拖拽、双向通信等）<br>✅ 支持 TypeScript 类型定义 |
+
+### examples/ - 示例文件
+
+| 目录 | 说明 | 内容 |
+|------|------|------|
+| `examples/` | **示例 HTML 文件** | ✅ 14 个示例文件<br>✅ 涵盖基本用法、React、Vue、双向通信等<br>✅ 可直接参考和修改 |
 
 ---
 
@@ -690,4 +708,6 @@ flutter build windows --verbose
 - ✅ **完善集成文档** - 详细说明预编译专用 CMakeLists.txt 的特点
 - ✅ **新增纯 C API 头文件支持** - 无 C++ 依赖
 - ✅ **创建独立的预编译包和源码包** - 简化集成流程
+- ✅ **Web SDK 包含在预编译包中** - `sdk/anywp_sdk.js` 和 `examples/` 目录🆕
+- ✅ **Web 开发者指南包含在预编译包中** - 中英文文档🆕
 
