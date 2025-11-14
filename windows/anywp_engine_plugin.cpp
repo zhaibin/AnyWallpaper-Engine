@@ -2747,8 +2747,23 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   if (is_paused_.exchange(true)) {
     return;  // Already paused
   }
-  
+
+  // Log current power state
+  std::string power_state_str = "UNKNOWN";
+  if (power_manager_) {
+    auto state = power_manager_->GetCurrentState();
+    switch (state) {
+      case PowerManager::PowerState::ACTIVE: power_state_str = "ACTIVE"; break;
+      case PowerManager::PowerState::IDLE: power_state_str = "IDLE"; break;
+      case PowerManager::PowerState::SCREEN_OFF: power_state_str = "SCREEN_OFF"; break;
+      case PowerManager::PowerState::LOCKED: power_state_str = "LOCKED"; break;
+      case PowerManager::PowerState::FULLSCREEN_APP: power_state_str = "FULLSCREEN_APP"; break;
+      case PowerManager::PowerState::PAUSED: power_state_str = "PAUSED"; break;
+    }
+  }
+
   std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Current power state: " << power_state_str << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
   // Delegate script execution to PowerManager
@@ -2972,8 +2987,23 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
   if (!is_paused_.exchange(false)) {
     return;  // Already resumed
   }
-  
+
+  // Log current power state
+  std::string power_state_str = "UNKNOWN";
+  if (power_manager_) {
+    auto state = power_manager_->GetCurrentState();
+    switch (state) {
+      case PowerManager::PowerState::ACTIVE: power_state_str = "ACTIVE"; break;
+      case PowerManager::PowerState::IDLE: power_state_str = "IDLE"; break;
+      case PowerManager::PowerState::SCREEN_OFF: power_state_str = "SCREEN_OFF"; break;
+      case PowerManager::PowerState::LOCKED: power_state_str = "LOCKED"; break;
+      case PowerManager::PowerState::FULLSCREEN_APP: power_state_str = "FULLSCREEN_APP"; break;
+      case PowerManager::PowerState::PAUSED: power_state_str = "PAUSED"; break;
+    }
+  }
+
   std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER ==========" << std::endl;
+  std::cout << "[AnyWP] [PowerSaving] Current power state: " << power_state_str << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   if (force_reinit) {
     std::cout << "[AnyWP] [PowerSaving] Force reinitialize: YES (session switch)" << std::endl;

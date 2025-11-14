@@ -644,9 +644,10 @@ void FlutterBridge::HandleSendMessage(
     }
   }
 
-  Logger::Instance().Info("FlutterBridge", "sendMessage called");
-  Logger::Instance().Debug("FlutterBridge", "  Message: " + message_json);
-  Logger::Instance().Debug("FlutterBridge", "  Monitor: " + std::to_string(monitor_index));
+  std::string monitor_desc = (monitor_index == -1) ? "all monitors" : "monitor " + std::to_string(monitor_index);
+  Logger::Instance().Info("FlutterBridge", "Sending WebMessage");
+  Logger::Instance().Info("FlutterBridge", "  Target: " + monitor_desc);
+  Logger::Instance().Debug("FlutterBridge", "  Message JSON: " + message_json);
 
   // Step 3: Get wallpaper instances
   std::vector<WallpaperInstance*> target_instances;
@@ -757,7 +758,7 @@ void FlutterBridge::HandleSendMessage(
   if (all_success && sent_count > 0) {
     result->Success(flutter::EncodableValue(true));
     Logger::Instance().Info("FlutterBridge",
-      "Message sent successfully to " + std::to_string(sent_count) + " instance(s)");
+      "WebMessage sent successfully (" + std::to_string(sent_count) + " instance(s))");
   } else {
     result->Error("SEND_FAILED", 
                  "Failed to send message to some instances (" + 
