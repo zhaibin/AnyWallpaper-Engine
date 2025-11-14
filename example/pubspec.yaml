@@ -10,13 +10,13 @@ dependencies:
     sdk: flutter
   anywp_engine:
     path: ../
-  window_manager: ^0.3.7
+  window_manager: ^0.5.1
   path: ^1.8.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

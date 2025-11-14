@@ -106,6 +106,19 @@ set(anywp_engine_bundled_libraries
 )
 
 # ==========================================
+# Copy SDK file to output directory for development
+# ==========================================
+add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory 
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../../../../windows"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_SOURCE_DIR}/anywp_sdk.js"
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../../../../windows/anywp_sdk.js"
+  COMMENT "Copying SDK file to development directory"
+  VERBATIM
+)
+
+# ==========================================
 # INSTALL rules for precompiled DLL distribution
 # NOTE: These rules cause Flutter build to fail with INSTALL step errors.
 # They are commented out by default. The release.bat script handles file copying.

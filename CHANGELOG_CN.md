@@ -30,6 +30,7 @@
 - `scripts/generate_release_notes.ps1`: 新增 GitHub Release Notes 生成脚本
 - `scripts/generate_commit_template.ps1`: 新增 Git 提交模板生成脚本
 - `scripts/check_version_consistency.ps1`: 新增版本一致性检查脚本
+- `scripts` 目录清理：移除 `auto_test_sdk_injection.bat`、`verify_docs.bat` 等历史脚本，只保留核心流程
 - `scripts/release_git.bat`: 新增 Git 提交自动化脚本（提交、Tag、推送）
 - `scripts/release.bat`: 集成自动化工具，添加版本检查和文档生成步骤，完善后续步骤提示
 - `scripts/verify_precompiled.bat`: 扩展支持 Web SDK 包验证（3/3）

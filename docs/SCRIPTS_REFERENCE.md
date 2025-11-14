@@ -1,418 +1,164 @@
 # AnyWP Engine - Scripts Reference
 
-Complete reference for all build, test, and development scripts.
-
-**Last Updated**: 2025-11-08  
-**Version**: 1.3.2
+**Last Updated**: 2025-11-15  
+**Version**: 2.1.5
 
 ---
 
-## 📋 Script Overview
+## Overview
 
-**Total Scripts**: 10 (reduced from 23)  
-**All English**: No encoding issues  
-**Fully Tested**: Syntax and functionality verified
+The repository now维持 **16** 个脚本（含 PowerShell 模块），覆盖环境准备、日常开发、自动化测试以及发版流程。全部脚本均为英文，默认使用 `pwsh` ≥ 7.5.4 执行。
 
----
-
-## 🔨 Development Scripts
-
-### `build.bat`
-**Purpose**: Build and run application  
-**Usage**:
-```bash
-cd scripts
-build.bat
-```
-
-**Features**:
-- Auto-check WebView2 SDK
-- Build Debug version
-- Launch application automatically
-
-**When to Use**: Daily development and testing
+| 分类 | 脚本 | 说明 |
+| --- | --- | --- |
+| Setup & SDK | `setup.bat` | 安装 WebView2 依赖 |
+|  | `build_sdk.bat` | 编译 TypeScript SDK，运行单测 |
+| Development | `build.bat` | 构建并运行示例（Debug） |
+|  | `run.bat` | 快速运行已有构建 |
+|  | `debug.bat` | 带日志的调试模式 |
+|  | `monitor_log.bat` | Tail `test_logs\debug_run.log` |
+| Testing | `test_full.bat` | 8 个演示页面自动化测试 |
+|  | `analyze.ps1` | 解析 `test_full` 输出，支持 HTML 报告 |
+| Release Automation | `release.bat` | 构建预编译包 / 源码包 / Web SDK 包 |
+|  | `check_version_consistency.ps1` | 校验版本号一致性 |
+|  | `generate_release_notes.ps1` | 从 CHANGELOG 生成说明 |
+|  | `generate_commit_template.ps1` | 生成中文提交模板 |
+|  | `release_git.bat` | 自动执行 Git add/commit/tag/push |
+|  | `verify_precompiled.bat` | 验证三类发布包内容 |
+| Support Module | `release_utils.psm1` | PowerShell 辅助函数库 |
 
 ---
 
-### `run.bat`
-**Purpose**: Quick run existing build  
-**Usage**:
-```bash
-cd scripts
-run.bat
-```
-
-**Features**:
-- Detect existing build (prefer Release)
-- Run immediately without rebuilding
-- Fast iteration
-
-**When to Use**: Test without code changes
-
----
-
-### `debug.bat`
-**Purpose**: Run with logging  
-**Usage**:
-```bash
-cd scripts
-debug.bat
-```
-
-**Features**:
-- Capture output to `debug_run.log`
-- Stop existing processes
-- Full console output
-
-**When to Use**: Troubleshooting and debugging
-
----
-
-### `monitor_log.bat`
-**Purpose**: Real-time log monitoring  
-**Usage**:
-```bash
-cd scripts
-monitor_log.bat
-```
-
-**Features**:
-- Refresh every 2 seconds
-- Show last 50 lines
-- Auto-detect log file
-
-**When to Use**: Watch logs in real-time
-
----
-
-## 📦 Release Scripts
-
-### `release.bat`
-**Purpose**: Build release packages  
-**Usage**:
-```bash
-cd scripts
-release.bat
-```
-
-**Features**:
-- Read version from pubspec.yaml
-- Build Release version
-- Create Flutter Plugin package (~16 MB)
-- Create Web SDK package (~56 KB)
-- Auto-generate ZIP files
-
-**Output**:
-- `release/anywp_engine_v{version}.zip`
-- `release/anywp_web_sdk_v{version}.zip`
-
-**When to Use**: Prepare for new release
-
----
-
-### `build_sdk.bat`
-**Purpose**: Build Web SDK  
-**Usage**:
-```bash
-cd scripts
-build_sdk.bat
-```
-
-**Features**:
-- Build TypeScript → JavaScript
-- Generate `windows/anywp_sdk.js`
-- Run unit tests
-
-**When to Use**: After modifying Web SDK source
-
----
-
-## ⚙️ Setup Scripts
+## Setup & SDK
 
 ### `setup.bat`
-**Purpose**: Install WebView2 SDK  
-**Usage**:
-```bash
-cd scripts
-setup.bat
-```
+- 下载/更新 `nuget.exe`
+- 安装 `Microsoft.Web.WebView2.1.0.2592.51`
+- 输出：`windows\packages\Microsoft.Web.WebView2.*`
 
-**Features**:
-- Download NuGet if needed
-- Install Microsoft.Web.WebView2 v1.0.2592.51
-- Install to `windows/packages/`
+**使用场景**：首次克隆仓库、CI 环境或依赖损坏时执行。
 
-**When to Use**:
-- First-time setup
-- Missing SDK files
-- Reinstall dependencies
+### `build_sdk.bat`
+- 安装 `windows\sdk\package.json` 依赖
+- 执行 Rollup 打包 `windows\anywp_sdk.js`
+- 运行单测并输出覆盖率（`windows\sdk\coverage\`）
+
+**Tip**：发版前需确保最新 `anywp_sdk.js` 已生成。
 
 ---
 
-## 🧪 Testing Scripts
+## Development Scripts
+
+### `build.bat`
+1. 执行 `flutter clean` / `flutter pub get`
+2. `flutter build windows --debug`
+3. 启动示例应用
+
+### `run.bat`
+- 直接运行 `example\build\windows\x64\runner\Release\...exe`
+- 若无 Release 构建，则回退 Debug
+
+### `debug.bat`
+- 基于 `build.bat`
+- 将控制台输出记录至 `test_logs\debug_run.log`
+
+### `monitor_log.bat`
+- 每 2 秒刷新一次 `debug_run.log`，便于排查实时日志
+
+---
+
+## Testing
 
 ### `test_full.bat`
-**Purpose**: Full automated test suite  
-**Usage**:
-```bash
-cd scripts
-test_full.bat
-```
-
-**Features**:
-- Build Debug version
-- Run 8 test pages (~95 seconds)
-- Monitor memory (CSV format)
-- Monitor CPU (CSV format)
-- Generate detailed report
-
-**Output**:
-- `test_logs/test_full_{timestamp}.log`
-- `test_logs/memory_{timestamp}.csv`
-- `test_logs/cpu_{timestamp}.csv`
-- `test_logs/build_{timestamp}.log`
-- `test_logs/app_output_{timestamp}.log`
-
-**When to Use**: Full functionality and performance testing
-
----
+- 构建 Debug 版本
+- 依次打开 8 个演示页面（约 95 秒）
+- 采集以下文件：
+  - `test_logs\test_full_{timestamp}.log`
+  - `test_logs\memory_{timestamp}.csv`
+  - `test_logs\cpu_{timestamp}.csv`
+  - `test_logs\app_output_{timestamp}.log`
 
 ### `analyze.ps1`
-**Purpose**: Analyze test results  
-**Usage**:
-```powershell
-cd scripts
-./analyze.ps1
-./analyze.ps1 -GenerateHTML
-```
+- 解析上述 CSV/LOG
+- 指标：最大/平均内存、CPU、增长率
+- 选项：`-GenerateHtml` 为 `test_logs\performance_report_{timestamp}.html`
 
-**Features**:
-- Parse memory and CPU data
-- Calculate performance metrics
-- Performance scoring (0-100)
-- Generate HTML report
-
-**Performance Criteria**:
-| Metric | Excellent | Good | Needs Improvement |
-|--------|-----------|------|-------------------|
-| Max Memory | < 250 MB | < 300 MB | > 300 MB |
-| Memory Growth | < 5% | < 10% | > 10% |
-| Avg CPU | < 10% | < 15% | > 15% |
-
-**When to Use**: After running `test_full.bat`
+> 建议发版前执行一次 `test_full` + `analyze.ps1`，确认无性能回归。
 
 ---
 
-### `verify.bat`
-**Purpose**: Static verification of code structure  
-**Usage**:
+## Release Automation
+
+### `check_version_consistency.ps1`
+校验以下位置的版本号：
+- `pubspec.yaml`
+- `CHANGELOG_CN.md`
+- `.cursorrules`
+- `docs/PRECOMPILED_DLL_INTEGRATION.md`
+
+在 `release.bat` 中作为第一步执行。
+
+### `generate_release_notes.ps1`
+- 读取最新 `CHANGELOG_CN.md` 条目
+- 输出 `release/GITHUB_RELEASE_NOTES_v{version}.md`
+
+### `generate_commit_template.ps1`
+- 同步解析 changelog
+- 生成 `release/commit_msg_v{version}.txt`（中文提交模板）
+
+### `release_utils.psm1`
+PowerShell 辅助模块，提供：
+- `Get-PubspecVersion`
+- `Get-ChangelogSection`
+- 复用逻辑被以上 `.ps1` 脚本调用
+
+### `release.bat`
+1. 调用 `check_version_consistency.ps1`
+2. 构建 Flutter Release（example/windows）
+3. 生成：
+   - `release/anywp_engine_v{version}_precompiled.zip`
+   - `release/anywp_engine_v{version}_source.zip`
+   - `release/anywp_web_sdk_v{version}.zip`
+4. 自动执行：
+   - `generate_release_notes.ps1`
+   - `generate_commit_template.ps1`
+5. 输出下一步提示（验证、Git、GitHub Release）
+
+### `verify_precompiled.bat`
+核对三类发布包的关键文件是否齐全；发包后务必执行：
+
 ```bash
-cd scripts
-verify.bat
+scripts\verify_precompiled.bat 2.1.5
 ```
 
-**Features**:
-- Check module files exist
-- Verify error handling (try-catch)
-- Check Logger enhancements
-- Verify test framework
-
-**When to Use**: CI/CD checks, code review
+### `release_git.bat`
+```bash
+scripts\release_git.bat 2.1.5         # 默认 push
+scripts\release_git.bat 2.1.5 --no-push
+```
+- 自动执行 `git add` / `git commit`（使用生成的模板）
+- 创建并推送 tag（可跳过 push）
 
 ---
 
-## 🎯 Common Workflows
+## 快速流程
 
-### Daily Development
 ```bash
-# 1. First time
+# 0. 环境准备（首次执行）
 scripts\setup.bat
 
-# 2. Build and test
-scripts\build.bat
-
-# 3. Quick test (no rebuild)
-scripts\run.bat
-
-# 4. Debug issues
-scripts\debug.bat
-```
-
-### Web SDK Development
-```bash
-# 1. Edit TypeScript source (windows/sdk/)
-
-# 2. Build SDK
+# 1. SDK 如有改动
 scripts\build_sdk.bat
 
-# 3. Test in Flutter
-scripts\run.bat
-```
-
-### Testing Workflow
-```bash
-# 1. Full test suite
+# 2. 自动化测试
 scripts\test_full.bat
+pwsh ./scripts/analyze.ps1 -GenerateHtml
 
-# 2. Analyze results
-scripts\analyze.ps1 -GenerateHTML
-
-# 3. Static verification
-scripts\verify.bat
-```
-
-### Release Workflow
-```bash
-# 1. Build release packages
+# 3. 发版构建
 scripts\release.bat
-
-# 2. Verify packages
-#    Check release/anywp_engine_v{version}/
-#    Check release/anywp_web_sdk_v{version}.zip
-
-# 3. Push to GitHub
-git push origin main
-
-# 4. Create tag
-git tag -a v{version} -m "Description"
-git push origin v{version}
-
-# 5. Create GitHub Release
-#    Upload both ZIP files
+scripts\verify_precompiled.bat 2.1.5
+scripts\release_git.bat 2.1.5
 ```
 
----
-
-## ✅ Script Features
-
-### All English
-- No Chinese characters in scripts
-- No encoding issues (UTF-8 or ASCII only)
-- International compatibility
-
-### Error Handling
-- Check file existence
-- Validate build results
-- Clear error messages
-- Non-zero exit codes on failure
-
-### User Friendly
-- Clear progress indicators
-- Detailed usage instructions
-- Helpful error messages
-- Pause for review when needed
-
----
-
-## 🗑️ Removed Scripts (v1.3.2)
-
-**Duplicate Functionality**:
-- ❌ `build_and_run.bat` → `build.bat`
-- ❌ `test.bat` → `run.bat`
-- ❌ `debug_run.bat` → `debug.bat`
-- ❌ `setup_webview2.bat` → `setup.bat`
-- ❌ `build_release_v2.bat` → `release.bat`
-- ❌ `comprehensive_auto_test.bat` → `test_full.bat`
-- ❌ `analyze_test_results.ps1` → `analyze.ps1`
-- ❌ `verify_optimizations.bat` → `verify.bat`
-
-**Deprecated**:
-- ❌ `test_draggable.bat` - Use `run.bat` + manual page switch
-- ❌ `build_web_sdk.ps1` - Integrated into `release.bat`
-- ❌ `run_comprehensive_test.bat` - Redundant wrapper
-- ❌ `test_refactoring.bat` - Refactoring complete
-- ❌ `test_optimizations.bat` - Duplicate of `verify.bat`
-- ❌ `comprehensive_test.bat` - Simple version, replaced
-- ❌ `run_auto_test.bat` - Deprecated wrapper
-- ❌ `auto_test.py` - Hardcoded paths
-- ❌ `automated_test.ps1` - Incomplete implementation
-
-**Historical**:
-- ❌ `build_release.bat` - Old version (v1)
-- ❌ `PUSH_TO_GITHUB.bat` - Encoding issues
-
----
-
-## 📊 Script Statistics
-
-**By Category**:
-- Development: 4 scripts
-- Release: 2 scripts
-- Setup: 1 script
-- Testing: 3 scripts
-
-**Total**: 10 scripts (down from 23)
-
-**Reduction**: 57% fewer scripts
-
----
-
-## 🚫 Script Policy
-
-**NO MORE SCRIPTS**: Script collection is now complete and stable.
-
-**When to Break This Rule**:
-- Critical new functionality that doesn't fit existing scripts
-- Must be approved and documented
-- Should replace an existing script if possible
-
-**Alternative Solutions**:
-- Add features to existing scripts
-- Use script arguments/parameters
-- Create helper functions in existing scripts
-- Document manual procedures
-
----
-
-## 📝 Script Naming Conventions
-
-**Format**: `{action}.{ext}`
-
-**Examples**:
-- `build.bat` - Build action
-- `run.bat` - Run action
-- `test_full.bat` - Full test (qualifier needed)
-
-**Rules**:
-- All lowercase
-- Underscore for multi-word
-- No version numbers in name
-- English only
-
----
-
-## 🔧 Maintenance
-
-### Adding Features
-1. Identify target script
-2. Add feature with comments
-3. Update this documentation
-4. Test thoroughly
-
-### Modifying Scripts
-1. Test before committing
-2. Maintain backward compatibility
-3. Update documentation
-4. Keep English only
-
-### Removing Scripts
-1. Verify no dependencies
-2. Update all documentation
-3. Check CI/CD pipelines
-4. Announce to team
-
----
-
-## 📖 See Also
-
-- **Developer Guide**: `docs/FOR_FLUTTER_DEVELOPERS.md`
-- **Web SDK Guide**: `docs/WEB_DEVELOPER_GUIDE_CN.md`
-- **Testing Guide**: `scripts/README_TEST_SCRIPTS.md`
-- **Integration**: `docs/PRECOMPILED_DLL_INTEGRATION.md`
-
----
-
-**All scripts tested and verified ✅**  
-**No encoding issues ✅**  
-**Fully English ✅**
+> GitHub Release 页面内容可直接复制 `release/GITHUB_RELEASE_NOTES_v{version}.md`，上传三个 ZIP 包即可。
 
