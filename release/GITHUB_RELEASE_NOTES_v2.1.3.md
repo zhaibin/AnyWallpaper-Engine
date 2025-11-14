@@ -36,7 +36,8 @@
 - `windows/modules/memory_optimizer.h`: Changed Chinese comments to English
 - `windows/CMakeLists.txt`: Added precompiled DLL detection logic
 - `windows/CMakeLists.precompiled.txt`: New dedicated CMakeLists.txt for precompiled packages
-- `scripts/release.bat`: Modified to use precompiled CMakeLists.txt
+- `scripts/release.bat`: Modified to use precompiled CMakeLists.txt, added Web SDK and examples copying
+- `docs/PRECOMPILED_DLL_INTEGRATION.md`: Updated documentation to include Web SDK information
 
 ## 🐛 Bug Fixes
 
@@ -54,6 +55,20 @@
 - ✅ Simplified integration process, truly zero-dependency integration
 - ✅ Fixed "WebView2 package not found" error
 
+## ✨ Feature Enhancements
+
+### Precompiled Package Now Includes Web SDK
+
+**New**: The precompiled package now includes:
+- `sdk/anywp_sdk.js` - Web SDK JavaScript file (~74KB)
+- `examples/` - 14 example HTML files
+- Web developer guides (Chinese and English)
+
+**Benefits**:
+- ✅ One-stop solution: Flutter developers can directly develop HTML wallpapers
+- ✅ Simplified integration: No need to download Web SDK package separately
+- ✅ Minimal size increase: Web SDK ~74KB, examples ~100KB
+
 ## 💡 Impact
 
 - ✅ Unified log format for easier parsing and analysis
@@ -61,6 +76,7 @@
 - ✅ Improved code readability with unified English comments
 - ✅ Conforms to international development standards
 - ✅ Precompiled package integration issues completely resolved
+- ✅ Precompiled package includes complete Web SDK, simplifying HTML wallpaper development workflow
 
 ## 📦 Packages
 
@@ -70,14 +86,17 @@ This release includes three packages:
 **File**: `anywp_engine_v2.1.3_precompiled.zip`
 
 **Contents**:
-- ✅ Precompiled DLL files (`bin/`)
+- ✅ Precompiled DLL files (`bin/`) - includes WebView2Loader.dll
 - ✅ LIB files (`lib/`)
 - ✅ Pure C API headers (`include/anywp_engine/`)
 - ✅ Dart API (`lib/dart/`)
-- ✅ CMake configuration (`windows/CMakeLists.txt`)
+- ✅ CMake configuration (`windows/CMakeLists.txt`) - precompiled-specific
+- ✅ **Web SDK** (`sdk/anywp_sdk.js`) 🆕
+- ✅ **Example HTML files** (`examples/`) - 14 examples 🆕
+- ✅ **Web developer guides** (Chinese and English) 🆕
 - ✅ Documentation and license
 
-**Best for**: Flutter developers who want minimal integration without WebView2 SDK.
+**Best for**: Flutter developers who want minimal integration without WebView2 SDK, and want to develop HTML wallpapers directly.
 
 ### 2. Source Package
 **File**: `anywp_engine_v2.1.3_source.zip`

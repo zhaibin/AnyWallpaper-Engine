@@ -2,7 +2,7 @@
 
 所有重要的项目变更都将记录在此文件中。
 
-## [2.1.3] - 2025-01-15 - 🔧 日志格式规范化 + 预编译包修复
+## [2.1.3] - 2025-01-15 - 🔧 日志格式规范化 + 预编译包修复 + Web SDK 集成
 
 ### 🔧 代码质量改进
 
@@ -47,7 +47,19 @@
 - `windows/modules/memory_optimizer.h`: 中文注释改为英文
 - `windows/CMakeLists.txt`: 添加预编译 DLL 检测逻辑
 - `windows/CMakeLists.precompiled.txt`: 新增预编译包专用 CMakeLists.txt
-- `scripts/release.bat`: 修改为使用预编译 CMakeLists.txt
+- `scripts/release.bat`: 修改为使用预编译 CMakeLists.txt，添加 Web SDK 和示例文件复制
+- `docs/PRECOMPILED_DLL_INTEGRATION.md`: 更新文档，说明预编译包包含 Web SDK
+
+### ✨ 功能增强
+
+#### 预编译包包含 Web SDK
+- **新增**: 预编译包现在包含 `sdk/anywp_sdk.js` - Web SDK JavaScript 文件
+- **新增**: 预编译包现在包含 `examples/` - 14 个示例 HTML 文件
+- **新增**: 预编译包现在包含 Web 开发者指南文档（中英文）
+- **优势**: 
+  - ✅ 一站式解决方案：Flutter 开发者可以直接开发 HTML 壁纸
+  - ✅ 简化集成：不需要单独下载 Web SDK 包
+  - ✅ 体积增加很小：Web SDK 约 74KB，示例文件约 100KB
 
 ### 💡 影响
 
@@ -56,6 +68,7 @@
 - ✅ 代码可读性提升，注释统一为英文
 - ✅ 符合国际化开发标准
 - ✅ 预编译包集成问题完全解决
+- ✅ 预编译包包含完整的 Web SDK，简化 HTML 壁纸开发流程
 
 ## [2.1.2] - 2025-11-13 - ⚡ WebMessage 轮询优化
 
