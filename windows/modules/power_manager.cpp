@@ -274,6 +274,12 @@ bool PowerManager::IsFullscreenAppActive() {
     return false;
   }
   
+  // Log fullscreen app info
+  wchar_t window_title[256] = {0};
+  GetWindowTextW(foreground, window_title, 256);
+  std::wcout << L"[AnyWP] [PowerManager] Fullscreen app detected: \"" 
+             << window_title << L"\" (Class: " << class_name << L")" << std::endl;
+  
   return true;
 }
 

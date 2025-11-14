@@ -2750,6 +2750,7 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
 
   // Log current power state
   std::string power_state_str = "UNKNOWN";
+  
   if (power_manager_) {
     auto state = power_manager_->GetCurrentState();
     switch (state) {
@@ -2766,7 +2767,7 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   std::cout << "[AnyWP] [PowerSaving] Current power state: " << power_state_str << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
-  // Delegate script execution to PowerManager
+  // Execute pause scripts for all scenarios (fullscreen, lock screen, etc.)
   if (power_manager_) {
     power_manager_->ExecutePauseScripts([this](const std::wstring& script) {
       ExecuteScriptToAllInstances(script);
@@ -2990,6 +2991,7 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
 
   // Log current power state
   std::string power_state_str = "UNKNOWN";
+  
   if (power_manager_) {
     auto state = power_manager_->GetCurrentState();
     switch (state) {
@@ -3025,7 +3027,7 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     return;  // Failed to restore, cannot continue
   }
   
-  // v1.4.1+ Phase E: Delegate script execution to PowerManager
+  // Execute resume scripts for all scenarios (fullscreen, lock screen, etc.)
   if (power_manager_) {
     power_manager_->ExecuteResumeScripts([this](const std::wstring& script) {
       ExecuteScriptToAllInstances(script);
@@ -3108,9 +3110,14 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
             [](HRESULT error, LPCWSTR result) -> HRESULT {
               if (SUCCEEDED(error)) {
                 if (result && wcslen(result) > 0) {
-                  std::wcout << L"[AnyWP] Script executed successfully, result: " << result << std::endl;
+                  // Convert wstring to string for logging
+                  std::wstring wresult(result);
+                  std::string result_str(wresult.begin(), wresult.end());
+                  Logger::Instance().Info("ScriptExecution", "Script executed successfully, result: " + result_str);
+                  std::cout << "[AnyWP] [ScriptExecution] Result: " << result_str << std::endl;
                 } else {
-                  std::cout << "[AnyWP] Script executed successfully, but returned null/empty" << std::endl;
+                  Logger::Instance().Info("ScriptExecution", "Script executed successfully, but returned null/empty");
+                  std::cout << "[AnyWP] [ScriptExecution] Script executed, no return value" << std::endl;
                 }
               } else {
                 std::stringstream ss;
@@ -3133,7 +3140,15 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
       Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
         [](HRESULT error, LPCWSTR result) -> HRESULT {
           if (SUCCEEDED(error)) {
-            std::wcout << L"[AnyWP] Script executed successfully (legacy), result: " << (result ? result : L"null") << std::endl;
+            if (result && wcslen(result) > 0) {
+              std::wstring wresult(result);
+              std::string result_str(wresult.begin(), wresult.end());
+              Logger::Instance().Info("ScriptExecution", "Script executed successfully (legacy), result: " + result_str);
+              std::cout << "[AnyWP] [ScriptExecution] (Legacy) Result: " << result_str << std::endl;
+            } else {
+              Logger::Instance().Info("ScriptExecution", "Script executed successfully (legacy), no return value");
+              std::cout << "[AnyWP] [ScriptExecution] (Legacy) Script executed, no return value" << std::endl;
+            }
           } else {
             std::stringstream ss;
             ss << "Script execution failed (legacy): 0x" << std::hex << error;
