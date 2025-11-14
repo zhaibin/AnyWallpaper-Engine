@@ -52,17 +52,32 @@ export function setupWebMessageListener() {
  * Main WebMessage event handler
  */
 function handleWebMessage(event) {
-    const data = event.data;
+    let data = event.data;
     if (!data) {
         log.warn('Received empty WebMessage');
         return;
     }
     try {
+        // v2.1.7+ PostWebMessageAsString sends strings, need to parse
+        if (typeof data === 'string') {
+            try {
+                data = JSON.parse(data);
+                console.log('[WebMessage] Parsed string message:', data);
+            }
+            catch (e) {
+                log.warn('Failed to parse WebMessage string:', data);
+                return;
+            }
+        }
         // Log selective messages to avoid spam
         logMessage(data);
         // Handle different message types using type guards
         if (isMouseEventData(data)) {
             handleMouseEvent(data);
+        }
+        else if (data.type === 'powerStateChange') {
+            // v2.1.7+ Handle power state change notifications from C++
+            handlePowerStateChange(data);
         }
         // Add other message type handlers here as needed
     }
@@ -344,6 +359,22 @@ export function setupFlutterMessageListener() {
         }
     });
     log.info('Flutter message listener setup complete');
+}
+/**
+ * Handle powerStateChange messages from C++ (v2.1.7+)
+ * Used for reliable fullscreen pause/resume notifications via PostMessage
+ */
+function handlePowerStateChange(data) {
+    console.log('[C++] [PowerStateChange] Received:', data);
+    const AnyWP = window.AnyWP;
+    if (!AnyWP || typeof AnyWP._notifyVisibilityChange !== 'function') {
+        console.warn('[C++] [PowerStateChange] AnyWP._notifyVisibilityChange not available');
+        return;
+    }
+    const visible = data.visible === true;
+    const reason = data.reason || 'unknown';
+    console.log('[C++] [PowerStateChange] Notifying visibility change:', visible, 'reason:', reason);
+    AnyWP._notifyVisibilityChange(visible);
 }
 /**
  * WebMessage Module

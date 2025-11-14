@@ -41,9 +41,17 @@ export interface LogEventData {
     level?: 'error' | 'warn' | 'info' | 'debug';
 }
 /**
+ * PowerStateChange message data (v2.1.7+)
+ */
+export interface PowerStateChangeData {
+    type: 'powerStateChange';
+    visible: boolean;
+    reason?: string;
+}
+/**
  * Union type of all possible WebMessage data
  */
-export type WebMessageData = MouseEventData | KeyboardEventData | VisibilityEventData | LogEventData;
+export type WebMessageData = MouseEventData | KeyboardEventData | VisibilityEventData | LogEventData | PowerStateChangeData;
 /**
  * WebMessage event from chrome.webview
  */
