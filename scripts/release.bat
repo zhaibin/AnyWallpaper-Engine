@@ -135,59 +135,11 @@ if %VERIFY_ERROR%==1 (
 )
 
 call :PrintStep "Creating verify.bat script..."
-(
-echo @echo off
-echo echo Verifying AnyWP Engine precompiled package...
-echo echo.
-echo set ERROR_COUNT=0
-echo REM Check required DLL files
-echo if not exist "bin\anywp_engine_plugin.dll" ^(
-echo     echo [ERROR] Missing: bin\anywp_engine_plugin.dll
-echo     set /a ERROR_COUNT+=1
-echo ^)
-echo if not exist "bin\WebView2Loader.dll" ^(
-echo     echo [ERROR] Missing: bin\WebView2Loader.dll
-echo     set /a ERROR_COUNT+=1
-echo ^)
-echo REM Check LIB file
-echo if not exist "lib\anywp_engine_plugin.lib" ^(
-echo     echo [ERROR] Missing: lib\anywp_engine_plugin.lib
-echo     set /a ERROR_COUNT+=1
-echo ^)
-echo REM Check Dart file ^(standard location^)
-echo if not exist "lib\anywp_engine.dart" ^(
-echo     echo [ERROR] Missing: lib\anywp_engine.dart
-echo     set /a ERROR_COUNT+=1
-echo ^)
-echo REM Check header files
-echo if not exist "include\anywp_engine\anywp_engine_plugin_c_api.h" ^(
-echo     echo [ERROR] Missing: include\anywp_engine\anywp_engine_plugin_c_api.h
-echo     set /a ERROR_COUNT+=1
-echo ^)
-echo if not exist "include\anywp_engine\any_w_p_engine_plugin.h" ^(
-echo     echo [ERROR] Missing: include\anywp_engine\any_w_p_engine_plugin.h
-echo     set /a ERROR_COUNT+=1
-echo ^)
-echo REM Check CMakeLists.txt
-echo if not exist "windows\CMakeLists.txt" ^(
-echo     echo [ERROR] Missing: windows\CMakeLists.txt
-echo     set /a ERROR_COUNT+=1
-echo ^)
-echo REM Verify CMakeLists.txt contains GLOBAL
-echo findstr /C:"IMPORTED GLOBAL" "windows\CMakeLists.txt" ^>nul
-echo if errorlevel 1 ^(
-echo     echo [WARNING] CMakeLists.txt may be missing GLOBAL keyword
-echo ^)
-echo echo.
-echo if %%ERROR_COUNT%%==0 ^(
-echo     echo [SUCCESS] All required files are present!
-echo     echo Package is ready to use.
-echo ^) else ^(
-echo     echo [FAILED] Found %%ERROR_COUNT%% error^(s^).
-echo     echo Please re-download the package.
-echo ^)
-echo pause
-) > "%PRECOMPILED_DIR%\verify.bat"
+copy "%PROJECT_ROOT%\scripts\verify_template.bat" "%PRECOMPILED_DIR%\verify.bat" >nul
+if not exist "%PRECOMPILED_DIR%\verify.bat" (
+    echo [ERROR] Failed to copy verify template
+    exit /b 1
+)
 
 call :PrintStep "Creating precompiled ZIP package..."
 cd /d "%PRECOMPILED_DIR%"
