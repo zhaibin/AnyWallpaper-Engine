@@ -2,6 +2,43 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [2.1.3] - 2025-01-15 - 🔧 日志格式规范化
+
+### 🔧 代码质量改进
+
+#### 统一日志格式规范
+- **新增**: 在 `windows/utils/logger.h` 中添加完整的日志格式规范说明
+- **格式**: `[YYYY-MM-DD HH:MM:SS.mmm] [LEVEL] [COMPONENT] message`
+- **示例**: `[2025-01-15 10:30:45.123] [INFO] [Plugin] Plugin initialized`
+- **指南**: 
+  - Component 名称使用 PascalCase（如 "WebViewManager", "FlutterBridge"）
+  - 所有日志消息使用英文，不使用 emoji 或特殊符号
+  - 根据场景选择合适的日志级别（DEBUG/INFO/WARNING/ERROR）
+
+#### 国际化改进
+- **移除**: 所有日志输出中的 emoji 符号（✅ ❌ 等）
+- **统一**: 将所有中文注释改为英文
+- **规范**: 所有日志消息使用英文，符合国际化标准
+
+### 📝 代码变更
+
+- `windows/utils/logger.h`: 添加日志格式规范说明文档
+- `windows/utils/logger.cpp`: 统一日志格式实现
+- `windows/modules/sdk_bridge.cpp`: 移除 emoji，统一为英文日志
+- `windows/modules/mouse_hook_manager.cpp`: 移除 emoji，统一为英文日志
+- `windows/modules/flutter_bridge.cpp`: 中文注释改为英文
+- `windows/anywp_engine_plugin.cpp/h`: 中文注释改为英文
+- `windows/modules/sdk_bridge.h`: 中文注释改为英文
+- `windows/modules/power_manager.h`: 中文注释改为英文
+- `windows/modules/memory_optimizer.h`: 中文注释改为英文
+
+### 💡 影响
+
+- ✅ 日志格式统一，便于解析和分析
+- ✅ 国际化友好，支持多语言环境
+- ✅ 代码可读性提升，注释统一为英文
+- ✅ 符合国际化开发标准
+
 ## [2.1.2] - 2025-11-13 - ⚡ WebMessage 轮询优化
 
 ### ⚡ 性能优化

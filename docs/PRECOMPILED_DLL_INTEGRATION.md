@@ -77,12 +77,12 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.1.2_precompiled.zip
+anywp_engine_v2.1.3_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.1.2_source.zip
+anywp_engine_v2.1.3_source.zip
 ```
 
 ### 2. 解压到项目目录
@@ -399,7 +399,7 @@ class _WallpaperControllerState extends State<WallpaperController> {
 
 2. **下载并解压新版本**：
    - 访问 [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
-   - 下载最新的 `anywp_engine_v2.1.2_precompiled.zip`
+   - 下载最新的 `anywp_engine_v2.1.3_precompiled.zip`
    - 解压到 `packages\anywp_engine`
 
 3. **重新构建**：
@@ -413,23 +413,23 @@ class _WallpaperControllerState extends State<WallpaperController> {
 
 ### 如果使用了版本号文件夹
 
-如果你使用了带版本号的文件夹名（如 `anywp_engine_v2.1.2_precompiled`），更新步骤：
+如果你使用了带版本号的文件夹名（如 `anywp_engine_v2.1.3_precompiled`），更新步骤：
 
 1. **删除旧版本**：
    ```bash
-   rmdir /s /q packages\anywp_engine_v2.1.0_precompiled
+   rmdir /s /q packages\anywp_engine_v2.1.2_precompiled
    ```
 
 2. **解压新版本**：
    ```bash
-   # 解压 anywp_engine_v2.1.2_precompiled.zip 到 packages\
+   # 解压 anywp_engine_v2.1.3_precompiled.zip 到 packages\
    ```
 
 3. **更新 pubspec.yaml**：
    ```yaml
    dependencies:
      anywp_engine:
-       path: ./packages/anywp_engine_v2.1.2_precompiled  # 更新版本号
+       path: ./packages/anywp_engine_v2.1.3_precompiled  # 更新版本号
    ```
 
 4. **重新构建**：
@@ -581,7 +581,7 @@ flutter build windows --verbose
 
 ### 首次集成
 
-- [ ] 下载预编译包 (`anywp_engine_v2.1.2_precompiled.zip`)
+- [ ] 下载预编译包 (`anywp_engine_v2.1.3_precompiled.zip`)
 - [ ] 解压到项目的 `packages/anywp_engine` 目录
 - [ ] 在 `pubspec.yaml` 中添加依赖
 - [ ] 运行 `flutter pub get`
@@ -618,8 +618,8 @@ flutter build windows --verbose
 
 ---
 
-**版本**: 2.1.2  
-**更新日期**: 2025-11-13  
+**版本**: 2.1.3  
+**更新日期**: 2025-01-15  
 **主要变更**:
 - 完善预编译包集成文档
 - 新增纯 C API 头文件支持
