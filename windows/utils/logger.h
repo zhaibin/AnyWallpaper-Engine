@@ -24,6 +24,20 @@ namespace anywp_engine {
  * - Console and file output
  * - Automatic timestamping
  * - Log file rotation (optional)
+ * 
+ * Log Format Specification:
+ * [YYYY-MM-DD HH:MM:SS.mmm] [LEVEL] [COMPONENT] message
+ * 
+ * Examples:
+ * [2025-01-15 10:30:45.123] [INFO] [Plugin] Plugin initialized
+ * [2025-01-15 10:30:45.124] [ERROR] [WebViewManager] Failed to create WebView
+ * 
+ * Guidelines:
+ * - Use Logger::Instance() for all production logs
+ * - Component name should be PascalCase (e.g., "WebViewManager", "FlutterBridge")
+ * - Messages should be in English, no emoji or special symbols
+ * - Use appropriate log levels: DEBUG for detailed info, INFO for normal operations,
+ *   WARNING for recoverable issues, ERROR for failures
  */
 class Logger {
 public:

@@ -58,10 +58,10 @@ public:
   // Flutter Message Forwarding
   // ========================================
   
-  // 设置 Flutter 回调（用于转发消息）
+  // Set Flutter callback (for forwarding messages)
   void SetFlutterCallback(std::function<void(const std::string&)> callback);
   
-  // 转发消息到 Flutter
+  // Forward message to Flutter
   void ForwardMessageToFlutter(const std::string& message);
 
 private:

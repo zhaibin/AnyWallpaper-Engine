@@ -161,7 +161,7 @@ void SDKBridge::HandleMessage(const std::string& message) {
   
   // Check for SDK verification messages (handle before other handlers)
   if (type == "sdkReady" || message.find("\"type\":\"sdkReady\"") != std::string::npos) {
-    std::cout << "[AnyWP] [SDKBridge] ✅ SDK verification: SDK loaded successfully!" << std::endl;
+    std::cout << "[AnyWP] [SDKBridge] SDK verification: SDK loaded successfully" << std::endl;
     // Extract version if present
     std::string version = ExtractJsonValue(message, "version");
     if (!version.empty()) {
@@ -171,7 +171,7 @@ void SDKBridge::HandleMessage(const std::string& message) {
   }
   
   if (type == "sdkError" || message.find("\"type\":\"sdkError\"") != std::string::npos) {
-    std::cout << "[AnyWP] [SDKBridge] ❌ SDK verification: SDK NOT loaded!" << std::endl;
+    std::cout << "[AnyWP] [SDKBridge] SDK verification: SDK NOT loaded" << std::endl;
     std::string error = ExtractJsonValue(message, "error");
     if (!error.empty()) {
       std::cout << "[AnyWP] [SDKBridge] Error: " << error << std::endl;
@@ -216,7 +216,7 @@ void SDKBridge::ForwardMessageToFlutter(const std::string& message) {
             << (message.length() > 100 ? "..." : "") << std::endl;
 
   try {
-    // 调用 Flutter 回调
+    // Call Flutter callback
     flutter_callback_(message);
     std::cout << "[AnyWP] [SDKBridge] Message forwarded successfully" << std::endl;
   } catch (const std::exception& e) {

@@ -29,12 +29,12 @@ struct WallpaperInstance;
 class PowerManager {
 public:
   enum class PowerState {
-    ACTIVE,          // 正常活跃状态
-    IDLE,            // 用户无活动
-    SCREEN_OFF,      // 屏幕已关闭
-    LOCKED,          // 系统已锁屏
-    FULLSCREEN_APP,  // 有全屏应用
-    PAUSED           // 手动暂停
+    ACTIVE,          // Normal active state
+    IDLE,            // User inactive
+    SCREEN_OFF,      // Screen is off
+    LOCKED,          // System is locked
+    FULLSCREEN_APP,  // Fullscreen app in foreground
+    PAUSED           // Manually paused
   };
 
   PowerManager();

@@ -262,7 +262,7 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
   // Don't block events when mouse button is pressed
   if (is_app_window && !instance_->is_mouse_down_) {
     if (should_log) {
-      std::wcout << L"[MouseHook] ❌ BLOCKED - is_app_window = true, mouse button not down" << std::endl;
+      std::wcout << L"[MouseHook] BLOCKED - is_app_window = true, mouse button not down" << std::endl;
     }
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
   }
@@ -271,7 +271,7 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
   static int forward_count = 0;
   forward_count++;
   if (should_log || forward_count <= 10) {
-    std::wcout << L"[MouseHook] ✅ FORWARDING #" << forward_count << L" event to WebView";
+    std::wcout << L"[MouseHook] FORWARDING #" << forward_count << L" event to WebView";
     if (instance_->is_mouse_down_) {
       std::wcout << L" (mouse down)";
     }

@@ -47,20 +47,20 @@ AnyWPEnginePlugin* AnyWPEnginePlugin::display_change_instance_ = nullptr;
 
 namespace {
 
-// 验证窗口句柄是否有效（轻量级检查）
+// Validate window handle (lightweight check)
 bool IsValidWindowHandle(HWND hwnd) {
-  // 只检查句柄是否有效，不检查可见性等属性
-  // WorkerW 和 SHELLDLL_DefView 可能是隐藏的，所以不能用严格的验证
+  // Only check if handle is valid, do not check visibility
+  // WorkerW and SHELLDLL_DefView may be hidden, so strict validation is not applicable
   return (hwnd != nullptr && IsWindow(hwnd));
 }
 
-// 验证窗口是否适合作为父窗口（更严格的检查）
+// Validate if window is suitable as parent window (stricter check)
 bool IsValidParentWindow(HWND hwnd) {
   if (!hwnd || !IsWindow(hwnd)) {
     return false;
   }
   
-  // 检查窗口信息
+  // Check window information
   WINDOWINFO info = {0};
   info.cbSize = sizeof(WINDOWINFO);
   if (!GetWindowInfo(hwnd, &info)) {
@@ -1701,7 +1701,7 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
 bool AnyWPEnginePlugin::StopWallpaper() {
   std::cout << "[AnyWP] Stopping wallpaper..." << std::endl;
 
-  // 移除鼠标钩子
+  // Remove mouse hook
   RemoveMouseHook();
 
   // CRITICAL: Stop all wallpaper instances (multi-monitor mode)
@@ -1780,7 +1780,7 @@ bool AnyWPEnginePlugin::StopWallpaper() {
 
   if (webview_host_hwnd_) {
     try {
-    // 验证窗口是否仍然有效
+    // Verify window is still valid
     if (IsWindow(webview_host_hwnd_)) {
       // P0-1: Untrack before destroying
       ResourceTracker::Instance().UntrackWindow(webview_host_hwnd_);

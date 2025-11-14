@@ -67,12 +67,12 @@ class AnyWPEnginePlugin : public flutter::Plugin {
  public:
   // Power saving state enum (moved to public for FlutterBridge access)
   enum class PowerState {
-    ACTIVE,          // 正常活跃状态
-    IDLE,            // 用户无活动（但屏幕亮着）
-    SCREEN_OFF,      // 屏幕已关闭
-    LOCKED,          // 系统已锁屏
-    FULLSCREEN_APP,  // 有全屏应用在前台
-    PAUSED           // 手动暂停
+    ACTIVE,          // Normal active state
+    IDLE,            // User inactive (but screen is on)
+    SCREEN_OFF,      // Screen is off
+    LOCKED,          // System is locked
+    FULLSCREEN_APP,  // Fullscreen app in foreground
+    PAUSED           // Manually paused
   };
 
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows *registrar);
@@ -258,7 +258,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // Power saving state (enum moved to public section)
   PowerState power_state_ = PowerState::ACTIVE;
   PowerState last_power_state_ = PowerState::ACTIVE;  // Track state changes
-  bool auto_power_saving_enabled_ = true;  // 自动省电开关
+  bool auto_power_saving_enabled_ = true;  // Auto power saving enabled
   
   // Configurable parameters
   DWORD idle_timeout_ms_ = 5 * 60 * 1000;  // 5 minutes default

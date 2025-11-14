@@ -15,7 +15,7 @@ namespace anywp_engine {
  * @brief MemoryOptimizer - Unified memory optimization module (v2.1.0+)
  * 
  * Centralizes all memory optimization logic:
- * - WebView2 cache清理
+ * - WebView2 cache cleanup
  * - Working Set trimming  
  * - Memory profiling
  * - Scheduled optimization

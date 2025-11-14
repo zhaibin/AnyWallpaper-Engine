@@ -155,7 +155,7 @@ void FlutterBridge::HandleInitializeWallpaper(
     return;
   }
 
-  bool enable_transparent = GetBoolArgument(args, "enableMouseTransparent", false);  // 默认为 false（交互模式）
+  bool enable_transparent = GetBoolArgument(args, "enableMouseTransparent", false);  // Default: false (interactive mode)
   
   std::cout << "[FlutterBridge] initializeWallpaper: enableMouseTransparent = " 
             << (enable_transparent ? "true" : "false") << std::endl;
@@ -252,7 +252,7 @@ void FlutterBridge::HandleInitializeWallpaperOnMonitor(
     return;
   }
 
-  bool enable_transparent = GetBoolArgument(args, "enableMouseTransparent", false);  // 默认为 false（交互模式）
+  bool enable_transparent = GetBoolArgument(args, "enableMouseTransparent", false);  // Default: false (interactive mode)
   
   std::cout << "[FlutterBridge] initializeWallpaperOnMonitor: enableMouseTransparent = " 
             << (enable_transparent ? "true" : "false") 
@@ -626,20 +626,20 @@ void FlutterBridge::HandleSendMessage(
     return;
   }
 
-  // 1. 获取消息参数
+  // Step 1: Get message parameter
   std::string message_json;
   if (!GetStringArgument(args, "message", message_json, result)) {
     return;  // Error already sent
   }
 
-  // 2. 获取目标显示器索引（可选，-1 表示所有显示器）
+  // Step 2: Get target monitor index (optional, -1 means all monitors)
   int monitor_index = -1;
   auto monitor_it = args->find(flutter::EncodableValue("monitorIndex"));
   if (monitor_it != args->end() && !monitor_it->second.IsNull()) {
     try {
       monitor_index = std::get<int>(monitor_it->second);
     } catch (const std::bad_variant_access&) {
-      // 忽略类型错误，使用默认值 -1
+      // Ignore type error, use default value -1
       Logger::Instance().Warn("FlutterBridge", "monitorIndex is not an integer, using -1 (all monitors)");
     }
   }
@@ -648,11 +648,11 @@ void FlutterBridge::HandleSendMessage(
   Logger::Instance().Debug("FlutterBridge", "  Message: " + message_json);
   Logger::Instance().Debug("FlutterBridge", "  Monitor: " + std::to_string(monitor_index));
 
-  // 3. 获取壁纸实例
+  // Step 3: Get wallpaper instances
   std::vector<WallpaperInstance*> target_instances;
   
   if (monitor_index >= 0) {
-    // 发送到指定显示器
+    // Send to specific monitor
     auto* instance = plugin_->GetInstanceForMonitor(monitor_index);
     if (instance) {
       target_instances.push_back(instance);
@@ -662,7 +662,7 @@ void FlutterBridge::HandleSendMessage(
       return;
     }
   } else {
-    // 发送到所有显示器
+    // Send to all monitors
     std::lock_guard<std::mutex> lock(plugin_->instances_mutex_);
     for (auto& instance : plugin_->wallpaper_instances_) {
       target_instances.push_back(&instance);
@@ -674,7 +674,7 @@ void FlutterBridge::HandleSendMessage(
     return;
   }
 
-  // 4. 发送消息到 JavaScript
+  // Step 4: Send message to JavaScript
   bool all_success = true;
   int sent_count = 0;
 
@@ -684,7 +684,7 @@ void FlutterBridge::HandleSendMessage(
       continue;
     }
 
-    // 构建 JavaScript 代码：触发 CustomEvent
+    // Build JavaScript code: trigger CustomEvent
     // Use JSON.parse() to safely parse the message string
     // First, escape special characters in the JSON string
     std::string escaped_json;
@@ -732,7 +732,7 @@ void FlutterBridge::HandleSendMessage(
                           L"  }\n"
                           L"})();\n";
 
-    // 执行脚本
+    // Execute script
     HRESULT hr = instance->webview->ExecuteScript(
         script.c_str(),
         Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
@@ -753,7 +753,7 @@ void FlutterBridge::HandleSendMessage(
     }
   }
 
-  // 5. 返回结果
+  // Step 5: Return result
   if (all_success && sent_count > 0) {
     result->Success(flutter::EncodableValue(true));
     Logger::Instance().Info("FlutterBridge",
