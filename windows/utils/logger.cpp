@@ -1,6 +1,7 @@
 #include "logger.h"
 
 #include <iostream>
+#include <fstream>
 #include <chrono>
 #include <iomanip>
 #include <ctime>
@@ -30,6 +31,11 @@ Logger::Logger()
       rotation_enabled_(false),
       max_file_size_(10 * 1024 * 1024),  // 10MB
       current_file_size_(0) {
+#ifdef _WIN32
+  // Set console output to UTF-8 at initialization
+  SetConsoleOutputCP(CP_UTF8);
+  SetConsoleCP(CP_UTF8);
+#endif
 }
 
 Logger::~Logger() {
@@ -109,9 +115,26 @@ void Logger::EnableFileLogging(const std::string& file_path) {
   }
   
   log_file_path_ = file_path;
-  log_file_.open(log_file_path_, std::ios::app);
+  
+  // Check if file exists to determine if we need to write UTF-8 BOM
+  bool file_exists = false;
+  {
+    std::ifstream check_file(log_file_path_);
+    file_exists = check_file.good();
+    check_file.close();
+  }
+  
+  // Open file in binary mode to write UTF-8 BOM if needed
+  log_file_.open(log_file_path_, std::ios::app | std::ios::binary);
   
   if (log_file_.is_open()) {
+    // Write UTF-8 BOM if file is new (doesn't exist)
+    if (!file_exists) {
+      unsigned char bom[] = {0xEF, 0xBB, 0xBF};
+      log_file_.write(reinterpret_cast<const char*>(bom), 3);
+      log_file_.flush();
+    }
+    
     file_enabled_ = true;
     std::cout << "[AnyWP] [Logger] File logging enabled: " << log_file_path_ << std::endl;
   } else {
@@ -186,7 +209,9 @@ void Logger::WriteToConsole(const std::string& message) {
 
 void Logger::WriteToFile(const std::string& message) {
   if (log_file_.is_open()) {
-    log_file_ << message << std::endl;
+    // Write UTF-8 string directly (file is opened in binary mode)
+    log_file_.write(message.c_str(), message.length());
+    log_file_.write("\n", 1);  // Write newline as binary
     log_file_.flush();  // Ensure immediate write
     
     current_file_size_ += message.length() + 1;  // +1 for newline
@@ -211,7 +236,9 @@ void Logger::FlushInternal() {
   }
   
   for (const auto& msg : buffer_) {
-    log_file_ << msg << std::endl;
+    // Write UTF-8 string directly (file is opened in binary mode)
+    log_file_.write(msg.c_str(), msg.length());
+    log_file_.write("\n", 1);  // Write newline as binary
     current_file_size_ += msg.length() + 1;
   }
   
@@ -262,8 +289,14 @@ void Logger::RotateLogFile() {
   // Rename current file
   std::rename(log_file_path_.c_str(), rotated_name.c_str());
   
-  // Open new file
-  log_file_.open(log_file_path_, std::ios::app);
+  // Open new file in binary mode
+  log_file_.open(log_file_path_, std::ios::app | std::ios::binary);
+  // Write UTF-8 BOM for new rotated file
+  if (log_file_.is_open()) {
+    unsigned char bom[] = {0xEF, 0xBB, 0xBF};
+    log_file_.write(reinterpret_cast<const char*>(bom), 3);
+    log_file_.flush();
+  }
   current_file_size_ = 0;
   
   if (log_file_.is_open()) {

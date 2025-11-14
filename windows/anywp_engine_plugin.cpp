@@ -2522,13 +2522,13 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
   switch (message) {
     case WM_WTSSESSION_CHANGE:
       // Session state changed (lock/unlock/remote desktop)
-      std::cout << "[AnyWP] [PowerSaving] ========== SESSION CHANGE EVENT ==========" << std::endl;
-      std::cout << "[AnyWP] [PowerSaving] Event code: " << wParam << std::endl;
+      Logger::Instance().Info("PowerSaving", "========== SESSION CHANGE EVENT ==========");
+      Logger::Instance().Info("PowerSaving", "Event code: " + std::to_string(wParam));
       
       // Update session state flags based on event
       switch (wParam) {
         case WTS_SESSION_LOCK:
-          std::cout << "[AnyWP] [PowerSaving] Event: System LOCKED" << std::endl;
+          Logger::Instance().Info("PowerSaving", "Event: System LOCKED");
           display_change_instance_->is_session_locked_.store(true);
           // Notify PowerManager module
           if (display_change_instance_->power_manager_) {
@@ -2536,7 +2536,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           }
           break;
         case WTS_SESSION_UNLOCK:
-          std::cout << "[AnyWP] [PowerSaving] Event: System UNLOCKED" << std::endl;
+          Logger::Instance().Info("PowerSaving", "Event: System UNLOCKED");
           display_change_instance_->is_session_locked_.store(false);
           // Notify PowerManager module
           if (display_change_instance_->power_manager_) {
@@ -2544,69 +2544,69 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           }
           break;
         case WTS_CONSOLE_CONNECT:
-          std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE CONNECTED (returned from remote desktop)" << std::endl;
+          Logger::Instance().Info("PowerSaving", "Event: CONSOLE CONNECTED (returned from remote desktop)");
           display_change_instance_->is_remote_session_.store(false);
           // Notify PowerManager module
           if (display_change_instance_->power_manager_) {
             display_change_instance_->power_manager_->SetRemoteSession(false);
           }
           // Check if wallpaper should be active (force_reinit will handle stop+rebuild)
-          std::cout << "[AnyWP] [PowerSaving] Session switched, checking if wallpaper should be active..." << std::endl;
+          Logger::Instance().Info("PowerSaving", "Session switched, checking if wallpaper should be active...");
           if (display_change_instance_->ShouldWallpaperBeActive()) {
-            std::cout << "[AnyWP] [PowerSaving] Rebuilding wallpaper on new session..." << std::endl;
+            Logger::Instance().Info("PowerSaving", "Rebuilding wallpaper on new session...");
             display_change_instance_->is_paused_.store(true);  // Force paused state
             display_change_instance_->ResumeWallpaper("Session: Switched to local console", true);  // force_reinit = true
           } else {
-            std::cout << "[AnyWP] [PowerSaving] System locked, will stop wallpaper and rebuild after unlock" << std::endl;
+            Logger::Instance().Info("PowerSaving", "System locked, will stop wallpaper and rebuild after unlock");
             // Stop cross-session wallpaper (it's not visible anyway)
             display_change_instance_->StopWallpaper();
           }
           break;
         case WTS_CONSOLE_DISCONNECT:
-          std::cout << "[AnyWP] [PowerSaving] Event: CONSOLE DISCONNECTED (switched to remote desktop)" << std::endl;
+          Logger::Instance().Info("PowerSaving", "Event: CONSOLE DISCONNECTED (switched to remote desktop)");
           display_change_instance_->is_remote_session_.store(true);
           // Notify PowerManager module
           if (display_change_instance_->power_manager_) {
             display_change_instance_->power_manager_->SetRemoteSession(true);
           }
           // Check if wallpaper should be active (force_reinit will handle stop+rebuild)
-          std::cout << "[AnyWP] [PowerSaving] Session switched, checking if wallpaper should be active..." << std::endl;
+          Logger::Instance().Info("PowerSaving", "Session switched, checking if wallpaper should be active...");
           if (display_change_instance_->ShouldWallpaperBeActive()) {
-            std::cout << "[AnyWP] [PowerSaving] Rebuilding wallpaper on new session..." << std::endl;
+            Logger::Instance().Info("PowerSaving", "Rebuilding wallpaper on new session...");
             display_change_instance_->is_paused_.store(true);  // Force paused state
             display_change_instance_->ResumeWallpaper("Session: Switched to remote desktop", true);  // force_reinit = true
           } else {
-            std::cout << "[AnyWP] [PowerSaving] System locked, will stop wallpaper and rebuild after unlock" << std::endl;
+            Logger::Instance().Info("PowerSaving", "System locked, will stop wallpaper and rebuild after unlock");
             // Stop cross-session wallpaper (it's not visible anyway)
             display_change_instance_->StopWallpaper();
           }
           break;
         case WTS_REMOTE_CONNECT:
-          std::cout << "[AnyWP] [PowerSaving] Event: REMOTE DESKTOP CONNECTED" << std::endl;
+          Logger::Instance().Info("PowerSaving", "Event: REMOTE DESKTOP CONNECTED");
           display_change_instance_->is_remote_session_.store(true);
           // Check if wallpaper should be active (force_reinit will handle stop+rebuild)
-          std::cout << "[AnyWP] [PowerSaving] Session switched, checking if wallpaper should be active..." << std::endl;
+          Logger::Instance().Info("PowerSaving", "Session switched, checking if wallpaper should be active...");
           if (display_change_instance_->ShouldWallpaperBeActive()) {
-            std::cout << "[AnyWP] [PowerSaving] Rebuilding wallpaper on new session..." << std::endl;
+            Logger::Instance().Info("PowerSaving", "Rebuilding wallpaper on new session...");
             display_change_instance_->is_paused_.store(true);  // Force paused state
             display_change_instance_->ResumeWallpaper("Session: Remote desktop connected", true);  // force_reinit = true
           } else {
-            std::cout << "[AnyWP] [PowerSaving] System locked, will stop wallpaper and rebuild after unlock" << std::endl;
+            Logger::Instance().Info("PowerSaving", "System locked, will stop wallpaper and rebuild after unlock");
             // Stop cross-session wallpaper (it's not visible anyway)
             display_change_instance_->StopWallpaper();
           }
           break;
         case WTS_REMOTE_DISCONNECT:
-          std::cout << "[AnyWP] [PowerSaving] Event: REMOTE DESKTOP DISCONNECTED" << std::endl;
+          Logger::Instance().Info("PowerSaving", "Event: REMOTE DESKTOP DISCONNECTED");
           display_change_instance_->is_remote_session_.store(false);
           // Check if wallpaper should be active (force_reinit will handle stop+rebuild)
-          std::cout << "[AnyWP] [PowerSaving] Session switched, checking if wallpaper should be active..." << std::endl;
+          Logger::Instance().Info("PowerSaving", "Session switched, checking if wallpaper should be active...");
           if (display_change_instance_->ShouldWallpaperBeActive()) {
-            std::cout << "[AnyWP] [PowerSaving] Rebuilding wallpaper on new session..." << std::endl;
+            Logger::Instance().Info("PowerSaving", "Rebuilding wallpaper on new session...");
             display_change_instance_->is_paused_.store(true);  // Force paused state
             display_change_instance_->ResumeWallpaper("Session: Remote desktop disconnected", true);  // force_reinit = true
           } else {
-            std::cout << "[AnyWP] [PowerSaving] System locked, will stop wallpaper and rebuild after unlock" << std::endl;
+            Logger::Instance().Info("PowerSaving", "System locked, will stop wallpaper and rebuild after unlock");
             // Stop cross-session wallpaper (it's not visible anyway)
             display_change_instance_->StopWallpaper();
           }
@@ -2615,7 +2615,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
       
       // For lock/unlock events, use unified state check
       if (wParam == WTS_SESSION_LOCK || wParam == WTS_SESSION_UNLOCK) {
-        std::cout << "[AnyWP] [PowerSaving] Checking if wallpaper should be active..." << std::endl;
+        Logger::Instance().Info("PowerSaving", "Checking if wallpaper should be active...");
         if (display_change_instance_->ShouldWallpaperBeActive()) {
           // Check if wallpaper needs to be rebuilt (cross-session scenario)
           bool need_rebuild = false;
@@ -2626,7 +2626,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           }
           
           if (need_rebuild && wParam == WTS_SESSION_UNLOCK) {
-            std::cout << "[AnyWP] [PowerSaving] Wallpaper missing after session switch, forcing rebuild..." << std::endl;
+            Logger::Instance().Info("PowerSaving", "Wallpaper missing after session switch, forcing rebuild...");
             display_change_instance_->is_paused_.store(true);
             display_change_instance_->ResumeWallpaper("Session: Unlock after cross-session", true);  // force_reinit
           } else {
@@ -2636,7 +2636,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
           display_change_instance_->PauseWallpaper("Session: User not in local desktop");
         }
       }
-      std::cout << "[AnyWP] [PowerSaving] =========================================" << std::endl;
+      Logger::Instance().Info("PowerSaving", "=========================================");
       break;
       
     case WM_POWERBROADCAST:
