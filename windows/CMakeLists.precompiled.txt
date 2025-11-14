@@ -36,10 +36,9 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/../include"
 )
 
-# Link Flutter libraries
-target_link_libraries(${PLUGIN_NAME} INTERFACE flutter flutter_wrapper_plugin)
-
-# Windows SDK libraries (still needed for linking)
+# Windows SDK libraries
+# Note: flutter and flutter_wrapper_plugin are NOT linked for precompiled packages
+# The DLL is already compiled with all required dependencies
 target_link_libraries(${PLUGIN_NAME} INTERFACE
   shlwapi
   version
