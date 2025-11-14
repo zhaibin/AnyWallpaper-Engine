@@ -55,3 +55,10 @@ desktop.ini
 # Test logs directory
 test_logs/
 
+# Temporary development files
+.claude/
+commit_*.bat
+create_commit_msg.bat
+windows/nul
+example/windows/anywp_sdk.js
+
