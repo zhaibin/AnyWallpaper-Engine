@@ -2750,6 +2750,8 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
 
   // Log current power state
   std::string power_state_str = "UNKNOWN";
+  bool is_fullscreen = (reason.find("fullscreen") != std::string::npos);
+  
   if (power_manager_) {
     auto state = power_manager_->GetCurrentState();
     switch (state) {
@@ -2766,11 +2768,18 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   std::cout << "[AnyWP] [PowerSaving] Current power state: " << power_state_str << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
-  // Delegate script execution to PowerManager
-  if (power_manager_) {
-    power_manager_->ExecutePauseScripts([this](const std::wstring& script) {
-      ExecuteScriptToAllInstances(script);
-    });
+  // v2.1.7+ Optimization: Skip script execution when fullscreen app is active
+  // (WebView is already suspended by Windows, scripts cannot execute anyway)
+  if (is_fullscreen) {
+    std::cout << "[AnyWP] [PowerSaving] Fullscreen detected - WebView auto-suspended by Windows" << std::endl;
+    std::cout << "[AnyWP] [PowerSaving] Skipping pause scripts (already power-saving)" << std::endl;
+  } else {
+    // Execute pause scripts for non-fullscreen scenarios (screen lock, etc.)
+    if (power_manager_) {
+      power_manager_->ExecutePauseScripts([this](const std::wstring& script) {
+        ExecuteScriptToAllInstances(script);
+      });
+    }
   }
   
   // Light memory trim
@@ -2990,6 +2999,8 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
 
   // Log current power state
   std::string power_state_str = "UNKNOWN";
+  bool is_from_fullscreen = (reason.find("fullscreen") != std::string::npos);
+  
   if (power_manager_) {
     auto state = power_manager_->GetCurrentState();
     switch (state) {
@@ -3007,6 +3018,9 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   if (force_reinit) {
     std::cout << "[AnyWP] [PowerSaving] Force reinitialize: YES (session switch)" << std::endl;
+  }
+  if (is_from_fullscreen) {
+    std::cout << "[AnyWP] [PowerSaving] Detected fullscreen exit - will delay script execution" << std::endl;
   }
   
   // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
@@ -3026,10 +3040,27 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
   }
   
   // v1.4.1+ Phase E: Delegate script execution to PowerManager
+  // v2.1.7+ Fix: Delay execution when resuming from fullscreen (WebView may still be suspended)
   if (power_manager_) {
-    power_manager_->ExecuteResumeScripts([this](const std::wstring& script) {
-      ExecuteScriptToAllInstances(script);
-    });
+    if (is_from_fullscreen) {
+      // Delay 500ms to ensure WebView is fully resumed after fullscreen exit
+      std::cout << "[AnyWP] [PowerSaving] Scheduling delayed resume (500ms)..." << std::endl;
+      std::thread([this]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::cout << "[AnyWP] [PowerSaving] Executing delayed resume scripts..." << std::endl;
+        if (power_manager_) {
+          power_manager_->ExecuteResumeScripts([this](const std::wstring& script) {
+            ExecuteScriptToAllInstances(script);
+          });
+        }
+        std::cout << "[AnyWP] [PowerSaving] Delayed resume complete" << std::endl;
+      }).detach();
+    } else {
+      // Immediate execution for non-fullscreen resume (e.g., screen unlock)
+      power_manager_->ExecuteResumeScripts([this](const std::wstring& script) {
+        ExecuteScriptToAllInstances(script);
+      });
+    }
   }
   
   std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed - animations restarted" << std::endl;
@@ -3108,9 +3139,14 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
             [](HRESULT error, LPCWSTR result) -> HRESULT {
               if (SUCCEEDED(error)) {
                 if (result && wcslen(result) > 0) {
-                  std::wcout << L"[AnyWP] Script executed successfully, result: " << result << std::endl;
+                  // Convert wstring to string for logging
+                  std::wstring wresult(result);
+                  std::string result_str(wresult.begin(), wresult.end());
+                  Logger::Instance().Info("ScriptExecution", "Script executed successfully, result: " + result_str);
+                  std::cout << "[AnyWP] [ScriptExecution] Result: " << result_str << std::endl;
                 } else {
-                  std::cout << "[AnyWP] Script executed successfully, but returned null/empty" << std::endl;
+                  Logger::Instance().Info("ScriptExecution", "Script executed successfully, but returned null/empty");
+                  std::cout << "[AnyWP] [ScriptExecution] Script executed, no return value" << std::endl;
                 }
               } else {
                 std::stringstream ss;
@@ -3133,7 +3169,15 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
       Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
         [](HRESULT error, LPCWSTR result) -> HRESULT {
           if (SUCCEEDED(error)) {
-            std::wcout << L"[AnyWP] Script executed successfully (legacy), result: " << (result ? result : L"null") << std::endl;
+            if (result && wcslen(result) > 0) {
+              std::wstring wresult(result);
+              std::string result_str(wresult.begin(), wresult.end());
+              Logger::Instance().Info("ScriptExecution", "Script executed successfully (legacy), result: " + result_str);
+              std::cout << "[AnyWP] [ScriptExecution] (Legacy) Result: " << result_str << std::endl;
+            } else {
+              Logger::Instance().Info("ScriptExecution", "Script executed successfully (legacy), no return value");
+              std::cout << "[AnyWP] [ScriptExecution] (Legacy) Script executed, no return value" << std::endl;
+            }
           } else {
             std::stringstream ss;
             ss << "Script execution failed (legacy): 0x" << std::hex << error;

@@ -23,6 +23,43 @@
   - 创建 `scripts/verify_template.bat` 模板文件
 - **改进**: 提供更友好的错误提示和验证流程
 
+### ✨ 功能增强
+
+#### 全屏应用检测日志改进
+- **改进内容**:
+  - `power_manager.cpp`: 在检测到全屏应用时记录应用名称和窗口类名
+  - 示例日志：`[PowerManager] Fullscreen app detected: "Google Chrome" (Class: Chrome_WidgetWin_1)`
+  - 便于调试和了解哪些应用触发了暂停
+- **测试资源**:
+  - 新增 `examples/test_fullscreen_pause.html`: 专门用于测试全屏暂停功能的页面
+  - 新增 `docs/FULLSCREEN_PAUSE_TEST_GUIDE.md`: 详细的测试指南文档
+
+### 🐛 全屏暂停功能修复与优化
+
+#### 全屏应用前台时脚本执行问题
+- **问题描述**: 当全屏应用（浏览器、游戏等）在前台时，壁纸 WebView 被系统挂起，导致 `ExecuteScript` 的脚本无法执行，恢复时的可见性通知未能到达页面
+- **根本原因**: 
+  - Windows 会自动挂起后台 WebView 的 JavaScript 引擎以节省资源
+  - 全屏期间执行的脚本会被阻塞，回调永远不会触发
+  - 锁屏时 WebView 保持活跃，脚本正常执行
+- **关键发现**: **系统自动挂起本身就是省电操作**
+  - ✅ CPU: JS 引擎停止，CPU 使用率降为 0
+  - ✅ GPU: 渲染管线暂停，GPU 闲置
+  - ✅ 动画: `requestAnimationFrame`、CSS 动画、视频自动停止
+  - ❌ 问题: 执行暂停脚本是多余的（反正也执行不了）
+- **优化方案**:
+  - `anywp_engine_plugin.cpp`: `PauseWallpaper()` 检测全屏场景
+    - **全屏暂停**: 跳过暂停脚本（系统已自动挂起，无需执行）
+    - **锁屏暂停**: 正常执行暂停脚本（WebView 仍活跃）
+  - `anywp_engine_plugin.cpp`: `ResumeWallpaper()` 检测全屏恢复
+    - **全屏恢复**: 延迟 500ms 执行恢复脚本（确保 WebView 已唤醒）
+    - **锁屏恢复**: 立即执行恢复脚本
+  - 增强脚本执行日志，记录返回值以便调试
+- **测试结果**:
+  - ✅ 锁屏/解锁：立即执行暂停/恢复，计数器正常 +1
+  - ✅ 全屏/退出：跳过暂停（已省电），延迟执行恢复（通知页面）
+  - ⚡ 性能优化：避免无效的脚本调用
+
 ---
 
 ## [2.1.6] - 2025-11-14 - 🐛 修复 Windows 桌面架构兼容性
