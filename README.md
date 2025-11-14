@@ -36,6 +36,21 @@ A Flutter Windows plugin that embeds WebView2 as a desktop wallpaper, displaying
 - 🔄 **Bidirectional Communication** (v2.1 ✨) - Real-time Flutter ↔ JavaScript messaging
 - 🎮 **Framework Ready** - React, Vue, Angular supported
 
+## ⚠️ Known Limitations
+
+### Fullscreen Application Scenario (v2.1.7)
+
+When a fullscreen application (games, video players, browsers in fullscreen) covers the wallpaper:
+- ✅ C++ layer correctly detects fullscreen state
+- ✅ Wallpaper animations continue running in background (not visible, but consuming resources)
+- ❌ **Cannot notify JavaScript about pause/resume**
+- **Reason**: WebView2's `ExecuteScript` callbacks are blocked when wallpaper window is fully covered
+- **Impact**: Wallpaper continues consuming CPU/GPU during fullscreen (though not visible)
+- **Workaround**: Manually call `pauseWallpaper()` or close the application
+- **Comparison**: Lock screen scenario works perfectly ✅ (lock screen is an overlay, wallpaper remains visible)
+
+**Technical Analysis**: See [CHANGELOG_CN.md#2.1.7](CHANGELOG_CN.md) for detailed investigation
+
 ## 🚀 Quick Start
 
 ### Installation
