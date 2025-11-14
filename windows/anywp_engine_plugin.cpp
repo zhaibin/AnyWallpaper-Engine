@@ -2750,7 +2750,6 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
 
   // Log current power state
   std::string power_state_str = "UNKNOWN";
-  bool is_fullscreen = (reason.find("fullscreen") != std::string::npos);
   
   if (power_manager_) {
     auto state = power_manager_->GetCurrentState();
@@ -2768,18 +2767,11 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   std::cout << "[AnyWP] [PowerSaving] Current power state: " << power_state_str << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
-  // v2.1.7+ Optimization: Skip script execution when fullscreen app is active
-  // (WebView is already suspended by Windows, scripts cannot execute anyway)
-  if (is_fullscreen) {
-    std::cout << "[AnyWP] [PowerSaving] Fullscreen detected - WebView auto-suspended by Windows" << std::endl;
-    std::cout << "[AnyWP] [PowerSaving] Skipping pause scripts (already power-saving)" << std::endl;
-  } else {
-    // Execute pause scripts for non-fullscreen scenarios (screen lock, etc.)
-    if (power_manager_) {
-      power_manager_->ExecutePauseScripts([this](const std::wstring& script) {
-        ExecuteScriptToAllInstances(script);
-      });
-    }
+  // Execute pause scripts for all scenarios (fullscreen, lock screen, etc.)
+  if (power_manager_) {
+    power_manager_->ExecutePauseScripts([this](const std::wstring& script) {
+      ExecuteScriptToAllInstances(script);
+    });
   }
   
   // Light memory trim
@@ -2999,7 +2991,6 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
 
   // Log current power state
   std::string power_state_str = "UNKNOWN";
-  bool is_from_fullscreen = (reason.find("fullscreen") != std::string::npos);
   
   if (power_manager_) {
     auto state = power_manager_->GetCurrentState();
@@ -3019,9 +3010,6 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
   if (force_reinit) {
     std::cout << "[AnyWP] [PowerSaving] Force reinitialize: YES (session switch)" << std::endl;
   }
-  if (is_from_fullscreen) {
-    std::cout << "[AnyWP] [PowerSaving] Detected fullscreen exit - will delay script execution" << std::endl;
-  }
   
   // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
   bool need_reinitialize = force_reinit;  // Force if requested
@@ -3039,28 +3027,11 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     return;  // Failed to restore, cannot continue
   }
   
-  // v1.4.1+ Phase E: Delegate script execution to PowerManager
-  // v2.1.7+ Fix: Delay execution when resuming from fullscreen (WebView may still be suspended)
+  // Execute resume scripts for all scenarios (fullscreen, lock screen, etc.)
   if (power_manager_) {
-    if (is_from_fullscreen) {
-      // Delay 500ms to ensure WebView is fully resumed after fullscreen exit
-      std::cout << "[AnyWP] [PowerSaving] Scheduling delayed resume (500ms)..." << std::endl;
-      std::thread([this]() {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        std::cout << "[AnyWP] [PowerSaving] Executing delayed resume scripts..." << std::endl;
-        if (power_manager_) {
-          power_manager_->ExecuteResumeScripts([this](const std::wstring& script) {
-            ExecuteScriptToAllInstances(script);
-          });
-        }
-        std::cout << "[AnyWP] [PowerSaving] Delayed resume complete" << std::endl;
-      }).detach();
-    } else {
-      // Immediate execution for non-fullscreen resume (e.g., screen unlock)
-      power_manager_->ExecuteResumeScripts([this](const std::wstring& script) {
-        ExecuteScriptToAllInstances(script);
-      });
-    }
+    power_manager_->ExecuteResumeScripts([this](const std::wstring& script) {
+      ExecuteScriptToAllInstances(script);
+    });
   }
   
   std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed - animations restarted" << std::endl;

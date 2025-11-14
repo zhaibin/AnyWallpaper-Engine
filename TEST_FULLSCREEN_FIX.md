@@ -46,21 +46,24 @@ flutter run -d windows
 3. 等待 2-3 秒
 4. 按 **F11** 或 **ESC** 退出全屏
 
-**预期结果**（v2.1.7+ 修复后）：
-- ✅ 进入全屏：暂停计数器 **+1**（延迟通知）
-- ✅ 退出全屏：恢复计数器 **+1**（延迟通知）
-- ⚡ 日志显示：
+**预期结果**（v2.1.7+ 当前版本）：
+- ❌ 进入全屏：暂停计数器 **不变** （问题未解决）
+- ❌ 退出全屏：恢复计数器 **不变** （问题未解决）
+- ⚠️ **关键发现**: 全屏后动画仍在播放（WebView 未被挂起）
+- 📋 日志显示：
   ```
-  [PowerSaving] Fullscreen detected - WebView auto-suspended by Windows
-  [PowerSaving] Skipping pause scripts (already power-saving)
-  [PowerSaving] Detected fullscreen exit - will delay script execution
-  [PowerSaving] Scheduling delayed resume (500ms)...
-  [ScriptExecution] Result: "RESUMED"
+  [PowerManager] Fullscreen app detected: "Microsoft Edge" (Class: Chrome_WidgetWin_1)
+  [PowerSaving] ========== PAUSING WALLPAPER ==========
+  [PowerManager] Executing pause scripts...
+  [PowerManager] Pause scripts executed
   ```
+  注意：**没有** `[ScriptExecution] Result:` 日志！
 
-**原理**：
-- 全屏时 Windows 自动挂起 WebView（已省电），跳过暂停脚本
-- 退出全屏后延迟 500ms 执行恢复脚本（确保 WebView 已唤醒）
+**问题**：
+- 脚本被调用了（`Executing pause scripts`）
+- 但是没有返回值日志（`Result:`）
+- 说明 `ExecuteScript` 的回调没有被触发
+- 需要进一步调查原因
 
 ---
 

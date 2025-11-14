@@ -4,7 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   anywp_engine
-  screen_retriever
+  screen_retriever_windows
   window_manager
 )
 
