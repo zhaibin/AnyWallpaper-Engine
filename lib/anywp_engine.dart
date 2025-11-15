@@ -94,8 +94,8 @@ class AnyWPEngine {
     // Cancel existing timer if any
     _powerStatePollingTimer?.cancel();
     
-    // Poll for power state changes every 100ms
-    _powerStatePollingTimer = Timer.periodic(Duration(milliseconds: 100), (timer) async {
+    // Poll for power state changes every 1000ms
+    _powerStatePollingTimer = Timer.periodic(Duration(milliseconds: 1000), (timer) async {
       if (_onPowerStateChangeCallback == null) {
         timer.cancel();
         return;
@@ -121,7 +121,7 @@ class AnyWPEngine {
       }
     });
     
-    print('[AnyWPEngine] Power state polling started (100ms interval)');
+    print('[AnyWPEngine] Power state polling started (1000ms interval)');
   }
   
   /// Set callback for messages from JavaScript
