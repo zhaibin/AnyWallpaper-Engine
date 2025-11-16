@@ -251,7 +251,7 @@ bool WindowManager::SetWallpaperZOrder(HWND hwnd, HWND worker_w) {
       // Both are children of the same parent - can use SetWindowPos with shelldll
       std::cout << "[WindowManager] Both windows are siblings, using SetWindowPos with SHELLDLL_DefView" << std::endl;
       result = SetWindowPos(hwnd, shelldll, 0, 0, 0, 0,
-                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                              SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
       // v2.1.10+ CRITICAL FIX: If SetWindowPos succeeded but window is at bottom,
       // this indicates the Z-order setting didn't work as expected
