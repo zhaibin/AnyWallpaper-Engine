@@ -14,12 +14,12 @@ EventRegistrationToken CustomSchemeHandler::s_requestedToken_ = {};
 
 HRESULT CustomSchemeHandler::Initialize(ICoreWebView2* webview) {
   if (!webview) {
-    Logger::Instance().Error("CustomSchemeHandler::Initialize - WebView is null");
+    Logger::Instance().Error("CustomSchemeHandler", "Initialize - WebView is null");
     return E_INVALIDARG;
   }
   
   try {
-    Logger::Instance().Info("CustomSchemeHandler::Initialize - Registering anywp:// protocol");
+    Logger::Instance().Info("CustomSchemeHandler", "Initialize - Registering anywp:// protocol");
     
     // 注册 anywp:// 协议过滤器
     HRESULT hr = webview->AddWebResourceRequestedFilter(
@@ -28,9 +28,8 @@ HRESULT CustomSchemeHandler::Initialize(ICoreWebView2* webview) {
     );
     
     if (FAILED(hr)) {
-      Logger::Instance().Error("Failed to add web resource filter", {
-        {"HRESULT", std::to_string(hr)}
-      });
+      Logger::Instance().Error("CustomSchemeHandler", 
+        "Failed to add web resource filter. HRESULT: " + std::to_string(hr));
       return hr;
     }
     
@@ -45,25 +44,23 @@ HRESULT CustomSchemeHandler::Initialize(ICoreWebView2* webview) {
     );
     
     if (FAILED(hr)) {
-      Logger::Instance().Error("Failed to register WebResourceRequested handler", {
-        {"HRESULT", std::to_string(hr)}
-      });
+      Logger::Instance().Error("CustomSchemeHandler", 
+        "Failed to register WebResourceRequested handler. HRESULT: " + std::to_string(hr));
       return hr;
     }
     
-    Logger::Instance().Info("CustomSchemeHandler::Initialize - Successfully registered anywp:// protocol");
+    Logger::Instance().Info("CustomSchemeHandler", "Initialize - Successfully registered anywp:// protocol");
     return S_OK;
     
   } catch (const std::exception& e) {
-    Logger::Instance().Error("Exception in CustomSchemeHandler::Initialize", {
-      {"Exception", e.what()}
-    });
+    Logger::Instance().Error("CustomSchemeHandler", 
+      std::string("Exception in Initialize: ") + e.what());
     return E_FAIL;
   }
 }
 
 void CustomSchemeHandler::Uninitialize() {
-  Logger::Instance().Info("CustomSchemeHandler::Uninitialize - Cleaning up");
+  Logger::Instance().Info("CustomSchemeHandler", "Uninitialize - Cleaning up");
   s_requestedToken_ = {};
 }
 
@@ -85,16 +82,14 @@ HRESULT CustomSchemeHandler::HandleRequest(
     std::wstring url(uri_raw);
     CoTaskMemFree(uri_raw);
     
-    Logger::Instance().Debug("CustomSchemeHandler::HandleRequest - Processing request", {
-      {"URL", std::string(url.begin(), url.end())}
-    });
+    Logger::Instance().Debug("CustomSchemeHandler", 
+      "HandleRequest - Processing request: " + std::string(url.begin(), url.end()));
     
     // 2. 解析 URL
     std::wstring resourceType, fileId;
     if (!ParseUrl(url, resourceType, fileId)) {
-      Logger::Instance().Warn("Invalid anywp:// URL format", {
-        {"URL", std::string(url.begin(), url.end())}
-      });
+      Logger::Instance().Warn("CustomSchemeHandler", 
+        "Invalid anywp:// URL format: " + std::string(url.begin(), url.end()));
       
       wil::com_ptr<ICoreWebView2Environment> env;
       webview->get_Environment(&env);
@@ -104,9 +99,8 @@ HRESULT CustomSchemeHandler::HandleRequest(
     // 3. 构建加密文件路径
     std::wstring encryptedPath = GetCacheFilePath(resourceType, fileId);
     
-    Logger::Instance().Debug("Decrypting cache file", {
-      {"FilePath", std::string(encryptedPath.begin(), encryptedPath.end())}
-    });
+    Logger::Instance().Debug("CustomSchemeHandler", 
+      "Decrypting cache file: " + std::string(encryptedPath.begin(), encryptedPath.end()));
     
     // 4. 检测 MIME Type
     std::wstring mimeType = MimeTypeDetector::DetectFromFile(encryptedPath);
@@ -116,10 +110,9 @@ HRESULT CustomSchemeHandler::HandleRequest(
     HRESULT hr = DecryptToStream(encryptedPath, memStream.GetAddressOf());
     
     if (FAILED(hr)) {
-      Logger::Instance().Error("Failed to decrypt file", {
-        {"FilePath", std::string(encryptedPath.begin(), encryptedPath.end())},
-        {"HRESULT", std::to_string(hr)}
-      });
+      Logger::Instance().Error("CustomSchemeHandler", 
+        "Failed to decrypt file: " + std::string(encryptedPath.begin(), encryptedPath.end()) + 
+        " HRESULT: " + std::to_string(hr));
       
       ComPtr<ICoreWebView2Environment> env;
       webview->get_Environment(&env);
@@ -149,26 +142,23 @@ HRESULT CustomSchemeHandler::HandleRequest(
     );
     
     if (FAILED(hr)) {
-      Logger::Instance().Error("Failed to create WebResourceResponse", {
-        {"HRESULT", std::to_string(hr)}
-      });
+      Logger::Instance().Error("CustomSchemeHandler", 
+        "Failed to create WebResourceResponse. HRESULT: " + std::to_string(hr));
       return hr;
     }
     
     // 8. 设置响应
     args->put_Response(response.Get());
     
-    Logger::Instance().Debug("Successfully handled anywp:// request", {
-      {"URL", std::string(url.begin(), url.end())},
-      {"MimeType", std::string(mimeType.begin(), mimeType.end())}
-    });
+    Logger::Instance().Debug("CustomSchemeHandler", 
+      "Successfully handled anywp:// request: " + std::string(url.begin(), url.end()) + 
+      " MimeType: " + std::string(mimeType.begin(), mimeType.end()));
     
     return S_OK;
     
   } catch (const std::exception& e) {
-    Logger::Instance().Error("Exception in CustomSchemeHandler::HandleRequest", {
-      {"Exception", e.what()}
-    });
+    Logger::Instance().Error("CustomSchemeHandler", 
+      std::string("Exception in HandleRequest: ") + e.what());
     return E_FAIL;
   }
 }
@@ -197,10 +187,9 @@ HRESULT CustomSchemeHandler::DecryptToStream(
     
     if (hFile == INVALID_HANDLE_VALUE) {
       DWORD error = GetLastError();
-      Logger::Instance().Error("Failed to open encrypted file", {
-        {"FilePath", std::string(filePath.begin(), filePath.end())},
-        {"Error", std::to_string(error)}
-      });
+      Logger::Instance().Error("CustomSchemeHandler", 
+        "Failed to open encrypted file: " + std::string(filePath.begin(), filePath.end()) + 
+        " Error: " + std::to_string(error));
       return HRESULT_FROM_WIN32(error);
     }
     
@@ -209,9 +198,8 @@ HRESULT CustomSchemeHandler::DecryptToStream(
     HRESULT hr = CreateStreamOnHGlobal(NULL, TRUE, memStream.GetAddressOf());
     if (FAILED(hr)) {
       CloseHandle(hFile);
-      Logger::Instance().Error("Failed to create memory stream", {
-        {"HRESULT", std::to_string(hr)}
-      });
+      Logger::Instance().Error("CustomSchemeHandler", 
+        "Failed to create memory stream. HRESULT: " + std::to_string(hr));
       return hr;
     }
     
@@ -233,11 +221,10 @@ HRESULT CustomSchemeHandler::DecryptToStream(
       hr = memStream.Get()->Write(buffer, bytesRead, &written);
       if (FAILED(hr) || written != bytesRead) {
         CloseHandle(hFile);
-        Logger::Instance().Error("Failed to write to memory stream", {
-          {"HRESULT", std::to_string(hr)},
-          {"BytesRead", std::to_string(bytesRead)},
-          {"BytesWritten", std::to_string(written)}
-        });
+        Logger::Instance().Error("CustomSchemeHandler", 
+          "Failed to write to memory stream. HRESULT: " + std::to_string(hr) + 
+          " BytesRead: " + std::to_string(bytesRead) + 
+          " BytesWritten: " + std::to_string(written));
         return hr;
       }
     }
@@ -248,9 +235,8 @@ HRESULT CustomSchemeHandler::DecryptToStream(
     LARGE_INTEGER zero = {};
     hr = memStream.Get()->Seek(zero, STREAM_SEEK_SET, NULL);
     if (FAILED(hr)) {
-      Logger::Instance().Error("Failed to reset stream position", {
-        {"HRESULT", std::to_string(hr)}
-      });
+      Logger::Instance().Error("CustomSchemeHandler", 
+        "Failed to reset stream position. HRESULT: " + std::to_string(hr));
       return hr;
     }
     
@@ -259,9 +245,8 @@ HRESULT CustomSchemeHandler::DecryptToStream(
     return S_OK;
     
   } catch (const std::exception& e) {
-    Logger::Instance().Error("Exception in DecryptToStream", {
-      {"Exception", e.what()}
-    });
+    Logger::Instance().Error("CustomSchemeHandler", 
+      std::string("Exception in DecryptToStream: ") + e.what());
     return E_FAIL;
   }
 }
@@ -359,9 +344,8 @@ HRESULT CustomSchemeHandler::CreateErrorResponse(
     return S_OK;
     
   } catch (const std::exception& e) {
-    Logger::Instance().Error("Exception in CreateErrorResponse", {
-      {"Exception", e.what()}
-    });
+    Logger::Instance().Error("CustomSchemeHandler", 
+      std::string("Exception in CreateErrorResponse: ") + e.what());
     return E_FAIL;
   }
 }
