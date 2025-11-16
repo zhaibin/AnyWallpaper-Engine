@@ -130,9 +130,10 @@ clearState()                        // 清空状态
 setApplicationName(name)            // 设置应用标识
 getStoragePath() -> String          // 获取存储路径
 
-// 版本信息 (v1.2.1+)
-getPluginVersion() -> String        // 获取插件版本号
-isCompatible(expectedPrefix) -> bool // 检查是否满足版本前缀
+// 版本信息
+getPluginVersion() -> String        // 获取引擎版本号 (v1.2.1+)
+getSDKVersion() -> String           // 获取内置 SDK 版本号 (v2.1.10+)
+isCompatible(expectedPrefix) -> bool // 检查是否满足版本前缀 (v1.2.1+)
 
 // 回调机制
 setOnMonitorChangeCallback(callback)      // 显示器变化
@@ -141,6 +142,11 @@ setOnPowerStateChangeCallback(callback)   // 电源状态变化
 // 双向通信 (v2.1.0+) ✨ 新增
 sendMessage(message, monitorIndex)         // 发送消息到 JavaScript
 setOnMessageCallback(callback)             // 接收来自 JavaScript 的消息
+
+// 文件加密/解密 (v2.1.10+) ✨ 新增
+encryptFile(sourcePath, destPath) -> bool  // 加密文件（XOR）
+decryptFile(encryptedPath, destPath) -> bool // 解密文件（XOR）
+// 配合 anywp://file?path=... 自定义协议使用
 ```
 
 **立即阅读** → [DEVELOPER_API_REFERENCE.md](DEVELOPER_API_REFERENCE.md)

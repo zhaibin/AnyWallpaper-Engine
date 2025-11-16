@@ -654,6 +654,178 @@ AnyWP.onMessage(function(message) {
 });
 ```
 
+---
+
+##### `encryptFile(sourcePath, destPath)` 🆕 v2.1.10
+
+加密文件（XOR 混淆，前 64 字节）。
+
+**参数**：
+- `sourcePath` (String, required) - 源文件路径（未加密）
+- `destPath` (String, required) - 加密后文件保存路径
+
+**返回值**：
+- `Promise<boolean>` - 成功返回 `true`，失败返回 `false`
+
+**说明**：
+- 通过 WebView2 桥接调用 Flutter MethodChannel
+- 加密算法：XOR 密钥 `0x5A`，仅处理前 64 字节
+- 文件路径必须是绝对路径
+
+**示例**：
+```javascript
+// 加密图片
+const success = await AnyWP.encryptFile(
+  'C:/MyApp/assets/background.jpg',
+  'C:/MyApp/cache/background.encrypted'
+);
+
+if (success) {
+  console.log('✅ 文件加密成功');
+  // 使用 anywp://file?path=... 加载
+  loadEncryptedImage('C:/MyApp/cache/background.encrypted');
+} else {
+  console.error('❌ 文件加密失败');
+}
+```
+
+---
+
+##### `decryptFile(encryptedPath, destPath)` 🆕 v2.1.10
+
+解密文件（`encryptFile` 的逆操作）。**注意**：通常不需要手动解密，`anywp://` 协议会自动处理。
+
+**参数**：
+- `encryptedPath` (String, required) - 加密文件路径
+- `destPath` (String, required) - 解密后文件保存路径
+
+**返回值**：
+- `Promise<boolean>` - 成功返回 `true`，失败返回 `false`
+
+**示例**：
+```javascript
+// 解密文件（可选，用于导出原始文件）
+const success = await AnyWP.decryptFile(
+  'C:/MyApp/cache/background.encrypted',
+  'C:/MyApp/output/background.jpg'
+);
+
+if (success) {
+  console.log('✅ 文件解密成功');
+} else {
+  console.error('❌ 文件解密失败');
+}
+```
+
+---
+
+### 自定义协议 (v2.1.10+)
+
+AnyWP Engine 支持自定义 URL 协议 `anywp://file?path=`，用于零拷贝内容交付和内置解密。
+
+#### 协议格式
+
+```
+anywp://file?path=<绝对文件路径>
+```
+
+#### 使用场景
+
+1. **保护壁纸资源**：图片/视频使用简单的 XOR 加密
+2. **零拷贝加载**：内容在 HTTP 请求时即时解密
+3. **开发者控制路径**：你定义存储位置，引擎不管理固定缓存
+
+#### HTML 中使用
+
+```html
+<!-- 图片 -->
+<img src="anywp://file?path=C:/MyApp/cache/bg.encrypted" alt="背景" />
+
+<!-- 视频 -->
+<video src="anywp://file?path=C:/MyApp/cache/video.encrypted" controls></video>
+
+<!-- 动态加载 -->
+<script>
+  const encryptedPath = 'C:/MyApp/cache/bg.encrypted';
+  const imageUrl = `anywp://file?path=${encryptedPath}`;
+  
+  const img = document.createElement('img');
+  img.src = imageUrl;
+  
+  img.onload = () => console.log('✅ 加载成功');
+  img.onerror = () => console.error('❌ 加载失败');
+  
+  document.body.appendChild(img);
+</script>
+```
+
+#### 完整工作流程
+
+```javascript
+// 步骤 1: 加密资源文件
+async function prepareAssets() {
+  const assets = [
+    { src: 'C:/MyApp/assets/bg1.jpg', enc: 'C:/MyApp/cache/bg1.encrypted' },
+    { src: 'C:/MyApp/assets/bg2.jpg', enc: 'C:/MyApp/cache/bg2.encrypted' },
+    { src: 'C:/MyApp/assets/video.mp4', enc: 'C:/MyApp/cache/video.encrypted' },
+  ];
+  
+  for (const asset of assets) {
+    const success = await AnyWP.encryptFile(asset.src, asset.enc);
+    
+    if (success) {
+      console.log(`✅ 已加密: ${asset.src}`);
+    } else {
+      console.error(`❌ 加密失败: ${asset.src}`);
+    }
+  }
+}
+
+// 步骤 2: 使用 anywp:// 协议加载
+function loadWallpaper() {
+  const encryptedImages = [
+    'C:/MyApp/cache/bg1.encrypted',
+    'C:/MyApp/cache/bg2.encrypted',
+  ];
+  
+  encryptedImages.forEach((path, index) => {
+    const img = document.createElement('img');
+    img.src = `anywp://file?path=${path}`;
+    img.alt = `Background ${index + 1}`;
+    img.classList.add('wallpaper-image');
+    
+    img.onload = () => {
+      console.log(`✅ 图片 ${index + 1} 加载成功`);
+    };
+    
+    img.onerror = () => {
+      console.error(`❌ 图片 ${index + 1} 加载失败: ${path}`);
+    };
+    
+    document.getElementById('carousel').appendChild(img);
+  });
+}
+
+// 步骤 3: 初始化
+window.addEventListener('load', async function() {
+  console.log('Preparing encrypted assets...');
+  await prepareAssets();
+  
+  console.log('Loading wallpaper...');
+  loadWallpaper();
+});
+```
+
+#### 关键要点
+
+- ✅ **零拷贝**: 内容在 HTTP 请求时即时解密，无需额外内存
+- ✅ **开发者控制**: 你定义缓存路径，引擎不管理固定目录
+- ✅ **自动 MIME 检测**: 引擎根据文件头/扩展名检测 MIME 类型
+- ✅ **错误处理**: 无效/缺失文件返回 HTTP 404/403/500
+- ⚠️ **安全性**: 路径必须是绝对路径，不允许 `..` 路径遍历
+
+---
+
 **完整双向通信示例**：
 ```javascript
 // 初始化
