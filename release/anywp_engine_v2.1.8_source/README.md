@@ -1,0 +1,558 @@
+﻿# AnyWP Engine
+
+A Flutter Windows plugin that embeds WebView2 as a desktop wallpaper, displaying web content behind desktop icons.
+
+
+## ✨ Features
+
+### Core Features
+- 🖼️ **WebView2 Integration** - Display any web content as desktop wallpaper
+- 🎯 **Proper Z-Order** - WebView renders behind desktop icons (not covering them)
+- 🖱️ **Simple Mode** - Clicks pass through to desktop icons (default behavior)
+- 📺 **Multi-Monitor Support** - Different content on each display
+- 🔥 **Smart Hot-Plug** (v1.3.1 ✨) - Auto-detects monitors, restores configurations, handles failures
+- 🪟 **Windows 10/11 Support** - Optimized for modern Windows
+
+### Architecture (v2.0 ✨)
+- 🏗️ **Modular Design** - 30 independent modules (13 core + 17 utils) with clear responsibilities
+- 🧪 **High Test Coverage** - 209+ unit tests, 98.5% code coverage
+- 🔒 **Enhanced Security** - Input validation, error handler, circuit breaker, permission manager
+- 📊 **Performance Monitoring** - Built-in CPU/memory profilers, performance benchmark, startup optimizer
+- 🎯 **Clean Codebase** - 78% modularization rate (4,448 → 2,540 lines)
+- 🔌 **Interface Abstraction** - 3 core interfaces + ServiceLocator for dependency injection
+- 🚀 **Advanced Features** - Event bus, config manager, retry handler with exponential backoff
+
+### Performance & Power
+- ⚡ **High Performance** - Hardware-accelerated rendering
+- 🔋 **Smart Power Saving** - Auto-pause on lock/idle/fullscreen
+- ⚡ **Instant Resume** - <50ms recovery time (20x faster)
+- 💾 **Memory Optimized** - Intelligent cleanup and state preservation
+
+### JavaScript SDK (NEW ✨)
+- ⚡ **Auto-Injection** - SDK is automatically injected, no manual loading required
+- 💾 **State Persistence** - Save/load state across sessions to Windows Registry
+- 👁️ **Visibility API** - Detect wallpaper visibility changes
+- 🖱️ **Click Events** - Handle click events with `onClick()`
+- 🔄 **Bidirectional Communication** (v2.1 ✨) - Real-time Flutter ↔ JavaScript messaging
+- 🎮 **Framework Ready** - React, Vue, Angular supported
+
+## ⚠️ Known Limitations
+
+### Fullscreen Application Scenario (v2.1.7)
+
+When a fullscreen application (games, video players, browsers in fullscreen) covers the wallpaper:
+- ✅ C++ layer correctly detects fullscreen state
+- ✅ Wallpaper animations continue running in background (not visible, but consuming resources)
+- ❌ **Cannot notify JavaScript about pause/resume**
+- **Reason**: WebView2's `ExecuteScript` callbacks are blocked when wallpaper window is fully covered
+- **Impact**: Wallpaper continues consuming CPU/GPU during fullscreen (though not visible)
+- **Workaround**: Manually call `pauseWallpaper()` or close the application
+- **Comparison**: Lock screen scenario works perfectly ✅ (lock screen is an overlay, wallpaper remains visible)
+
+**Technical Analysis**: See [CHANGELOG_CN.md#2.1.7](CHANGELOG_CN.md) for detailed investigation
+
+## 🚀 Quick Start
+
+### Installation
+
+**📦 Want to use this in your own project?**  
+
+**Option 1: Precompiled DLL (Recommended) ⭐**
+- ✅ No compilation required
+- ✅ No WebView2 SDK needed
+- ✅ Fast integration
+
+Download from [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
+
+```powershell
+# Recommended: Run in Flutter project root directory
+packages\anywp_engine_v2.1.0\setup_precompiled.bat
+```
+
+`setup_precompiled.bat` will automatically:
+- ✅ Verify critical files (DLL / LIB / JS / CMake etc.)
+- ✅ Copy precompiled package to `packages/anywp_engine_v2.1.0`
+- ✅ Run `flutter pub get`
+
+Or manually add to `pubspec.yaml`:
+
+```yaml
+dependencies:
+  anywp_engine:
+    path: ./packages/anywp_engine_v2.1.0
+```
+
+🧰 Helper Scripts:
+
+| File | Purpose |
+| --- | --- |
+| `setup_precompiled.bat` | One-click installation of precompiled package |
+| `verify_precompiled.bat` | Check if all 8 critical files are present |
+| `generate_pubspec_snippet.bat` | Generate `pubspec.yaml` snippet |
+| `example_minimal/` | Minimal runnable example to verify integration |
+
+👉 See **[Precompiled DLL Integration Guide](docs/PRECOMPILED_DLL_INTEGRATION.md)** for details
+
+**Option 2: Git Reference**
+```yaml
+dependencies:
+  anywp_engine:
+    git:
+      url: https://github.com/zhaibin/AnyWallpaper-Engine.git
+```
+
+**Option 3: Local Path (Development)**
+```yaml
+dependencies:
+  anywp_engine:
+    path: ../
+```
+
+👉 See **[Complete Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md)** for all integration methods
+
+### Basic Usage (Dart)
+
+```dart
+import 'package:anywp_engine/anywp_engine.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set application name for isolated storage (v1.2.0+)
+  await AnyWPEngine.setApplicationName('MyAwesomeApp');
+  
+  runApp(MyApp());
+}
+
+// ========== Single Monitor ==========
+
+// Simple wallpaper (mouse transparent - desktop icons clickable)
+await AnyWPEngine.initializeWallpaper(
+  url: 'https://www.bing.com',
+);
+
+// ========== Multi-Monitor ==========
+
+// Multi-monitor setup (v2.0+)
+final monitors = await AnyWPEngine.getMonitors();
+
+// Monitor 0: Dashboard
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file:///dashboard.html',
+  monitorIndex: 0,
+);
+
+// Monitor 1: Animation
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file:///animation.html',
+  monitorIndex: 1,
+);
+
+// Stop wallpaper
+await AnyWPEngine.stopWallpaper();
+
+// Navigate to different URL
+await AnyWPEngine.navigateToUrl('https://new-url.com');
+
+// Save/Load state
+await AnyWPEngine.saveState('my_key', 'my_value');
+String value = await AnyWPEngine.loadState('my_key');
+
+// Get storage path
+String path = await AnyWPEngine.getStoragePath();
+
+// Check plugin version compatibility (v1.2.1+)
+final version = await AnyWPEngine.getPluginVersion();
+final compatible = await AnyWPEngine.isCompatible(expectedPrefix: '1.2.');
+if (!compatible) {
+  debugPrint('⚠️ AnyWP Engine version mismatch: $version');
+}
+```
+
+### JavaScript SDK Usage (NEW ✨)
+
+**⚡ SDK is auto-injected** - No manual script loading required. Just use `window.AnyWP` directly in your web page.
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Wallpaper</title>
+</head>
+<body>
+  <div id="content">Hello Wallpaper!</div>
+  
+  <script>
+    // SDK is automatically available as window.AnyWP
+    if (window.AnyWP) {
+      // Notify wallpaper is ready
+      AnyWP.ready('My Wallpaper');
+      
+      // Save/Load custom state
+      AnyWP.saveState('settings', JSON.stringify({ theme: 'dark' }));
+      AnyWP.loadState('settings', (value) => {
+        const settings = JSON.parse(value);
+        console.log('Settings:', settings);
+      });
+      
+      // Monitor visibility (pause animations when hidden)
+      // Triggered on: lock/unlock, fullscreen apps, manual pause/resume
+      AnyWP.onVisibilityChange((visible) => {
+        if (visible) {
+          resumeAnimations();  // Resume when unlocked
+        } else {
+          pauseAnimations();  // Save power when locked
+        }
+      });
+      
+      // Handle clicks
+      AnyWP.onClick('#button', (x, y) => {
+        console.log('Clicked at:', x, y);
+      });
+      
+      // 🔄 Bidirectional Communication (v2.1+)
+      // Send messages to Flutter
+      AnyWP.sendToFlutter('carouselStateChanged', {
+        currentIndex: 2,
+        totalImages: 10,
+        isPlaying: true
+      });
+      
+      // Receive messages from Flutter
+      AnyWP.onMessage((message) => {
+        console.log('From Flutter:', message.type);
+        if (message.type === 'play') {
+          startCarousel();
+        }
+      });
+    }
+  </script>
+</body>
+</html>
+```
+
+**📖 Complete Web Developer Guide**: See [Web Developer Guide](docs/WEB_DEVELOPER_GUIDE_CN.md) for detailed SDK documentation.
+
+## 🔥 Hot-Plug Display Support (NEW)
+
+**Automatic Monitor Detection & Setup**: When users plug in or remove displays, AnyWP Engine automatically detects the change and applies wallpapers without manual intervention.
+
+### How It Works
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Register monitor change callback (one-time setup)
+  AnyWPEngine.setOnMonitorChangeCallback(() {
+    print('Display configuration changed - auto-applying...');
+  });
+  
+  runApp(MyApp());
+}
+
+// Start wallpaper on primary monitor
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'https://example.com',
+  monitorIndex: 0,
+  enableMouseTransparent: true,
+);
+
+// 🔌 User plugs in second monitor
+// → System auto-detects new monitor ✓
+// → App auto-starts wallpaper with same URL ✓
+// → User sees: "Auto-started wallpaper on 1 new monitor(s)" ✓
+
+// 🔌 User unplugs second monitor
+// → System auto-detects removal ✓
+// → App auto-cleans up resources ✓
+```
+
+### Key Benefits
+
+✅ **Zero Manual Steps** - No "Refresh" button needed  
+✅ **Instant Response** - Wallpaper appears immediately on new monitors  
+✅ **Content Consistency** - New monitors show same content as primary  
+✅ **Smart Cleanup** - Removed monitors are cleaned up automatically
+
+### Use Cases
+
+**Laptop + External Monitor**:
+- Work on laptop → Connect to desk monitor → Wallpaper auto-extends ✓
+- Leave desk → Disconnect → Laptop continues with wallpaper ✓
+
+**Meeting Room Presentation**:
+- Office desk (1 monitor) → Meeting room projector → Auto-extends ✓
+- Return to desk → Disconnect → Back to single monitor ✓
+
+**Multi-Monitor Gaming Setup**:
+- Start with 2 monitors → Add 3rd monitor for streaming → Auto-setup ✓
+- Remove streaming monitor → Cleanup automatic ✓
+
+---
+
+## 🗂️ Storage Isolation (v1.2.0+)
+
+### Why Storage Isolation?
+
+When multiple applications use AnyWP Engine, they need isolated storage to avoid data conflicts and ensure clean uninstallation.
+
+**Storage Path**: `%LOCALAPPDATA%\AnyWPEngine\[AppName]\state.json`
+
+### Setup Application Identifier
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // ⚠️ Important: Set before initializing wallpaper
+  await AnyWPEngine.setApplicationName('MyAwesomeApp');
+  
+  runApp(MyApp());
+}
+```
+
+**Storage location**:
+```
+C:\Users\YourName\AppData\Local\AnyWPEngine\MyAwesomeApp\state.json
+```
+
+### Benefits
+
+✅ **Multi-app Isolation** - Each app has its own storage directory  
+✅ **Clean Uninstall** - Just delete the app's directory  
+✅ **Easy Backup** - Simple file-based configuration  
+✅ **Backward Compatible** - Defaults to "Default" if not set
+
+### Uninstall Cleanup
+
+**Manual cleanup**:
+```powershell
+Remove-Item -Recurse "$env:LOCALAPPDATA\AnyWPEngine\MyAwesomeApp"
+```
+
+**Integrate into installer** (Windows Batch):
+```bat
+@echo off
+REM uninstall.bat
+echo Cleaning up application data...
+rmdir /s /q "%LOCALAPPDATA%\AnyWPEngine\MyAwesomeApp"
+echo Done!
+```
+
+**NSIS Installer**:
+```nsis
+Function un.onUninstSuccess
+  MessageBox MB_YESNO "Delete application data?" IDYES DeleteData IDNO Done
+  DeleteData:
+    RMDir /r "$LOCALAPPDATA\AnyWPEngine\MyAwesomeApp"
+  Done:
+FunctionEnd
+```
+
+### Migration from Older Versions
+
+**Old storage** (v1.0): Registry → ❌ Leaves garbage  
+**Old storage** (v1.1): Shared JSON file → ⚠️ Data conflicts  
+**New storage** (v1.2): Isolated directories → ✅ Perfect solution
+
+**No code changes needed** - Backward compatible! If you don't call `setApplicationName()`, it uses "Default" directory.
+
+## 🛠️ Setup
+
+### Prerequisites
+
+- Windows 10/11
+- Flutter 3.0+
+- Visual Studio 2022 Build Tools
+- WebView2 Runtime (included in Windows 11)
+
+### Build
+
+```bash
+# Install WebView2 SDK (first time only)
+.\scripts\setup_webview2.bat
+
+# Build and run
+.\scripts\build_and_run.bat
+```
+
+## 🏗️ Technical Architecture
+
+### Core Implementation
+
+The plugin uses a sophisticated approach to place WebView2 in the correct layer:
+
+1. **Find Progman window** - The desktop's root window
+2. **Create WS_CHILD window** - As a child of Progman
+3. **Set Z-Order** - Position behind SHELLDLL_DefView (icon layer)
+4. **Initialize WebView2** - Embed browser engine
+
+```cpp
+// Simplified core logic
+HWND progman = FindWindowW(L"Progman", nullptr);
+HWND host = CreateWindowExW(
+    WS_EX_NOACTIVATE,
+    L"STATIC", L"WebView2Host",
+    WS_CHILD | WS_VISIBLE,
+    0, 0, width, height,
+    progman, nullptr, nullptr, nullptr
+);
+
+// Position behind desktop icons
+HWND shelldll = FindWindowExW(progman, nullptr, L"SHELLDLL_DefView", nullptr);
+SetWindowPos(host, shelldll, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+```
+
+### Window Hierarchy
+
+```
+Progman (Desktop Window)
+ ├─ SHELLDLL_DefView (Desktop Icons) - Z-Order: Front
+ └─ WebView2 Host (AnyWP Window)     - Z-Order: Back
+     └─ WebView2 Controller
+         └─ Browser Content
+```
+
+## 📖 Documentation
+
+### User Guides
+- [快速开始](docs/QUICK_START.md) - Quick start guide
+- [测试指南](docs/TESTING_GUIDE.md) - Testing guide
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues
+
+### Developer Guides
+- [🎯 Developer API Reference](docs/DEVELOPER_API_REFERENCE.md) - Complete API documentation
+- [📝 API Usage Examples](docs/API_USAGE_EXAMPLES.md) - Practical code examples
+- [🌐 Web Developer Guide](docs/WEB_DEVELOPER_GUIDE_CN.md) - JavaScript SDK guide (中文)
+- [💡 Best Practices](docs/BEST_PRACTICES.md) - Recommended patterns
+
+### 📦 Integration & Packaging
+- [⚡ Quick Integration](QUICK_INTEGRATION.md) - 30-second integration guide
+- [📚 Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md) - Complete packaging guide (中文)
+- [🏗️ Integration Architecture](docs/INTEGRATION_ARCHITECTURE.md) - Architecture & workflows
+- [🎯 Cheat Sheet](docs/CHEAT_SHEET_CN.md) - Quick reference card (中文)
+
+### Technical Guides
+- [Technical Notes](docs/TECHNICAL_NOTES.md) - Implementation details
+- [API Bridge](docs/API_BRIDGE.md) - JavaScript Bridge documentation
+- [Project Structure](docs/PROJECT_STRUCTURE.md) - Project organization
+
+## 🎮 Example App
+
+The example app provides a full-featured control panel:
+
+- URL input with presets
+- Mouse transparency toggle
+- Start/Stop controls
+- Status indicators
+
+## 🔧 Configuration
+
+### Mouse Transparency
+
+**Simple Mode** (default):
+- Clicks pass through to desktop
+- Desktop icons remain fully clickable
+- Wallpaper displays content without blocking interactions
+
+### Window Size
+
+Automatically uses work area (excludes taskbar):
+```cpp
+SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
+```
+
+## 🧪 Testing
+
+测试文件位于 `examples/` 目录：
+- `test_simple.html` - 简单测试页面
+- `test_api.html` - 完整 API 功能测试
+- `test_visibility.html` - 可见性 API 测试
+- `test_react.html` / `test_vue.html` - 框架集成测试
+- `test_iframe_ads.html` - iframe 测试
+
+运行测试：
+```bash
+# 自动测试
+.\scripts\test.bat
+
+# 手动运行
+.\scripts\run.bat
+
+# 调试模式
+.\scripts\debug_run.bat
+```
+
+Tested on:
+- ✅ Windows 11 (Build 22000+)
+- ✅ 5120x2784 resolution
+- ✅ Multiple WorkerW configurations
+- ✅ Various web content types
+- ✅ React, Vue, Angular frameworks
+
+## 📚 Documentation
+
+### For Developers
+- **[Flutter Developer Guide](docs/FOR_FLUTTER_DEVELOPERS.md)** - Getting started
+- **[Developer API Reference](docs/DEVELOPER_API_REFERENCE.md)** - Complete API docs
+- **[Web Developer Guide](docs/WEB_DEVELOPER_GUIDE_CN.md)** - JavaScript SDK usage
+
+### Technical Documentation
+- **[Technical Notes](docs/TECHNICAL_NOTES.md)** - Implementation details
+- **[Testing Guide](docs/TESTING_GUIDE.md)** - How to run tests
+- **[Best Practices](docs/BEST_PRACTICES.md)** - Code quality guidelines
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+
+### Integration Guides
+- **[Precompiled DLL Integration](docs/PRECOMPILED_DLL_INTEGRATION.md)** - Use precompiled package
+- **[Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md)** - All integration methods
+- **[Quick Integration](QUICK_INTEGRATION.md)** - Fast setup guide
+
+## 🤝 Contributing
+
+Contributions welcome! Please read our contributing guidelines.
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) file
+
+## 🙏 Acknowledgments
+
+- Inspired by Wallpaper Engine and Lively Wallpaper
+- Uses Microsoft Edge WebView2
+- Built with Flutter
+
+## 📞 Support
+
+- GitHub Issues: [Report a bug](https://github.com/zhaibin/AnyWallpaper-Engine/issues)
+- Discussions: [Ask questions](https://github.com/zhaibin/AnyWallpaper-Engine/discussions)
+
+## 🗺️ Roadmap
+
+### ✅ Completed (v1.2.0)
+- ✅ Multi-monitor support with independent content
+- ✅ Smart power saving & instant resume (<50ms)
+- ✅ JavaScript SDK with state persistence
+- ✅ **Application-level storage isolation** (v1.2.0)
+- ✅ **File-based state persistence** (Registry → JSON)
+- ✅ Visibility API for animations
+- ✅ Quick test pages UI (8 test shortcuts)
+- ✅ Clean uninstall support (no residual data)
+
+### 🚧 In Progress
+- [ ] Performance profiling and monitoring tools
+- [ ] Advanced memory optimization strategies
+- [ ] Enhanced WebView2 configuration options
+
+### 📋 Planned
+- [ ] Custom transparency levels (0-100%)
+- [ ] Audio visualization support
+- [ ] Video wallpaper effects library
+- [ ] System tray integration
+- [ ] Wallpaper gallery/marketplace
+- [ ] Plugin system for custom effects
+
+---
+
+**Made with ❤️ using Flutter and WebView2**

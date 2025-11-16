@@ -62,3 +62,9 @@ create_commit_msg.bat
 windows/nul
 example/windows/anywp_sdk.js
 
+# Release package directories and ZIP files (keep only release notes and commit templates)
+release/*_precompiled/
+release/*_source/
+release/*_web_sdk/
+release/*.zip
+
