@@ -24,6 +24,7 @@ add_library(${PLUGIN_NAME} SHARED
   "utils/event_bus.cpp"
   "utils/config_manager.cpp"
   "utils/service_locator.cpp"
+  "utils/mime_type_detector.cpp"
   "modules/iframe_detector.cpp"
   "modules/sdk_bridge.cpp"
   "modules/mouse_hook_manager.cpp"
@@ -38,6 +39,7 @@ add_library(${PLUGIN_NAME} SHARED
   "modules/webview_configurator.cpp"
   "modules/event_dispatcher.cpp"
   "modules/memory_optimizer.cpp"
+  "modules/custom_scheme_handler.cpp"
 )
 
 apply_standard_settings(${PLUGIN_NAME})
