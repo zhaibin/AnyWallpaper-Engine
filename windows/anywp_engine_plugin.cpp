@@ -34,7 +34,7 @@
 #pragma comment(lib, "wtsapi32.lib")
 
 namespace {
-constexpr char kPluginVersion[] = "2.0.0";
+constexpr char kPluginVersion[] = "2.1.10";
 }
 
 namespace anywp_engine {
