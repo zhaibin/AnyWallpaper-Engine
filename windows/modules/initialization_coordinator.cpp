@@ -73,6 +73,31 @@ InitializationCoordinator::Initialize(const InitConfig& config) {
   // Step 5: Configure mouse hook
   ConfigureMouseHook(config.enable_mouse_transparent);
   
+  // Step 6: v2.1.10+ Fix - Diagnose window visibility after initialization
+  if (window_manager_) {
+    std::cout << "[AnyWP] [InitCoordinator] Running window visibility diagnosis..." << std::endl;
+    bool is_visible = window_manager_->DiagnoseWindowVisibility(result.host_window, result.worker_w_window);
+    if (!is_visible) {
+      std::cout << "[AnyWP] [InitCoordinator] WARNING: Window visibility diagnosis failed, attempting fixes..." << std::endl;
+      
+      // Attempt to fix visibility issues
+      ShowWindow(result.host_window, SW_SHOW);
+      UpdateWindow(result.host_window);
+      RedrawWindow(result.host_window, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+      
+      // Verify again
+      is_visible = window_manager_->DiagnoseWindowVisibility(result.host_window, result.worker_w_window);
+      if (!is_visible) {
+        std::cout << "[AnyWP] [InitCoordinator] ERROR: Window visibility issues persist after fixes" << std::endl;
+        Logger::Instance().Warning("InitCoordinator", "Window visibility issues detected after initialization");
+      } else {
+        std::cout << "[AnyWP] [InitCoordinator] ✓ Window visibility fixed" << std::endl;
+      }
+    } else {
+      std::cout << "[AnyWP] [InitCoordinator] ✓ Window visibility verified" << std::endl;
+    }
+  }
+  
   // Success
   result.success = true;
   retry_count_ = 0;  // Reset retry counter on success

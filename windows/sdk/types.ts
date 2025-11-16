@@ -168,6 +168,10 @@ export interface AnyWPSDK {
   // Bidirectional communication
   sendToFlutter(type: string, data?: any): boolean;
   onMessage(callback: (message: any) => void): void;
+  
+  // File encryption/decryption (v2.1.10+)
+  encryptFile(sourcePath: string, destPath: string): Promise<boolean>;
+  decryptFile(encryptedPath: string, destPath: string): Promise<boolean>;
 }
 
 /**
@@ -179,6 +183,14 @@ declare global {
     chrome?: {
       webview?: {
         postMessage(message: WebViewMessage): void;
+        hostObjects?: {
+          sync?: {
+            anywp_engine?: {
+              encryptFile(sourcePath: string, destPath: string): Promise<boolean>;
+              decryptFile(encryptedPath: string, destPath: string): Promise<boolean>;
+            };
+          };
+        };
       };
     };
   }

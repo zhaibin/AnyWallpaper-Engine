@@ -159,6 +159,10 @@ private:
   void HandleGetVersion(
       const flutter::EncodableMap* args,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  
+  void HandleGetSDKVersion(
+      const flutter::EncodableMap* args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   // ========================================
   // Message Communication Methods
@@ -174,6 +178,18 @@ private:
   
   // v2.1.1+ Fix: Get pending power state changes (polling-based)
   void HandleGetPendingPowerStateChanges(
+      const flutter::EncodableMap* args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+  // ========================================
+  // v2.1.10+ Custom Scheme Methods
+  // ========================================
+  
+  void HandleEncryptFile(
+      const flutter::EncodableMap* args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  
+  void HandleDecryptFile(
       const flutter::EncodableMap* args,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 

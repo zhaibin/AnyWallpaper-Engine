@@ -154,6 +154,44 @@ class _MyAppState extends State<MyApp> with WindowListener {
           final requestId = messageData['requestId'];
           print('[APP] Received pong response: $requestId');
         }
+        
+        // Handle encryptFile request (v2.1.10+)
+        if (messageType == 'encryptFile') {
+          print('[APP] Processing encryptFile request');
+          final sourcePath = messageData['sourcePath']?.toString() ?? message['sourcePath']?.toString() ?? '';
+          final destPath = messageData['destPath']?.toString() ?? message['destPath']?.toString() ?? '';
+          
+          if (sourcePath.isNotEmpty && destPath.isNotEmpty) {
+            print('[APP] Encrypting: $sourcePath -> $destPath');
+            AnyWPEngine.encryptFile(
+              sourcePath: sourcePath,
+              destPath: destPath,
+            ).then((success) {
+              print('[APP] Encryption ${success ? "succeeded" : "failed"}');
+            });
+          } else {
+            print('[APP] ❌ Invalid encryptFile parameters: sourcePath=$sourcePath, destPath=$destPath');
+          }
+        }
+        
+        // Handle decryptFile request (v2.1.10+)
+        if (messageType == 'decryptFile') {
+          print('[APP] Processing decryptFile request');
+          final encryptedPath = messageData['encryptedPath']?.toString() ?? message['encryptedPath']?.toString() ?? '';
+          final destPath = messageData['destPath']?.toString() ?? message['destPath']?.toString() ?? '';
+          
+          if (encryptedPath.isNotEmpty && destPath.isNotEmpty) {
+            print('[APP] Decrypting: $encryptedPath -> $destPath');
+            AnyWPEngine.decryptFile(
+              encryptedPath: encryptedPath,
+              destPath: destPath,
+            ).then((success) {
+              print('[APP] Decryption ${success ? "succeeded" : "failed"}');
+            });
+          } else {
+            print('[APP] ❌ Invalid decryptFile parameters: encryptedPath=$encryptedPath, destPath=$destPath');
+          }
+        }
       } catch (e, stackTrace) {
         print('[APP] ❌ Error processing message: $e');
         print('[APP] Stack trace: $stackTrace');

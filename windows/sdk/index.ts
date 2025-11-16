@@ -9,6 +9,7 @@ import { ClickHandler } from './modules/click';
 import { Storage } from './modules/storage';
 import { SPA } from './modules/spa';
 import { WebMessage } from './modules/webmessage';
+import { File } from './modules/file';
 import type { 
   AnyWPSDK, 
   ClickCallback, 
@@ -92,6 +93,15 @@ AnyWP._notifyVisibilityChange = function(this: AnyWPSDK, visible: boolean) {
 // Public API: SPA
 AnyWP.setSPAMode = function(this: AnyWPSDK, enabled: boolean) {
   SPA.setSPAMode(this, ClickHandler, enabled);
+};
+
+// Public API: File (v2.1.10+)
+AnyWP.encryptFile = function(this: AnyWPSDK, sourcePath: string, destPath: string): Promise<boolean> {
+  return File.encryptFile.call(this, sourcePath, destPath);
+};
+
+AnyWP.decryptFile = function(this: AnyWPSDK, encryptedPath: string, destPath: string): Promise<boolean> {
+  return File.decryptFile.call(this, encryptedPath, destPath);
 };
 
 // Note: openURL and ready are implemented in core/AnyWP.ts

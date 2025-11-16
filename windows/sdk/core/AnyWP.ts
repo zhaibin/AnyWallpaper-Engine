@@ -9,7 +9,7 @@ import type {
 
 export const AnyWP: AnyWPSDK = {
   // Properties
-  version: '2.1.1',
+  version: '2.1.10',
   dpiScale: window.devicePixelRatio || 1,
   screenWidth: screen.width * (window.devicePixelRatio || 1),
   screenHeight: screen.height * (window.devicePixelRatio || 1),
@@ -146,6 +146,15 @@ export const AnyWP: AnyWPSDK = {
   onMessage(callback: (message: any) => void): void {
     console.log('[AnyWP] Registering Flutter message handler');
     this._onFlutterMessage = callback;
+  },
+  
+  // File encryption/decryption (v2.1.10+)
+  async encryptFile(_sourcePath: string, _destPath: string): Promise<boolean> {
+    throw new Error('encryptFile must be implemented');
+  },
+  
+  async decryptFile(_encryptedPath: string, _destPath: string): Promise<boolean> {
+    throw new Error('decryptFile must be implemented');
   }
 };
 

@@ -1,6 +1,6 @@
 ﻿name: anywp_engine
 description: AnyWP - Flutter plugin for WebView2 desktop wallpaper engine with bidirectional communication
-version: 2.1.9
+version: 2.1.10
 homepage: https://github.com/zhaibin/AnyWallpaper-Engine
 
 environment:

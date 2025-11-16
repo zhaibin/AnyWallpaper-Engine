@@ -8,6 +8,7 @@ import { ClickHandler } from './modules/click';
 import { Storage } from './modules/storage';
 import { SPA } from './modules/spa';
 import { WebMessage } from './modules/webmessage';
+import { File } from './modules/file';
 // Implement initialization
 AnyWP._init = function () {
     initializeAnyWP(this);
@@ -66,6 +67,13 @@ AnyWP._notifyVisibilityChange = function (visible) {
 // Public API: SPA
 AnyWP.setSPAMode = function (enabled) {
     SPA.setSPAMode(this, ClickHandler, enabled);
+};
+// Public API: File (v2.1.10+)
+AnyWP.encryptFile = function (sourcePath, destPath) {
+    return File.encryptFile.call(this, sourcePath, destPath);
+};
+AnyWP.decryptFile = function (encryptedPath, destPath) {
+    return File.decryptFile.call(this, encryptedPath, destPath);
 };
 // Note: openURL and ready are implemented in core/AnyWP.ts
 // Export for build

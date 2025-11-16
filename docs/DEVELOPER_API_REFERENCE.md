@@ -547,6 +547,165 @@ if (!compatible) {
 
 **Returns:** `Future<bool>` - `true` 琛ㄧず鐗堟湰婊¤冻瑕佹眰
 
+### Get Built-in SDK Version (v2.1.10+)
+
+Get the version of the built-in JavaScript SDK (`anywp_sdk.js`) that is embedded in the engine.
+
+```dart
+final sdkVersion = await AnyWPEngine.getSDKVersion();
+print('Built-in Web SDK version: $sdkVersion');  // e.g., "2.1.10"
+```
+
+**Use case**: Display complete version information in your application's UI or logs.
+
+```dart
+final engineVersion = await AnyWPEngine.getPluginVersion();
+final sdkVersion = await AnyWPEngine.getSDKVersion();
+
+print('AnyWP Engine: $engineVersion');
+print('Web SDK: $sdkVersion');
+
+// Verify versions match (they should always match in official releases)
+if (engineVersion != sdkVersion) {
+  print('⚠️ Warning: Version mismatch detected!');
+}
+```
+
+**Returns:** `Future<String>` - SDK版本号（例如 `2.1.10`）
+
+**Notes**:
+- The SDK version should always match the plugin version in official releases
+- This helps diagnose compatibility issues between your Web wallpaper and the engine
+- Useful for support requests - users can provide both version numbers
+
+---
+
+## Custom Scheme Support (v2.1.10+)
+
+AnyWP Engine supports a custom URL scheme (`anywp://file?path=`) for zero-copy content delivery with built-in decryption. This allows you to:
+
+- Protect your wallpaper assets (images/videos) with simple XOR encryption
+- Load encrypted content directly in HTML without manual decryption
+- Define your own cache/storage paths (no fixed engine-managed cache)
+
+### Encrypt File
+
+Encrypt a file using XOR obfuscation (first 64 bytes with key `0x5A`).
+
+```dart
+bool success = await AnyWPEngine.encryptFile(
+  sourcePath: 'C:/my_wallpaper/image.jpg',
+  destPath: 'C:/my_cache/image.encrypted',
+);
+
+if (success) {
+  print('✅ File encrypted successfully');
+} else {
+  print('❌ Encryption failed');
+}
+```
+
+**Parameters:**
+- `sourcePath` *(required)*: Path to the source file (unencrypted)
+- `destPath` *(required)*: Path where the encrypted file will be saved
+
+**Returns:** `Future<bool>` - `true` if encryption succeeds, `false` otherwise
+
+### Decrypt File
+
+Decrypt a file (reverse of `encryptFile`). **Note**: This is optional - the `anywp://` protocol handles decryption automatically.
+
+```dart
+bool success = await AnyWPEngine.decryptFile(
+  encryptedPath: 'C:/my_cache/image.encrypted',
+  destPath: 'C:/output/image.jpg',
+);
+
+if (success) {
+  print('✅ File decrypted successfully');
+} else {
+  print('❌ Decryption failed');
+}
+```
+
+**Parameters:**
+- `encryptedPath` *(required)*: Path to the encrypted file
+- `destPath` *(required)*: Path where the decrypted file will be saved
+
+**Returns:** `Future<bool>` - `true` if decryption succeeds, `false` otherwise
+
+### Using Custom Scheme in HTML
+
+After encrypting files, use the `anywp://file?path=` scheme in your HTML wallpaper:
+
+```html
+<!-- Direct usage -->
+<img src="anywp://file?path=C:/my_cache/image.encrypted" alt="Wallpaper" />
+<video src="anywp://file?path=C:/my_cache/video.encrypted" controls></video>
+
+<!-- Dynamic usage -->
+<script>
+  const imagePath = 'C:/my_cache/image.encrypted';
+  const imageUrl = `anywp://file?path=${imagePath}`;
+  
+  const img = document.createElement('img');
+  img.src = imageUrl;
+  document.body.appendChild(img);
+</script>
+```
+
+**Key Points:**
+- ✅ Zero-copy: Content is decrypted on-the-fly during HTTP request
+- ✅ Developer-controlled: You define where to store encrypted files
+- ✅ Automatic MIME detection: Engine detects file type from header/extension
+- ✅ Error handling: Returns HTTP 404/403/500 for invalid/missing files
+- ⚠️ Security: Path must be absolute, no `..` traversal allowed
+
+**Complete Workflow Example:**
+
+```dart
+import 'dart:io';
+import 'package:anywp_engine/anywp_engine.dart';
+
+class WallpaperAssetManager {
+  final String cacheDir = 'C:/MyApp/wallpaper_cache';
+  
+  Future<void> setupWallpaperAssets() async {
+    // 1. Create cache directory
+    await Directory(cacheDir).create(recursive: true);
+    
+    // 2. Encrypt assets
+    final assets = [
+      {'source': 'assets/bg1.jpg', 'encrypted': '$cacheDir/bg1.encrypted'},
+      {'source': 'assets/bg2.jpg', 'encrypted': '$cacheDir/bg2.encrypted'},
+      {'source': 'assets/video.mp4', 'encrypted': '$cacheDir/video.encrypted'},
+    ];
+    
+    for (var asset in assets) {
+      final success = await AnyWPEngine.encryptFile(
+        sourcePath: asset['source']!,
+        destPath: asset['encrypted']!,
+      );
+      
+      if (success) {
+        print('✅ Encrypted: ${asset['source']}');
+      } else {
+        print('❌ Failed to encrypt: ${asset['source']}');
+      }
+    }
+    
+    // 3. Launch wallpaper (HTML will use anywp://file?path=... URLs)
+    await AnyWPEngine.initializeWallpaper(
+      url: 'file:///C:/MyApp/wallpaper.html',
+    );
+  }
+}
+```
+
+**Web SDK Integration:**
+
+The JavaScript SDK (`window.AnyWP`) also provides encryption/decryption methods that communicate with Flutter via message passing. See [Web Developer Guide](WEB_DEVELOPER_GUIDE_CN.md#custom-scheme-support) for details.
+
 ---
 
 ## Callbacks

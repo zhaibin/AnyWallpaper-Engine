@@ -64,12 +64,17 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
     }
   }
 
-  // Send 0x052C message to Progman to create WorkerW windows
-  SendMessageTimeoutW(info_.progman, 0x052C, 0, 0, SMTO_NORMAL, 1000, nullptr);
-  Logger::Instance().Info("DesktopWallpaperHelper", "Sent 0x052C to Progman");
+  // v2.1.10+ Enhanced: Send 0x052C message multiple times for Windows 11
+  // Windows 11 may require multiple messages to properly create the second WorkerW
+  for (int i = 0; i < 2; i++) {
+    SendMessageTimeoutW(info_.progman, 0x052C, 0, 0, SMTO_NORMAL, 1000, nullptr);
+    if (i == 0) {
+      Logger::Instance().Info("DesktopWallpaperHelper", "Sent 0x052C to Progman (attempt " + std::to_string(i + 1) + ")");
+    }
+  }
   
-  // Wait a bit for Windows to process
-  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+  // Wait longer for Windows 11 to process (increased from 150ms)
+  std::this_thread::sleep_for(std::chrono::milliseconds(250));
   
   return true;
 }
@@ -187,20 +192,48 @@ bool DesktopWallpaperHelper::FindWorkerW(int timeout_ms) {
     return false;
   }
 
-  // Step 2: Trigger WorkerW creation
-  if (!TriggerWorkerWCreation()) {
-    return false;
+  // Step 2: Trigger WorkerW creation (v2.1.10+ Enhanced for Windows 11)
+  // Windows 11 may require multiple triggers to create the second WorkerW
+  for (int trigger_attempt = 0; trigger_attempt < 3; trigger_attempt++) {
+    if (!TriggerWorkerWCreation()) {
+      return false;
+    }
+    // Wait longer for Windows 11 to process
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
   }
 
   // Step 3: Enumerate WorkerW windows with retry
   auto start_time = std::chrono::steady_clock::now();
   int retry_count = 0;
   
-  while (retry_count < 10) {  // Max 10 retries
+  while (retry_count < 15) {  // v2.1.10+ Increased retries for Windows 11 (was 10)
     if (EnumerateWorkerW()) {
-      Logger::Instance().Info("DesktopWallpaperHelper", 
-        "WorkerW found successfully on attempt " + std::to_string(retry_count + 1));
-      return true;
+      // v2.1.10+ Fix: Priority - Check if we found a proper WorkerW (not Progman)
+      if (info_.wallpaper_layer && info_.wallpaper_layer != info_.progman) {
+        Logger::Instance().Info("DesktopWallpaperHelper",
+          "WorkerW found successfully on attempt " + std::to_string(retry_count + 1) + " (ideal case)");
+        return true;
+      }
+      // v2.1.10+ Fix: Check if any WorkerW exists at all (even if we use Progman as parent)
+      else if (info_.workerw_count > 0 && info_.wallpaper_layer == info_.progman) {
+        // v2.1.10+ Lively Integration: If WorkerW exists but we use Progman,
+        // this might be because Lively has already set up the correct structure
+        Logger::Instance().Info("DesktopWallpaperHelper",
+          "WorkerW exists but using Progman parent (possible Lively integration) on attempt " + std::to_string(retry_count + 1));
+        Logger::Instance().Info("DesktopWallpaperHelper",
+          "Found " + std::to_string(info_.workerw_count) + " WorkerW windows, but SHELLDLL_DefView in Progman");
+        return true;
+      }
+      else if (info_.wallpaper_layer == info_.progman) {
+        // v2.1.10+ Windows 11 Fix: When SHELLDLL_DefView is in Progman, this is NORMAL
+        // In Windows 11, SHELLDLL_DefView is often inside Progman, not WorkerW
+        // Using Progman as parent is the correct approach for Windows 11
+        Logger::Instance().Info("DesktopWallpaperHelper",
+          "Windows 11 detected: SHELLDLL_DefView in Progman, using Progman as wallpaper parent (this is normal)");
+        Logger::Instance().Info("DesktopWallpaperHelper",
+          "WorkerW search completed on attempt " + std::to_string(retry_count + 1) + " (Progman mode)");
+        return true;
+      }
     }
     
     // Check timeout
@@ -213,8 +246,8 @@ bool DesktopWallpaperHelper::FindWorkerW(int timeout_ms) {
       break;
     }
     
-    // Wait before retry
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // Wait before retry (longer wait for Windows 11)
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
     retry_count++;
     
     // Re-trigger on retry

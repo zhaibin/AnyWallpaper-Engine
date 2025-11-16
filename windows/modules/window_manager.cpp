@@ -105,6 +105,42 @@ HWND WindowManager::CreateWebViewHostWindow(
   // Track window for cleanup
   ResourceTracker::Instance().TrackWindow(hwnd);
   
+  // v2.1.10+ Fix: Verify window visibility immediately after creation
+  std::cout << "[WindowManager] Verifying window visibility..." << std::endl;
+  BOOL is_visible = IsWindowVisible(hwnd);
+  BOOL is_window = IsWindow(hwnd);
+  HWND actual_parent = GetParent(hwnd);
+  
+  std::cout << "[WindowManager] Window validation:" << std::endl;
+  std::cout << "[WindowManager]   - IsWindow: " << (is_window ? "YES" : "NO") << std::endl;
+  std::cout << "[WindowManager]   - IsWindowVisible: " << (is_visible ? "YES" : "NO") << std::endl;
+  std::cout << "[WindowManager]   - Parent window: " << actual_parent << " (expected: " << parent_window << ")" << std::endl;
+  
+  // If window is not visible, force show it
+  if (!is_visible) {
+    std::cout << "[WindowManager] WARNING: Window is not visible, forcing ShowWindow..." << std::endl;
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+    RedrawWindow(hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+    
+    // Verify again
+    is_visible = IsWindowVisible(hwnd);
+    std::cout << "[WindowManager] After ShowWindow, IsWindowVisible: " << (is_visible ? "YES" : "NO") << std::endl;
+  }
+  
+  // Verify parent window is valid and visible
+  if (actual_parent && actual_parent != parent_window) {
+    std::cout << "[WindowManager] WARNING: Parent window mismatch!" << std::endl;
+  }
+  
+  if (actual_parent && IsWindow(actual_parent)) {
+    BOOL parent_visible = IsWindowVisible(actual_parent);
+    std::cout << "[WindowManager] Parent window visible: " << (parent_visible ? "YES" : "NO") << std::endl;
+    if (!parent_visible) {
+      std::cout << "[WindowManager] WARNING: Parent window (WorkerW) is not visible!" << std::endl;
+    }
+  }
+  
   return hwnd;
 }
 
@@ -139,18 +175,28 @@ bool WindowManager::SetWallpaperZOrder(HWND hwnd, HWND worker_w) {
     return false;
   }
   
+  // v2.1.10+ Windows 11 Fix: Check if worker_w is actually Progman
+  // In Windows 11, when SHELLDLL_DefView is in Progman, we use Progman as parent
+  HWND progman = FindWindowW(L"Progman", nullptr);
+  bool is_progman_parent = (progman && worker_w == progman);
+  
   // Try to find SHELLDLL_DefView recursively in worker_w
   HWND shelldll = FindSHELLDLL_DefView(worker_w);
   
   // If not found in worker_w, try Progman (common scenario after Windows 10 Fall Creators Update)
   if (!shelldll) {
-    HWND progman = FindWindowW(L"Progman", nullptr);
     if (progman) {
       shelldll = FindSHELLDLL_DefView(progman);
       if (shelldll) {
         std::cout << "[WindowManager] SHELLDLL_DefView found in Progman instead of WorkerW" << std::endl;
       }
     }
+  }
+  
+  // v2.1.10+ Windows 11 Fix: When using Progman as parent, ensure window is properly positioned
+  if (is_progman_parent && shelldll) {
+    std::cout << "[WindowManager] Windows 11 mode: Using Progman as parent, SHELLDLL_DefView found" << std::endl;
+    std::cout << "[WindowManager] CRITICAL: Window MUST be below desktop icons (SHELLDLL_DefView)" << std::endl;
   }
   
   if (!shelldll) {
@@ -160,24 +206,188 @@ bool WindowManager::SetWallpaperZOrder(HWND hwnd, HWND worker_w) {
                                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     if (result) {
       std::cout << "[WindowManager] Z-order set using HWND_BOTTOM fallback" << std::endl;
+      // v2.1.10+ Fix: Force window update after Z-order change
+      UpdateWindow(hwnd);
+      RedrawWindow(hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+      
+      // Verify window is still visible after Z-order change
+      BOOL still_visible = IsWindowVisible(hwnd);
+      if (!still_visible) {
+        std::cout << "[WindowManager] WARNING: Window became invisible after Z-order change, forcing show..." << std::endl;
+        ShowWindow(hwnd, SW_SHOW);
+        UpdateWindow(hwnd);
+      }
+      
       return true;
     }
     return false;
   }
   
-  // Set Z-order: WebView behind SHELLDLL_DefView (desktop icons)
-  BOOL result = SetWindowPos(hwnd, shelldll, 0, 0, 0, 0, 
+  // v2.1.10+ CRITICAL: Set Z-order: WebView behind SHELLDLL_DefView (desktop icons)
+  // This ensures desktop icons are always visible on top of the wallpaper
+  std::cout << "[WindowManager] Setting Z-order: Window behind SHELLDLL_DefView (desktop icons)" << std::endl;
+  std::cout << "[WindowManager] SHELLDLL_DefView HWND: " << shelldll << std::endl;
+  
+  // v2.1.10+ Fix: Check if window is a child window
+  LONG style = GetWindowLongW(hwnd, GWL_STYLE);
+  bool is_child = (style & WS_CHILD) != 0;
+  HWND parent = GetParent(hwnd);
+  
+  std::cout << "[WindowManager] Window is child: " << (is_child ? "YES" : "NO") << std::endl;
+  if (is_child) {
+    std::cout << "[WindowManager] Parent window: " << parent << std::endl;
+  }
+  
+  BOOL result = FALSE;
+
+  // v2.1.10+ Fix: For child windows, we need to set Z-order within the parent's child window chain
+  // If both windows are children of the same parent, use SetWindowPos with shelldll
+  // Otherwise, use HWND_BOTTOM to place at bottom of parent's child chain
+  if (is_child && parent) {
+    HWND shelldll_parent = GetParent(shelldll);
+    std::cout << "[WindowManager] SHELLDLL_DefView parent: " << shelldll_parent << std::endl;
+
+    if (shelldll_parent == parent) {
+      // Both are children of the same parent - can use SetWindowPos with shelldll
+      std::cout << "[WindowManager] Both windows are siblings, using SetWindowPos with SHELLDLL_DefView" << std::endl;
+      result = SetWindowPos(hwnd, shelldll, 0, 0, 0, 0,
                               SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+
+      // v2.1.10+ CRITICAL FIX: If SetWindowPos succeeded but window is at bottom,
+      // this indicates the Z-order setting didn't work as expected
+      if (result) {
+        std::cout << "[WindowManager] SetWindowPos succeeded, checking if window is at bottom..." << std::endl;
+
+        // Check if our window is at the bottom of Z-order (indicating failure)
+        HWND window_after = GetWindow(hwnd, GW_HWNDNEXT);
+        if (window_after == nullptr) {
+          std::cout << "[WindowManager] ⚠️  WARNING: Window is at Z-order bottom despite successful SetWindowPos!" << std::endl;
+          std::cout << "[WindowManager] ⚠️  This suggests Z-order setting failed. Trying alternative approach..." << std::endl;
+
+          // Alternative approach: Find SHELLDLL_DefView's position in sibling chain
+          // and place our window right after it
+          std::cout << "[WindowManager] Finding SHELLDLL_DefView position in sibling chain..." << std::endl;
+
+          // Start from the first sibling
+          HWND current = FindWindowExW(parent, nullptr, nullptr, nullptr);
+          HWND shelldll_next = nullptr;
+
+          // Find the window after SHELLDLL_DefView
+          while (current != nullptr) {
+            if (current == shelldll) {
+              shelldll_next = GetWindow(current, GW_HWNDNEXT);
+              break;
+            }
+            current = GetWindow(current, GW_HWNDNEXT);
+          }
+
+          if (shelldll_next != nullptr) {
+            std::cout << "[WindowManager] Found window after SHELLDLL_DefView: " << shelldll_next << std::endl;
+            std::cout << "[WindowManager] Placing our window before this window..." << std::endl;
+            result = SetWindowPos(hwnd, shelldll_next, 0, 0, 0, 0,
+                                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            std::cout << "[WindowManager] Alternative Z-order setting result: " << (result ? "SUCCESS" : "FAILED") << std::endl;
+          } else {
+            std::cout << "[WindowManager] SHELLDLL_DefView is the last window, placing at bottom..." << std::endl;
+            result = SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0,
+                                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+          }
+        }
+      }
+    } else {
+      // Different parents - need to place at bottom of parent's child chain
+      std::cout << "[WindowManager] Windows have different parents, using HWND_BOTTOM in parent's child chain" << std::endl;
+      // First, try to find the first child of parent to place before it
+      HWND first_child = FindWindowExW(parent, nullptr, nullptr, nullptr);
+      if (first_child && first_child != hwnd) {
+        // Place before first child (which should be at bottom of Z-order)
+        result = SetWindowPos(hwnd, first_child, 0, 0, 0, 0,
+                              SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        std::cout << "[WindowManager] Placed before first child: " << first_child << std::endl;
+      } else {
+        // Fallback: Use HWND_BOTTOM
+        result = SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0,
+                              SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+      }
+    }
+  } else {
+    // Not a child window - use standard SetWindowPos
+    result = SetWindowPos(hwnd, shelldll, 0, 0, 0, 0,
+                          SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+  }
   
   if (result) {
-    std::cout << "[WindowManager] Z-order set: Icons on top, WebView below" << std::endl;
+    std::cout << "[WindowManager] ✓ Z-order set successfully: Icons on top, WebView below" << std::endl;
+    
+    // v2.1.10+ Fix: Force window update after Z-order change
+    UpdateWindow(hwnd);
+    RedrawWindow(hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+    
+    // v2.1.10+ CRITICAL: Verify Z-order is correct by checking window position relative to SHELLDLL_DefView
+    // For child windows, check sibling order
+    if (is_child && parent) {
+      HWND current = hwnd;
+      bool found_shelldll_after = false;
+      // Check if SHELLDLL_DefView comes after our window in the sibling chain
+      while ((current = GetWindow(current, GW_HWNDNEXT)) != nullptr) {
+        if (current == shelldll) {
+          found_shelldll_after = true;
+          break;
+        }
+      }
+      if (found_shelldll_after) {
+        std::cout << "[WindowManager] ✓ Z-order verified: Window is correctly behind SHELLDLL_DefView (sibling check)" << std::endl;
+      } else {
+        std::cout << "[WindowManager] ⚠️  Z-order verification: SHELLDLL_DefView not found after window in sibling chain" << std::endl;
+      }
+    } else {
+      // For non-child windows, use standard check
+      HWND window_after = GetWindow(hwnd, GW_HWNDNEXT);
+      if (window_after == shelldll) {
+        std::cout << "[WindowManager] ✓ Z-order verified: Window is correctly behind SHELLDLL_DefView" << std::endl;
+      } else {
+        std::cout << "[WindowManager] ⚠️  Z-order verification: Window after is " << window_after << " (expected: " << shelldll << ")" << std::endl;
+      }
+    }
+    
+    // Verify window is still visible after Z-order change
+    BOOL still_visible = IsWindowVisible(hwnd);
+    if (!still_visible) {
+      std::cout << "[WindowManager] WARNING: Window became invisible after Z-order change, forcing show..." << std::endl;
+      ShowWindow(hwnd, SW_SHOW);
+      UpdateWindow(hwnd);
+      RedrawWindow(hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+    } else {
+      std::cout << "[WindowManager] ✓ Window is visible after Z-order change" << std::endl;
+    }
+    
     return true;
   } else {
     DWORD error = GetLastError();
-    std::cout << "[WindowManager] WARNING: Failed to set Z-order, error: " << error << std::endl;
-    // Try fallback
+    std::cout << "[WindowManager] ERROR: Failed to set Z-order behind SHELLDLL_DefView, error: " << error << std::endl;
+    std::cout << "[WindowManager] Attempting HWND_BOTTOM fallback..." << std::endl;
+    
+    // Try fallback: Place at bottom of Z-order
     result = SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, 
                           SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    
+    if (result) {
+      std::cout << "[WindowManager] Z-order set using HWND_BOTTOM fallback" << std::endl;
+      // Force window update after fallback Z-order change
+      UpdateWindow(hwnd);
+      RedrawWindow(hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+      
+      // Verify visibility
+      BOOL still_visible = IsWindowVisible(hwnd);
+      if (!still_visible) {
+        std::cout << "[WindowManager] WARNING: Window invisible after fallback, forcing show..." << std::endl;
+        ShowWindow(hwnd, SW_SHOW);
+        UpdateWindow(hwnd);
+      }
+    } else {
+      std::cout << "[WindowManager] ERROR: HWND_BOTTOM fallback also failed!" << std::endl;
+    }
+    
     return result != FALSE;
   }
 }
@@ -440,6 +650,102 @@ HWND WindowManager::FindSecondWorkerW() {
   std::cout << "[WindowManager] WARNING: Could not find second WorkerW" << std::endl;
   
   return nullptr;
+}
+
+bool WindowManager::DiagnoseWindowVisibility(HWND hwnd, HWND worker_w) {
+  if (!hwnd || !IsWindow(hwnd)) {
+    std::cout << "[WindowManager] [Diagnosis] Window handle is invalid" << std::endl;
+    return false;
+  }
+  
+  std::cout << "[WindowManager] ========== Window Visibility Diagnosis ==========" << std::endl;
+  std::cout << "[WindowManager] [Diagnosis] Window HWND: " << hwnd << std::endl;
+  
+  // Check 1: Window validity
+  BOOL is_window = IsWindow(hwnd);
+  std::cout << "[WindowManager] [Diagnosis] IsWindow: " << (is_window ? "YES" : "NO") << std::endl;
+  if (!is_window) {
+    std::cout << "[WindowManager] [Diagnosis] ❌ Window handle is invalid!" << std::endl;
+    return false;
+  }
+  
+  // Check 2: Window visibility
+  BOOL is_visible = IsWindowVisible(hwnd);
+  std::cout << "[WindowManager] [Diagnosis] IsWindowVisible: " << (is_visible ? "YES" : "NO") << std::endl;
+  
+  // Check 3: Window styles
+  LONG style = GetWindowLongW(hwnd, GWL_STYLE);
+  bool has_visible_style = (style & WS_VISIBLE) != 0;
+  bool has_child_style = (style & WS_CHILD) != 0;
+  std::cout << "[WindowManager] [Diagnosis] Window styles:" << std::endl;
+  std::cout << "[WindowManager] [Diagnosis]   - WS_VISIBLE: " << (has_visible_style ? "YES" : "NO") << std::endl;
+  std::cout << "[WindowManager] [Diagnosis]   - WS_CHILD: " << (has_child_style ? "YES" : "NO") << std::endl;
+  
+  // Check 4: Extended styles
+  LONG ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE);
+  bool has_transparent = (ex_style & WS_EX_TRANSPARENT) != 0;
+  bool has_noactivate = (ex_style & WS_EX_NOACTIVATE) != 0;
+  std::cout << "[WindowManager] [Diagnosis] Extended styles:" << std::endl;
+  std::cout << "[WindowManager] [Diagnosis]   - WS_EX_TRANSPARENT: " << (has_transparent ? "YES" : "NO") << std::endl;
+  std::cout << "[WindowManager] [Diagnosis]   - WS_EX_NOACTIVATE: " << (has_noactivate ? "YES" : "NO") << std::endl;
+  
+  // Check 5: Window position and size
+  RECT rect;
+  if (GetWindowRect(hwnd, &rect)) {
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+    std::cout << "[WindowManager] [Diagnosis] Window rect: (" << rect.left << "," << rect.top 
+              << ") " << width << "x" << height << std::endl;
+    if (width == 0 || height == 0) {
+      std::cout << "[WindowManager] [Diagnosis] ⚠️  Window has zero size!" << std::endl;
+    }
+  } else {
+    std::cout << "[WindowManager] [Diagnosis] ⚠️  Failed to get window rect" << std::endl;
+  }
+  
+  // Check 6: Parent window
+  HWND parent = GetParent(hwnd);
+  std::cout << "[WindowManager] [Diagnosis] Parent window: " << parent << " (expected: " << worker_w << ")" << std::endl;
+  if (parent != worker_w) {
+    std::cout << "[WindowManager] [Diagnosis] ⚠️  Parent window mismatch!" << std::endl;
+  }
+  
+  if (parent && IsWindow(parent)) {
+    BOOL parent_visible = IsWindowVisible(parent);
+    std::cout << "[WindowManager] [Diagnosis] Parent visible: " << (parent_visible ? "YES" : "NO") << std::endl;
+    if (!parent_visible) {
+      std::cout << "[WindowManager] [Diagnosis] ❌ Parent window is not visible!" << std::endl;
+    }
+  } else {
+    std::cout << "[WindowManager] [Diagnosis] ❌ Parent window is invalid!" << std::endl;
+  }
+  
+  // Check 7: Window Z-order (check if window is behind desktop icons)
+  HWND shelldll = FindSHELLDLL_DefView(worker_w);
+  if (shelldll) {
+    std::cout << "[WindowManager] [Diagnosis] SHELLDLL_DefView found: " << shelldll << std::endl;
+    // Check if our window is actually behind shelldll
+    HWND window_after = GetWindow(hwnd, GW_HWNDNEXT);
+    std::cout << "[WindowManager] [Diagnosis] Window after in Z-order: " << window_after << std::endl;
+  } else {
+    std::cout << "[WindowManager] [Diagnosis] ⚠️  SHELLDLL_DefView not found" << std::endl;
+  }
+  
+  // Summary
+  bool should_be_visible = is_window && is_visible && has_visible_style && 
+                          parent && IsWindow(parent) && IsWindowVisible(parent) &&
+                          (rect.right - rect.left) > 0 && (rect.bottom - rect.top) > 0;
+  
+  std::cout << "[WindowManager] [Diagnosis] ========== Summary ==========" << std::endl;
+  std::cout << "[WindowManager] [Diagnosis] Window should be visible: " << (should_be_visible ? "YES" : "NO") << std::endl;
+  
+  if (!should_be_visible) {
+    std::cout << "[WindowManager] [Diagnosis] ❌ Visibility issues detected!" << std::endl;
+  } else {
+    std::cout << "[WindowManager] [Diagnosis] ✓ Window appears to be properly configured" << std::endl;
+  }
+  
+  return should_be_visible;
 }
 
 }  // namespace anywp_engine

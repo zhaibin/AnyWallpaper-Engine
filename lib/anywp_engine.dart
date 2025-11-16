@@ -818,7 +818,7 @@ class AnyWPEngine {
     }
   }
 
-  /// 获取插件版本号（例如 `1.2.1`）。
+  /// 获取插件版本号（例如 `2.1.10`）。
   ///
   /// 当预编译包版本与项目依赖不一致时，可用于提示或诊断。
   static Future<String> getPluginVersion() async {
@@ -828,6 +828,120 @@ class AnyWPEngine {
     } catch (e) {
       print('Error getting plugin version: $e');
       return '0.0.0';
+    }
+  }
+  
+  /// 获取内置 Web SDK 版本号（例如 `2.1.10`）。
+  ///
+  /// 返回引擎内置集成的 JavaScript SDK (anywp_sdk.js) 的版本号。
+  /// 由于 SDK 是在编译时嵌入的，版本号与插件版本保持一致。
+  ///
+  /// 用途：
+  /// - 诊断 Web 壁纸兼容性问题
+  /// - 在 UI 中显示完整版本信息
+  /// - 文档生成和版本追踪
+  ///
+  /// 示例：
+  /// ```dart
+  /// final engineVersion = await AnyWPEngine.getPluginVersion();
+  /// final sdkVersion = await AnyWPEngine.getSDKVersion();
+  /// print('Engine: $engineVersion, SDK: $sdkVersion');
+  /// ```
+  static Future<String> getSDKVersion() async {
+    try {
+      final result = await _channel.invokeMethod<String>('getSDKVersion');
+      return result ?? '0.0.0';
+    } catch (e) {
+      print('Error getting SDK version: $e');
+      return '0.0.0';
+    }
+  }
+
+  // ============================================================================
+  // Custom Scheme Support - File Encryption/Decryption (v2.1.10+)
+  // ============================================================================
+
+  /// Encrypt a file using XOR obfuscation (first 64 bytes)
+  ///
+  /// This method encrypts a file so it can be accessed via the `anywp://` protocol.
+  /// The encryption is lightweight (XOR with key 0x5A on first 64 bytes) and designed
+  /// for wallpaper content protection, not high-security scenarios.
+  ///
+  /// **Usage:**
+  /// ```dart
+  /// // Encrypt an image file
+  /// bool success = await AnyWPEngine.encryptFile(
+  ///   sourcePath: 'C:/my_wallpapers/image.jpg',
+  ///   destPath: 'C:/my_cache/image.encrypted',
+  /// );
+  /// 
+  /// if (success) {
+  ///   // Use in wallpaper HTML: anywp://file?path=C:/my_cache/image.encrypted
+  /// }
+  /// ```
+  ///
+  /// **Parameters:**
+  /// - `sourcePath`: Path to the source file (unencrypted)
+  /// - `destPath`: Path where the encrypted file will be saved
+  ///
+  /// **Returns:** `true` if encryption succeeds, `false` otherwise
+  ///
+  /// **Note:** 
+  /// - Developers can choose any custom cache path
+  /// - The engine only handles encryption/decryption, not path management
+  /// - Use absolute paths for both source and destination
+  static Future<bool> encryptFile({
+    required String sourcePath,
+    required String destPath,
+  }) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('encryptFile', {
+        'sourcePath': sourcePath,
+        'destPath': destPath,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('Error encrypting file: $e');
+      return false;
+    }
+  }
+
+  /// Decrypt a file (reverse of encryptFile)
+  ///
+  /// This method decrypts a file that was encrypted using `encryptFile`.
+  /// Useful for extracting encrypted wallpaper content back to its original form.
+  ///
+  /// **Usage:**
+  /// ```dart
+  /// // Decrypt an encrypted image
+  /// bool success = await AnyWPEngine.decryptFile(
+  ///   encryptedPath: 'C:/my_cache/image.encrypted',
+  ///   destPath: 'C:/output/image.jpg',
+  /// );
+  /// ```
+  ///
+  /// **Parameters:**
+  /// - `encryptedPath`: Path to the encrypted file
+  /// - `destPath`: Path where the decrypted file will be saved
+  ///
+  /// **Returns:** `true` if decryption succeeds, `false` otherwise
+  ///
+  /// **Note:**
+  /// - XOR encryption is symmetric, so encryption and decryption use the same algorithm
+  /// - This method is optional; the `anywp://` protocol handles decryption automatically
+  static Future<bool> decryptFile({
+    required String encryptedPath,
+    required String destPath,
+  }) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('decryptFile', {
+        'encryptedPath': encryptedPath,
+        'destPath': destPath,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('Error decrypting file: $e');
+      return false;
     }
   }
 

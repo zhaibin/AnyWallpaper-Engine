@@ -34,7 +34,8 @@
 #pragma comment(lib, "wtsapi32.lib")
 
 namespace {
-constexpr char kPluginVersion[] = "2.0.0";
+constexpr char kPluginVersion[] = "2.1.10";
+constexpr char kSDKVersion[] = "2.1.10";  // Built-in Web SDK version
 }
 
 namespace anywp_engine {
@@ -967,12 +968,59 @@ std::string AnyWPEnginePlugin::LoadSDKScript() {
   // Try to load SDK from file
   // Priority 1: SDK file in windows/ directory (development mode)
   // Priority 2: SDK file in data/flutter_assets/ directory (release mode)
+  // Priority 3: SDK file relative to DLL (for precompiled packages)
   
+  // Priority: minified version first (production), then unminified (development)
   std::vector<std::string> sdk_paths = {
-    "windows\\anywp_sdk.js",           // Development: relative to project root
-    "..\\anywp_sdk.js",                // Alternative: relative to executable
-    "data\\flutter_assets\\windows\\anywp_sdk.js",  // Release: in assets
+    "windows\\anywp_sdk.min.js",       // Production: minified version (priority)
+    "windows\\anywp_sdk.js",           // Development: unminified version
+    "..\\anywp_sdk.min.js",            // Alternative: minified relative to executable
+    "..\\anywp_sdk.js",                // Alternative: unminified relative to executable
+    "data\\flutter_assets\\windows\\anywp_sdk.min.js",  // Release: minified in assets
+    "data\\flutter_assets\\windows\\anywp_sdk.js",      // Release: unminified in assets
   };
+  
+  // Try to get DLL directory and search for SDK in precompiled package structure
+  // For precompiled packages: packages/anywp_engine/sdk/anywp_sdk.js
+  // Use a static variable address to get the current module handle
+  static int s_module_marker = 0;
+  
+  char dll_path[MAX_PATH];
+  HMODULE dll_handle = nullptr;
+  if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                         reinterpret_cast<LPCSTR>(&s_module_marker), &dll_handle)) {
+    if (GetModuleFileNameA(dll_handle, dll_path, MAX_PATH)) {
+      std::string dll_dir(dll_path);
+      size_t last_slash = dll_dir.find_last_of("\\/");
+      if (last_slash != std::string::npos) {
+        dll_dir = dll_dir.substr(0, last_slash);
+        
+        // Try precompiled package structure: ../sdk/anywp_sdk.min.js (minified, priority)
+        std::string precompiled_sdk = dll_dir + "\\..\\sdk\\anywp_sdk.min.js";
+        sdk_paths.push_back(precompiled_sdk);
+        
+        // Try precompiled package structure: ../sdk/anywp_sdk.js (unminified fallback)
+        precompiled_sdk = dll_dir + "\\..\\sdk\\anywp_sdk.js";
+        sdk_paths.push_back(precompiled_sdk);
+        
+        // Try alternative: ../../sdk/anywp_sdk.min.js (minified, if DLL is in plugins/anywp_engine/Release)
+        precompiled_sdk = dll_dir + "\\..\\..\\sdk\\anywp_sdk.min.js";
+        sdk_paths.push_back(precompiled_sdk);
+        
+        // Try alternative: ../../sdk/anywp_sdk.js (unminified fallback)
+        precompiled_sdk = dll_dir + "\\..\\..\\sdk\\anywp_sdk.js";
+        sdk_paths.push_back(precompiled_sdk);
+        
+        // Try relative to executable: ../windows/anywp_sdk.min.js (minified)
+        std::string relative_windows = dll_dir + "\\..\\windows\\anywp_sdk.min.js";
+        sdk_paths.push_back(relative_windows);
+        
+        // Try relative to executable: ../windows/anywp_sdk.js (unminified fallback)
+        relative_windows = dll_dir + "\\..\\windows\\anywp_sdk.js";
+        sdk_paths.push_back(relative_windows);
+      }
+    }
+  }
   
   for (const auto& sdk_path : sdk_paths) {
     std::ifstream sdk_file(sdk_path);
@@ -1385,6 +1433,10 @@ std::string AnyWPEnginePlugin::GetPluginVersion() {
   return std::string(kPluginVersion);
 }
 
+std::string AnyWPEnginePlugin::GetSDKVersion() {
+  return std::string(kSDKVersion);
+}
+
 // ========== Interactive Mode Control (v2.0.1+) ==========
 
 bool AnyWPEnginePlugin::SetInteractive(bool interactive) {
@@ -1685,6 +1737,17 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   // Show window
   ShowWindow(webview_host_hwnd_, SW_SHOW);
   UpdateWindow(webview_host_hwnd_);
+  
+  // v2.1.10+ Fix: Verify window visibility after ShowWindow
+  if (window_manager_) {
+    std::cout << "[AnyWP] Verifying window visibility after ShowWindow..." << std::endl;
+    bool is_visible = window_manager_->DiagnoseWindowVisibility(webview_host_hwnd_, worker_w_hwnd_);
+    if (!is_visible) {
+      std::cout << "[AnyWP] WARNING: Window visibility check failed, attempting additional fixes..." << std::endl;
+      // Force redraw
+      RedrawWindow(webview_host_hwnd_, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+    }
+  }
 
   // Initialize WebView2 (pass -1 for legacy single-monitor support)
   // v1.4.1+ Phase A: Use WebViewManager module
@@ -2051,6 +2114,17 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
   // Show window
   ShowWindow(new_instance.webview_host_hwnd, SW_SHOW);
   UpdateWindow(new_instance.webview_host_hwnd);
+
+  // v2.1.10+ Fix: Verify window visibility after ShowWindow (multi-monitor)
+  if (window_manager_) {
+    std::cout << "[AnyWP] Verifying window visibility after ShowWindow (monitor " << monitor_index << ")..." << std::endl;
+    bool is_visible = window_manager_->DiagnoseWindowVisibility(new_instance.webview_host_hwnd, new_instance.worker_w_hwnd);
+    if (!is_visible) {
+      std::cout << "[AnyWP] WARNING: Window visibility check failed for monitor " << monitor_index << ", attempting additional fixes..." << std::endl;
+      // Force redraw
+      RedrawWindow(new_instance.webview_host_hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+    }
+  }
 
   // Initialize WebView2
   // v1.4.1+ Phase A: Use WebViewManager module

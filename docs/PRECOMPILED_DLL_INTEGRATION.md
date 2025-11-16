@@ -806,7 +806,7 @@ verify.bat
 
 ### 首次集成
 
-- [ ] 下载预编译包 (`anywp_engine_v2.1.9_precompiled.zip`)
+- [ ] 下载预编译包 (`anywp_engine_v2.1.10_precompiled.zip`)
 - [ ] 解压到项目的 `packages/anywp_engine` 目录
 - [ ] 在 `pubspec.yaml` 中添加依赖
 - [ ] 运行 `flutter pub get`
@@ -843,7 +843,7 @@ verify.bat
 
 ---
 
-**Version**: 2.1.9  
+**Version**: 2.1.10  
 **Updated**: 2025-11-14  
 **主要变更**:
 - ✅ **移除 flutter 库依赖** - 预编译包 CMakeLists.txt 不再链接 flutter 和 flutter_wrapper_plugin
