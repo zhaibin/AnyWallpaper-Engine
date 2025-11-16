@@ -2,6 +2,7 @@
 #include "../anywp_engine_plugin.h"
 #include "../utils/logger.h"
 #include "../utils/input_validator.h"
+#include "custom_scheme_handler.h"  // v2.1.10+ Custom scheme support
 #include <iostream>
 
 namespace anywp_engine {
@@ -126,6 +127,12 @@ void FlutterBridge::RegisterAllHandlers() {
   // v2.1.1+ Fix: Get pending power state changes (polling-based to avoid thread safety issues)
   RegisterHandler("getPendingPowerStateChanges",
       [this](auto* args, auto result) { HandleGetPendingPowerStateChanges(args, std::move(result)); });
+  
+  // v2.1.10+ Custom scheme: File encryption/decryption
+  RegisterHandler("encryptFile",
+      [this](auto* args, auto result) { HandleEncryptFile(args, std::move(result)); });
+  RegisterHandler("decryptFile",
+      [this](auto* args, auto result) { HandleDecryptFile(args, std::move(result)); });
 
   Logger::Instance().Info("FlutterBridge",
     "Registered " + std::to_string(handlers_.size()) + " method handlers");
@@ -899,6 +906,92 @@ bool FlutterBridge::GetBoolArgument(
     return std::get<bool>(it->second);
   } catch (const std::bad_variant_access&) {
     return default_value;
+  }
+}
+
+// ========================================
+// v2.1.10+ Custom Scheme Handlers
+// ========================================
+
+void FlutterBridge::HandleEncryptFile(
+    const flutter::EncodableMap* args,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  
+  if (!args) {
+    result->Error("INVALID_ARGS", "Arguments must be a map");
+    return;
+  }
+  
+  // Get source path
+  std::string source_path_utf8;
+  if (!GetStringArgument(args, "sourcePath", source_path_utf8, result)) {
+    return;  // Error already sent
+  }
+  
+  // Get dest path
+  std::string dest_path_utf8;
+  if (!GetStringArgument(args, "destPath", dest_path_utf8, result)) {
+    return;  // Error already sent
+  }
+  
+  // Convert UTF-8 to UTF-16
+  std::wstring source_path = std::wstring(source_path_utf8.begin(), source_path_utf8.end());
+  std::wstring dest_path = std::wstring(dest_path_utf8.begin(), dest_path_utf8.end());
+  
+  Logger::Instance().Info("FlutterBridge", 
+    "Encrypting file: " + source_path_utf8 + " -> " + dest_path_utf8);
+  
+  // Call CustomSchemeHandler to encrypt
+  HRESULT hr = CustomSchemeHandler::EncryptFile(source_path, dest_path);
+  
+  if (SUCCEEDED(hr)) {
+    Logger::Instance().Info("FlutterBridge", "File encrypted successfully");
+    result->Success(flutter::EncodableValue(true));
+  } else {
+    std::string error_msg = "Encryption failed. HRESULT: " + std::to_string(hr);
+    Logger::Instance().Error("FlutterBridge", error_msg);
+    result->Error("ENCRYPT_FAILED", error_msg);
+  }
+}
+
+void FlutterBridge::HandleDecryptFile(
+    const flutter::EncodableMap* args,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  
+  if (!args) {
+    result->Error("INVALID_ARGS", "Arguments must be a map");
+    return;
+  }
+  
+  // Get encrypted path
+  std::string encrypted_path_utf8;
+  if (!GetStringArgument(args, "encryptedPath", encrypted_path_utf8, result)) {
+    return;  // Error already sent
+  }
+  
+  // Get dest path
+  std::string dest_path_utf8;
+  if (!GetStringArgument(args, "destPath", dest_path_utf8, result)) {
+    return;  // Error already sent
+  }
+  
+  // Convert UTF-8 to UTF-16
+  std::wstring encrypted_path = std::wstring(encrypted_path_utf8.begin(), encrypted_path_utf8.end());
+  std::wstring dest_path = std::wstring(dest_path_utf8.begin(), dest_path_utf8.end());
+  
+  Logger::Instance().Info("FlutterBridge", 
+    "Decrypting file: " + encrypted_path_utf8 + " -> " + dest_path_utf8);
+  
+  // Call CustomSchemeHandler to decrypt
+  HRESULT hr = CustomSchemeHandler::DecryptFile(encrypted_path, dest_path);
+  
+  if (SUCCEEDED(hr)) {
+    Logger::Instance().Info("FlutterBridge", "File decrypted successfully");
+    result->Success(flutter::EncodableValue(true));
+  } else {
+    std::string error_msg = "Decryption failed. HRESULT: " + std::to_string(hr);
+    Logger::Instance().Error("FlutterBridge", error_msg);
+    result->Error("DECRYPT_FAILED", error_msg);
   }
 }
 

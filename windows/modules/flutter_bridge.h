@@ -178,6 +178,18 @@ private:
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   // ========================================
+  // v2.1.10+ Custom Scheme Methods
+  // ========================================
+  
+  void HandleEncryptFile(
+      const flutter::EncodableMap* args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  
+  void HandleDecryptFile(
+      const flutter::EncodableMap* args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+  // ========================================
   // Helper Methods
   // ========================================
   
