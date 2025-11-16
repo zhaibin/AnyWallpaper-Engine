@@ -3,6 +3,10 @@
 #include "../utils/logger.h"
 #include <shlobj.h>
 #include <sstream>
+#include <wrl/client.h>
+
+using Microsoft::WRL::Callback;
+using Microsoft::WRL::ComPtr;
 
 namespace anywp_engine {
 
@@ -73,13 +77,13 @@ HRESULT CustomSchemeHandler::HandleRequest(
   
   try {
     // 1. 获取请求 URL
-    wil::com_ptr<ICoreWebView2WebResourceRequest> request;
+    ComPtr<ICoreWebView2WebResourceRequest> request;
     args->get_Request(&request);
     
-    wil::unique_cotaskmem_string uri;
-    request->get_Uri(&uri);
-    
-    std::wstring url(uri.get());
+    LPWSTR uri_raw = nullptr;
+    request->get_Uri(&uri_raw);
+    std::wstring url(uri_raw);
+    CoTaskMemFree(uri_raw);
     
     Logger::Instance().Debug("CustomSchemeHandler::HandleRequest - Processing request", {
       {"URL", std::string(url.begin(), url.end())}
@@ -108,8 +112,8 @@ HRESULT CustomSchemeHandler::HandleRequest(
     std::wstring mimeType = MimeTypeDetector::DetectFromFile(encryptedPath);
     
     // 5. 解密文件到内存流
-    wil::com_ptr<IStream> memStream;
-    HRESULT hr = DecryptToStream(encryptedPath, &memStream);
+    ComPtr<IStream> memStream;
+    HRESULT hr = DecryptToStream(encryptedPath, memStream.GetAddressOf());
     
     if (FAILED(hr)) {
       Logger::Instance().Error("Failed to decrypt file", {
@@ -117,12 +121,12 @@ HRESULT CustomSchemeHandler::HandleRequest(
         {"HRESULT", std::to_string(hr)}
       });
       
-      wil::com_ptr<ICoreWebView2Environment> env;
+      ComPtr<ICoreWebView2Environment> env;
       webview->get_Environment(&env);
       
       // 文件不存在返回 404，其他错误返回 500
       int statusCode = (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)) ? 404 : 500;
-      return CreateErrorResponse(env.get(), args, statusCode, 
+      return CreateErrorResponse(env.Get(), args, statusCode, 
         statusCode == 404 ? L"File not found" : L"Decryption failed");
     }
     
@@ -132,12 +136,12 @@ HRESULT CustomSchemeHandler::HandleRequest(
                           L"Access-Control-Allow-Origin: *";
     
     // 7. 创建 WebView2 响应
-    wil::com_ptr<ICoreWebView2Environment> env;
+    ComPtr<ICoreWebView2Environment> env;
     webview->get_Environment(&env);
     
-    wil::com_ptr<ICoreWebView2WebResourceResponse> response;
+    ComPtr<ICoreWebView2WebResourceResponse> response;
     hr = env->CreateWebResourceResponse(
-      memStream.get(),
+      memStream.Get(),
       200,
       L"OK",
       headers.c_str(),
@@ -152,7 +156,7 @@ HRESULT CustomSchemeHandler::HandleRequest(
     }
     
     // 8. 设置响应
-    args->put_Response(response.get());
+    args->put_Response(response.Get());
     
     Logger::Instance().Debug("Successfully handled anywp:// request", {
       {"URL", std::string(url.begin(), url.end())},
@@ -201,8 +205,8 @@ HRESULT CustomSchemeHandler::DecryptToStream(
     }
     
     // 2. 创建内存流
-    wil::com_ptr<IStream> memStream;
-    HRESULT hr = CreateStreamOnHGlobal(NULL, TRUE, &memStream);
+    ComPtr<IStream> memStream;
+    HRESULT hr = CreateStreamOnHGlobal(NULL, TRUE, memStream.GetAddressOf());
     if (FAILED(hr)) {
       CloseHandle(hFile);
       Logger::Instance().Error("Failed to create memory stream", {
@@ -226,7 +230,7 @@ HRESULT CustomSchemeHandler::DecryptToStream(
       
       // 写入流
       ULONG written;
-      hr = memStream->Write(buffer, bytesRead, &written);
+      hr = memStream.Get()->Write(buffer, bytesRead, &written);
       if (FAILED(hr) || written != bytesRead) {
         CloseHandle(hFile);
         Logger::Instance().Error("Failed to write to memory stream", {
@@ -242,7 +246,7 @@ HRESULT CustomSchemeHandler::DecryptToStream(
     
     // 4. 重置流指针到开始位置
     LARGE_INTEGER zero = {};
-    hr = memStream->Seek(zero, STREAM_SEEK_SET, NULL);
+    hr = memStream.Get()->Seek(zero, STREAM_SEEK_SET, NULL);
     if (FAILED(hr)) {
       Logger::Instance().Error("Failed to reset stream position", {
         {"HRESULT", std::to_string(hr)}
@@ -251,7 +255,7 @@ HRESULT CustomSchemeHandler::DecryptToStream(
     }
     
     // 5. 返回流
-    *ppStream = memStream.detach();
+    *ppStream = memStream.Detach();
     return S_OK;
     
   } catch (const std::exception& e) {
@@ -281,7 +285,7 @@ std::wstring CustomSchemeHandler::GetCacheFilePath(
   
   // 构建缓存路径
   std::wstring cachePath = appDataPath;
-  cachePath += L"\\HKCW_Desktop\\cache\\";
+  cachePath += L"\\AnyWP_Cache\\";
   
   // 添加资源类型子目录
   if (resourceType == L"image") {
@@ -311,8 +315,8 @@ HRESULT CustomSchemeHandler::CreateErrorResponse(
   
   try {
     // 创建空流
-    wil::com_ptr<IStream> emptyStream;
-    HRESULT hr = CreateStreamOnHGlobal(NULL, TRUE, &emptyStream);
+    ComPtr<IStream> emptyStream;
+    HRESULT hr = CreateStreamOnHGlobal(NULL, TRUE, emptyStream.GetAddressOf());
     if (FAILED(hr)) {
       return hr;
     }
@@ -321,11 +325,11 @@ HRESULT CustomSchemeHandler::CreateErrorResponse(
     std::string errorMsg = "Error: ";
     errorMsg += std::string(message.begin(), message.end());
     ULONG written;
-    emptyStream->Write(errorMsg.c_str(), static_cast<ULONG>(errorMsg.size()), &written);
+    emptyStream.Get()->Write(errorMsg.c_str(), static_cast<ULONG>(errorMsg.size()), &written);
     
     // 重置流指针
     LARGE_INTEGER zero = {};
-    emptyStream->Seek(zero, STREAM_SEEK_SET, NULL);
+    emptyStream.Get()->Seek(zero, STREAM_SEEK_SET, NULL);
     
     // 确定状态文本
     const wchar_t* reasonPhrase = L"Error";
@@ -338,9 +342,9 @@ HRESULT CustomSchemeHandler::CreateErrorResponse(
     }
     
     // 创建错误响应
-    wil::com_ptr<ICoreWebView2WebResourceResponse> response;
+    ComPtr<ICoreWebView2WebResourceResponse> response;
     hr = env->CreateWebResourceResponse(
-      emptyStream.get(),
+      emptyStream.Get(),
       statusCode,
       reasonPhrase,
       L"Content-Type: text/plain",
@@ -351,7 +355,7 @@ HRESULT CustomSchemeHandler::CreateErrorResponse(
       return hr;
     }
     
-    args->put_Response(response.get());
+    args->put_Response(response.Get());
     return S_OK;
     
   } catch (const std::exception& e) {

@@ -1,8 +1,9 @@
 #pragma once
 #include <string>
 #include <Windows.h>
-#include <wil/com.h>
 #include <WebView2.h>
+#include <wrl.h>
+#include <wrl/client.h>
 
 namespace anywp_engine {
 

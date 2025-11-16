@@ -207,7 +207,7 @@ HRESULT HandleCustomScheme(
 
 // 辅助函数：获取缓存文件路径
 std::wstring GetCacheFilePath(const std::wstring& fileId) {
-  // %AppData%/HKCW_Desktop/cache/images/{fileId}.encrypted
+  // %AppData%/AnyWP_Cache/images/{fileId}.encrypted
   WCHAR appDataPath[MAX_PATH];
   SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appDataPath);
   
@@ -449,7 +449,7 @@ hkcw://video/f6e5d4c3b2a1
 ### 2. 缓存文件路径规范
 
 ```
-%AppData%/HKCW_Desktop/cache/
+%AppData%/AnyWP_Cache/
   ├── images/
   │   ├── a1b2c3d4e5f6.encrypted      (加密的图片)
   │   └── a1b2c3d4e5f6_thumb.encrypted (加密的缩略图)
