@@ -47,7 +47,9 @@ describe('Wallpaper module', () => {
       openURL: jest.fn(),
       ready: jest.fn(),
       sendToFlutter: jest.fn(() => true),
-      onMessage: jest.fn()
+      onMessage: jest.fn(),
+      encryptFile: jest.fn(async () => true),
+      decryptFile: jest.fn(async () => true)
     };
     
     // Mock chrome.webview

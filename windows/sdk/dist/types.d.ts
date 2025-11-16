@@ -142,6 +142,8 @@ export interface AnyWPSDK {
     ready(name: string): void;
     sendToFlutter(type: string, data?: any): boolean;
     onMessage(callback: (message: any) => void): void;
+    encryptFile(sourcePath: string, destPath: string): Promise<boolean>;
+    decryptFile(encryptedPath: string, destPath: string): Promise<boolean>;
 }
 /**
  * Global window extension
@@ -152,6 +154,14 @@ declare global {
         chrome?: {
             webview?: {
                 postMessage(message: WebViewMessage): void;
+                hostObjects?: {
+                    sync?: {
+                        anywp_engine?: {
+                            encryptFile(sourcePath: string, destPath: string): Promise<boolean>;
+                            decryptFile(encryptedPath: string, destPath: string): Promise<boolean>;
+                        };
+                    };
+                };
             };
         };
     }

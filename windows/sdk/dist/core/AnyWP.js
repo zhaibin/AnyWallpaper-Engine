@@ -1,6 +1,6 @@
 export const AnyWP = {
     // Properties
-    version: '2.1.9',
+    version: '2.1.10',
     dpiScale: window.devicePixelRatio || 1,
     screenWidth: screen.width * (window.devicePixelRatio || 1),
     screenHeight: screen.height * (window.devicePixelRatio || 1),
@@ -115,6 +115,13 @@ export const AnyWP = {
     onMessage(callback) {
         console.log('[AnyWP] Registering Flutter message handler');
         this._onFlutterMessage = callback;
+    },
+    // File encryption/decryption (v2.1.10+)
+    async encryptFile(_sourcePath, _destPath) {
+        throw new Error('encryptFile must be implemented');
+    },
+    async decryptFile(_encryptedPath, _destPath) {
+        throw new Error('decryptFile must be implemented');
     }
 };
 //# sourceMappingURL=AnyWP.js.map
