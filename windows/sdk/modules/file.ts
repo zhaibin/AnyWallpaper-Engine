@@ -24,17 +24,19 @@ export namespace File {
     }
     
     try {
-      // Call Flutter MethodChannel via WebView2 postMessage
-      window.chrome.webview.postMessage({
-        type: 'encryptFile',
+      // Use sendToFlutter to call MethodChannel properly
+      const success = this.sendToFlutter('encryptFile', {
         sourcePath: sourcePath,
         destPath: destPath
-      } as any);
+      });
       
-      // Wait for response (simplified - in production use promise-based callback)
-      // For now, return true and let the native side handle it
-      this._log(`[File] Encryption request sent`, true);
-      return true;
+      if (success) {
+        this._log(`[File] Encryption request sent successfully`, true);
+        return true;
+      } else {
+        console.error('[AnyWP] File.encryptFile: sendToFlutter failed');
+        return false;
+      }
     } catch (error) {
       console.error('[AnyWP] File.encryptFile error:', error);
       return false;
@@ -61,17 +63,19 @@ export namespace File {
     }
     
     try {
-      // Call Flutter MethodChannel via WebView2 postMessage
-      window.chrome.webview.postMessage({
-        type: 'decryptFile',
+      // Use sendToFlutter to call MethodChannel properly
+      const success = this.sendToFlutter('decryptFile', {
         encryptedPath: encryptedPath,
         destPath: destPath
-      } as any);
+      });
       
-      // Wait for response (simplified - in production use promise-based callback)
-      // For now, return true and let the native side handle it
-      this._log(`[File] Decryption request sent`, true);
-      return true;
+      if (success) {
+        this._log(`[File] Decryption request sent successfully`, true);
+        return true;
+      } else {
+        console.error('[AnyWP] File.decryptFile: sendToFlutter failed');
+        return false;
+      }
     } catch (error) {
       console.error('[AnyWP] File.decryptFile error:', error);
       return false;
