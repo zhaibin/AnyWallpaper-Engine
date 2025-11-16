@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双向通信测试 - AnyWP Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .panel {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .panel h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            background: #667eea;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: #48bb78;
+        }
+
+        button.secondary:hover {
+            background: #38a169;
+        }
+
+        button.danger {
+            background: #f56565;
+        }
+
+        button.danger:hover {
+            background: #e53e3e;
+        }
+
+        .log-container {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            padding: 8px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            line-height: 1.5;
+        }
+
+        .log-entry.send {
+            background: #e6fffa;
+            border-left: 3px solid #38b2ac;
+        }
+
+        .log-entry.receive {
+            background: #fef5e7;
+            border-left: 3px solid #f6ad55;
+        }
+
+        .log-entry.info {
+            background: #ebf8ff;
+            border-left: 3px solid #4299e1;
+        }
+
+        .log-entry.error {
+            background: #fff5f5;
+            border-left: 3px solid #f56565;
+        }
+
+        .timestamp {
+            color: #718096;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .status.connected {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .status.disconnected {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .counter {
+            display: inline-block;
+            background: #edf2f7;
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin: 5px;
+            font-weight: 600;
+        }
+
+        .counter span {
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 双向通信测试</h1>
+
+        <!-- 状态面板 -->
+        <div class="panel">
+            <h2>📊 连接状态</h2>
+            <div id="status" class="status disconnected">未连接</div>
+            <div>
+                <div class="counter">发送: <span id="sendCount">0</span></div>
+                <div class="counter">接收: <span id="receiveCount">0</span></div>
+            </div>
+        </div>
+
+        <!-- 发送消息面板 -->
+        <div class="panel">
+            <h2>📤 发送消息到 Flutter</h2>
+            <div class="button-group">
+                <button id="btnTest">发送测试消息</button>
+                <button id="btnCarousel" class="secondary">发送轮播状态</button>
+                <button id="btnHeartbeat" class="secondary">发送心跳</button>
+                <button id="btnError" class="danger">发送错误</button>
+            </div>
+            <input type="text" id="customMessage" placeholder="自定义消息 (JSON格式)">
+            <button id="btnCustom">发送自定义消息</button>
+        </div>
+
+        <!-- 接收消息面板 -->
+        <div class="panel">
+            <h2>📥 接收 Flutter 消息</h2>
+            <div class="button-group">
+                <button id="btnClear">清空日志</button>
+                <button id="btnAutoScroll" class="secondary">
+                    <span id="autoScrollText">自动滚动: 开</span>
+                </button>
+            </div>
+            <div id="logContainer" class="log-container"></div>
+        </div>
+    </div>
+
+    <script src="../windows/anywp_sdk.js"></script>
+    <script>
+        let sendCount = 0;
+        let receiveCount = 0;
+        let autoScroll = true;
+        let messageId = 1;
+
+        // 等待 SDK 加载
+        function waitForSDK() {
+            if (typeof window.AnyWP === 'undefined') {
+                console.log('[Test] Waiting for SDK...');
+                setTimeout(waitForSDK, 100);
+                return;
+            }
+            
+            initializePage();
+        }
+
+        // 初始化页面
+        function initializePage() {
+            addLog('info', 'SDK 初始化完成，版本: ' + window.AnyWP.version);
+            
+            // 启用调试模式
+            window.AnyWP.enableDebug();
+            addLog('info', '调试模式已启用');
+            
+            // 检查 WebView2 连接
+            if (window.chrome && window.chrome.webview) {
+                document.getElementById('status').className = 'status connected';
+                document.getElementById('status').textContent = '已连接';
+                addLog('info', 'WebView2 桥接已就绪');
+            } else {
+                addLog('error', 'WebView2 不可用，请在 AnyWP Engine 中运行');
+            }
+
+            // 设置消息接收回调
+            window.AnyWP.onMessage((message) => {
+                receiveCount++;
+                updateCounter('receiveCount', receiveCount);
+                
+                addLog('receive', '接收到 Flutter 消息', {
+                    type: message.type,
+                    data: message.data,
+                    timestamp: new Date(message.timestamp).toLocaleTimeString()
+                });
+
+                // 自动回复
+                if (message.type === 'ping') {
+                    setTimeout(() => {
+                        sendPong(message.data.requestId);
+                    }, 100);
+                }
+            });
+
+            addLog('info', '消息接收回调已设置');
+
+            // 发送就绪消息
+            window.AnyWP.ready('Bidirectional Test Page');
+            
+            // 延迟注册点击事件（确保 DOM 完全就绪）
+            setTimeout(registerClickHandlers, 1000);
+        }
+        
+        // 注册所有点击处理器
+        function registerClickHandlers() {
+            addLog('info', '开始注册点击处理器...');
+            
+            // 注册所有按钮
+            const buttons = [
+                { id: 'btnTest', handler: sendTestMessage, name: '测试消息' },
+                { id: 'btnCarousel', handler: sendCarouselState, name: '轮播状态' },
+                { id: 'btnHeartbeat', handler: sendHeartbeat, name: '心跳' },
+                { id: 'btnError', handler: sendError, name: '错误' },
+                { id: 'btnCustom', handler: sendCustomMessage, name: '自定义消息' },
+                { id: 'btnClear', handler: clearLog, name: '清空日志' },
+                { id: 'btnAutoScroll', handler: toggleAutoScroll, name: '自动滚动' }
+            ];
+            
+            buttons.forEach(btn => {
+                try {
+                    const element = document.getElementById(btn.id);
+                    if (element) {
+                        window.AnyWP.onClick('#' + btn.id, function(x, y) {
+                            addLog('info', '按钮被点击: ' + btn.name + ' 坐标: (' + x + ',' + y + ')');
+                            btn.handler();
+                        }, { debug: true });
+                        addLog('info', '✅ 已注册: ' + btn.name);
+                    }
+                } catch (e) {
+                    addLog('error', '注册失败 ' + btn.name + ': ' + e.message);
+                }
+            });
+            
+            // 更新处理器计数
+            const handlerCount = window.AnyWP._clickHandlers ? window.AnyWP._clickHandlers.length : 0;
+            addLog('info', '✅ 点击处理器注册完成，共 ' + handlerCount + ' 个');
+        }
+
+        // 页面加载时初始化
+        window.addEventListener('load', waitForSDK);
+
+        function sendTestMessage() {
+            const success = window.AnyWP.sendToFlutter('testMessage', {
+                message: 'Hello from JavaScript!',
+                timestamp: Date.now(),
+                testId: messageId++
+            });
+
+            if (success) {
+                sendCount++;
+                updateCounter('sendCount', sendCount);
+                addLog('send', '发送测试消息成功');
+            } else {
+                addLog('error', '发送消息失败');
+            }
+        }
+
+        function sendCarouselState() {
+            const success = window.AnyWP.sendToFlutter('carouselStateChanged', {
+                currentIndex: Math.floor(Math.random() * 10),
+                totalImages: 10,
+                isPlaying: true,
+                currentImageUrl: 'https://example.com/image.jpg'
+            });
+
+            if (success) {
+                sendCount++;
+                updateCounter('sendCount', sendCount);
+                addLog('send', '发送轮播状态成功');
+            }
+        }
+
+        function sendHeartbeat() {
+            const success = window.AnyWP.sendToFlutter('heartbeat', {
+                seq: sendCount + 1,
+                clientTime: Date.now()
+            });
+
+            if (success) {
+                sendCount++;
+                updateCounter('sendCount', sendCount);
+                addLog('send', '发送心跳成功');
+            }
+        }
+
+        function sendError() {
+            const success = window.AnyWP.sendToFlutter('error', {
+                code: 'TEST_ERROR',
+                message: '这是一个测试错误',
+                details: {
+                    source: 'JavaScript',
+                    testMode: true
+                }
+            });
+
+            if (success) {
+                sendCount++;
+                updateCounter('sendCount', sendCount);
+                addLog('send', '发送错误消息成功');
+            }
+        }
+
+        function sendPong(requestId) {
+            const success = window.AnyWP.sendToFlutter('pong', {
+                requestId: requestId,
+                clientTime: Date.now()
+            });
+
+            if (success) {
+                sendCount++;
+                updateCounter('sendCount', sendCount);
+                addLog('send', '自动回复 pong: ' + requestId);
+            }
+        }
+
+        function sendCustomMessage() {
+            const input = document.getElementById('customMessage');
+            const text = input.value.trim();
+            
+            if (!text) {
+                addLog('error', '请输入消息内容');
+                return;
+            }
+
+            try {
+                const message = JSON.parse(text);
+                const success = window.AnyWP.sendToFlutter(
+                    message.type || 'custom',
+                    message.data || {}
+                );
+
+                if (success) {
+                    sendCount++;
+                    updateCounter('sendCount', sendCount);
+                    addLog('send', '发送自定义消息成功', message);
+                    input.value = '';
+                }
+            } catch (e) {
+                addLog('error', '无效的 JSON 格式: ' + e.message);
+            }
+        }
+
+        function addLog(type, message, data) {
+            const logContainer = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            
+            const timestamp = new Date().toLocaleTimeString('zh-CN', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3
+            });
+            
+            let content = `<span class="timestamp">[${timestamp}]</span>${message}`;
+            
+            if (data) {
+                content += '<br><pre style="margin-top: 4px; font-size: 12px;">' + 
+                           JSON.stringify(data, null, 2) + '</pre>';
+            }
+            
+            entry.innerHTML = content;
+            logContainer.appendChild(entry);
+            
+            if (autoScroll) {
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        }
+
+        function updateCounter(id, value) {
+            document.getElementById(id).textContent = value;
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = '';
+            addLog('info', '日志已清空');
+        }
+
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            document.getElementById('autoScrollText').textContent = 
+                '自动滚动: ' + (autoScroll ? '开' : '关');
+        }
+
+        // 监听键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                sendTestMessage();
+            }
+        });
+    </script>
+</body>
+</html>
+

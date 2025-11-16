@@ -450,7 +450,7 @@ class _WallpaperControllerState extends State<WallpaperController> {
 
 2. **下载并解压新版本**：
    - 访问 [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
-   - 下载最新的 `anywp_engine_v2.1.3_precompiled.zip`
+   - 下载最新的 `anywp_engine_v2.1.9_precompiled.zip`
    - 解压到 `packages\anywp_engine`
 
 3. **重新构建**：
@@ -562,13 +562,63 @@ flutter pub get
 flutter build windows
 ```
 
+### Q: 运行时日志提示 "SDK file not found" 或 "没有找到anywp_sdk.js"？
+
+**原因**：C++ 插件在运行时尝试加载 `anywp_sdk.js` 文件，但在常见路径中找不到。
+
+**解决方案**：
+
+1. **v2.1.9+ 自动修复**：
+   - C++ 代码已增强，会自动从多个路径查找 SDK 文件
+   - 包括从 DLL 所在目录查找预编译包中的 SDK
+
+2. **手动复制 SDK 文件（v2.1.9 之前的版本）**：
+   ```bash
+   # 找到构建输出目录（例如：build\windows\x64\runner\Debug 或 Release）
+   # 复制 SDK 文件到以下位置之一：
+   
+   # 方式1：复制到可执行文件目录
+   copy packages\anywp_engine\sdk\anywp_sdk.js build\windows\x64\runner\Debug\
+   
+   # 方式2：复制到 windows 子目录
+   mkdir build\windows\x64\runner\Debug\windows
+   copy packages\anywp_engine\sdk\anywp_sdk.js build\windows\x64\runner\Debug\windows\
+   ```
+
+3. **使用 CMakeLists.txt 自动复制（推荐）**：
+   
+   在你的项目 `windows/CMakeLists.txt` 中添加：
+   ```cmake
+   # 在文件末尾添加（假设你已经引用了预编译包）
+   if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../packages/anywp_engine/sdk/anywp_sdk.js")
+     add_custom_command(TARGET ${BINARY_NAME} POST_BUILD
+       COMMAND ${CMAKE_COMMAND} -E make_directory 
+         "$<TARGET_FILE_DIR:${BINARY_NAME}>/windows"
+       COMMAND ${CMAKE_COMMAND} -E copy_if_different
+         "${CMAKE_CURRENT_SOURCE_DIR}/../packages/anywp_engine/sdk/anywp_sdk.js"
+         "$<TARGET_FILE_DIR:${BINARY_NAME}>/windows/anywp_sdk.js"
+       COMMENT "Copying AnyWP SDK to runtime directory"
+       VERBATIM
+     )
+   endif()
+   ```
+
+4. **验证 SDK 已加载**：
+   
+   查看应用日志，应该看到类似输出：
+   ```
+   [AnyWP] [SDKBridge] SDK loaded from: ... (size: XXXXX bytes)
+   ```
+
+**注意**：v2.1.9+ 版本已增强 SDK 查找逻辑，会自动从 DLL 所在目录的多个相对路径查找，优先使用 minified 版本，大多数情况下无需手动复制。
+
 ### Q: 构建时提示 "WebView2 package not found"？
 
 **原因**：你使用的可能是旧版本的预编译包（v2.1.2 及之前），或者使用了源码包的 CMakeLists.txt。
 
 **解决方案**：
 1. **确保使用最新版本**（v2.1.3+）：
-   - 下载最新的 `anywp_engine_v2.1.3_precompiled.zip`
+   - 下载最新的 `anywp_engine_v2.1.9_precompiled.zip`
    - v2.1.3 已修复此问题，使用预编译专用 CMakeLists.txt
 
 2. **验证 CMakeLists.txt**：
@@ -756,7 +806,7 @@ verify.bat
 
 ### 首次集成
 
-- [ ] 下载预编译包 (`anywp_engine_v2.1.8_precompiled.zip`)
+- [ ] 下载预编译包 (`anywp_engine_v2.1.9_precompiled.zip`)
 - [ ] 解压到项目的 `packages/anywp_engine` 目录
 - [ ] 在 `pubspec.yaml` 中添加依赖
 - [ ] 运行 `flutter pub get`
@@ -793,7 +843,7 @@ verify.bat
 
 ---
 
-**Version**: 2.1.8  
+**Version**: 2.1.9  
 **Updated**: 2025-11-14  
 **主要变更**:
 - ✅ **移除 flutter 库依赖** - 预编译包 CMakeLists.txt 不再链接 flutter 和 flutter_wrapper_plugin
