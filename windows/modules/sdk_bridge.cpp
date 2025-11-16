@@ -5,6 +5,7 @@
 #include <vector>
 #include <codecvt>
 #include <locale>
+#include <windows.h>
 
 namespace anywp_engine {
 
@@ -273,12 +274,59 @@ std::string SDKBridge::LoadSDKScript() {
   // Try to load SDK from file
   // Priority 1: SDK file in windows/ directory (development mode)
   // Priority 2: SDK file in data/flutter_assets/ directory (release mode)
+  // Priority 3: SDK file relative to DLL (for precompiled packages)
   
+  // Priority: minified version first (production), then unminified (development)
   std::vector<std::string> sdk_paths = {
-    "windows\\anywp_sdk.js",           // Development: relative to project root
-    "..\\anywp_sdk.js",                // Alternative: relative to executable
-    "data\\flutter_assets\\windows\\anywp_sdk.js",  // Release: in assets
+    "windows\\anywp_sdk.min.js",       // Production: minified version (priority)
+    "windows\\anywp_sdk.js",           // Development: unminified version
+    "..\\anywp_sdk.min.js",            // Alternative: minified relative to executable
+    "..\\anywp_sdk.js",                // Alternative: unminified relative to executable
+    "data\\flutter_assets\\windows\\anywp_sdk.min.js",  // Release: minified in assets
+    "data\\flutter_assets\\windows\\anywp_sdk.js",      // Release: unminified in assets
   };
+  
+  // Try to get DLL directory and search for SDK in precompiled package structure
+  // For precompiled packages: packages/anywp_engine/sdk/anywp_sdk.js
+  // Use a static variable address to get the current module handle
+  static int s_module_marker = 0;
+  
+  char dll_path[MAX_PATH];
+  HMODULE dll_handle = nullptr;
+  if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                         reinterpret_cast<LPCSTR>(&s_module_marker), &dll_handle)) {
+    if (GetModuleFileNameA(dll_handle, dll_path, MAX_PATH)) {
+      std::string dll_dir(dll_path);
+      size_t last_slash = dll_dir.find_last_of("\\/");
+      if (last_slash != std::string::npos) {
+        dll_dir = dll_dir.substr(0, last_slash);
+        
+        // Try precompiled package structure: ../sdk/anywp_sdk.min.js (minified, priority)
+        std::string precompiled_sdk = dll_dir + "\\..\\sdk\\anywp_sdk.min.js";
+        sdk_paths.push_back(precompiled_sdk);
+        
+        // Try precompiled package structure: ../sdk/anywp_sdk.js (unminified fallback)
+        precompiled_sdk = dll_dir + "\\..\\sdk\\anywp_sdk.js";
+        sdk_paths.push_back(precompiled_sdk);
+        
+        // Try alternative: ../../sdk/anywp_sdk.min.js (minified, if DLL is in plugins/anywp_engine/Release)
+        precompiled_sdk = dll_dir + "\\..\\..\\sdk\\anywp_sdk.min.js";
+        sdk_paths.push_back(precompiled_sdk);
+        
+        // Try alternative: ../../sdk/anywp_sdk.js (unminified fallback)
+        precompiled_sdk = dll_dir + "\\..\\..\\sdk\\anywp_sdk.js";
+        sdk_paths.push_back(precompiled_sdk);
+        
+        // Try relative to executable: ../windows/anywp_sdk.min.js (minified)
+        std::string relative_windows = dll_dir + "\\..\\windows\\anywp_sdk.min.js";
+        sdk_paths.push_back(relative_windows);
+        
+        // Try relative to executable: ../windows/anywp_sdk.js (unminified fallback)
+        relative_windows = dll_dir + "\\..\\windows\\anywp_sdk.js";
+        sdk_paths.push_back(relative_windows);
+      }
+    }
+  }
   
   for (const auto& sdk_path : sdk_paths) {
     std::ifstream sdk_file(sdk_path);

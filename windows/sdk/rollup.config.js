@@ -13,7 +13,7 @@ export default [
       file: '../anywp_sdk.js',
       format: 'iife',
       name: 'AnyWPBundle',
-      banner: '// AnyWP Engine SDK v2.0.0 - JavaScript Bridge\n// Auto-injected into WebView2\n// React/Vue SPA Compatible\n// Built with TypeScript modular architecture (100% TS)\n',
+      banner: '// AnyWP Engine SDK v2.1.9 - JavaScript Bridge\n// Auto-injected into WebView2\n// React/Vue SPA Compatible\n// Built with TypeScript modular architecture (100% TS)\n',
       footer: '// Built from modular source - see windows/sdk/ for source code'
     },
     plugins: [
@@ -38,7 +38,7 @@ export default [
       file: '../anywp_sdk.min.js',
       format: 'iife',
       name: 'AnyWPBundle',
-      banner: '// AnyWP Engine SDK v2.0.0 - Minified (TypeScript)\n',
+      banner: '// AnyWP Engine SDK v2.1.9 - Minified (TypeScript)\n',
       sourcemap: true
     },
     plugins: [

@@ -10,26 +10,42 @@ echo  AnyWP Engine - Release Build
 echo ========================================
 echo.
 
-REM Read version from pubspec.yaml
+REM Setup PowerShell command (must be before reading SDK version)
+set PWSH_CMD=pwsh
+where %PWSH_CMD% >nul 2>nul
+if ERRORLEVEL 1 set PWSH_CMD=powershell
+
+REM Read version from pubspec.yaml (Flutter plugin version)
 for /f "tokens=2" %%a in ('findstr "^version:" "%~dp0..\pubspec.yaml"') do set VERSION=%%a
-echo Version: %VERSION%
+echo Flutter Plugin Version: %VERSION%
+
+REM Read JS SDK version from package.json using PowerShell for reliable JSON parsing
+for /f "delims=" %%a in ('%PWSH_CMD% -NoLogo -NoProfile -Command "(Get-Content '%~dp0..\windows\sdk\package.json' | ConvertFrom-Json).version"') do set SDK_VERSION=%%a
+echo JS SDK Version: %SDK_VERSION%
 echo.
 
 set PROJECT_ROOT=%~dp0..
 set RELEASE_DIR=%PROJECT_ROOT%\release
 set PRECOMPILED_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_precompiled
 set SOURCE_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_source
-set WEB_SDK_DIR=%RELEASE_DIR%\anywp_web_sdk_v%VERSION%
+REM Web SDK package uses JS SDK version (set after reading SDK_VERSION above)
+set WEB_SDK_DIR=%RELEASE_DIR%\anywp_web_sdk_v%SDK_VERSION%
 set TOTAL_STEPS=30
 set STEP=1
-set PWSH_CMD=pwsh
-where %PWSH_CMD% >nul 2>nul
-if ERRORLEVEL 1 set PWSH_CMD=powershell
 
 call :PrintStep "Checking version consistency..."
 %PWSH_CMD% -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%PROJECT_ROOT%\scripts\check_version_consistency.ps1" -Version %VERSION%
 if ERRORLEVEL 1 (
     echo ERROR: Version consistency check failed.
+    if not defined NO_PAUSE pause
+    exit /b 1
+)
+
+REM Step: Build Web SDK in production mode (generates minified version)
+call :PrintStep "Building Web SDK in production mode..."
+call "%PROJECT_ROOT%\scripts\build_sdk.bat" production
+if errorlevel 1 (
+    echo ERROR: SDK build failed
     if not defined NO_PAUSE pause
     exit /b 1
 )
@@ -98,7 +114,20 @@ call :PrintStep "Copying CMakeLists.txt to precompiled package..."
 copy "%PROJECT_ROOT%\windows\CMakeLists.precompiled.txt" "%PRECOMPILED_DIR%\windows\CMakeLists.txt"
 
 call :PrintStep "Copying Web SDK to precompiled package..."
-copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%PRECOMPILED_DIR%\sdk\"
+REM Copy minified version (production, priority) and unminified version (fallback)
+if exist "%PROJECT_ROOT%\windows\anywp_sdk.min.js" (
+    copy "%PROJECT_ROOT%\windows\anywp_sdk.min.js" "%PRECOMPILED_DIR%\sdk\"
+    echo   [OK] Copied minified SDK: anywp_sdk.min.js
+) else (
+    echo   [WARNING] Minified SDK not found, using unminified version
+)
+if exist "%PROJECT_ROOT%\windows\anywp_sdk.js" (
+    copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%PRECOMPILED_DIR%\sdk\"
+    echo   [OK] Copied unminified SDK: anywp_sdk.js
+) else (
+    echo   [ERROR] Unminified SDK not found
+    set VERIFY_ERROR=1
+)
 
 call :PrintStep "Copying example HTML files to precompiled package..."
 xcopy /E /I /Y "%PROJECT_ROOT%\examples\*.html" "%PRECOMPILED_DIR%\examples\"
@@ -180,7 +209,13 @@ call :PrintStep "Copying headers to source package..."
 copy "%PROJECT_ROOT%\windows\include\anywp_engine\any_w_p_engine_plugin.h" "%SOURCE_DIR%\include\anywp_engine\"
 
 call :PrintStep "Copying SDK to source package..."
-copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%SOURCE_DIR%\windows\"
+REM Copy both minified and unminified versions
+if exist "%PROJECT_ROOT%\windows\anywp_sdk.min.js" (
+    copy "%PROJECT_ROOT%\windows\anywp_sdk.min.js" "%SOURCE_DIR%\windows\"
+)
+if exist "%PROJECT_ROOT%\windows\anywp_sdk.js" (
+    copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%SOURCE_DIR%\windows\"
+)
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\sdk" "%SOURCE_DIR%\windows\sdk"
 
 call :PrintStep "Copying CMake and WebView2 packages to source package..."
@@ -210,7 +245,20 @@ mkdir "%WEB_SDK_DIR%\examples"
 mkdir "%WEB_SDK_DIR%\docs"
 
 call :PrintStep "Copying Web SDK files..."
-copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%WEB_SDK_DIR%\sdk\"
+REM Copy both minified and unminified versions to Web SDK package
+REM Note: Web SDK package uses JS SDK version, not Flutter plugin version
+if exist "%PROJECT_ROOT%\windows\anywp_sdk.min.js" (
+    copy "%PROJECT_ROOT%\windows\anywp_sdk.min.js" "%WEB_SDK_DIR%\sdk\"
+    echo   [OK] Copied minified SDK: anywp_sdk.min.js
+) else (
+    echo   [WARNING] Minified SDK not found
+)
+if exist "%PROJECT_ROOT%\windows\anywp_sdk.js" (
+    copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%WEB_SDK_DIR%\sdk\"
+    echo   [OK] Copied unminified SDK: anywp_sdk.js
+) else (
+    echo   [ERROR] Unminified SDK not found
+)
 xcopy /E /I /Y "%PROJECT_ROOT%\examples\*.html" "%WEB_SDK_DIR%\examples\"
 copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE_CN.md" "%WEB_SDK_DIR%\docs\"
 copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE.md" "%WEB_SDK_DIR%\docs\"
@@ -219,7 +267,10 @@ copy "%PROJECT_ROOT%\LICENSE" "%WEB_SDK_DIR%\"
 
 call :PrintStep "Creating Web SDK README..."
 (
-echo # AnyWP Engine - Web SDK v%VERSION%
+echo # AnyWP Engine - Web SDK v%SDK_VERSION%
+echo.
+echo **Flutter Plugin Version**: v%VERSION%
+echo **JS SDK Version**: v%SDK_VERSION%
 echo.
 echo Standalone Web SDK package for wallpaper developers.
 echo.
@@ -249,7 +300,8 @@ echo MIT License - See LICENSE file
 
 call :PrintStep "Creating Web SDK ZIP..."
 cd /d "%WEB_SDK_DIR%"
-%PWSH_CMD% -NoLogo -NoProfile -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_web_sdk_v%VERSION%.zip' -Force"
+REM Use SDK version for Web SDK package ZIP filename
+%PWSH_CMD% -NoLogo -NoProfile -Command "Compress-Archive -Path '*' -DestinationPath '..\anywp_web_sdk_v%SDK_VERSION%.zip' -Force"
 cd /d "%RELEASE_DIR%"
 
 call :PrintStep "Generating GitHub release notes..."

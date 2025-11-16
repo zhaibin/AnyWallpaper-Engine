@@ -58,6 +58,13 @@ public:
   /// @return HWND of second WorkerW, or nullptr if not found
   HWND FindSecondWorkerW();
 
+  /// Diagnose window visibility issues
+  /// Checks window, parent window, Z-order, and styles
+  /// @param hwnd Window to diagnose
+  /// @param worker_w Parent WorkerW window
+  /// @return true if window should be visible
+  bool DiagnoseWindowVisibility(HWND hwnd, HWND worker_w);
+
 private:
   // Window dimension calculation
   bool CalculateWindowDimensions(
