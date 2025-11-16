@@ -115,6 +115,10 @@ void FlutterBridge::RegisterAllHandlers() {
   // Utility
   RegisterHandler("getVersion",
       [this](auto* args, auto result) { HandleGetVersion(args, std::move(result)); });
+  
+  // Web SDK Version (v2.1.10+)
+  RegisterHandler("getSDKVersion",
+      [this](auto* args, auto result) { HandleGetSDKVersion(args, std::move(result)); });
 
   // Message communication
   RegisterHandler("sendMessage",
@@ -618,6 +622,14 @@ void FlutterBridge::HandleGetVersion(
   
   std::string version = plugin_->GetPluginVersion();
   result->Success(flutter::EncodableValue(version));
+}
+
+void FlutterBridge::HandleGetSDKVersion(
+    const flutter::EncodableMap* args,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  
+  std::string sdk_version = plugin_->GetSDKVersion();
+  result->Success(flutter::EncodableValue(sdk_version));
 }
 
 // ========================================

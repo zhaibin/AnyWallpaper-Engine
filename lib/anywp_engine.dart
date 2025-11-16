@@ -818,7 +818,7 @@ class AnyWPEngine {
     }
   }
 
-  /// 获取插件版本号（例如 `1.2.1`）。
+  /// 获取插件版本号（例如 `2.1.10`）。
   ///
   /// 当预编译包版本与项目依赖不一致时，可用于提示或诊断。
   static Future<String> getPluginVersion() async {
@@ -827,6 +827,32 @@ class AnyWPEngine {
       return result ?? '0.0.0';
     } catch (e) {
       print('Error getting plugin version: $e');
+      return '0.0.0';
+    }
+  }
+  
+  /// 获取内置 Web SDK 版本号（例如 `2.1.10`）。
+  ///
+  /// 返回引擎内置集成的 JavaScript SDK (anywp_sdk.js) 的版本号。
+  /// 由于 SDK 是在编译时嵌入的，版本号与插件版本保持一致。
+  ///
+  /// 用途：
+  /// - 诊断 Web 壁纸兼容性问题
+  /// - 在 UI 中显示完整版本信息
+  /// - 文档生成和版本追踪
+  ///
+  /// 示例：
+  /// ```dart
+  /// final engineVersion = await AnyWPEngine.getPluginVersion();
+  /// final sdkVersion = await AnyWPEngine.getSDKVersion();
+  /// print('Engine: $engineVersion, SDK: $sdkVersion');
+  /// ```
+  static Future<String> getSDKVersion() async {
+    try {
+      final result = await _channel.invokeMethod<String>('getSDKVersion');
+      return result ?? '0.0.0';
+    } catch (e) {
+      print('Error getting SDK version: $e');
       return '0.0.0';
     }
   }

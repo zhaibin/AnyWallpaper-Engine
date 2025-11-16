@@ -35,6 +35,7 @@
 
 namespace {
 constexpr char kPluginVersion[] = "2.1.10";
+constexpr char kSDKVersion[] = "2.1.10";  // Built-in Web SDK version
 }
 
 namespace anywp_engine {
@@ -1430,6 +1431,10 @@ std::string AnyWPEnginePlugin::GetStoragePath() {
 
 std::string AnyWPEnginePlugin::GetPluginVersion() {
   return std::string(kPluginVersion);
+}
+
+std::string AnyWPEnginePlugin::GetSDKVersion() {
+  return std::string(kSDKVersion);
 }
 
 // ========== Interactive Mode Control (v2.0.1+) ==========

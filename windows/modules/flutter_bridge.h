@@ -159,6 +159,10 @@ private:
   void HandleGetVersion(
       const flutter::EncodableMap* args,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  
+  void HandleGetSDKVersion(
+      const flutter::EncodableMap* args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   // ========================================
   // Message Communication Methods

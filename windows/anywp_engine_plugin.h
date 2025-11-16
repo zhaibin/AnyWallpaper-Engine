@@ -94,6 +94,9 @@ class AnyWPEnginePlugin : public flutter::Plugin {
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   static std::string GetPluginVersion();
+  
+  // Get built-in Web SDK version (v2.1.10+)
+  static std::string GetSDKVersion();
 
   // Multi-monitor support
   std::vector<MonitorInfo> GetMonitors();
