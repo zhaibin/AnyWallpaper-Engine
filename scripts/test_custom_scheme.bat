@@ -24,30 +24,45 @@ echo.
 REM 2. 编译项目
 echo [2/4] 编译项目...
 cd example
-flutter clean >nul 2>&1
-flutter pub get >nul 2>&1
-flutter build windows --debug >NUL 2>&1
+
+echo    - 清理旧构建...
+call flutter clean >nul 2>&1
+
+echo    - 获取依赖...
+call flutter pub get >nul 2>&1
+
+echo    - 编译 Debug 版本（这可能需要几分钟）...
+call flutter build windows --debug
 
 if %ERRORLEVEL% neq 0 (
     echo    ✗ 编译失败
     echo.
-    echo 详细日志请查看: test_logs\build_custom_scheme.log
     pause
+    cd ..
     exit /b 1
 )
 
 echo    ✓ 编译成功
+cd ..
 echo.
 
 REM 3. 运行应用
 echo [3/4] 启动应用...
-echo    应用将加载 test_custom_scheme.html 测试页面
-echo    请查看页面中的测试结果
+echo    应用将自动加载测试 HTML 页面
+echo    请在应用中手动加载: examples\test_custom_scheme.html
 echo.
 
-start build\windows\x64\runner\Debug\anywallpaper_engine_example.exe
+if not exist "example\build\windows\x64\runner\Debug\anywallpaper_engine_example.exe" (
+    echo    ✗ 可执行文件不存在
+    echo    路径: example\build\windows\x64\runner\Debug\anywallpaper_engine_example.exe
+    pause
+    exit /b 1
+)
+
+start example\build\windows\x64\runner\Debug\anywallpaper_engine_example.exe
 
 echo    ✓ 应用已启动
+timeout /t 3 >nul
 echo.
 
 REM 4. 显示说明
