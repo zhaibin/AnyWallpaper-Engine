@@ -55,16 +55,15 @@ bool WebViewConfigurator::ConfigureWebView(
     }
     
     // ⭐ Setup custom scheme handler (anywp://)
-    Logger::Instance().Info("WebViewConfig", "Registering anywp:// custom protocol");
-    HRESULT hr = CustomSchemeHandler::Initialize(webview.Get());
-    if (FAILED(hr)) {
-      Logger::Instance().Error("WebViewConfig", "Failed to register anywp:// protocol", {
-        {"HRESULT", std::to_string(hr)}
-      });
-      // Non-fatal error, continue configuration
-    } else {
-      Logger::Instance().Info("WebViewConfig", "Successfully registered anywp:// custom protocol");
-    }
+  Logger::Instance().Info("WebViewConfig", "Registering anywp:// custom protocol");
+  HRESULT hr = CustomSchemeHandler::Initialize(webview.Get());
+  if (FAILED(hr)) {
+    Logger::Instance().Error("WebViewConfig", 
+      "Failed to register anywp:// protocol. HRESULT: " + std::to_string(hr));
+    // Non-fatal error, continue configuration
+  } else {
+    Logger::Instance().Info("WebViewConfig", "Successfully registered anywp:// custom protocol");
+  }
     
     Logger::Instance().Info("WebViewConfig", "WebView configuration completed");
     return true;

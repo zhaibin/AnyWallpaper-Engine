@@ -91,9 +91,12 @@ HRESULT CustomSchemeHandler::HandleRequest(
       Logger::Instance().Warn("CustomSchemeHandler", 
         "Invalid anywp:// URL format: " + std::string(url.begin(), url.end()));
       
-      wil::com_ptr<ICoreWebView2Environment> env;
-      webview->get_Environment(&env);
-      return CreateErrorResponse(env.get(), args, 400, L"Invalid URL format");
+      ComPtr<ICoreWebView2Environment> env;
+      ComPtr<ICoreWebView2_2> webview2;
+      if (SUCCEEDED(webview->QueryInterface(IID_PPV_ARGS(&webview2)))) {
+        webview2->get_Environment(&env);
+      }
+      return CreateErrorResponse(env.Get(), args, 400, L"Invalid URL format");
     }
     
     // 3. 构建加密文件路径
@@ -115,7 +118,10 @@ HRESULT CustomSchemeHandler::HandleRequest(
         " HRESULT: " + std::to_string(hr));
       
       ComPtr<ICoreWebView2Environment> env;
-      webview->get_Environment(&env);
+      ComPtr<ICoreWebView2_2> webview2;
+      if (SUCCEEDED(webview->QueryInterface(IID_PPV_ARGS(&webview2)))) {
+        webview2->get_Environment(&env);
+      }
       
       // 文件不存在返回 404，其他错误返回 500
       int statusCode = (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)) ? 404 : 500;
@@ -130,7 +136,12 @@ HRESULT CustomSchemeHandler::HandleRequest(
     
     // 7. 创建 WebView2 响应
     ComPtr<ICoreWebView2Environment> env;
-    webview->get_Environment(&env);
+    ComPtr<ICoreWebView2_2> webview2;
+    if (FAILED(webview->QueryInterface(IID_PPV_ARGS(&webview2)))) {
+      Logger::Instance().Error("CustomSchemeHandler", "Failed to QueryInterface ICoreWebView2_2");
+      return E_FAIL;
+    }
+    webview2->get_Environment(&env);
     
     ComPtr<ICoreWebView2WebResourceResponse> response;
     hr = env->CreateWebResourceResponse(
