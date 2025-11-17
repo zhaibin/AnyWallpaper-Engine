@@ -1,10 +1,12 @@
 #import "MessageBridge.h"
 #import "../Utils/Logger.h"
+#import "WallpaperManager.h"
 
 @interface MessageBridge ()
 
 @property (nonatomic, strong) FlutterMethodChannel *channel;
 @property (nonatomic, strong) NSMutableArray *pendingMessages;
+@property (nonatomic, weak) WallpaperManager *wallpaperManager;  // Weak reference to avoid retain cycle
 
 @end
 
@@ -15,9 +17,15 @@
     if (self) {
         _channel = channel;
         _pendingMessages = [NSMutableArray array];
+        _wallpaperManager = nil;
         [AWPLogger log:@"MessageBridge initialized"];
     }
     return self;
+}
+
+- (void)setWallpaperManager:(WallpaperManager *)manager {
+    self.wallpaperManager = manager;
+    [AWPLogger log:@"WallpaperManager reference set in MessageBridge"];
 }
 
 #pragma mark - WKScriptMessageHandler
@@ -60,15 +68,84 @@
 #pragma mark - Public API
 
 - (BOOL)sendMessage:(NSString *)message toMonitorIndex:(NSInteger)monitorIndex {
-    // This needs to be connected to WallpaperManager to actually send to WebViews
-    // For now, just log
+    if (!self.wallpaperManager) {
+        [AWPLogger error:@"WallpaperManager not set, cannot send message"];
+        return NO;
+    }
+    
     [AWPLogger log:[NSString stringWithFormat:@"Sending message to monitor %ld: %@",
                    (long)monitorIndex, message]];
     
-    // TODO: Get wallpaper instances from WallpaperManager and send message
-    // This will be implemented once we wire up the modules properly
+    if (monitorIndex < 0) {
+        // Send to all monitors
+        [self.wallpaperManager sendMessageToAll:message];
+        return YES;
+    } else {
+        // Send to specific monitor
+        WallpaperInstance *instance = [self.wallpaperManager getInstanceForMonitor:monitorIndex];
+        if (!instance || !instance.webView) {
+            [AWPLogger error:[NSString stringWithFormat:@"No WebView found for monitor %ld",
+                            (long)monitorIndex]];
+            return NO;
+        }
+        
+        return [self sendMessageToWebView:instance.webView message:message];
+    }
+}
+
+- (BOOL)sendMessageToWebView:(WKWebView *)webView message:(NSString *)message {
+    if (!webView) {
+        [AWPLogger error:@"WebView is nil"];
+        return NO;
+    }
+    
+    // Escape the message string for JavaScript
+    NSString *escapedMessage = [self escapeJavaScript:message];
+    
+    // Build JavaScript code to dispatch CustomEvent
+    NSString *script = [NSString stringWithFormat:
+        @"(function() {\n"
+        @"  try {\n"
+        @"    const messageStr = \"%@\";\n"
+        @"    const message = JSON.parse(messageStr);\n"
+        @"    const event = new CustomEvent('AnyWP:message', {\n"
+        @"      detail: message,\n"
+        @"      bubbles: true\n"
+        @"    });\n"
+        @"    window.dispatchEvent(event);\n"
+        @"    console.log('[AnyWP Engine] Message dispatched:', message);\n"
+        @"  } catch(e) {\n"
+        @"    console.error('[AnyWP Engine] Failed to dispatch message:', e);\n"
+        @"    console.error('[AnyWP Engine] Message string:', \"%@\");\n"
+        @"  }\n"
+        @"})();\n",
+        escapedMessage, escapedMessage];
+    
+    // Execute script
+    [webView evaluateJavaScript:script completionHandler:^(id result, NSError *error) {
+        if (error) {
+            [AWPLogger error:[NSString stringWithFormat:@"Failed to execute script: %@",
+                            error.localizedDescription]];
+        } else {
+            [AWPLogger log:@"Message sent to WebView successfully"];
+        }
+    }];
     
     return YES;
+}
+
+- (NSString *)escapeJavaScript:(NSString *)string {
+    if (!string) {
+        return @"";
+    }
+    
+    NSMutableString *escaped = [NSMutableString stringWithString:string];
+    [escaped replaceOccurrencesOfString:@"\\" withString:@"\\\\" options:0 range:NSMakeRange(0, escaped.length)];
+    [escaped replaceOccurrencesOfString:@"\"" withString:@"\\\"" options:0 range:NSMakeRange(0, escaped.length)];
+    [escaped replaceOccurrencesOfString:@"\n" withString:@"\\n" options:0 range:NSMakeRange(0, escaped.length)];
+    [escaped replaceOccurrencesOfString:@"\r" withString:@"\\r" options:0 range:NSMakeRange(0, escaped.length)];
+    [escaped replaceOccurrencesOfString:@"\t" withString:@"\\t" options:0 range:NSMakeRange(0, escaped.length)];
+    return escaped;
 }
 
 - (NSArray *)getPendingMessages {
