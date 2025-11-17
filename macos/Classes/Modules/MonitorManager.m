@@ -25,6 +25,7 @@
     for (NSInteger i = 0; i < screens.count; i++) {
         NSScreen *screen = screens[i];
         NSRect frame = screen.frame;
+        CGFloat scaleFactor = screen.backingScaleFactor;  // Retina scale
         
         // Get device description
         NSDictionary *deviceDescription = screen.deviceDescription;
@@ -33,6 +34,10 @@
                                [deviceDescription objectForKey:@"NSScreenNumber"]] :
                               [NSString stringWithFormat:@"Display_%ld", (long)i];
         
+        // Calculate physical dimensions
+        CGSize physicalSize = screen.frame.size;
+        CGFloat dpi = 72.0 * scaleFactor;  // macOS base DPI is 72
+        
         NSDictionary *monitorInfo = @{
             @"index": @(i),
             @"deviceName": deviceName,
@@ -40,7 +45,11 @@
             @"top": @((int)frame.origin.y),
             @"width": @((int)frame.size.width),
             @"height": @((int)frame.size.height),
-            @"isPrimary": @(screen == mainScreen)
+            @"isPrimary": @(screen == mainScreen),
+            @"scaleFactor": @(scaleFactor),  // 1.0 for standard, 2.0 for Retina
+            @"dpi": @((int)dpi),
+            @"physicalWidth": @((int)(physicalSize.width * scaleFactor)),
+            @"physicalHeight": @((int)(physicalSize.height * scaleFactor))
         };
         
         [monitors addObject:monitorInfo];

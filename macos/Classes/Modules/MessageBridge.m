@@ -24,7 +24,7 @@
 }
 
 - (void)setWallpaperManager:(WallpaperManager *)manager {
-    self.wallpaperManager = manager;
+    _wallpaperManager = manager;  // Use instance variable directly to avoid recursion
     [AWPLogger log:@"WallpaperManager reference set in MessageBridge"];
 }
 
@@ -154,6 +154,24 @@
         [self.pendingMessages removeAllObjects];
         return messages;
     }
+}
+
+- (void)injectSDKIntoConfiguration:(WKWebViewConfiguration *)configuration {
+    // Load SDK script
+    NSString *sdkScript = [self loadSDKScript];
+    if (!sdkScript) {
+        [AWPLogger error:@"Failed to load SDK script"];
+        return;
+    }
+    
+    // Inject at document start
+    WKUserScript *userScript = [[WKUserScript alloc] initWithSource:sdkScript
+                                                      injectionTime:WKUserScriptInjectionTimeAtDocumentStart
+                                                   forMainFrameOnly:NO];
+    
+    [configuration.userContentController addUserScript:userScript];
+    
+    [AWPLogger log:@"AnyWP SDK injected into WebView configuration"];
 }
 
 - (void)injectSDKIntoWebView:(WKWebView *)webView {

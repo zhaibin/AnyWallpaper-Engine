@@ -21,7 +21,7 @@
  * Wallpaper management module
  * Handles wallpaper window creation, WebView management, and lifecycle
  */
-@interface WallpaperManager : NSObject
+@interface WallpaperManager : NSObject <WKNavigationDelegate>
 
 /**
  * Initialize with required dependencies
@@ -73,6 +73,13 @@
  * Get all wallpaper instances
  */
 - (NSArray<WallpaperInstance *> *)getAllInstances;
+
+/**
+ * Set interactive mode for wallpaper
+ * @param monitorIndex Monitor index
+ * @param interactive YES for interactive mode (captures mouse), NO for simple mode (transparent)
+ */
+- (BOOL)setInteractiveMode:(BOOL)interactive forMonitor:(NSInteger)monitorIndex;
 
 /**
  * Pause all wallpapers (hide windows, stop rendering)

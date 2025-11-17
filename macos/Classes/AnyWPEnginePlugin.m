@@ -5,6 +5,7 @@
 #import "Modules/MessageBridge.h"
 #import "Utils/Logger.h"
 #import "Utils/StatePersistence.h"
+#import "Utils/AWPCustomSchemeHandler.h"
 
 @interface AnyWPEnginePlugin ()
 
@@ -41,6 +42,9 @@
         _powerManager = [[PowerManager alloc] init];
         _wallpaperManager = [[WallpaperManager alloc] initWithMonitorManager:_monitorManager
                                                               messageBridge:_messageBridge];
+        
+        // IMPORTANT: Set wallpaper manager reference in message bridge (for bidirectional communication)
+        [_messageBridge setWallpaperManager:_wallpaperManager];
         
         [AWPLogger log:@"AnyWP Engine Plugin initialized"];
     }
@@ -152,6 +156,16 @@
         }
         else if ([method isEqualToString:@"decryptFile"]) {
             [self handleDecryptFile:call result:result];
+        }
+        
+        // ========== Bundle Resources ==========
+        else if ([method isEqualToString:@"getBundleResourcePath"]) {
+            [self handleGetBundleResourcePath:call result:result];
+        }
+        
+        // ========== Interactive Mode ==========
+        else if ([method isEqualToString:@"setInteractiveMode"]) {
+            [self handleSetInteractiveMode:call result:result];
         }
         
         // ========== Unknown Method ==========
@@ -354,22 +368,124 @@
 
 - (void)handleEncryptFile:(FlutterMethodCall*)call result:(FlutterResult)result {
     NSDictionary *args = call.arguments;
-    __unused NSString *sourcePath = args[@"sourcePath"];
-    __unused NSString *destPath = args[@"destPath"];
+    NSString *sourcePath = args[@"sourcePath"];
+    NSString *destPath = args[@"destPath"];
     
-    // TODO: Implement file encryption
-    // For now, return not implemented
-    result(@NO);
+    if (!sourcePath || !destPath) {
+        [AWPLogger error:@"EncryptFile - Missing sourcePath or destPath"];
+        result([FlutterError errorWithCode:@"INVALID_ARGUMENTS"
+                                   message:@"sourcePath and destPath are required"
+                                   details:nil]);
+        return;
+    }
+    
+    NSError *error = nil;
+    BOOL success = [AWPCustomSchemeHandler encryptFile:sourcePath 
+                                         toDestination:destPath 
+                                                 error:&error];
+    
+    if (success) {
+        [AWPLogger log:[NSString stringWithFormat:@"File encrypted successfully: %@ -> %@", 
+                       sourcePath, destPath]];
+        result(@YES);
+    } else {
+        [AWPLogger error:[NSString stringWithFormat:@"File encryption failed: %@", error.localizedDescription]];
+        result([FlutterError errorWithCode:@"ENCRYPTION_FAILED"
+                                   message:error.localizedDescription
+                                   details:nil]);
+    }
 }
 
 - (void)handleDecryptFile:(FlutterMethodCall*)call result:(FlutterResult)result {
     NSDictionary *args = call.arguments;
-    __unused NSString *encryptedPath = args[@"encryptedPath"];
-    __unused NSString *destPath = args[@"destPath"];
+    NSString *encryptedPath = args[@"encryptedPath"];
+    NSString *destPath = args[@"destPath"];
     
-    // TODO: Implement file decryption
-    // For now, return not implemented
-    result(@NO);
+    if (!encryptedPath || !destPath) {
+        [AWPLogger error:@"DecryptFile - Missing encryptedPath or destPath"];
+        result([FlutterError errorWithCode:@"INVALID_ARGUMENTS"
+                                   message:@"encryptedPath and destPath are required"
+                                   details:nil]);
+        return;
+    }
+    
+    NSError *error = nil;
+    BOOL success = [AWPCustomSchemeHandler decryptFile:encryptedPath 
+                                         toDestination:destPath 
+                                                 error:&error];
+    
+    if (success) {
+        [AWPLogger log:[NSString stringWithFormat:@"File decrypted successfully: %@ -> %@", 
+                       encryptedPath, destPath]];
+        result(@YES);
+    } else {
+        [AWPLogger error:[NSString stringWithFormat:@"File decryption failed: %@", error.localizedDescription]];
+        result([FlutterError errorWithCode:@"DECRYPTION_FAILED"
+                                   message:error.localizedDescription
+                                   details:nil]);
+    }
+}
+
+#pragma mark - Bundle Resources
+
+- (void)handleGetBundleResourcePath:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSDictionary *args = call.arguments;
+    NSString *resourceName = args[@"resourceName"];
+    NSString *resourceType = args[@"type"] ?: @"html";
+    
+    if (!resourceName || resourceName.length == 0) {
+        result([FlutterError errorWithCode:@"INVALID_ARGUMENT"
+                                   message:@"Resource name is required"
+                                   details:nil]);
+        return;
+    }
+    
+    // Get the plugin bundle
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    
+    // Find resource path
+    NSString *resourcePath = [bundle pathForResource:resourceName ofType:resourceType];
+    
+    if (resourcePath) {
+        [AWPLogger log:[NSString stringWithFormat:@"Found bundle resource: %@", resourcePath]];
+        result(resourcePath);
+    } else {
+        [AWPLogger warn:[NSString stringWithFormat:@"Bundle resource not found: %@.%@", 
+                        resourceName, resourceType]];
+        result([FlutterError errorWithCode:@"RESOURCE_NOT_FOUND"
+                                   message:[NSString stringWithFormat:@"Resource %@.%@ not found in bundle", 
+                                           resourceName, resourceType]
+                                   details:nil]);
+    }
+}
+
+#pragma mark - Interactive Mode
+
+- (void)handleSetInteractiveMode:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSDictionary *args = call.arguments;
+    NSNumber *monitorIndex = args[@"monitorIndex"];
+    NSNumber *interactive = args[@"interactive"];
+    
+    if (!monitorIndex || !interactive) {
+        result([FlutterError errorWithCode:@"INVALID_ARGUMENT"
+                                   message:@"monitorIndex and interactive are required"
+                                   details:nil]);
+        return;
+    }
+    
+    // Set interactive mode
+    BOOL success = [self.wallpaperManager setInteractiveMode:[interactive boolValue]
+                                                   forMonitor:[monitorIndex intValue]];
+    
+    if (success) {
+        // Notify Web SDK about mode change
+        NSString *message = [NSString stringWithFormat:
+            @"{\"type\":\"interactiveMode\",\"data\":{\"interactive\":%@,\"monitorIndex\":%@}}",
+            interactive, monitorIndex];
+        [self.messageBridge sendMessage:message toMonitorIndex:[monitorIndex intValue]];
+    }
+    
+    result(@(success));
 }
 
 - (void)dealloc {

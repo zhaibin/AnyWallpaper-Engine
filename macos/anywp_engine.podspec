@@ -16,6 +16,7 @@ Supports multi-monitor setups, power management, bidirectional communication, an
 
   s.source           = { :path => '.' }
   s.source_files     = 'Classes/**/*.{h,m}'
+  s.resources        = ['../sdk/anywp_sdk.js', 'Resources/*.html', '../examples/test_carousel_v2_flutter_controlled.html', '../examples/test_carousel.html', '../examples/test_interactive_mode.html', '../examples/test_custom_scheme.html']
   s.dependency 'FlutterMacOS'
 
   s.platform = :osx, '10.14'

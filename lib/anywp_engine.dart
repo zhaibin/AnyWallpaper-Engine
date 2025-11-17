@@ -11,6 +11,10 @@ class MonitorInfo {
   final int width;
   final int height;
   final bool isPrimary;
+  final double? scaleFactor;  // macOS: 1.0 (standard) or 2.0 (Retina)
+  final int? dpi;  // macOS: 72 or 144
+  final int? physicalWidth;  // macOS: actual pixels (width * scaleFactor)
+  final int? physicalHeight;  // macOS: actual pixels (height * scaleFactor)
 
   MonitorInfo({
     required this.index,
@@ -20,6 +24,10 @@ class MonitorInfo {
     required this.width,
     required this.height,
     required this.isPrimary,
+    this.scaleFactor,
+    this.dpi,
+    this.physicalWidth,
+    this.physicalHeight,
   });
 
   factory MonitorInfo.fromMap(Map<dynamic, dynamic> map) {
@@ -33,12 +41,20 @@ class MonitorInfo {
       isPrimary: (map['isPrimary'] is bool) 
           ? map['isPrimary'] as bool 
           : (map['isPrimary'] as int) == 1,  // macOS 可能返回整数 0/1
+      scaleFactor: map['scaleFactor'] != null ? (map['scaleFactor'] as num).toDouble() : null,
+      dpi: map['dpi'] as int?,
+      physicalWidth: map['physicalWidth'] as int?,
+      physicalHeight: map['physicalHeight'] as int?,
     );
   }
 
   @override
   String toString() {
-    return 'MonitorInfo(index: $index, name: $deviceName, ${width}x$height @ ($left, $top)${isPrimary ? ' [PRIMARY]' : ''})';
+    String result = 'MonitorInfo(index: $index, name: $deviceName, ${width}x$height @ ($left, $top)${isPrimary ? ' [PRIMARY]' : ''})';
+    if (scaleFactor != null) {
+      result += ', scale: $scaleFactor, dpi: $dpi';
+    }
+    return result;
   }
 }
 
@@ -1053,5 +1069,116 @@ class AnyWPEngine {
     }
   }
 
-}
+  // ========== Bundle Resources (macOS) ==========
 
+  /// Get bundle resource path (macOS only)
+  /// 
+  /// Returns the absolute path to a resource bundled with the macOS app.
+  /// This is useful for loading local HTML test pages without sandbox restrictions.
+  /// 
+  /// Parameters:
+  /// - [resourceName]: Name of the resource (without extension)
+  /// - [type]: Resource type/extension (default: 'html')
+  /// 
+  /// Returns: Absolute file path to the resource, or null if not found
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Get path to test page
+  /// final testPath = await AnyWPEngine.getBundleResourcePath(
+  ///   resourceName: 'test_simple',
+  ///   type: 'html',
+  /// );
+  /// 
+  /// if (testPath != null) {
+  ///   // Load the bundled test page
+  ///   await AnyWPEngine.initializeWallpaper(url: 'file://$testPath');
+  /// }
+  /// ```
+  /// 
+  /// Available bundled test pages:
+  /// - test_simple.html
+  /// - test_api.html
+  /// - test_bidirectional.html
+  /// - test_basic_click.html
+  static Future<String?> getBundleResourcePath({
+    required String resourceName,
+    String type = 'html',
+  }) async {
+    try {
+      final result = await _channel.invokeMethod<String>('getBundleResourcePath', {
+        'resourceName': resourceName,
+        'type': type,
+      });
+      return result;
+    } catch (e) {
+      print('[AnyWPEngine] Failed to get bundle resource: $e');
+      return null;
+    }
+  }
+
+  // ========== Interactive Mode (Cross-Platform) ==========
+
+  /// Set interactive mode for wallpaper
+  /// 
+  /// Controls whether the wallpaper can capture mouse events or be transparent.
+  /// 
+  /// **Interactive Mode** (interactive = true):
+  /// - Mouse events are captured by the wallpaper
+  /// - Users can click, drag, and interact with wallpaper content
+  /// - Desktop icons may be harder to click (wallpaper is above them)
+  /// 
+  /// **Simple Mode** (interactive = false, default):
+  /// - Mouse events pass through to desktop
+  /// - Wallpaper is display-only
+  /// - Desktop icons remain fully clickable
+  /// 
+  /// Parameters:
+  /// - [monitorIndex]: Index of the monitor to change (0 for primary)
+  /// - [interactive]: true for interactive mode, false for simple mode
+  /// 
+  /// Returns: true if successful, false otherwise
+  /// 
+  /// Platform support:
+  /// - ✅ Windows (full support)
+  /// - ✅ macOS (full support)
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Enable interactive mode for gaming wallpaper
+  /// await AnyWPEngine.setInteractiveMode(
+  ///   monitorIndex: 0,
+  ///   interactive: true,
+  /// );
+  /// 
+  /// // Disable interactive mode for video wallpaper
+  /// await AnyWPEngine.setInteractiveMode(
+  ///   monitorIndex: 0,
+  ///   interactive: false,
+  /// );
+  /// ```
+  /// 
+  /// Web SDK notification:
+  /// When interactive mode changes, the Web SDK will receive a notification:
+  /// ```javascript
+  /// window.addEventListener('AnyWP:interactiveMode', (event) => {
+  ///   console.log('Interactive mode:', event.detail.interactive);
+  /// });
+  /// ```
+  static Future<bool> setInteractiveMode({
+    required int monitorIndex,
+    required bool interactive,
+  }) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('setInteractiveMode', {
+        'monitorIndex': monitorIndex,
+        'interactive': interactive,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('[AnyWPEngine] Failed to set interactive mode: $e');
+      return false;
+    }
+  }
+
+}

@@ -36,9 +36,21 @@
 - (NSArray *)getPendingMessages;
 
 /**
- * Inject AnyWP SDK into WebView
+ * Inject AnyWP SDK into WebView configuration
+ * Should be called during WebView configuration setup
+ */
+- (void)injectSDKIntoConfiguration:(WKWebViewConfiguration *)configuration;
+
+/**
+ * Inject AnyWP SDK into an existing WebView (legacy method)
  */
 - (void)injectSDKIntoWebView:(WKWebView *)webView;
+
+/**
+ * Send message directly to a specific WebView
+ * Internal method, can be called by WallpaperManager
+ */
+- (BOOL)sendMessageToWebView:(WKWebView *)webView message:(NSString *)message;
 
 @end
 

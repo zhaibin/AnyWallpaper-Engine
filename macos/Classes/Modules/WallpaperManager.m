@@ -1,5 +1,6 @@
 #import "WallpaperManager.h"
 #import "../Utils/Logger.h"
+#import "../Utils/AWPCustomSchemeHandler.h"
 
 @implementation WallpaperInstance
 @end
@@ -36,7 +37,15 @@
     
     // Enable JavaScript
     WKPreferences *preferences = [[WKPreferences alloc] init];
-    preferences.javaScriptEnabled = YES;
+    [preferences setValue:@YES forKey:@"javaScriptEnabled"];
+    [preferences setValue:@YES forKey:@"javaScriptCanOpenWindowsAutomatically"];
+    
+    // Enable Web Inspector in debug mode
+    #ifdef DEBUG
+    [preferences setValue:@YES forKey:@"developerExtrasEnabled"];
+    [AWPLogger log:@"Web Inspector enabled (Debug mode)"];
+    #endif
+    
     self.webViewConfig.preferences = preferences;
     
     // Setup user content controller for message handling
@@ -44,8 +53,17 @@
     [userContentController addScriptMessageHandler:self.messageBridge name:@"anywpMessage"];
     self.webViewConfig.userContentController = userContentController;
     
-    // Allow file access
+    // Inject AnyWP SDK at document start
+    [self.messageBridge injectSDKIntoConfiguration:self.webViewConfig];
+    
+    // Allow local file access (important for loading local HTML files)
     [self.webViewConfig.preferences setValue:@YES forKey:@"allowFileAccessFromFileURLs"];
+    [self.webViewConfig setValue:@YES forKey:@"allowUniversalAccessFromFileURLs"];
+    
+    // Register custom URL scheme handler for anywp:// protocol
+    AWPCustomSchemeHandler *schemeHandler = [[AWPCustomSchemeHandler alloc] init];
+    [self.webViewConfig setURLSchemeHandler:schemeHandler forURLScheme:@"anywp"];
+    [AWPLogger log:@"Custom URL scheme handler registered for anywp://"];
     
     [AWPLogger log:@"WebView configuration setup complete"];
 }
@@ -96,17 +114,26 @@
                                                            defer:NO
                                                           screen:screen];
         
-        // Configure window to be wallpaper-like
-        [window setLevel:CGWindowLevelForKey(kCGDesktopWindowLevelKey)];  // Desktop level
+        // Configure window to be wallpaper-like (below desktop icons)
+        // Use a window level that's below the desktop but visible
+        // CGWindowLevelForKey(kCGDesktopIconWindowLevelKey) is the desktop icons level
+        // We need to be below that
+        NSInteger desktopIconLevel = CGWindowLevelForKey(kCGDesktopIconWindowLevelKey);
+        [window setLevel:desktopIconLevel - 1];  // Below desktop icons
+        
         [window setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces |
                                        NSWindowCollectionBehaviorStationary |
                                        NSWindowCollectionBehaviorIgnoresCycle];
         [window setOpaque:YES];
         [window setBackgroundColor:[NSColor blackColor]];
-        [window setIgnoresMouseEvents:YES];  // Mouse transparent by default (Simple Mode)
+        // Start in simple mode (mouse transparent)
+        [window setIgnoresMouseEvents:YES];
         [window setAcceptsMouseMovedEvents:NO];
         [window setHidesOnDeactivate:NO];
         [window setReleasedWhenClosed:NO];
+        
+        [AWPLogger log:[NSString stringWithFormat:@"Window created with level: %ld (desktop icons level: %ld), mouse transparent: YES",
+                       (long)window.level, (long)desktopIconLevel]];
         
         instance.window = window;
         
@@ -114,6 +141,7 @@
         WKWebView *webView = [[WKWebView alloc] initWithFrame:screenFrame
                                                  configuration:self.webViewConfig];
         webView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        webView.navigationDelegate = self;  // Set navigation delegate for load tracking
         
         // Set webView as window content
         [window.contentView addSubview:webView];
@@ -121,18 +149,33 @@
         instance.webView = webView;
         
         // Load URL
-        NSURL *nsurl = [NSURL URLWithString:url];
-        if (!nsurl) {
-            // Try as file path
+        NSURL *nsurl = nil;
+        if ([url hasPrefix:@"http://"] || [url hasPrefix:@"https://"]) {
+            // HTTP/HTTPS URL
+            nsurl = [NSURL URLWithString:url];
+            NSURLRequest *request = [NSURLRequest requestWithURL:nsurl];
+            [webView loadRequest:request];
+        } else if ([url hasPrefix:@"file://"]) {
+            // File URL
+            NSString *filePath = [url substringFromIndex:7];  // Remove "file://"
+            nsurl = [NSURL fileURLWithPath:filePath];
+            // Load file URL with read access to directory
+            NSURL *directoryURL = [nsurl URLByDeletingLastPathComponent];
+            [webView loadFileURL:nsurl allowingReadAccessToURL:directoryURL];
+            [AWPLogger log:[NSString stringWithFormat:@"Loading local file: %@ with read access to: %@",
+                           nsurl.path, directoryURL.path]];
+        } else {
+            // Assume file path
             nsurl = [NSURL fileURLWithPath:url];
+            NSURL *directoryURL = [nsurl URLByDeletingLastPathComponent];
+            [webView loadFileURL:nsurl allowingReadAccessToURL:directoryURL];
+            [AWPLogger log:[NSString stringWithFormat:@"Loading local file: %@ with read access to: %@",
+                           nsurl.path, directoryURL.path]];
         }
         
-        NSURLRequest *request = [NSURLRequest requestWithURL:nsurl];
-        [webView loadRequest:request];
-        
         // Show window
-        [window orderFront:nil];
-        [window orderBack:nil];  // Send to back (below other windows)
+        [window makeKeyAndOrderFront:nil];
+        [AWPLogger log:@"Window displayed"];
         
         // Add instance to array
         @synchronized (self.instances) {
@@ -189,13 +232,24 @@
             return NO;
         }
         
-        NSURL *nsurl = [NSURL URLWithString:url];
-        if (!nsurl) {
+        NSURL *nsurl = nil;
+        if ([url hasPrefix:@"http://"] || [url hasPrefix:@"https://"]) {
+            // HTTP/HTTPS URL
+            nsurl = [NSURL URLWithString:url];
+            NSURLRequest *request = [NSURLRequest requestWithURL:nsurl];
+            [instance.webView loadRequest:request];
+        } else if ([url hasPrefix:@"file://"]) {
+            // File URL
+            NSString *filePath = [url substringFromIndex:7];  // Remove "file://"
+            nsurl = [NSURL fileURLWithPath:filePath];
+            NSURL *directoryURL = [nsurl URLByDeletingLastPathComponent];
+            [instance.webView loadFileURL:nsurl allowingReadAccessToURL:directoryURL];
+        } else {
+            // Assume file path
             nsurl = [NSURL fileURLWithPath:url];
+            NSURL *directoryURL = [nsurl URLByDeletingLastPathComponent];
+            [instance.webView loadFileURL:nsurl allowingReadAccessToURL:directoryURL];
         }
-        
-        NSURLRequest *request = [NSURLRequest requestWithURL:nsurl];
-        [instance.webView loadRequest:request];
         
         instance.currentURL = url;
         
@@ -237,6 +291,48 @@
     }
 }
 
+- (BOOL)setInteractiveMode:(BOOL)interactive forMonitor:(NSInteger)monitorIndex {
+    @try {
+        WallpaperInstance *instance = [self getInstanceForMonitor:monitorIndex];
+        if (!instance || !instance.window) {
+            [AWPLogger error:[NSString stringWithFormat:@"No wallpaper on monitor %ld", (long)monitorIndex]];
+            return NO;
+        }
+        
+        NSInteger desktopIconLevel = CGWindowLevelForKey(kCGDesktopIconWindowLevelKey);
+        
+        if (interactive) {
+            // Interactive mode: 
+            // 1. Raise window level ABOVE desktop icons to capture mouse events
+            // 2. Enable mouse event capture
+            [instance.window setLevel:desktopIconLevel + 1];  // Above desktop icons
+            [instance.window setIgnoresMouseEvents:NO];
+            [instance.window setAcceptsMouseMovedEvents:YES];
+            // Make window key to receive events
+            [instance.window makeKeyAndOrderFront:nil];
+            [AWPLogger log:[NSString stringWithFormat:@"Monitor %ld: Interactive mode enabled (level: %ld)", 
+                           (long)monitorIndex, (long)(desktopIconLevel + 1)]];
+        } else {
+            // Simple mode: 
+            // 1. Lower window level BELOW desktop icons (wallpaper-like)
+            // 2. Make mouse transparent
+            [instance.window setLevel:desktopIconLevel - 1];  // Below desktop icons
+            [instance.window setIgnoresMouseEvents:YES];
+            [instance.window setAcceptsMouseMovedEvents:NO];
+            // Order back to avoid covering desktop
+            [instance.window orderBack:nil];
+            [AWPLogger log:[NSString stringWithFormat:@"Monitor %ld: Simple mode enabled (level: %ld)", 
+                           (long)monitorIndex, (long)(desktopIconLevel - 1)]];
+        }
+        
+        return YES;
+    }
+    @catch (NSException *exception) {
+        [AWPLogger error:[NSString stringWithFormat:@"Failed to set interactive mode: %@", exception.reason]];
+        return NO;
+    }
+}
+
 - (void)pauseAllWallpapers {
     @synchronized (self.instances) {
         for (WallpaperInstance *instance in self.instances) {
@@ -263,22 +359,79 @@
 }
 
 - (void)sendMessageToAll:(NSString *)message {
-    NSString *script = [NSString stringWithFormat:@"window.postMessage(%@, '*');", message];
-    
     @synchronized (self.instances) {
         for (WallpaperInstance *instance in self.instances) {
-            [instance.webView evaluateJavaScript:script completionHandler:^(id result, NSError *error) {
-                if (error) {
-                    [AWPLogger error:[NSString stringWithFormat:@"Failed to send message: %@",
-                                    error.localizedDescription]];
-                }
-            }];
+            if (instance.webView) {
+                // Use MessageBridge to properly dispatch CustomEvent
+                [self.messageBridge sendMessageToWebView:instance.webView message:message];
+            }
         }
     }
 }
 
 - (void)dealloc {
     [self stopAllWallpapers];
+}
+
+#pragma mark - WKNavigationDelegate
+
+- (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)navigation {
+    [AWPLogger log:@"🔄 WebView started loading"];
+}
+
+- (void)webView:(WKWebView *)webView didCommitNavigation:(WKNavigation *)navigation {
+    [AWPLogger log:@"✅ WebView committed navigation"];
+}
+
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
+    [AWPLogger log:@"✅ WebView finished loading successfully"];
+    
+    // Get page title for verification
+    [webView evaluateJavaScript:@"document.title" completionHandler:^(id result, NSError *error) {
+        if (!error && result) {
+            [AWPLogger log:[NSString stringWithFormat:@"   Page title: %@", result]];
+        }
+    }];
+    
+    // Send initial interactive mode state (default: Simple Mode = false)
+    // Find which monitor this webView belongs to
+    @synchronized (self.instances) {
+        for (WallpaperInstance *instance in self.instances) {
+            if (instance.webView == webView) {
+                // Send initial state to WebView via MessageBridge
+                NSString *initMessage = [NSString stringWithFormat:
+                    @"{\"type\":\"interactiveMode\",\"data\":{\"interactive\":false,\"monitorIndex\":%ld}}",
+                    (long)instance.monitorIndex];
+                
+                [self.messageBridge sendMessage:initMessage toMonitorIndex:instance.monitorIndex];
+                [AWPLogger log:[NSString stringWithFormat:@"Sent initial interactive mode state (Simple Mode) to monitor %ld",
+                               (long)instance.monitorIndex]];
+                break;
+            }
+        }
+    }
+}
+
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error {
+    [AWPLogger error:[NSString stringWithFormat:@"❌ WebView navigation failed: %@ (Code: %ld)",
+                     error.localizedDescription, (long)error.code]];
+    [AWPLogger error:[NSString stringWithFormat:@"   Error domain: %@", error.domain]];
+    if (error.userInfo) {
+        [AWPLogger error:[NSString stringWithFormat:@"   User info: %@", error.userInfo]];
+    }
+}
+
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error {
+    [AWPLogger error:[NSString stringWithFormat:@"❌ WebView provisional navigation failed: %@ (Code: %ld)",
+                     error.localizedDescription, (long)error.code]];
+    [AWPLogger error:[NSString stringWithFormat:@"   Error domain: %@", error.domain]];
+    if (error.userInfo) {
+        [AWPLogger error:[NSString stringWithFormat:@"   User info: %@", error.userInfo]];
+    }
+}
+
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView {
+    [AWPLogger error:@"❌ WebView content process terminated"];
 }
 
 @end
