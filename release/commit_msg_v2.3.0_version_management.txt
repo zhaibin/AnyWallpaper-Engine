@@ -32,3 +32,4 @@ feat(version): 统一版本号管理 - 自动从 pubspec.yaml 生成 C++ 版本�
 - .cursorrules (更新发版流程文档)
 - CHANGELOG_CN.md (添加版本管理说明)
 
+
