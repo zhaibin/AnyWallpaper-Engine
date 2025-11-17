@@ -2,6 +2,19 @@
 set(PROJECT_NAME "anywp_engine")
 project(${PROJECT_NAME} LANGUAGES CXX RC)  # Add RC for Windows Resource Compiler
 
+# ==========================================
+# VC Runtime Linking (v2.3.0+)
+# Note: Must use dynamic linking (/MD) to match Flutter framework
+# ==========================================
+# Flutter Windows plugins must use dynamic CRT (/MD) because:
+# 1. flutter_wrapper_plugin.lib is built with /MD
+# 2. Static linking (/MT) causes LNK2038 runtime library mismatch
+# 3. Windows 10/11 systems typically have VC Runtime 2015-2022 pre-installed
+#
+# Dependencies (usually pre-installed on Windows 10/11):
+#   - VC Runtime 2015-2022 (via Windows Update)
+#   - WebView2 Runtime (included with Microsoft Edge)
+
 # This value is used when generating builds using this plugin, so it must
 # not be changed
 set(PLUGIN_NAME "anywp_engine_plugin")
