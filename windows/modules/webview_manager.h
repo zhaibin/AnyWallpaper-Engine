@@ -72,9 +72,6 @@ private:
 
   // Last cleanup time for throttling
   std::chrono::steady_clock::time_point last_cleanup_;
-
-  // Helper: Load SDK script from file
-  std::string LoadSDKScriptFromFile();
 };
 
 }  // namespace anywp_engine

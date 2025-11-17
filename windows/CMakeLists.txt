@@ -1,6 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.14)
 set(PROJECT_NAME "anywp_engine")
-project(${PROJECT_NAME} LANGUAGES CXX)
+project(${PROJECT_NAME} LANGUAGES CXX RC)  # Add RC for Windows Resource Compiler
 
 # This value is used when generating builds using this plugin, so it must
 # not be changed
@@ -8,6 +8,8 @@ set(PLUGIN_NAME "anywp_engine_plugin")
 
 add_library(${PLUGIN_NAME} SHARED
   "anywp_engine_plugin.cpp"
+  "sdk_loader.cpp"
+  "sdk_resource.rc"
   "utils/state_persistence.cpp"
   "utils/logger.cpp"
   "utils/url_validator.cpp"
@@ -108,77 +110,33 @@ set(anywp_engine_bundled_libraries
 )
 
 # ==========================================
-# Copy minified SDK file to plugin build directory (where DLL is built)
-# Use minified version for better performance
-# SDK moved to top-level sdk/dist/ directory in v2.2.0
+# Embedded SDK Configuration (v2.3.0+)
+# SDK is now embedded in DLL as a Windows resource
+# No need to copy external files - SDK is part of the DLL!
 # ==========================================
 
-# Define SDK source path (relative to windows/ directory)
-set(SDK_SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../sdk/dist/anywp_sdk.min.js")
+# Define SDK source path for embedding (relative to windows/ directory)
+set(SDK_SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../sdk/dist/anywp_sdk.js")
 
-# Verify SDK file exists at configure time
+# Verify SDK file exists at configure time (required for RC compilation)
 if(NOT EXISTS "${SDK_SOURCE_PATH}")
+  message(WARNING "========================================")
   message(WARNING "SDK file not found at: ${SDK_SOURCE_PATH}")
-  message(WARNING "SDK will need to be built before running the application")
+  message(WARNING "SDK will NOT be embedded in DLL!")
+  message(WARNING "Please build SDK first: cd sdk/src && npm run build")
+  message(WARNING "========================================")
 else()
-  message(STATUS "SDK file found: ${SDK_SOURCE_PATH}")
+  message(STATUS "✓ SDK file found: ${SDK_SOURCE_PATH}")
+  # Get file size for info
+  file(SIZE "${SDK_SOURCE_PATH}" SDK_FILE_SIZE)
+  math(EXPR SDK_SIZE_KB "${SDK_FILE_SIZE} / 1024")
+  message(STATUS "✓ SDK will be embedded in DLL (${SDK_SIZE_KB} KB)")
 endif()
 
-# Copy SDK to plugin build directory
-add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E echo "Copying SDK to plugin directory..."
-  COMMAND ${CMAKE_COMMAND} -E make_directory 
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/sdk/dist"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${SDK_SOURCE_PATH}"
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/sdk/dist/anywp_sdk.js"
-  COMMAND ${CMAKE_COMMAND} -E echo "SDK copied to: $<TARGET_FILE_DIR:${PLUGIN_NAME}>/sdk/dist/anywp_sdk.js"
-  COMMENT "Copying minified SDK to plugin directory ($<CONFIG>)"
-  VERBATIM
-)
-
-# Copy SDK file to runner directory (where application runs)
-# This ensures the SDK is available at runtime
-# Path: plugins/anywp_engine/Debug -> ../../.. -> x64 -> runner/Debug/sdk/dist
-add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E echo "Copying SDK to runner directory..."
-  COMMAND ${CMAKE_COMMAND} -E make_directory 
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/sdk/dist"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${SDK_SOURCE_PATH}"
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/sdk/dist/anywp_sdk.js"
-  COMMAND ${CMAKE_COMMAND} -E echo "SDK copied to: $<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/sdk/dist/anywp_sdk.js"
-  COMMENT "Copying minified SDK to runner directory ($<CONFIG>)"
-  VERBATIM
-)
-
-# Copy SDK to Flutter assets directory (for Release builds with flutter pub run)
-# This ensures SDK is available when packaged as Flutter asset
-add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E echo "Copying SDK to Flutter assets directory..."
-  COMMAND ${CMAKE_COMMAND} -E make_directory 
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/data/flutter_assets/sdk/dist"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${SDK_SOURCE_PATH}"
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/data/flutter_assets/sdk/dist/anywp_sdk.js"
-  COMMAND ${CMAKE_COMMAND} -E echo "SDK copied to Flutter assets"
-  COMMENT "Copying SDK to Flutter assets ($<CONFIG>)"
-  VERBATIM
-)
-
-# Copy SDK to relative path for backward compatibility
-# Some C++ code may look for "../sdk/anywp_sdk.js" relative to executable
-add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E echo "Copying SDK for backward compatibility..."
-  COMMAND ${CMAKE_COMMAND} -E make_directory 
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/sdk"
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${SDK_SOURCE_PATH}"
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/sdk/anywp_sdk.js"
-  COMMAND ${CMAKE_COMMAND} -E echo "SDK copied for compatibility: sdk/anywp_sdk.js"
-  COMMENT "Copying SDK for backward compatibility ($<CONFIG>)"
-  VERBATIM
-)
+# Note: SDK is automatically embedded by RC compiler at build time
+# The sdk_resource.rc file references the SDK and compiles it into the DLL
+# At runtime, sdk_loader.cpp extracts the SDK from DLL resources
+# No external SDK files are needed for deployment!
 
 # ==========================================
 # INSTALL rules for precompiled DLL distribution

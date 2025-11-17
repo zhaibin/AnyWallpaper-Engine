@@ -113,23 +113,22 @@ echo #endif  // ANY_W_P_ENGINE_PLUGIN_H_
 call :PrintStep "Copying CMakeLists.txt to precompiled package..."
 copy "%PROJECT_ROOT%\windows\CMakeLists.precompiled.txt" "%PRECOMPILED_DIR%\windows\CMakeLists.txt"
 
-call :PrintStep "Copying Web SDK to precompiled package..."
-REM Copy SDK from sdk/dist/ directory (v2.2.0+)
-REM Create dist subdirectory for consistency with source structure
-if not exist "%PRECOMPILED_DIR%\sdk\dist\" mkdir "%PRECOMPILED_DIR%\sdk\dist\"
-if exist "%PROJECT_ROOT%\sdk\dist\anywp_sdk.min.js" (
-    copy "%PROJECT_ROOT%\sdk\dist\anywp_sdk.min.js" "%PRECOMPILED_DIR%\sdk\dist\"
-    echo   [OK] Copied minified SDK: sdk\dist\anywp_sdk.min.js
-) else (
-    echo   [WARNING] Minified SDK not found
-)
-if exist "%PROJECT_ROOT%\sdk\dist\anywp_sdk.js" (
-    copy "%PROJECT_ROOT%\sdk\dist\anywp_sdk.js" "%PRECOMPILED_DIR%\sdk\dist\"
-    echo   [OK] Copied unminified SDK: sdk\dist\anywp_sdk.js
-) else (
-    echo   [ERROR] Unminified SDK not found at sdk\dist\anywp_sdk.js
-    set VERIFY_ERROR=1
-)
+call :PrintStep "SDK Embedding Verification (v2.3.0+)..."
+REM v2.3.0+: SDK is embedded in DLL as Windows resource
+REM No external SDK files needed for runtime!
+REM The SDK is compiled into anywp_engine_plugin.dll during build
+echo   [INFO] SDK is embedded in DLL (no external files needed)
+echo   [INFO] Precompiled package only contains DLL with embedded SDK
+echo   [INFO] Users don't need to manually copy SDK files
+
+REM Note: For backward compatibility testing, we can optionally include SDK files
+REM But they won't be used at runtime - DLL will load from embedded resource
+REM Uncomment below if you want to include SDK files for reference:
+REM if not exist "%PRECOMPILED_DIR%\sdk\dist\" mkdir "%PRECOMPILED_DIR%\sdk\dist\"
+REM if exist "%PROJECT_ROOT%\sdk\dist\anywp_sdk.js" (
+REM     copy "%PROJECT_ROOT%\sdk\dist\anywp_sdk.js" "%PRECOMPILED_DIR%\sdk\dist\"
+REM     echo   [OK] SDK reference file copied (not needed at runtime)
+REM )
 
 call :PrintStep "Copying example HTML files to precompiled package..."
 xcopy /E /I /Y "%PROJECT_ROOT%\examples\*.html" "%PRECOMPILED_DIR%\examples\"

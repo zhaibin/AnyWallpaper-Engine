@@ -1,0 +1,22 @@
+feat(build): 增强 CMake 自动复制 SDK 功能
+
+**改进**:
+- SDK 自动复制到多个位置，无需手动操作
+- 支持 3 个部署位置：
+  1. sdk/dist/anywp_sdk.js (主要位置)
+  2. sdk/anywp_sdk.js (向后兼容)
+  3. data/flutter_assets/sdk/dist/anywp_sdk.js (Flutter打包)
+
+**修改文件**:
+- windows/CMakeLists.txt: 添加 Flutter assets 和兼容性路径复制
+- windows/CMakeLists.precompiled.txt: 预编译包函数增强
+
+**开发者体验**:
+- ✅ 编译后 SDK 自动就位，无需手动复制
+- ✅ 支持开发和发布两种模式
+- ✅ 向后兼容旧代码的 SDK 查找路径
+- ✅ 详细的构建日志输出
+
+**测试**: Debug 构建验证通过，SDK 成功自动复制 ✅
+
+
