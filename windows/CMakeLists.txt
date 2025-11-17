@@ -110,25 +110,44 @@ set(anywp_engine_bundled_libraries
 # ==========================================
 # Copy minified SDK file to plugin build directory (where DLL is built)
 # Use minified version for better performance
+# SDK moved to top-level sdk/dist/ directory in v2.2.0
 # ==========================================
+
+# Define SDK source path (relative to windows/ directory)
+set(SDK_SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../sdk/dist/anywp_sdk.min.js")
+
+# Verify SDK file exists at configure time
+if(NOT EXISTS "${SDK_SOURCE_PATH}")
+  message(WARNING "SDK file not found at: ${SDK_SOURCE_PATH}")
+  message(WARNING "SDK will need to be built before running the application")
+else()
+  message(STATUS "SDK file found: ${SDK_SOURCE_PATH}")
+endif()
+
+# Copy SDK to plugin build directory
 add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E echo "Copying SDK to plugin directory..."
   COMMAND ${CMAKE_COMMAND} -E make_directory 
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/windows"
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/sdk/dist"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_CURRENT_SOURCE_DIR}/anywp_sdk.min.js"
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/windows/anywp_sdk.js"
+    "${SDK_SOURCE_PATH}"
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/sdk/dist/anywp_sdk.js"
+  COMMAND ${CMAKE_COMMAND} -E echo "SDK copied to: $<TARGET_FILE_DIR:${PLUGIN_NAME}>/sdk/dist/anywp_sdk.js"
   COMMENT "Copying minified SDK to plugin directory ($<CONFIG>)"
   VERBATIM
 )
 
 # Copy SDK file to runner directory (where application runs)
 # This ensures the SDK is available at runtime
+# Path: plugins/anywp_engine/Debug -> ../../.. -> x64 -> runner/Debug/sdk/dist
 add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E echo "Copying SDK to runner directory..."
   COMMAND ${CMAKE_COMMAND} -E make_directory 
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../runner/$<CONFIG>/windows"
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/sdk/dist"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_CURRENT_SOURCE_DIR}/anywp_sdk.min.js"
-    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../runner/$<CONFIG>/windows/anywp_sdk.js"
+    "${SDK_SOURCE_PATH}"
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/sdk/dist/anywp_sdk.js"
+  COMMAND ${CMAKE_COMMAND} -E echo "SDK copied to: $<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/sdk/dist/anywp_sdk.js"
   COMMENT "Copying minified SDK to runner directory ($<CONFIG>)"
   VERBATIM
 )

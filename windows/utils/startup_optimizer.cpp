@@ -254,7 +254,7 @@ void StartupOptimizer::PreloadSDK() {
     
     // Preload SDK JavaScript file into memory
     // This reduces first-load latency by caching the SDK content
-    std::string sdk_path = "windows/anywp_sdk.js";
+    std::string sdk_path = "sdk/dist/anywp_sdk.js";
     
     // Check if file exists
     std::ifstream sdk_file(sdk_path, std::ios::binary | std::ios::ate);

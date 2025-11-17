@@ -445,9 +445,9 @@ void WebViewManager::ClearCache(ICoreWebView2* webview) {
 std::string WebViewManager::LoadSDKScriptFromFile() {
   // Try to load from multiple possible locations
   std::vector<std::string> possible_paths = {
-    "windows/anywp_sdk.js",
-    "../windows/anywp_sdk.js",
-    "../../windows/anywp_sdk.js",
+    "sdk/dist/anywp_sdk.js",
+    "../sdk/dist/anywp_sdk.js",
+    "../../sdk/dist/anywp_sdk.js",
     "anywp_sdk.js"
   };
 

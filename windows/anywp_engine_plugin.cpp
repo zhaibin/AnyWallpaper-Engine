@@ -972,12 +972,13 @@ std::string AnyWPEnginePlugin::LoadSDKScript() {
   
   // Priority: minified version first (production), then unminified (development)
   std::vector<std::string> sdk_paths = {
-    "windows\\anywp_sdk.min.js",       // Production: minified version (priority)
-    "windows\\anywp_sdk.js",           // Development: unminified version
+    "sdk\\dist\\anywp_sdk.min.js",     // Production: minified version (priority)
+    "sdk\\dist\\anywp_sdk.js",         // Development: unminified version
+    "sdk\\anywp_sdk.js",               // Backward compatibility: root sdk/ directory
     "..\\anywp_sdk.min.js",            // Alternative: minified relative to executable
     "..\\anywp_sdk.js",                // Alternative: unminified relative to executable
-    "data\\flutter_assets\\windows\\anywp_sdk.min.js",  // Release: minified in assets
-    "data\\flutter_assets\\windows\\anywp_sdk.js",      // Release: unminified in assets
+    "data\\flutter_assets\\sdk\\dist\\anywp_sdk.min.js",  // Release: minified in assets
+    "data\\flutter_assets\\sdk\\dist\\anywp_sdk.js",      // Release: unminified in assets
   };
   
   // Try to get DLL directory and search for SDK in precompiled package structure
@@ -1045,9 +1046,9 @@ std::string AnyWPEnginePlugin::LoadSDKScript() {
   }
   
   return R"(
-console.log('[AnyWP] Note: Full SDK should be loaded via <script src="../windows/anywp_sdk.js">');
+console.log('[AnyWP] Note: Full SDK should be loaded via <script src="../sdk/dist/anywp_sdk.js">');
 if (!window.AnyWP) {
-  console.error('[AnyWP] ERROR: SDK not loaded! Add <script src="../windows/anywp_sdk.js"></script> to your HTML');
+  console.error('[AnyWP] ERROR: SDK not loaded! Add <script src="../sdk/dist/anywp_sdk.js"></script> to your HTML');
   window.AnyWP = {
     version: '0.0.0-missing',
     error: 'SDK not loaded - add script tag to HTML'

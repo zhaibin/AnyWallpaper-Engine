@@ -9,7 +9,7 @@ echo Building AnyWP Web SDK
 echo ========================================
 echo.
 
-cd windows\sdk
+cd sdk\src
 
 if not exist "node_modules\" (
     echo Installing dependencies...
@@ -34,8 +34,8 @@ if "%PRODUCTION_MODE%"=="production" (
     echo.
     echo ========================================
     echo Web SDK built successfully - PRODUCTION mode
-    echo Output: windows\anywp_sdk.js - unminified
-    echo Output: windows\anywp_sdk.min.js - minified
+    echo Output: sdk\dist\anywp_sdk.js - unminified
+    echo Output: sdk\dist\anywp_sdk.min.js - minified
     echo ========================================
 ) else (
     echo Building in DEVELOPMENT mode - unminified only
@@ -48,7 +48,7 @@ if "%PRODUCTION_MODE%"=="production" (
     echo.
     echo ========================================
     echo Web SDK built successfully!
-    echo Output: windows\anywp_sdk.js
+    echo Output: sdk\dist\anywp_sdk.js
     echo Note: Use 'build_sdk.bat production' to generate minified version
     echo ========================================
 )
