@@ -1,0 +1,10 @@
+// =============================================================================
+// AnyWP Engine - Embedded SDK Resource
+// =============================================================================
+
+#include "sdk_resource.h"
+
+// Embed SDK file (path relative to RC file)
+// The SDK will be compiled into the DLL as a binary resource
+IDR_ANYWP_SDK RCDATA "../sdk/dist/anywp_sdk.js"
+

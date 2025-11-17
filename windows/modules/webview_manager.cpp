@@ -1,4 +1,5 @@
 #include "webview_manager.h"
+#include "../sdk_loader.h"
 #include "../utils/logger.h"
 #include <fstream>
 #include <sstream>
@@ -442,30 +443,6 @@ void WebViewManager::ClearCache(ICoreWebView2* webview) {
   Logger::Instance().Info("WebViewManager", "Cache cleared");
 }
 
-std::string WebViewManager::LoadSDKScriptFromFile() {
-  // Try to load from multiple possible locations
-  std::vector<std::string> possible_paths = {
-    "sdk/dist/anywp_sdk.js",
-    "../sdk/dist/anywp_sdk.js",
-    "../../sdk/dist/anywp_sdk.js",
-    "anywp_sdk.js"
-  };
-
-  for (const auto& path : possible_paths) {
-    std::ifstream file(path);
-    if (file.is_open()) {
-      std::stringstream buffer;
-      buffer << file.rdbuf();
-      file.close();
-      
-      Logger::Instance().Info("WebViewManager", "SDK loaded from: " + path);
-      return buffer.str();
-    }
-  }
-
-  Logger::Instance().Error("WebViewManager", "Failed to load SDK script from any location");
-  return "";
-}
 
 }  // namespace anywp_engine
 

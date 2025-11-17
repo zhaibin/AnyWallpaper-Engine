@@ -1,4 +1,5 @@
 #include "sdk_bridge.h"
+#include "../sdk_loader.h"
 
 #include <iostream>
 #include <fstream>
@@ -271,100 +272,29 @@ std::string SDKBridge::LoadSDKScript() {
     return cached_sdk_script_;
   }
   
-  // Try to load SDK from file
-  // Priority 1: SDK file in windows/ directory (development mode)
-  // Priority 2: SDK file in data/flutter_assets/ directory (release mode)
-  // Priority 3: SDK file relative to DLL (for precompiled packages)
+  // v2.3.0+: Use new SDK loader with embedded resource support
+  // Priority 1: Embedded in DLL (production, recommended)
+  // Priority 2: File system fallback (development, backward compatibility)
+  std::string sdk_content = anywp::sdk::LoadSDKScript();
   
-  // Priority: minified version first (production), then unminified (development)
-  std::vector<std::string> sdk_paths = {
-    "windows\\anywp_sdk.min.js",       // Production: minified version (priority)
-    "windows\\anywp_sdk.js",           // Development: unminified version
-    "..\\anywp_sdk.min.js",            // Alternative: minified relative to executable
-    "..\\anywp_sdk.js",                // Alternative: unminified relative to executable
-    "data\\flutter_assets\\windows\\anywp_sdk.min.js",  // Release: minified in assets
-    "data\\flutter_assets\\windows\\anywp_sdk.js",      // Release: unminified in assets
-  };
-  
-  // Try to get DLL directory and search for SDK in precompiled package structure
-  // For precompiled packages: packages/anywp_engine/sdk/anywp_sdk.js
-  // Use a static variable address to get the current module handle
-  static int s_module_marker = 0;
-  
-  char dll_path[MAX_PATH];
-  HMODULE dll_handle = nullptr;
-  if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                         reinterpret_cast<LPCSTR>(&s_module_marker), &dll_handle)) {
-    if (GetModuleFileNameA(dll_handle, dll_path, MAX_PATH)) {
-      std::string dll_dir(dll_path);
-      size_t last_slash = dll_dir.find_last_of("\\/");
-      if (last_slash != std::string::npos) {
-        dll_dir = dll_dir.substr(0, last_slash);
-        
-        // Try precompiled package structure: ../sdk/anywp_sdk.min.js (minified, priority)
-        std::string precompiled_sdk = dll_dir + "\\..\\sdk\\anywp_sdk.min.js";
-        sdk_paths.push_back(precompiled_sdk);
-        
-        // Try precompiled package structure: ../sdk/anywp_sdk.js (unminified fallback)
-        precompiled_sdk = dll_dir + "\\..\\sdk\\anywp_sdk.js";
-        sdk_paths.push_back(precompiled_sdk);
-        
-        // Try alternative: ../../sdk/anywp_sdk.min.js (minified, if DLL is in plugins/anywp_engine/Release)
-        precompiled_sdk = dll_dir + "\\..\\..\\sdk\\anywp_sdk.min.js";
-        sdk_paths.push_back(precompiled_sdk);
-        
-        // Try alternative: ../../sdk/anywp_sdk.js (unminified fallback)
-        precompiled_sdk = dll_dir + "\\..\\..\\sdk\\anywp_sdk.js";
-        sdk_paths.push_back(precompiled_sdk);
-        
-        // Try relative to executable: ../windows/anywp_sdk.min.js (minified)
-        std::string relative_windows = dll_dir + "\\..\\windows\\anywp_sdk.min.js";
-        sdk_paths.push_back(relative_windows);
-        
-        // Try relative to executable: ../windows/anywp_sdk.js (unminified fallback)
-        relative_windows = dll_dir + "\\..\\windows\\anywp_sdk.js";
-        sdk_paths.push_back(relative_windows);
-      }
-    }
+  if (!sdk_content.empty()) {
+    // Cache the SDK script for future use
+    cached_sdk_script_ = sdk_content;
+    sdk_script_loaded_ = true;
+    
+    std::cout << "[AnyWP] [SDKBridge] SDK loaded successfully (size: " 
+              << sdk_content.length() << " bytes)" << std::endl;
+    
+    return sdk_content;
   }
   
-  for (const auto& sdk_path : sdk_paths) {
-    std::ifstream sdk_file(sdk_path);
-    if (sdk_file.is_open()) {
-      std::string sdk_content((std::istreambuf_iterator<char>(sdk_file)),
-                              std::istreambuf_iterator<char>());
-      sdk_file.close();
-      
-      if (!sdk_content.empty()) {
-        std::cout << "[AnyWP] [SDKBridge] SDK loaded from: " << sdk_path 
-                  << " (size: " << sdk_content.length() << " bytes)" << std::endl;
-        
-        // Cache the SDK script for future use
-        cached_sdk_script_ = sdk_content;
-        sdk_script_loaded_ = true;
-        
-        return sdk_content;
-      }
-    }
-  }
+  // Should never reach here if SDK is embedded correctly
+  std::cout << "[AnyWP] [SDKBridge] WARNING: SDK not found!" << std::endl;
+  std::cout << "[AnyWP] [SDKBridge] Please ensure:" << std::endl;
+  std::cout << "[AnyWP] [SDKBridge]   1. SDK is embedded in DLL (v2.3.0+)" << std::endl;
+  std::cout << "[AnyWP] [SDKBridge]   2. Or SDK file exists at sdk/dist/anywp_sdk.js" << std::endl;
   
-  // Fallback: Return error shim if SDK file not found
-  std::cout << "[AnyWP] [SDKBridge] WARNING: SDK file not found, using error shim" << std::endl;
-  std::cout << "[AnyWP] [SDKBridge] Tried paths:" << std::endl;
-  for (const auto& path : sdk_paths) {
-    std::cout << "[AnyWP] [SDKBridge]   - " << path << std::endl;
-  }
-  
-  return R"(
-console.log('[AnyWP] Note: Full SDK should be loaded via <script src="../windows/anywp_sdk.js">');
-if (!window.AnyWP) {
-  console.error('[AnyWP] ERROR: SDK not loaded! Add <script src="../windows/anywp_sdk.js"></script> to your HTML');
-  window.AnyWP = {
-    version: '0.0.0-missing',
-    error: 'SDK not loaded - add script tag to HTML'
-  };
-}
-)";
+  return "";
 }
 
 std::string SDKBridge::GetMessageType(const std::string& message) {

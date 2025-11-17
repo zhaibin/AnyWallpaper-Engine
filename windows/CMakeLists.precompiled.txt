@@ -52,74 +52,28 @@ set(anywp_engine_bundled_libraries
 )
 
 # ==========================================
-# Copy SDK file to runtime directory
-# This ensures the SDK is available when C++ plugin tries to load it
+# Embedded SDK (v2.3.0+)
+# SDK is now embedded in DLL as a Windows resource
+# No external SDK files needed for deployment!
 # ==========================================
-# Path to SDK file in precompiled package (v2.2.0+: unified sdk/dist/ structure)
-set(ANYWP_SDK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../sdk/dist/anywp_sdk.js")
 
-# Function to copy SDK file (can be called from main CMakeLists.txt)
-# Usage: anywp_copy_sdk(TARGET_NAME)
-# Automatically copies SDK to all necessary locations - no manual copying needed!
+message(STATUS "========================================")
+message(STATUS "AnyWP Engine v2.3.0+ - Embedded SDK Mode")
+message(STATUS "========================================")
+message(STATUS "✓ SDK is embedded in the precompiled DLL")
+message(STATUS "✓ No external SDK files required")
+message(STATUS "✓ Simplified deployment - just copy DLL")
+message(STATUS "========================================")
+
+# Note: The anywp_copy_sdk function is no longer needed for v2.3.0+
+# SDK is automatically loaded from DLL resources at runtime
+# However, for backward compatibility with older projects, we provide a dummy function
+
 function(anywp_copy_sdk TARGET_NAME)
-  if(EXISTS "${ANYWP_SDK_SOURCE}")
-    message(STATUS "Configuring automatic SDK deployment for ${TARGET_NAME}...")
-    
-    # 1. Copy SDK to primary runtime location (sdk/dist/)
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E echo "[AnyWP] Copying SDK to runtime directory..."
-      COMMAND ${CMAKE_COMMAND} -E make_directory 
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk/dist"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ANYWP_SDK_SOURCE}"
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk/dist/anywp_sdk.js"
-      COMMAND ${CMAKE_COMMAND} -E echo "[AnyWP] SDK copied to: sdk/dist/anywp_sdk.js"
-      COMMENT "Copying AnyWP SDK to primary location ($<CONFIG>)"
-      VERBATIM
-    )
-    
-    # 2. Copy to root sdk/ directory for backward compatibility
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory 
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ANYWP_SDK_SOURCE}"
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk/anywp_sdk.js"
-      COMMAND ${CMAKE_COMMAND} -E echo "[AnyWP] SDK copied to: sdk/anywp_sdk.js (compatibility)"
-      COMMENT "Copying AnyWP SDK for backward compatibility ($<CONFIG>)"
-      VERBATIM
-    )
-    
-    # 3. Copy to Flutter assets directory (for packaged builds)
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory 
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/data/flutter_assets/sdk/dist"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ANYWP_SDK_SOURCE}"
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/data/flutter_assets/sdk/dist/anywp_sdk.js"
-      COMMAND ${CMAKE_COMMAND} -E echo "[AnyWP] SDK copied to Flutter assets"
-      COMMENT "Copying AnyWP SDK to Flutter assets ($<CONFIG>)"
-      VERBATIM
-    )
-    
-    message(STATUS "✓ AnyWP SDK will be automatically deployed to 3 locations")
-    message(STATUS "  1. sdk/dist/anywp_sdk.js (primary)")
-    message(STATUS "  2. sdk/anywp_sdk.js (compatibility)")
-    message(STATUS "  3. data/flutter_assets/sdk/dist/anywp_sdk.js (Flutter)")
-  else()
-    message(WARNING "AnyWP SDK file not found at ${ANYWP_SDK_SOURCE}")
-    message(WARNING "SDK injection may fail at runtime. Please build SDK first:")
-    message(WARNING "  cd sdk/src && npm run build")
-  endif()
+  message(STATUS "[AnyWP] Note: anywp_copy_sdk() called, but SDK is embedded in DLL (v2.3.0+)")
+  message(STATUS "[AnyWP] No external SDK files needed - SDK will be loaded from DLL resources")
+  message(STATUS "[AnyWP] You can safely remove this function call from your CMakeLists.txt")
 endfunction()
-
-# Check if SDK file exists and provide info
-if(EXISTS "${ANYWP_SDK_SOURCE}")
-  message(STATUS "AnyWP SDK found at: ${ANYWP_SDK_SOURCE}")
-  message(STATUS "Note: Call anywp_copy_sdk(YOUR_TARGET_NAME) in your main CMakeLists.txt to copy SDK to runtime")
-else()
-  message(WARNING "AnyWP SDK file not found at ${ANYWP_SDK_SOURCE}")
-endif()
 
 message(STATUS "Using precompiled AnyWP Engine DLL: ${PRECOMPILED_DLL}")
 
