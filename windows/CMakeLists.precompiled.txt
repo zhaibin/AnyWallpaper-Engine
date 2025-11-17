@@ -60,35 +60,56 @@ set(ANYWP_SDK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../sdk/dist/anywp_sdk.js")
 
 # Function to copy SDK file (can be called from main CMakeLists.txt)
 # Usage: anywp_copy_sdk(TARGET_NAME)
+# Automatically copies SDK to all necessary locations - no manual copying needed!
 function(anywp_copy_sdk TARGET_NAME)
   if(EXISTS "${ANYWP_SDK_SOURCE}")
-    # Copy SDK to runner directory (where application runs)
-    # This is the most important path - where the executable actually runs
+    message(STATUS "Configuring automatic SDK deployment for ${TARGET_NAME}...")
+    
+    # 1. Copy SDK to primary runtime location (sdk/dist/)
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E echo "[AnyWP] Copying SDK to runtime directory..."
       COMMAND ${CMAKE_COMMAND} -E make_directory 
         "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk/dist"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${ANYWP_SDK_SOURCE}"
         "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk/dist/anywp_sdk.js"
-      COMMENT "Copying AnyWP SDK to runner directory ($<CONFIG>)"
+      COMMAND ${CMAKE_COMMAND} -E echo "[AnyWP] SDK copied to: sdk/dist/anywp_sdk.js"
+      COMMENT "Copying AnyWP SDK to primary location ($<CONFIG>)"
       VERBATIM
     )
     
-    # Also copy to root sdk/ directory for backward compatibility
-    # This ensures old integration code still works
+    # 2. Copy to root sdk/ directory for backward compatibility
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory 
         "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${ANYWP_SDK_SOURCE}"
         "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk/anywp_sdk.js"
-      COMMENT "Copying AnyWP SDK to sdk/ directory for compatibility ($<CONFIG>)"
+      COMMAND ${CMAKE_COMMAND} -E echo "[AnyWP] SDK copied to: sdk/anywp_sdk.js (compatibility)"
+      COMMENT "Copying AnyWP SDK for backward compatibility ($<CONFIG>)"
       VERBATIM
     )
     
-    message(STATUS "AnyWP SDK copy commands added for target: ${TARGET_NAME}")
+    # 3. Copy to Flutter assets directory (for packaged builds)
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory 
+        "$<TARGET_FILE_DIR:${TARGET_NAME}>/data/flutter_assets/sdk/dist"
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${ANYWP_SDK_SOURCE}"
+        "$<TARGET_FILE_DIR:${TARGET_NAME}>/data/flutter_assets/sdk/dist/anywp_sdk.js"
+      COMMAND ${CMAKE_COMMAND} -E echo "[AnyWP] SDK copied to Flutter assets"
+      COMMENT "Copying AnyWP SDK to Flutter assets ($<CONFIG>)"
+      VERBATIM
+    )
+    
+    message(STATUS "✓ AnyWP SDK will be automatically deployed to 3 locations")
+    message(STATUS "  1. sdk/dist/anywp_sdk.js (primary)")
+    message(STATUS "  2. sdk/anywp_sdk.js (compatibility)")
+    message(STATUS "  3. data/flutter_assets/sdk/dist/anywp_sdk.js (Flutter)")
   else()
-    message(WARNING "AnyWP SDK file not found at ${ANYWP_SDK_SOURCE} - SDK injection may fail at runtime")
+    message(WARNING "AnyWP SDK file not found at ${ANYWP_SDK_SOURCE}")
+    message(WARNING "SDK injection may fail at runtime. Please build SDK first:")
+    message(WARNING "  cd sdk/src && npm run build")
   endif()
 endfunction()
 

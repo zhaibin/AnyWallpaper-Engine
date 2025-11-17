@@ -152,6 +152,34 @@ add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
   VERBATIM
 )
 
+# Copy SDK to Flutter assets directory (for Release builds with flutter pub run)
+# This ensures SDK is available when packaged as Flutter asset
+add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E echo "Copying SDK to Flutter assets directory..."
+  COMMAND ${CMAKE_COMMAND} -E make_directory 
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/data/flutter_assets/sdk/dist"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${SDK_SOURCE_PATH}"
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/data/flutter_assets/sdk/dist/anywp_sdk.js"
+  COMMAND ${CMAKE_COMMAND} -E echo "SDK copied to Flutter assets"
+  COMMENT "Copying SDK to Flutter assets ($<CONFIG>)"
+  VERBATIM
+)
+
+# Copy SDK to relative path for backward compatibility
+# Some C++ code may look for "../sdk/anywp_sdk.js" relative to executable
+add_custom_command(TARGET ${PLUGIN_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E echo "Copying SDK for backward compatibility..."
+  COMMAND ${CMAKE_COMMAND} -E make_directory 
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/sdk"
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${SDK_SOURCE_PATH}"
+    "$<TARGET_FILE_DIR:${PLUGIN_NAME}>/../../../runner/$<CONFIG>/sdk/anywp_sdk.js"
+  COMMAND ${CMAKE_COMMAND} -E echo "SDK copied for compatibility: sdk/anywp_sdk.js"
+  COMMENT "Copying SDK for backward compatibility ($<CONFIG>)"
+  VERBATIM
+)
+
 # ==========================================
 # INSTALL rules for precompiled DLL distribution
 # NOTE: These rules cause Flutter build to fail with INSTALL step errors.
