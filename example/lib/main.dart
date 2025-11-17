@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:anywp_engine/anywp_engine.dart';
 import 'package:window_manager/window_manager.dart';
+import 'test_encryption.dart';
 
 /// 显示器配置（用于记忆拔掉前的状态）
 class MonitorConfig {
@@ -1712,7 +1713,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
         useMaterial3: true,
       ),
       home: DefaultTabController(
-        length: 3,
+        length: 4,
         child: Scaffold(
           appBar: AppBar(
             title: const Text('AnyWallpaper Engine'),
@@ -1722,6 +1723,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
                 Tab(icon: Icon(Icons.monitor), text: 'Wallpaper'),
                 Tab(icon: Icon(Icons.tune), text: 'Optimization'),
                 Tab(icon: Icon(Icons.swap_horiz), text: 'Communication'),
+                Tab(icon: Icon(Icons.lock), text: 'Encryption'),
               ],
             ),
           ),
@@ -1730,6 +1732,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
               _buildMultiMonitorTab(),
               _buildOptimizationTab(),
               _buildCommunicationTab(),
+              EncryptionTestPage(),
             ],
           ),
         ),

@@ -1,17 +1,22 @@
 ﻿# AnyWP Engine
 
-A Flutter Windows plugin that embeds WebView2 as a desktop wallpaper, displaying web content behind desktop icons.
+A Flutter plugin that embeds web content as desktop wallpaper, displaying behind desktop icons.
+
+**Supported Platforms:**
+- ✅ **Windows** (Windows 10/11) - WebView2 (Chromium)
+- ✅ **macOS** (10.14+) - WKWebView (WebKit)
+- 📋 Linux (planned)
 
 
 ## ✨ Features
 
 ### Core Features
-- 🖼️ **WebView2 Integration** - Display any web content as desktop wallpaper
+- 🖼️ **WebView Integration** - Display any web content as desktop wallpaper (WebView2 on Windows, WKWebView on macOS)
 - 🎯 **Proper Z-Order** - WebView renders behind desktop icons (not covering them)
 - 🖱️ **Simple Mode** - Clicks pass through to desktop icons (default behavior)
 - 📺 **Multi-Monitor Support** - Different content on each display
 - 🔥 **Smart Hot-Plug** (v1.3.1 ✨) - Auto-detects monitors, restores configurations, handles failures
-- 🪟 **Windows 10/11 Support** - Optimized for modern Windows
+- 🌍 **Cross-Platform** (v2.2.0 ✨) - Windows and macOS support with unified API
 
 ### Architecture (v2.0 ✨)
 - 🏗️ **Modular Design** - 30 independent modules (13 core + 17 utils) with clear responsibilities
