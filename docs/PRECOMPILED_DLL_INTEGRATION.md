@@ -82,12 +82,12 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.2.1_precompiled.zip
+anywp_engine_v2.3.0_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.2.1_source.zip
+anywp_engine_v2.3.0_source.zip
 ```
 
 ### 2. 解压到项目目录
@@ -843,7 +843,7 @@ verify.bat
 
 ---
 
-**Version**: 2.2.1  
+**Version**: 2.3.0  
 **Updated**: 2025-11-17  
 **主要变更**:
 - ✅ **移除 flutter 库依赖** - 预编译包 CMakeLists.txt 不再链接 flutter 和 flutter_wrapper_plugin
