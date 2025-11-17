@@ -98,27 +98,60 @@
 }
 
 - (NSString *)loadSDKScript {
-    // The SDK is platform-independent JavaScript
-    // We can use the same SDK from windows/anywp_sdk.js
+    // Load the unified TypeScript SDK (compiled from windows/sdk/)
+    // The SDK is platform-independent and automatically detects macOS
     
-    // For now, return a minimal SDK placeholder
-    // In production, this would load the actual SDK file
+    // Try to load from bundle resources
+    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+    NSString *sdkPath = [bundle pathForResource:@"anywp_sdk" ofType:@"js"];
+    
+    if (sdkPath) {
+        NSError *error = nil;
+        NSString *sdkScript = [NSString stringWithContentsOfFile:sdkPath
+                                                        encoding:NSUTF8StringEncoding
+                                                           error:&error];
+        if (error) {
+            [AWPLogger error:[NSString stringWithFormat:@"Failed to load SDK from bundle: %@",
+                            error.localizedDescription]];
+            return [self fallbackSDKScript];
+        }
+        
+        [AWPLogger log:@"Loaded unified TypeScript SDK from bundle"];
+        return sdkScript;
+    }
+    
+    // If not found in bundle, return fallback minimal SDK
+    [AWPLogger warn:@"SDK file not found in bundle, using fallback"];
+    return [self fallbackSDKScript];
+}
+
+- (NSString *)fallbackSDKScript {
+    // Minimal fallback SDK for development/testing
+    // In production, the full SDK should be bundled
     
     NSString *sdkScript = @"(function() {\n"
+                          @"  if (window.AnyWP) {\n"
+                          @"    console.log('[AnyWP SDK] Already initialized');\n"
+                          @"    return;\n"
+                          @"  }\n"
                           @"  window.AnyWP = {\n"
+                          @"    version: '2.2.0',\n"
+                          @"    platform: 'macos',\n"
                           @"    sendMessage: function(message) {\n"
                           @"      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.anywpMessage) {\n"
-                          @"        window.webkit.messageHandlers.anywpMessage.postMessage(message);\n"
+                          @"        var msg = typeof message === 'string' ? message : JSON.stringify(message);\n"
+                          @"        window.webkit.messageHandlers.anywpMessage.postMessage(msg);\n"
                           @"      }\n"
                           @"    },\n"
-                          @"    getMonitorInfo: function() {\n"
-                          @"      return {\n"
-                          @"        width: screen.width,\n"
-                          @"        height: screen.height\n"
-                          @"      };\n"
+                          @"    ready: function(name) {\n"
+                          @"      this.sendMessage({ type: 'ready', name: name });\n"
+                          @"    },\n"
+                          @"    log: function(message) {\n"
+                          @"      console.log('[AnyWP]', message);\n"
+                          @"      this.sendMessage({ type: 'log', message: message });\n"
                           @"    }\n"
                           @"  };\n"
-                          @"  console.log('[AnyWP SDK] Initialized for macOS');\n"
+                          @"  console.log('[AnyWP SDK] Fallback SDK initialized for macOS v2.2.0');\n"
                           @"})();";
     
     return sdkScript;

@@ -1,7 +1,7 @@
 {
   "name": "anywp-sdk",
-  "version": "2.1.10",
-  "description": "AnyWP Engine JavaScript SDK - TypeScript Modular Architecture",
+  "version": "2.2.0",
+  "description": "AnyWP Engine JavaScript SDK - Cross-platform TypeScript SDK (Windows & macOS)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
@@ -20,8 +20,11 @@
   "keywords": [
     "wallpaper",
     "webview2",
+    "wkwebview",
     "desktop",
     "windows",
+    "macos",
+    "cross-platform",
     "typescript"
   ],
   "author": "AnyWP Team",

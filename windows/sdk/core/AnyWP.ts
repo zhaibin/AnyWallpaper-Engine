@@ -6,10 +6,11 @@ import type {
   MouseCallback,
   KeyboardCallback
 } from '../types';
+import { getBridge, detectPlatform } from '../utils/platform';
 
 export const AnyWP: AnyWPSDK = {
   // Properties
-  version: '2.1.10',
+  version: '2.2.0',
   dpiScale: window.devicePixelRatio || 1,
   screenWidth: screen.width * (window.devicePixelRatio || 1),
   screenHeight: screen.height * (window.devicePixelRatio || 1),
@@ -93,11 +94,19 @@ export const AnyWP: AnyWPSDK = {
   openURL(url: string): void {
     console.log('[AnyWP] Opening URL: ' + url);
     
-    if (window.chrome?.webview) {
-      window.chrome.webview.postMessage({
-        type: 'openURL',
-        url: url
-      });
+    const platform = detectPlatform();
+    
+    if (platform !== 'unknown') {
+      try {
+        const bridge = getBridge();
+        bridge.postMessage({
+          type: 'openURL',
+          url: url
+        });
+      } catch (error) {
+        console.error('[AnyWP] Error sending openURL message:', error);
+        window.open(url, '_blank');
+      }
     } else {
       console.warn('[AnyWP] Native bridge not available');
       window.open(url, '_blank');
@@ -105,13 +114,19 @@ export const AnyWP: AnyWPSDK = {
   },
   
   ready(name: string): void {
-    console.log('[AnyWP] Wallpaper ready: ' + name);
+    const platform = detectPlatform();
+    console.log(`[AnyWP] Wallpaper ready: ${name} (platform: ${platform})`);
     
-    if (window.chrome?.webview) {
-      window.chrome.webview.postMessage({
-        type: 'ready',
-        name: name
-      });
+    if (platform !== 'unknown') {
+      try {
+        const bridge = getBridge();
+        bridge.postMessage({
+          type: 'ready',
+          name: name
+        });
+      } catch (error) {
+        console.error('[AnyWP] Error sending ready message:', error);
+      }
     }
   },
   
