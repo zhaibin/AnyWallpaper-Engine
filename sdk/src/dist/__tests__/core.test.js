@@ -6,7 +6,7 @@ import { AnyWP } from '../core/AnyWP';
 import { initializeAnyWP } from '../core/init';
 describe('Core - AnyWP object', () => {
     test('should have correct version', () => {
-        expect(AnyWP.version).toBe('2.1.1');
+        expect(AnyWP.version).toBe('2.2.0');
     });
     test('should have DPI scale', () => {
         expect(AnyWP.dpiScale).toBeGreaterThan(0);

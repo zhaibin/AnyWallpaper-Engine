@@ -19,7 +19,6 @@ import { getBridge, detectPlatform } from '../utils/platform';
 import type { AnyWPSDK } from '../types';
 import { isMouseEventData } from '../types/webmessage';
 import type { 
-  WebMessageEvent, 
   WebMessageData, 
   MouseEventData
 } from '../types/webmessage';

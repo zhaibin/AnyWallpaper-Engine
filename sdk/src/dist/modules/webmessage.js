@@ -14,6 +14,7 @@
 import { Coordinates } from '../utils/coordinates';
 import { throttle } from '../utils/throttle';
 import { logger } from '../utils/logger';
+import { getBridge, detectPlatform } from '../utils/platform';
 import { isMouseEventData } from '../types/webmessage';
 // Create scoped logger for WebMessage module
 const log = logger.scope('WebMessage');
@@ -33,8 +34,9 @@ const DOM_UPDATE_THROTTLE = 1000; // Check DOM updates every 1 second
  * Initialize WebMessage listener (must be called IMMEDIATELY after script load)
  */
 export function setupWebMessageListener() {
-    if (!window.chrome || !window.chrome.webview) {
-        log.info('chrome.webview not available');
+    const platform = detectPlatform();
+    if (platform === 'unknown') {
+        log.info('Native bridge not available (platform: unknown)');
         return;
     }
     const globalAny = window;
@@ -43,16 +45,22 @@ export function setupWebMessageListener() {
         log.warn('WebMessage listener already registered (EARLY), skipping duplicate');
         return;
     }
-    log.info('Setting up WebMessage listener (EARLY)');
+    log.info(`Setting up WebMessage listener (EARLY) for platform: ${platform}`);
     globalAny._anywpEarlyMessageListenerRegistered = true;
-    window.chrome.webview.addEventListener('message', handleWebMessage);
-    log.info('WebMessage listener setup complete (EARLY)');
+    try {
+        const bridge = getBridge();
+        bridge.addEventListener(handleWebMessage);
+        log.info('WebMessage listener setup complete (EARLY)');
+    }
+    catch (error) {
+        log.error('Failed to setup WebMessage listener:', error);
+    }
 }
 /**
  * Main WebMessage event handler
+ * Receives data directly from platform bridge
  */
-function handleWebMessage(event) {
-    let data = event.data;
+function handleWebMessage(data) {
     if (!data) {
         log.warn('Received empty WebMessage');
         return;
@@ -290,7 +298,8 @@ function handleClickEvent(data, eventInit, viewportPos) {
 /**
  * Send message to Flutter
  *
- * Sends a structured message to the Flutter application via chrome.webview.postMessage
+ * Sends a structured message to the Flutter application via platform bridge
+ * (Windows: chrome.webview.postMessage, macOS: webkit.messageHandlers)
  *
  * @param type - Message type (e.g., 'carouselStateChanged', 'wallpaperReady', 'error')
  * @param data - Message data payload
@@ -314,8 +323,9 @@ function handleClickEvent(data, eventInit, viewportPos) {
  * ```
  */
 export function sendToFlutter(type, data = {}) {
-    if (!window.chrome?.webview) {
-        log.warn('chrome.webview not available, cannot send message to Flutter');
+    const platform = detectPlatform();
+    if (platform === 'unknown') {
+        log.warn('Native bridge not available, cannot send message to Flutter');
         return false;
     }
     const message = {
@@ -323,10 +333,11 @@ export function sendToFlutter(type, data = {}) {
         timestamp: Date.now(),
         data: data
     };
-    log.info('[SendToFlutter] Sending message:', type);
+    log.info(`[SendToFlutter] Sending message (${platform}):`, type);
     log.debug('[SendToFlutter] Message data:', message);
     try {
-        window.chrome.webview.postMessage(message);
+        const bridge = getBridge();
+        bridge.postMessage(message);
         return true;
     }
     catch (error) {

@@ -1,6 +1,7 @@
+import { getBridge, detectPlatform } from '../utils/platform';
 export const AnyWP = {
     // Properties
-    version: '2.1.10',
+    version: '2.2.0',
     dpiScale: window.devicePixelRatio || 1,
     screenWidth: screen.width * (window.devicePixelRatio || 1),
     screenHeight: screen.height * (window.devicePixelRatio || 1),
@@ -66,11 +67,19 @@ export const AnyWP = {
     },
     openURL(url) {
         console.log('[AnyWP] Opening URL: ' + url);
-        if (window.chrome?.webview) {
-            window.chrome.webview.postMessage({
-                type: 'openURL',
-                url: url
-            });
+        const platform = detectPlatform();
+        if (platform !== 'unknown') {
+            try {
+                const bridge = getBridge();
+                bridge.postMessage({
+                    type: 'openURL',
+                    url: url
+                });
+            }
+            catch (error) {
+                console.error('[AnyWP] Error sending openURL message:', error);
+                window.open(url, '_blank');
+            }
         }
         else {
             console.warn('[AnyWP] Native bridge not available');
@@ -78,12 +87,19 @@ export const AnyWP = {
         }
     },
     ready(name) {
-        console.log('[AnyWP] Wallpaper ready: ' + name);
-        if (window.chrome?.webview) {
-            window.chrome.webview.postMessage({
-                type: 'ready',
-                name: name
-            });
+        const platform = detectPlatform();
+        console.log(`[AnyWP] Wallpaper ready: ${name} (platform: ${platform})`);
+        if (platform !== 'unknown') {
+            try {
+                const bridge = getBridge();
+                bridge.postMessage({
+                    type: 'ready',
+                    name: name
+                });
+            }
+            catch (error) {
+                console.error('[AnyWP] Error sending ready message:', error);
+            }
         }
     },
     // ========================================

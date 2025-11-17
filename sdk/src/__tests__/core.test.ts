@@ -8,7 +8,7 @@ import type { AnyWPSDK } from '../types';
 
 describe('Core - AnyWP object', () => {
   test('should have correct version', () => {
-    expect(AnyWP.version).toBe('2.1.1');
+    expect(AnyWP.version).toBe('2.2.0');
   });
   
   test('should have DPI scale', () => {
