@@ -13,6 +13,7 @@ flutter_*.log
 windows/flutter/ephemeral/
 windows/packages/
 windows/nuget.exe
+windows/version.h
 example/windows/nuget.exe
 *.user
 *.suo

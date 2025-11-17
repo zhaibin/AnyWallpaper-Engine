@@ -1,5 +1,6 @@
 ﻿#include "anywp_engine_plugin.h"
 #include "sdk_loader.h"
+#include "version.h"  // v2.3.0+: Auto-generated version header
 #include <flutter/method_channel.h>
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
@@ -34,10 +35,8 @@
 
 #pragma comment(lib, "wtsapi32.lib")
 
-namespace {
-constexpr char kPluginVersion[] = "2.1.10";
-constexpr char kSDKVersion[] = "2.1.10";  // Built-in Web SDK version
-}
+// Note: Version constants are now defined in version.h (auto-generated from pubspec.yaml)
+// No need to manually define kPluginVersion and kSDKVersion here
 
 namespace anywp_engine {
 
@@ -1359,11 +1358,11 @@ std::string AnyWPEnginePlugin::GetStoragePath() {
 }
 
 std::string AnyWPEnginePlugin::GetPluginVersion() {
-  return std::string(kPluginVersion);
+  return std::string(anywp_engine::kPluginVersion);
 }
 
 std::string AnyWPEnginePlugin::GetSDKVersion() {
-  return std::string(kSDKVersion);
+  return std::string(anywp_engine::kSDKVersion);
 }
 
 // ========== Interactive Mode Control (v2.0.1+) ==========

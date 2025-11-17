@@ -3,6 +3,28 @@ set(PROJECT_NAME "anywp_engine")
 project(${PROJECT_NAME} LANGUAGES CXX RC)  # Add RC for Windows Resource Compiler
 
 # ==========================================
+# Version Management (Auto-generated from pubspec.yaml)
+# ==========================================
+# Read version from pubspec.yaml
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../pubspec.yaml" PUBSPEC_CONTENT)
+string(REGEX MATCH "version: ([0-9]+)\\.([0-9]+)\\.([0-9]+)" VERSION_MATCH "${PUBSPEC_CONTENT}")
+set(ANYWP_ENGINE_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
+set(ANYWP_ENGINE_VERSION_MAJOR "${CMAKE_MATCH_1}")
+set(ANYWP_ENGINE_VERSION_MINOR "${CMAKE_MATCH_2}")
+set(ANYWP_ENGINE_VERSION_PATCH "${CMAKE_MATCH_3}")
+
+message(STATUS "========================================")
+message(STATUS "AnyWP Engine v${ANYWP_ENGINE_VERSION}")
+message(STATUS "========================================")
+
+# Generate version.h from template
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/version.h.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/version.h"
+  @ONLY
+)
+
+# ==========================================
 # VC Runtime Linking (v2.3.0+)
 # Note: Must use dynamic linking (/MD) to match Flutter framework
 # ==========================================

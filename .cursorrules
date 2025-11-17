@@ -103,10 +103,20 @@ release/                # 发布包
 ## 发版流程
 
 ### Step 1: 版本号更新
-- [ ] `pubspec.yaml`: `version: x.x.x`
+**⚠️ 版本号统一管理（v2.3.0+）**：
+- 版本号**仅需在** `pubspec.yaml` 中更新
+- C++ 代码中的版本号由 CMake 自动从 `pubspec.yaml` 生成到 `windows/version.h`
+- **不要手动修改** `windows/anywp_engine_plugin.cpp` 中的版本常量
+
+**必须更新的文件**：
+- [ ] `pubspec.yaml`: `version: x.x.x` ⭐ **唯一手动修改的版本号**
 - [ ] `CHANGELOG_CN.md`: 添加新版本条目
 - [ ] `.cursorrules` 底部版本号
 - [ ] `docs/PRECOMPILED_DLL_INTEGRATION.md`: 更新示例版本号
+
+**自动生成（无需手动修改）**：
+- ✅ `windows/version.h` - 由 CMake 自动生成
+- ✅ C++ 代码中的 `kPluginVersion` 和 `kSDKVersion` - 从 `version.h` 引用
 
 ### Step 2: 文档更新
 **新增 API 必须更新**:

@@ -325,7 +325,7 @@ echo.
 echo Packages created:
 echo   1. anywp_engine_v%VERSION%_precompiled.zip  (DLL + LIB + C API Header)
 echo   2. anywp_engine_v%VERSION%_source.zip       (Full source code)
-echo   3. anywp_web_sdk_v%VERSION%.zip             (Web SDK)
+echo   3. anywp_web_sdk_v%SDK_VERSION%.zip         (Web SDK)
 echo.
 echo Location: %RELEASE_DIR%
 echo.
