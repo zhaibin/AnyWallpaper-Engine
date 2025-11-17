@@ -196,20 +196,21 @@ if not exist "%SOURCE_DIR%\windows\utils" (
     echo   [OK] windows\utils\
 )
 
-REM Check SDK
+REM Check SDK (v2.2.0+: full sdk/ directory with source)
 echo Checking SDK...
-if not exist "%SOURCE_DIR%\windows\anywp_sdk.js" (
-    echo   [MISSING] windows\anywp_sdk.js
+if not exist "%SOURCE_DIR%\sdk\dist\anywp_sdk.js" (
+    echo   [MISSING] sdk\dist\anywp_sdk.js
     set /a ERROR_COUNT+=1
 ) else (
-    echo   [OK] windows\anywp_sdk.js
+    echo   [OK] sdk\dist\anywp_sdk.js
 )
 
-if not exist "%SOURCE_DIR%\windows\sdk" (
-    echo   [MISSING] windows\sdk\
+REM Check SDK source directory exists
+if not exist "%SOURCE_DIR%\sdk\src" (
+    echo   [MISSING] sdk\src\ ^(TypeScript source required in source package^)
     set /a ERROR_COUNT+=1
 ) else (
-    echo   [OK] windows\sdk\
+    echo   [OK] sdk\src\
 )
 
 REM Check WebView2 packages
@@ -242,7 +243,7 @@ if not exist "%WEB_SDK_DIR%" (
 
 echo Checking Web SDK core files...
 if not exist "%WEB_SDK_DIR%\sdk\anywp_sdk.js" (
-    echo   [MISSING] sdk\anywp_sdk.js
+    echo   [MISSING] sdk\anywp_sdk.js ^(at least unminified version required^)
     set /a ERROR_COUNT+=1
 ) else (
     echo   [OK] sdk\anywp_sdk.js

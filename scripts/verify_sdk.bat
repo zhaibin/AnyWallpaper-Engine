@@ -7,31 +7,31 @@ echo  SDK Version Verification
 echo ========================================
 echo.
 
-echo [Source Files]
-if exist "windows\anywp_sdk.js" (
-    for %%A in ("windows\anywp_sdk.js") do echo   anywp_sdk.js     : %%~zA bytes ^(unminified^)
+echo [Source Files ^(v2.2.0+: sdk/dist/^)]
+if exist "sdk\dist\anywp_sdk.js" (
+    for %%A in ("sdk\dist\anywp_sdk.js") do echo   anywp_sdk.js     : %%~zA bytes ^(unminified^)
 ) else (
     echo   anywp_sdk.js     : MISSING
 )
 
-if exist "windows\anywp_sdk.min.js" (
-    for %%A in ("windows\anywp_sdk.min.js") do echo   anywp_sdk.min.js : %%~zA bytes ^(minified^)
+if exist "sdk\dist\anywp_sdk.min.js" (
+    for %%A in ("sdk\dist\anywp_sdk.min.js") do echo   anywp_sdk.min.js : %%~zA bytes ^(minified^)
 ) else (
     echo   anywp_sdk.min.js : MISSING
 )
 
 echo.
-echo [Debug Build]
-if exist "example\build\windows\x64\runner\Debug\windows\anywp_sdk.js" (
-    for %%A in ("example\build\windows\x64\runner\Debug\windows\anywp_sdk.js") do echo   √ SDK Found: %%~zA bytes
+echo [Debug Build ^(v2.2.0+: sdk/dist/^)]
+if exist "example\build\windows\x64\runner\Debug\sdk\dist\anywp_sdk.js" (
+    for %%A in ("example\build\windows\x64\runner\Debug\sdk\dist\anywp_sdk.js") do echo   √ SDK Found: %%~zA bytes
 ) else (
     echo   × SDK Missing
 )
 
 echo.
-echo [Release Build]
-if exist "example\build\windows\x64\runner\Release\windows\anywp_sdk.js" (
-    for %%A in ("example\build\windows\x64\runner\Release\windows\anywp_sdk.js") do echo   √ SDK Found: %%~zA bytes
+echo [Release Build ^(v2.2.0+: sdk/dist/^)]
+if exist "example\build\windows\x64\runner\Release\sdk\dist\anywp_sdk.js" (
+    for %%A in ("example\build\windows\x64\runner\Release\sdk\dist\anywp_sdk.js") do echo   √ SDK Found: %%~zA bytes
 ) else (
     echo   × SDK Missing
 )

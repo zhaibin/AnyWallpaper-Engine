@@ -114,18 +114,20 @@ call :PrintStep "Copying CMakeLists.txt to precompiled package..."
 copy "%PROJECT_ROOT%\windows\CMakeLists.precompiled.txt" "%PRECOMPILED_DIR%\windows\CMakeLists.txt"
 
 call :PrintStep "Copying Web SDK to precompiled package..."
-REM Copy minified version (production, priority) and unminified version (fallback)
-if exist "%PROJECT_ROOT%\windows\anywp_sdk.min.js" (
-    copy "%PROJECT_ROOT%\windows\anywp_sdk.min.js" "%PRECOMPILED_DIR%\sdk\"
-    echo   [OK] Copied minified SDK: anywp_sdk.min.js
+REM Copy SDK from sdk/dist/ directory (v2.2.0+)
+REM Create dist subdirectory for consistency with source structure
+if not exist "%PRECOMPILED_DIR%\sdk\dist\" mkdir "%PRECOMPILED_DIR%\sdk\dist\"
+if exist "%PROJECT_ROOT%\sdk\dist\anywp_sdk.min.js" (
+    copy "%PROJECT_ROOT%\sdk\dist\anywp_sdk.min.js" "%PRECOMPILED_DIR%\sdk\dist\"
+    echo   [OK] Copied minified SDK: sdk\dist\anywp_sdk.min.js
 ) else (
-    echo   [WARNING] Minified SDK not found, using unminified version
+    echo   [WARNING] Minified SDK not found
 )
-if exist "%PROJECT_ROOT%\windows\anywp_sdk.js" (
-    copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%PRECOMPILED_DIR%\sdk\"
-    echo   [OK] Copied unminified SDK: anywp_sdk.js
+if exist "%PROJECT_ROOT%\sdk\dist\anywp_sdk.js" (
+    copy "%PROJECT_ROOT%\sdk\dist\anywp_sdk.js" "%PRECOMPILED_DIR%\sdk\dist\"
+    echo   [OK] Copied unminified SDK: sdk\dist\anywp_sdk.js
 ) else (
-    echo   [ERROR] Unminified SDK not found
+    echo   [ERROR] Unminified SDK not found at sdk\dist\anywp_sdk.js
     set VERIFY_ERROR=1
 )
 
@@ -209,14 +211,9 @@ call :PrintStep "Copying headers to source package..."
 copy "%PROJECT_ROOT%\windows\include\anywp_engine\any_w_p_engine_plugin.h" "%SOURCE_DIR%\include\anywp_engine\"
 
 call :PrintStep "Copying SDK to source package..."
-REM Copy both minified and unminified versions
-if exist "%PROJECT_ROOT%\windows\anywp_sdk.min.js" (
-    copy "%PROJECT_ROOT%\windows\anywp_sdk.min.js" "%SOURCE_DIR%\windows\"
-)
-if exist "%PROJECT_ROOT%\windows\anywp_sdk.js" (
-    copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%SOURCE_DIR%\windows\"
-)
-xcopy /E /I /Y "%PROJECT_ROOT%\windows\sdk" "%SOURCE_DIR%\windows\sdk"
+REM Copy SDK source tree (v2.2.0+: top-level sdk/ directory)
+xcopy /E /I /Y "%PROJECT_ROOT%\sdk" "%SOURCE_DIR%\sdk\"
+REM Note: Source package includes full SDK source tree with TypeScript source, not just compiled JS
 
 call :PrintStep "Copying CMake and WebView2 packages to source package..."
 copy "%PROJECT_ROOT%\windows\CMakeLists.txt" "%SOURCE_DIR%\windows\"
@@ -245,19 +242,19 @@ mkdir "%WEB_SDK_DIR%\examples"
 mkdir "%WEB_SDK_DIR%\docs"
 
 call :PrintStep "Copying Web SDK files..."
-REM Copy both minified and unminified versions to Web SDK package
+REM Copy Web SDK files from sdk/dist/ directory (v2.2.0+)
 REM Note: Web SDK package uses JS SDK version, not Flutter plugin version
-if exist "%PROJECT_ROOT%\windows\anywp_sdk.min.js" (
-    copy "%PROJECT_ROOT%\windows\anywp_sdk.min.js" "%WEB_SDK_DIR%\sdk\"
+if exist "%PROJECT_ROOT%\sdk\dist\anywp_sdk.min.js" (
+    copy "%PROJECT_ROOT%\sdk\dist\anywp_sdk.min.js" "%WEB_SDK_DIR%\sdk\"
     echo   [OK] Copied minified SDK: anywp_sdk.min.js
 ) else (
-    echo   [WARNING] Minified SDK not found
+    echo   [WARNING] Minified SDK not found at sdk\dist\anywp_sdk.min.js
 )
-if exist "%PROJECT_ROOT%\windows\anywp_sdk.js" (
-    copy "%PROJECT_ROOT%\windows\anywp_sdk.js" "%WEB_SDK_DIR%\sdk\"
+if exist "%PROJECT_ROOT%\sdk\dist\anywp_sdk.js" (
+    copy "%PROJECT_ROOT%\sdk\dist\anywp_sdk.js" "%WEB_SDK_DIR%\sdk\"
     echo   [OK] Copied unminified SDK: anywp_sdk.js
 ) else (
-    echo   [ERROR] Unminified SDK not found
+    echo   [ERROR] Unminified SDK not found at sdk\dist\anywp_sdk.js
 )
 xcopy /E /I /Y "%PROJECT_ROOT%\examples\*.html" "%WEB_SDK_DIR%\examples\"
 copy "%PROJECT_ROOT%\docs\WEB_DEVELOPER_GUIDE_CN.md" "%WEB_SDK_DIR%\docs\"

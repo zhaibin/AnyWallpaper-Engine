@@ -55,8 +55,8 @@ echo.
 REM Step 3: Copy SDK files
 echo [Step 3/10] Copying SDK files...
 set "BUILD_DIR=%PROJECT_ROOT%\example\build\windows\x64\runner\Debug"
-if not exist "%BUILD_DIR%\data\flutter_assets\windows\" mkdir "%BUILD_DIR%\data\flutter_assets\windows\"
-copy /Y "%PROJECT_ROOT%\windows\anywp_sdk.js" "%BUILD_DIR%\data\flutter_assets\windows\" >nul 2>&1
+if not exist "%BUILD_DIR%\data\flutter_assets\sdk\dist\" mkdir "%BUILD_DIR%\data\flutter_assets\sdk\dist\"
+copy /Y "%PROJECT_ROOT%\sdk\dist\anywp_sdk.js" "%BUILD_DIR%\data\flutter_assets\sdk\dist\" >nul 2>&1
 echo Done.
 echo.
 

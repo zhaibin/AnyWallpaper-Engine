@@ -55,8 +55,8 @@ set(anywp_engine_bundled_libraries
 # Copy SDK file to runtime directory
 # This ensures the SDK is available when C++ plugin tries to load it
 # ==========================================
-# Path to SDK file in precompiled package
-set(ANYWP_SDK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../sdk/anywp_sdk.js")
+# Path to SDK file in precompiled package (v2.2.0+: unified sdk/dist/ structure)
+set(ANYWP_SDK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../sdk/dist/anywp_sdk.js")
 
 # Function to copy SDK file (can be called from main CMakeLists.txt)
 # Usage: anywp_copy_sdk(TARGET_NAME)
@@ -66,21 +66,23 @@ function(anywp_copy_sdk TARGET_NAME)
     # This is the most important path - where the executable actually runs
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory 
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/windows"
+        "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk/dist"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${ANYWP_SDK_SOURCE}"
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/windows/anywp_sdk.js"
+        "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk/dist/anywp_sdk.js"
       COMMENT "Copying AnyWP SDK to runner directory ($<CONFIG>)"
       VERBATIM
     )
     
-    # Also copy to executable directory for compatibility
-    # This covers the case where C++ code looks for "../anywp_sdk.js"
+    # Also copy to root sdk/ directory for backward compatibility
+    # This ensures old integration code still works
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory 
+        "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk"
       COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${ANYWP_SDK_SOURCE}"
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/anywp_sdk.js"
-      COMMENT "Copying AnyWP SDK to executable directory ($<CONFIG>)"
+        "$<TARGET_FILE_DIR:${TARGET_NAME}>/sdk/anywp_sdk.js"
+      COMMENT "Copying AnyWP SDK to sdk/ directory for compatibility ($<CONFIG>)"
       VERBATIM
     )
     
