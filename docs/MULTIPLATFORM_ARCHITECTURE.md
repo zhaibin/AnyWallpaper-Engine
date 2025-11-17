@@ -53,7 +53,8 @@ This document describes the architecture for supporting multiple platforms (Wind
 ### 2. JavaScript SDK
 - **Fully reusable across platforms**
 - Browser-based APIs (no platform-specific code)
-- TypeScript SDK (`windows/sdk/` → `sdk/`)
+- TypeScript SDK (`sdk/src/` - platform-independent)
+- Compiled output (`sdk/dist/anywp_sdk.js` - single bundle for all platforms)
 
 ### 3. Design Patterns
 - Modular architecture
@@ -111,6 +112,15 @@ This document describes the architecture for supporting multiple platforms (Wind
 anywp_engine/
 ├── lib/
 │   └── anywp_engine.dart           # Platform-agnostic Dart API
+├── sdk/                            # Cross-platform TypeScript SDK (NEW ⭐)
+│   ├── src/                        # TypeScript source code
+│   │   ├── core/                   # Core SDK logic
+│   │   ├── modules/                # Feature modules
+│   │   ├── utils/                  # Utilities (including platform.ts)
+│   │   └── package.json
+│   ├── dist/                       # Compiled JavaScript SDK
+│   │   └── anywp_sdk.js            # Final bundle (used by all platforms)
+│   └── README.md                   # SDK documentation
 ├── windows/                         # Windows implementation
 │   ├── modules/                     # Windows-specific modules
 │   ├── utils/                       # Windows utilities
@@ -123,15 +133,13 @@ anywp_engine/
 │   │   │   ├── WallpaperManager.h/m
 │   │   │   ├── MonitorManager.h/m
 │   │   │   ├── PowerManager.h/m
-│   │   │   └── ...
+│   │   │   └── MessageBridge.h/m
 │   │   └── Utils/                  # macOS utilities
 │   │       ├── Logger.h/m
 │   │       ├── StatePersistence.h/m
 │   │       └── ...
 │   ├── Assets/                     # macOS assets
 │   └── CMakeLists.txt              # macOS build config
-├── sdk/                            # Shared JavaScript SDK
-│   └── (TypeScript SDK - platform-independent)
 └── docs/
     ├── MACOS_DEVELOPER_GUIDE.md    # macOS-specific guide
     └── MULTIPLATFORM_ARCHITECTURE.md

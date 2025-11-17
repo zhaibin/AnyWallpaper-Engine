@@ -98,8 +98,9 @@
 }
 
 - (NSString *)loadSDKScript {
-    // Load the unified TypeScript SDK (compiled from windows/sdk/)
+    // Load the unified TypeScript SDK (compiled from sdk/src/)
     // The SDK is platform-independent and automatically detects macOS
+    // v2.2.0: SDK moved to top-level sdk/ directory
     
     // Try to load from bundle resources
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
@@ -116,7 +117,7 @@
             return [self fallbackSDKScript];
         }
         
-        [AWPLogger log:@"Loaded unified TypeScript SDK from bundle"];
+        [AWPLogger log:@"Loaded unified TypeScript SDK from bundle (sdk/dist/)"];
         return sdkScript;
     }
     

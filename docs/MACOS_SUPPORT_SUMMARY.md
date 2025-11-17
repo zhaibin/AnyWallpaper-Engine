@@ -78,13 +78,14 @@ macos/
 ### 3. TypeScript SDK 跨平台支持 ✅
 
 更新了 TypeScript SDK 支持多平台：
-- **源码目录**: `windows/sdk/` （TypeScript 源码）
-- **编译产物**: `windows/anywp_sdk.js` （统一的 JavaScript SDK）
-- **新增平台抽象层**: `windows/sdk/utils/platform.ts`
+- **源码目录**: `sdk/src/` （TypeScript 源码，顶层目录）
+- **编译产物**: `sdk/dist/anywp_sdk.js` （统一的 JavaScript SDK）
+- **新增平台抽象层**: `sdk/src/utils/platform.ts`
   - 自动检测平台（Windows / macOS）
   - Windows: `window.chrome.webview`
   - macOS: `window.webkit.messageHandlers`
 - **版本更新**: 2.1.10 → 2.2.0
+- **架构优化**: SDK 从 `windows/sdk/` 移到顶层 `sdk/`（语义更清晰）
 - **完全平台无关**: 相同的 TypeScript 代码在两个平台上运行
 
 ### 4. 示例应用更新 ✅
