@@ -28,7 +28,7 @@
     NSString *sanitized = [[name componentsSeparatedByCharactersInSet:[allowed invertedSet]]
                           componentsJoinedByString:@"_"];
     
-    self.applicationName = sanitized;
+    _applicationName = sanitized;  // 直接访问成员变量，避免递归调用 setter
     [self updateStoragePath];
     
     [AWPLogger log:[NSString stringWithFormat:@"Application name set to: %@", sanitized]];

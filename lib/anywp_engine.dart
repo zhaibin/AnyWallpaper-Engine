@@ -30,7 +30,9 @@ class MonitorInfo {
       top: map['top'] as int,
       width: map['width'] as int,
       height: map['height'] as int,
-      isPrimary: map['isPrimary'] as bool,
+      isPrimary: (map['isPrimary'] is bool) 
+          ? map['isPrimary'] as bool 
+          : (map['isPrimary'] as int) == 1,  // macOS 可能返回整数 0/1
     );
   }
 
@@ -95,7 +97,7 @@ class AnyWPEngine {
     _powerStatePollingTimer?.cancel();
     
     // Poll for power state changes every 1000ms
-    _powerStatePollingTimer = Timer.periodic(Duration(milliseconds: 1000), (timer) async {
+    _powerStatePollingTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) async {
       if (_onPowerStateChangeCallback == null) {
         timer.cancel();
         return;
@@ -181,7 +183,7 @@ class AnyWPEngine {
     _messagePollingTimer?.cancel();
     
     // Poll for messages every 1 second
-    _messagePollingTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
+    _messagePollingTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (_onMessageCallback == null) {
         timer.cancel();
         return;

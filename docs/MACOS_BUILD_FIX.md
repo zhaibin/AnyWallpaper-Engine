@@ -1,44 +1,31 @@
-platform :osx, '10.15'
+# macOS Build Fix Guide
 
-# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
-ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+## 问题描述
 
-project 'Runner', {
-  'Debug' => :debug,
-  'Profile' => :release,
-  'Release' => :release,
-}
+在 Flutter 3.38.1 + Xcode 26.1.1 + CocoaPods 1.16.2 环境下，macOS 插件构建失败，报错：
+```
+fatal error: 'FlutterMacOS/FlutterMacOS.h' file not found
+error: Unable to find module dependency: 'FlutterMacOS'
+```
 
-def flutter_root
-  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'), __FILE__)
-  unless File.exist?(generated_xcode_build_settings_path)
-    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure \"flutter pub get\" is executed first"
-  end
+## 根本原因
 
-  File.foreach(generated_xcode_build_settings_path) do |line|
-    matches = line.match(/FLUTTER_ROOT\=(.*)/)
-    return matches[1].strip if matches
-  end
-  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Flutter-Generated.xcconfig, then run \"flutter pub get\""
-end
+1. **FlutterMacOS 框架路径缺失**：CocoaPods 为插件 pod 设置的框架搜索路径不包含 FlutterMacOS 框架
+2. **模块映射文件路径缺失**：Clang 模块系统无法找到 FlutterMacOS 的模块映射文件
+3. **Runner target 框架路径缺失**：Runner 应用编译时无法解析插件模块的 FlutterMacOS 依赖
 
-require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+## 修复方案
 
-flutter_macos_podfile_setup
+### 1. 修改 Podfile（插件级别）
 
-target 'Runner' do
-  use_frameworks!
-  use_modular_headers!
+在 `example/macos/Podfile` 的 `post_install` 钩子中添加：
 
-  flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
-end
-
+```ruby
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
     
     # Fix framework search paths for plugin pods that depend on FlutterMacOS
-    # flutter_additional_macos_build_settings should handle this, but if it doesn't, we fix it here
     if target.name == 'anywp_engine'
       target.build_configurations.each do |config|
         # Use the same method as flutter_additional_macos_build_settings
@@ -122,4 +109,79 @@ post_install do |installer|
     end
   end
 end
+```
+
+### 2. 修改 Runner 配置（应用级别）
+
+在 `example/macos/Runner/Configs/Debug.xcconfig` 和 `Release.xcconfig` 中添加：
+
+```xcconfig
+// Add FlutterMacOS framework search path for module resolution
+FRAMEWORK_SEARCH_PATHS = $(inherited) "$(FLUTTER_ROOT)/bin/cache/artifacts/engine/darwin-x64/FlutterMacOS.xcframework/macos-arm64_x86_64"
+HEADER_SEARCH_PATHS = $(inherited) "$(FLUTTER_ROOT)/bin/cache/artifacts/engine/darwin-x64/FlutterMacOS.xcframework/macos-arm64_x86_64/FlutterMacOS.framework/Headers"
+OTHER_CFLAGS = $(inherited) -fmodule-map-file="$(FLUTTER_ROOT)/bin/cache/artifacts/engine/darwin-x64/FlutterMacOS.xcframework/macos-arm64_x86_64/FlutterMacOS.framework/Modules/module.modulemap"
+```
+
+**注意**：Release 配置使用 `darwin-x64-release` 目录。
+
+### 3. 修复其他 Xcode 项目配置
+
+#### 3.1 修复 project.pbxproj
+
+在 `example/macos/Runner.xcodeproj/project.pbxproj` 中：
+
+1. 添加 `SWIFT_VERSION = 5.0;` 到 Debug 和 Release 配置
+2. 添加 `INFOPLIST_FILE = Runner/Info.plist;` 到构建设置
+3. 修复 entitlements 文件路径
+4. 修复 `GeneratedPluginRegistrant.swift` 和 `Assets.xcassets` 路径
+5. 添加缺失的 `Debug.xcconfig` 和 `Release.xcconfig` 文件引用
+
+#### 3.2 修复 .xcconfig 文件
+
+在 `Runner/Configs/Debug.xcconfig` 和 `Release.xcconfig` 中：
+
+1. 添加 CocoaPods 生成的配置引用：
+```xcconfig
+#include "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+```
+
+### 4. 修复 AnyWPEnginePlugin.m 警告
+
+添加 `__unused` 限定符：
+
+```objective-c
+- (void)handleEncryptFile:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSDictionary *args = call.arguments;
+    __unused NSString *sourcePath = args[@"sourcePath"];
+    __unused NSString *destPath = args[@"destPath"];
+    // ... implementation ...
+}
+```
+
+## 验证步骤
+
+```bash
+cd example
+flutter clean
+flutter pub get
+cd macos
+pod install
+cd ..
+flutter build macos --debug
+flutter build macos --release
+```
+
+## 环境信息
+
+- **Flutter**: 3.38.1 (stable)
+- **Dart**: 3.10.0
+- **Xcode**: 26.1.1 (Build 17B100)
+- **CocoaPods**: 1.16.2
+- **macOS**: 26.1 (25B78)
+
+## 参考
+
+- Flutter macOS Plugin Development: https://flutter.dev/docs/development/platform-integration/platform-channels
+- CocoaPods Podfile DSL: https://guides.cocoapods.org/syntax/podfile.html
+- Xcode Build Settings: https://developer.apple.com/documentation/xcode/build-settings-reference
 

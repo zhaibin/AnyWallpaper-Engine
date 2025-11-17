@@ -354,8 +354,8 @@
 
 - (void)handleEncryptFile:(FlutterMethodCall*)call result:(FlutterResult)result {
     NSDictionary *args = call.arguments;
-    NSString *sourcePath = args[@"sourcePath"];
-    NSString *destPath = args[@"destPath"];
+    __unused NSString *sourcePath = args[@"sourcePath"];
+    __unused NSString *destPath = args[@"destPath"];
     
     // TODO: Implement file encryption
     // For now, return not implemented
@@ -364,8 +364,8 @@
 
 - (void)handleDecryptFile:(FlutterMethodCall*)call result:(FlutterResult)result {
     NSDictionary *args = call.arguments;
-    NSString *encryptedPath = args[@"encryptedPath"];
-    NSString *destPath = args[@"destPath"];
+    __unused NSString *encryptedPath = args[@"encryptedPath"];
+    __unused NSString *destPath = args[@"destPath"];
     
     // TODO: Implement file decryption
     // For now, return not implemented
