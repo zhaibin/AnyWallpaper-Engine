@@ -1,0 +1,17 @@
+chore(sdk): 同步 Web SDK 版本号到 2.3.0
+
+更新 windows/sdk/package.json 中的版本号，与主项目版本保持一致。
+
+相关改进：
+- 修复 Web SDK 包版本号不一致的问题
+- 确保所有发布包使用统一的版本号
+- 生成正确的 anywp_web_sdk_v2.3.0.zip 包
+
+技术细节：
+- windows/sdk/package.json: 2.1.10 → 2.3.0
+- 发布包验证：全部通过（3/3）
+
+下一步建议：
+考虑在未来版本中实现 SDK package.json 版本号自动同步机制，
+避免手动维护带来的版本号不一致问题。
+
