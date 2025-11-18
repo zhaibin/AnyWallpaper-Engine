@@ -1654,7 +1654,7 @@ var AnyWPBundle = (function (exports) {
         setupFlutterMessageListener();
         // v2.1.0+ Inject sendToFlutter method to AnyWP object
         anyWP.sendToFlutter = sendToFlutter;
-        logger.info('Bidirectional communication enabled (Flutter ↔ JavaScript)');
+        logger.info('Bidirectional communication enabled (Flutter <-> JavaScript)');
         // Enable debug mode automatically for testing
         anyWP._debugMode = true;
         logger.info('Debug mode ENABLED automatically');
@@ -1965,7 +1965,7 @@ var AnyWPBundle = (function (exports) {
                 AnyWP._init();
             }
             // SDK ready, log version only
-            console.info(`✅ AnyWP SDK 已加载: ${AnyWP.version}`);
+            console.info(`[AnyWP] SDK loaded: ${AnyWP.version}`);
         }
     }
 

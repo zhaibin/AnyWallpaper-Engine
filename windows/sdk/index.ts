@@ -134,6 +134,6 @@ if (typeof window !== 'undefined') {
     }
     
     // SDK ready, log version only
-    console.info(`✅ AnyWP SDK 已加载: ${AnyWP.version}`);
+    console.info(`[AnyWP] SDK loaded: ${AnyWP.version}`);
   }
 }
