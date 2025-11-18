@@ -43,6 +43,7 @@ set(PLUGIN_NAME "anywp_engine_plugin")
 
 add_library(${PLUGIN_NAME} SHARED
   "anywp_engine_plugin.cpp"
+  "anywp_engine_plugin_lifecycle.cpp"
   "sdk_loader.cpp"
   "sdk_resource.rc"
   "utils/state_persistence.cpp"

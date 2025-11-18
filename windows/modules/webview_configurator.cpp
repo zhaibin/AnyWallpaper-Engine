@@ -421,7 +421,35 @@ void WebViewConfigurator::LogNavigationBlocked(const std::string& url) {
 }
 
 void WebViewConfigurator::LogConsoleMessage(const std::string& message) {
-  Logger::Instance().Info("WebView Console", message);
+  // v2.3.2+: Parse JSON and extract meaningful content
+  // Example JSON: {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},...]}
+  
+  // Try to extract all "value" fields from the JSON
+  std::string simplified = "";
+  size_t pos = 0;
+  
+  while ((pos = message.find("\"value\":\"", pos)) != std::string::npos) {
+    pos += 9;  // Skip past "value":"
+    size_t end_pos = message.find("\"", pos);
+    if (end_pos != std::string::npos) {
+      std::string value = message.substr(pos, end_pos - pos);
+      if (!simplified.empty()) {
+        simplified += " ";
+      }
+      simplified += value;
+      pos = end_pos;
+    } else {
+      break;
+    }
+  }
+  
+  // If we successfully extracted values, use them; otherwise use first 100 chars of original
+  if (!simplified.empty()) {
+    Logger::Instance().Info("WebConsole", simplified);
+  } else {
+    std::string truncated = message.length() > 100 ? message.substr(0, 100) + "..." : message;
+    Logger::Instance().Info("WebConsole", truncated);
+  }
 }
 
 }  // namespace anywp_engine

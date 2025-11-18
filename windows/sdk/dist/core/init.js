@@ -27,7 +27,7 @@ export function initializeAnyWP(anyWP) {
     setupFlutterMessageListener();
     // v2.1.0+ Inject sendToFlutter method to AnyWP object
     anyWP.sendToFlutter = sendToFlutter;
-    logger.info('Bidirectional communication enabled (Flutter ↔ JavaScript)');
+    logger.info('Bidirectional communication enabled (Flutter <-> JavaScript)');
     // Enable debug mode automatically for testing
     anyWP._debugMode = true;
     logger.info('Debug mode ENABLED automatically');

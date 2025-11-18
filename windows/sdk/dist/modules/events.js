@@ -54,7 +54,7 @@ export const Events = {
         window.addEventListener('AnyWP:visibility', this._eventHandlers.visibility);
         window.addEventListener('resize', this._eventHandlers.resize);
         this._setupCompleted = true;
-        console.log('[AnyWP] Events setup completed');
+        // Silent initialization - reduces log noise
     },
     // Register mouse callback
     onMouse(anyWP, callback) {

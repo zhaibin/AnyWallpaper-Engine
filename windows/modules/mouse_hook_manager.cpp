@@ -1,6 +1,7 @@
 #include "mouse_hook_manager.h"
 #include <iostream>
 #include "../anywp_engine_plugin.h"
+#include "../utils/logger.h"
 
 namespace anywp_engine {
 
@@ -88,42 +89,14 @@ bool MouseHookManager::IsPaused() const {
 
 
 LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
-  // v2.0.10+ CRITICAL DEBUG: Output IMMEDIATELY to confirm callback is called
-  static int total_calls = 0;
-  total_calls++;
-  
-  // ALWAYS output first 20 calls, then every 10th
-  static bool first_call_logged = false;
-  if (!first_call_logged) {
-    std::wcout << L"[MouseHook] *** CALLBACK FIRST CALL *** nCode=" << nCode << L", wParam=" << wParam << std::endl;
-    first_call_logged = true;
-  }
-  
-  if (total_calls <= 20 || total_calls % 10 == 0) {
-    std::wcout << L"[MouseHook] Callback #" << total_calls << L" nCode=" << nCode << L", wParam=" << wParam << std::endl;
-  }
-  
-  // v2.0.10+ DEBUG: Track early returns (log ALL for debugging)
-  static int early_return_ncode = 0;
-  static int early_return_paused = 0;
+  // v2.3.2+: Removed debug counters to reduce log noise
   
   if (nCode < 0 || !instance_) {
-    early_return_ncode++;
-    // Log first 50 or every 20th
-    if (early_return_ncode <= 50 || early_return_ncode % 20 == 0) {
-      std::wcout << L"[MouseHook] DEBUG: Early return (nCode=" << nCode 
-                 << L", instance=" << (instance_ ? L"OK" : L"NULL")
-                 << L"), count: " << early_return_ncode << std::endl;
-    }
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
   }
   
   // Skip if paused (performance optimization)
   if (instance_->paused_) {
-    early_return_paused++;
-    if (early_return_paused <= 50 || early_return_paused % 20 == 0) {
-      std::wcout << L"[MouseHook] DEBUG: Paused, skipping event, count: " << early_return_paused << std::endl;
-    }
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
   }
   
@@ -133,33 +106,10 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
   // Check if click position is occluded by a top-level application window
   HWND window_at_point = WindowFromPoint(pt);
   
-  // Get window class name for debugging
+  // Get window class name
   wchar_t className[256] = {0};
   if (window_at_point) {
     GetClassNameW(window_at_point, className, 256);
-  }
-  
-  // Debug logging (v2.0.10+ log ALL non-mousemove events unconditionally)
-  static int debug_count = 0;
-  static int mousemove_debug_count = 0;
-  bool should_log = (wParam != WM_MOUSEMOVE);  // Always log non-mousemove events
-  
-  // For mousemove, log every 50th event
-  if (wParam == WM_MOUSEMOVE) {
-    mousemove_debug_count++;
-    should_log = (mousemove_debug_count % 50 == 0);
-  }
-  
-  if (should_log) {
-    debug_count++;
-    std::wcout << L"[MouseHook] Event: " << wParam 
-               << L" at (" << pt.x << L"," << pt.y << L")";
-    if (instance_->is_mouse_down_) {
-      std::wcout << L" [MOUSE_DOWN]";
-    }
-    std::wcout << std::endl;
-    std::wcout << L"[MouseHook] WindowAtPoint: " << window_at_point 
-               << L" ClassName: " << className << std::endl;
   }
   
   // Check if this is a top-level application window (not desktop layer)
@@ -175,12 +125,6 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
       // Get root window class name
       wchar_t rootClassName[256] = {0};
       GetClassNameW(root_window, rootClassName, 256);
-      
-      // v2.0.10+ DEBUG: Log root window class
-      if (should_log) {
-        std::wcout << L"[MouseHook] Root window: " << root_window 
-                   << L" Class: " << rootClassName << std::endl;
-      }
       
       // v2.0.10+ CRITICAL FIX: Detect desktop AND desktop icon list
       // SysListView32 is the icon container, we need to forward these events too
@@ -199,11 +143,6 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
         bool check_window = instance_->hwnd_check_callback_(window_at_point);
         bool check_root = instance_->hwnd_check_callback_(root_window);
         is_our_window = check_window || check_root;
-        
-        if (should_log) {
-          std::wcout << L"[MouseHook] HWND Check - window_at_point: " << check_window 
-                     << L", root_window: " << check_root << std::endl;
-        }
       }
       
       // Fallback: Also check if it's our Chrome WebView2 window
@@ -211,16 +150,7 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
         if (instance_->instance_callback_) {
           WallpaperInstance* inst = instance_->instance_callback_(pt.x, pt.y);
           is_our_window = (inst != nullptr);
-          
-          if (should_log) {
-            std::wcout << L"[MouseHook] Chrome window check: " << (inst != nullptr) << std::endl;
-          }
         }
-      }
-      
-      if (should_log) {
-        std::wcout << L"[MouseHook] is_desktop_window: " << is_desktop_window 
-                   << L", is_our_window: " << is_our_window << std::endl;
       }
       
       if (!is_desktop_window && !is_our_window) {
@@ -244,16 +174,10 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
     event_type = "mousedown";
     // v2.0.4+ Track mouse button down state - MUST set this before any early returns
     instance_->is_mouse_down_ = true;
-    if (should_log) {
-      std::wcout << L"[MouseHook] 🖱️ Mouse button down" << std::endl;
-    }
   } else if (wParam == WM_LBUTTONUP) {
     event_type = "mouseup";
     // v2.0.4+ Clear mouse button down state
     instance_->is_mouse_down_ = false;
-    if (should_log) {
-      std::wcout << L"[MouseHook] 🖱️ Mouse button up" << std::endl;
-    }
   } else if (wParam == WM_MOUSEMOVE) {
     event_type = "mousemove";
   }
@@ -261,21 +185,7 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
   // v2.0.4+ NOW check is_app_window (after mouse button state is set)
   // Don't block events when mouse button is pressed
   if (is_app_window && !instance_->is_mouse_down_) {
-    if (should_log) {
-      std::wcout << L"[MouseHook] BLOCKED - is_app_window = true, mouse button not down" << std::endl;
-    }
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
-  }
-  
-  // v2.0.10+ DEBUG: Always log FORWARDING decision
-  static int forward_count = 0;
-  forward_count++;
-  if (should_log || forward_count <= 10) {
-    std::wcout << L"[MouseHook] FORWARDING #" << forward_count << L" event to WebView";
-    if (instance_->is_mouse_down_) {
-      std::wcout << L" (mouse down)";
-    }
-    std::wcout << std::endl;
   }
   
   // Get target wallpaper instance (via callback)
@@ -289,9 +199,9 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
     IframeInfo* iframe = instance_->iframe_callback_(pt.x, pt.y, target_instance);
     
     if (iframe && !iframe->click_url.empty()) {
-      std::cout << "[AnyWP] [MouseHook] Click on iframe: " << iframe->id 
-                << " at (" << pt.x << "," << pt.y << ")" << std::endl;
-      std::cout << "[AnyWP] [MouseHook] Opening URL: " << iframe->click_url << std::endl;
+      Logger::Instance().Info("MouseHook", 
+        "Click on iframe: " + iframe->id + " at (" + std::to_string(pt.x) + "," + std::to_string(pt.y) + ")");
+      Logger::Instance().Info("MouseHook", "Opening URL: " + iframe->click_url);
       
       // Open the ad URL directly
       std::wstring url_wide(iframe->click_url.begin(), iframe->click_url.end());

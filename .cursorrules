@@ -20,7 +20,15 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 - 使用智能指针管理 COM | RAII 管理资源 | 检查 Win32 API 返回值
 - **模块化设计**: 按功能拆分为独立模块（`modules/`）和工具类（`utils/`）
 - **错误处理**: 所有关键操作使用 try-catch，回调添加异常保护
-- **日志记录**: 使用 `Logger::Instance()` 统一记录，支持多级别和线程安全
+- **日志记录 (v2.3.2+)**: 
+  * **必须使用** `Logger::Instance()` 进行所有日志输出
+  * **禁止使用** `std::cout` 进行日志输出
+  * 组件名使用 PascalCase（如 "Plugin", "WebViewManager"）
+  * 选择合适的日志级别：DEBUG/INFO/WARNING/ERROR
+  * 支持多级别、线程安全、文件和控制台双输出
+  * Debug 构建：输出到控制台和文件
+  * Release 构建：仅输出到文件
+  * 详细规范见 `docs/LOGGING_STANDARDS.md`
 - **单元测试**: 新功能需添加测试用例到 `windows/test/`（覆盖率 ≥95%）
 
 ### TypeScript/JavaScript

@@ -43,10 +43,9 @@ export function setupWebMessageListener() {
         log.warn('WebMessage listener already registered (EARLY), skipping duplicate');
         return;
     }
-    log.info('Setting up WebMessage listener (EARLY)');
+    // Silent initialization - reduces log noise
     globalAny._anywpEarlyMessageListenerRegistered = true;
     window.chrome.webview.addEventListener('message', handleWebMessage);
-    log.info('WebMessage listener setup complete (EARLY)');
 }
 /**
  * Main WebMessage event handler
@@ -358,7 +357,7 @@ export function setupFlutterMessageListener() {
             }
         }
     });
-    log.info('Flutter message listener setup complete');
+    // Silent initialization - reduces log noise
 }
 /**
  * Handle powerStateChange messages from C++ (v2.1.7+)

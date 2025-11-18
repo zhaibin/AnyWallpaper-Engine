@@ -109,7 +109,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
     // Setup bidirectional communication callback
     AnyWPEngine.setOnMessageCallback((message) {
       try {
-        print('[APP] ✅ Received message from JavaScript:');
+        print('[APP] Received message from JavaScript:');
         print('[APP]   Type: ${message['type']}');
         print('[APP]   Raw message: $message');
         

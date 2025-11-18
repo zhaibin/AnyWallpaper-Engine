@@ -98,6 +98,9 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // Get built-in Web SDK version (v2.1.10+)
   static std::string GetSDKVersion();
+  
+  // Lifecycle: Get active wallpaper instance count (v2.3.2+)
+  size_t GetActiveInstanceCount() const;
 
   // Multi-monitor support
   std::vector<MonitorInfo> GetMonitors();
@@ -189,6 +192,8 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   HWND worker_w_hwnd_ = nullptr;
   Microsoft::WRL::ComPtr<ICoreWebView2Controller> webview_controller_;
   Microsoft::WRL::ComPtr<ICoreWebView2> webview_;
+  // v2.3.2+: Deprecated - use GetActiveInstanceCount() instead
+  // Kept for backward compatibility in legacy single-monitor mode
   bool is_initialized_ = false;
   
   // Multi-monitor members
