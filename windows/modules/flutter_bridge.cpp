@@ -145,6 +145,16 @@ void FlutterBridge::RegisterAllHandlers() {
   RegisterHandler("getPendingPowerStateChanges",
       [this](auto* args, auto result) { HandleGetPendingPowerStateChanges(args, std::move(result)); });
   
+  // v2.3.2+ Auto recovery
+  RegisterHandler("enableAutoRecovery",
+      [this](auto* args, auto result) { HandleEnableAutoRecovery(args, std::move(result)); });
+  RegisterHandler("isAutoRecoveryEnabled",
+      [this](auto* args, auto result) { HandleIsAutoRecoveryEnabled(args, std::move(result)); });
+  
+  // v2.4.0+ Manual save wallpaper configuration
+  RegisterHandler("saveWallpaperConfiguration",
+      [this](auto* args, auto result) { HandleSaveWallpaperConfiguration(args, std::move(result)); });
+  
   // v2.1.10+ Custom scheme: File encryption/decryption
   RegisterHandler("encryptFile",
       [this](auto* args, auto result) { HandleEncryptFile(args, std::move(result)); });
@@ -277,12 +287,15 @@ void FlutterBridge::HandleInitializeWallpaperOnMonitor(
   }
 
   bool enable_transparent = GetBoolArgument(args, "enableMouseTransparent", false);  // Default: false (interactive mode)
+  bool auto_save = GetBoolArgument(args, "autoSave", true);  // v2.4.0+: Default: true (auto-save)
   
   Logger::Instance().Debug("FlutterBridge", 
     "initializeWallpaperOnMonitor: enableMouseTransparent = " + 
-    std::string(enable_transparent ? "true" : "false") + ", monitor = " + std::to_string(monitor_index));
+    std::string(enable_transparent ? "true" : "false") + 
+    ", autoSave = " + std::string(auto_save ? "true" : "false") +
+    ", monitor = " + std::to_string(monitor_index));
 
-  bool success = plugin_->InitializeWallpaperOnMonitor(url, enable_transparent, monitor_index);
+  bool success = plugin_->InitializeWallpaperOnMonitor(url, enable_transparent, monitor_index, auto_save);
   result->Success(flutter::EncodableValue(success));
 }
 
@@ -1017,6 +1030,96 @@ void FlutterBridge::HandleDecryptFile(
     std::string error_msg = "Decryption failed. HRESULT: " + std::to_string(hr);
     Logger::Instance().Error("FlutterBridge", error_msg);
     result->Error("DECRYPT_FAILED", error_msg);
+  }
+}
+
+// ========================================
+// v2.3.2+ Auto Recovery Handlers
+// ========================================
+
+void FlutterBridge::HandleEnableAutoRecovery(
+    const flutter::EncodableMap* args,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  
+  if (!args) {
+    result->Error("INVALID_ARGS", "Arguments must be a map");
+    return;
+  }
+  
+  // Get enabled flag
+  bool enabled = GetBoolArgument(args, "enabled", false);
+  
+  Logger::Instance().Info("FlutterBridge", 
+    std::string("Setting auto recovery: ") + (enabled ? "enabled" : "disabled"));
+  
+  try {
+    plugin_->SetAutoRecoveryEnabled(enabled);
+    result->Success(flutter::EncodableValue(true));
+  } catch (const std::exception& e) {
+    std::string error_msg = "Failed to set auto recovery: " + std::string(e.what());
+    Logger::Instance().Error("FlutterBridge", error_msg);
+    result->Error("AUTO_RECOVERY_ERROR", error_msg);
+  }
+}
+
+void FlutterBridge::HandleIsAutoRecoveryEnabled(
+    const flutter::EncodableMap* args,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  
+  try {
+    bool enabled = plugin_->IsAutoRecoveryEnabled();
+    Logger::Instance().Debug("FlutterBridge", 
+      std::string("Auto recovery status: ") + (enabled ? "enabled" : "disabled"));
+    result->Success(flutter::EncodableValue(enabled));
+  } catch (const std::exception& e) {
+    std::string error_msg = "Failed to get auto recovery status: " + std::string(e.what());
+    Logger::Instance().Error("FlutterBridge", error_msg);
+    result->Error("AUTO_RECOVERY_ERROR", error_msg);
+  }
+}
+
+void FlutterBridge::HandleSaveWallpaperConfiguration(
+    const flutter::EncodableMap* args,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  
+  if (!args) {
+    result->Error("INVALID_ARGS", "Arguments must be a map");
+    return;
+  }
+  
+  // Get monitor index (-1 = all monitors, default if not specified)
+  int monitor_index = -1;
+  auto it = args->find(flutter::EncodableValue("monitorIndex"));
+  if (it != args->end()) {
+    try {
+      monitor_index = std::get<int>(it->second);
+    } catch (...) {
+      // Invalid type, use default -1
+      Logger::Instance().Debug("FlutterBridge", 
+        "monitorIndex not an integer, using default -1");
+    }
+  }
+  
+  Logger::Instance().Info("FlutterBridge", 
+    "Manual save wallpaper configuration requested for monitor: " + 
+    (monitor_index == -1 ? "all" : std::to_string(monitor_index)));
+  
+  try {
+    bool success = plugin_->SaveWallpaperConfigurationManually(monitor_index);
+    
+    if (success) {
+      Logger::Instance().Info("FlutterBridge", 
+        "Wallpaper configuration saved successfully");
+    } else {
+      Logger::Instance().Warn("FlutterBridge", 
+        "Failed to save wallpaper configuration (auto recovery may be disabled)");
+    }
+    
+    result->Success(flutter::EncodableValue(success));
+  } catch (const std::exception& e) {
+    std::string error_msg = "Error saving wallpaper configuration: " + std::string(e.what());
+    Logger::Instance().Error("FlutterBridge", error_msg);
+    result->Error("SAVE_CONFIG_ERROR", error_msg);
   }
 }
 

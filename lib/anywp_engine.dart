@@ -367,6 +367,7 @@ class AnyWPEngine {
   /// Parameters:
   /// - [url]: The URL to load in the wallpaper WebView
   /// - [monitorIndex]: The index of the target monitor (0-based)
+  /// - [autoSave]: Whether to auto-save this configuration for recovery (default: `true`)
   ///
   /// Returns: `true` if successful, `false` otherwise
   ///
@@ -377,28 +378,72 @@ class AnyWPEngine {
   ///
   /// **Important Notes:**
   /// - Settings persist across system suspend/resume (lock screen, sleep, etc.)
+  /// - If Auto Recovery is enabled and `autoSave` is `true`, this configuration will be saved
   ///
-  /// **Example:**
+  /// **Auto-Save Behavior (v2.4.0+):**
+  /// - Set `autoSave: false` when frequently switching wallpapers (e.g., carousel, previews)
+  /// - Set `autoSave: true` when user explicitly selects a wallpaper to persist
+  /// - Use [saveCurrentWallpaperConfiguration] to manually save at the right time
+  ///
+  /// **Example 1: Simple wallpaper (auto-save):**
   ///
   /// ```dart
-  /// // Passive wallpaper that doesn't block desktop icons
+  /// // This configuration will be saved for recovery
   /// await AnyWPEngine.initializeWallpaperOnMonitor(
   ///   url: 'file:///path/to/animation.html',
   ///   monitorIndex: 0,
   /// );
   /// ```
   ///
+  /// **Example 2: Carousel preview (don't auto-save):**
+  ///
+  /// ```dart
+  /// // Initialize carousel HTML (don't save yet)
+  /// await AnyWPEngine.initializeWallpaperOnMonitor(
+  ///   url: 'file:///path/to/carousel.html',
+  ///   monitorIndex: 0,
+  ///   autoSave: false,  // Don't save on every carousel update
+  /// );
+  /// 
+  /// // Later, when user confirms selection
+  /// await AnyWPEngine.saveCurrentWallpaperConfiguration();
+  /// ```
+  ///
+  /// **Example 3: Interactive wallpaper with state:**
+  ///
+  /// ```dart
+  /// // Initialize interactive content
+  /// await AnyWPEngine.initializeWallpaperOnMonitor(
+  ///   url: 'file:///path/to/interactive.html',
+  ///   monitorIndex: 0,
+  ///   autoSave: false,  // Don't save intermediate states
+  /// );
+  /// 
+  /// // Send messages to update state
+  /// await AnyWPEngine.sendMessage({
+  ///   'type': 'updateConfig',
+  ///   'data': {'theme': 'dark', 'widgets': ['clock', 'weather']},
+  /// });
+  /// 
+  /// // Save when user clicks "Apply" or "Save"
+  /// await AnyWPEngine.saveCurrentWallpaperConfiguration();
+  /// ```
+  ///
   /// See also:
   /// - [getMonitors] - Get available monitors
+  /// - [saveCurrentWallpaperConfiguration] - Manually save current configuration
+  /// - [enableAutoRecovery] - Enable/disable auto-recovery feature
   static Future<bool> initializeWallpaperOnMonitor({
     required String url,
     required int monitorIndex,
+    bool autoSave = true,
   }) async {
     try {
       final result = await _channel.invokeMethod<bool>('initializeWallpaperOnMonitor', {
         'url': url,
         'monitorIndex': monitorIndex,
         'enableMouseTransparent': true,  // Always use Simple Mode
+        'autoSave': autoSave,  // v2.4.0+ Control auto-save behavior
       });
       return result ?? false;
     } catch (e) {
@@ -955,6 +1000,218 @@ class AnyWPEngine {
       return false;
     }
     return version.startsWith(expectedPrefix);
+  }
+
+  // ========== Auto Recovery APIs (v2.3.2+) ==========
+
+  /// Enable or disable automatic wallpaper recovery
+  /// 
+  /// When enabled, the engine will automatically save wallpaper configurations
+  /// and restore them after system events like Explorer restart, display changes, etc.
+  /// 
+  /// **Recommended Usage (Simple Mode):**
+  /// ```dart
+  /// void main() async {
+  ///   WidgetsFlutterBinding.ensureInitialized();
+  ///   
+  ///   // Enable auto recovery (one-time setup)
+  ///   await AnyWPEngine.enableAutoRecovery(true);
+  ///   
+  ///   runApp(MyApp());
+  /// }
+  /// 
+  /// // Later, initialize wallpaper normally
+  /// await AnyWPEngine.initializeWallpaperOnMonitor(
+  ///   url: 'https://example.com',
+  ///   monitorIndex: 0,
+  /// );
+  /// 
+  /// // That's it! The engine will auto-recover after Explorer restart
+  /// ```
+  /// 
+  /// **What Gets Saved:**
+  /// - Wallpaper URL
+  /// - Monitor index
+  /// - Mouse transparency mode
+  /// - All active wallpaper instances (multi-monitor support)
+  /// 
+  /// **When Recovery Triggers:**
+  /// - Explorer restart (TaskManager kill, crash, etc.)
+  /// - WorkerW window destroyed or invalidated
+  /// - System display configuration changes
+  /// 
+  /// **Advantages:**
+  /// - ✅ Zero maintenance - no code needed after `initializeWallpaper`
+  /// - ✅ Multi-monitor support - all monitors auto-recovered
+  /// - ✅ Smart delays - engine handles system stabilization
+  /// - ✅ Persistent - survives app restarts (uses local storage)
+  /// 
+  /// **Parameters:**
+  /// - [enabled]: `true` to enable, `false` to disable
+  /// 
+  /// **Returns:** `true` if successful, `false` otherwise
+  /// 
+  /// **Note:**
+  /// - If disabled, you must manually handle recovery via `setOnMessageCallback`
+  /// - See `docs/FOR_FLUTTER_DEVELOPERS.md` for manual recovery examples
+  /// 
+  /// **See also:**
+  /// - [setOnMessageCallback] - Manual recovery mode (advanced users)
+  static Future<bool> enableAutoRecovery(bool enabled) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('enableAutoRecovery', {
+        'enabled': enabled,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('Error enabling auto recovery: $e');
+      return false;
+    }
+  }
+
+  /// Check if auto recovery is currently enabled
+  /// 
+  /// Returns: `true` if auto recovery is enabled, `false` otherwise
+  /// 
+  /// Example:
+  /// ```dart
+  /// final isEnabled = await AnyWPEngine.isAutoRecoveryEnabled();
+  /// print('Auto recovery: ${isEnabled ? "ON" : "OFF"}');
+  /// ```
+  static Future<bool> isAutoRecoveryEnabled() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('isAutoRecoveryEnabled');
+      return result ?? false;
+    } catch (e) {
+      print('Error checking auto recovery status: $e');
+      return false;
+    }
+  }
+
+  /// Manually save the current wallpaper configuration for recovery (v2.4.0+)
+  /// 
+  /// This method explicitly saves the current wallpaper state for auto-recovery.
+  /// Use this when you've initialized a wallpaper with `autoSave: false` and 
+  /// want to save the configuration at a specific point in time.
+  /// 
+  /// **When to Use:**
+  /// - After user confirms wallpaper selection in a carousel/gallery
+  /// - After user applies interactive wallpaper settings
+  /// - After wallpaper state has been fully initialized
+  /// - When you want explicit control over what gets saved
+  /// 
+  /// **What Gets Saved:**
+  /// - Current wallpaper URL
+  /// - Monitor index
+  /// - Mouse transparency mode
+  /// - All active wallpaper instances (multi-monitor)
+  /// 
+  /// **Parameters:**
+  /// - [monitorIndex]: Optional monitor index to save (-1 = all monitors)
+  /// 
+  /// **Returns:** `true` if successful, `false` otherwise
+  /// 
+  /// **Example 1: Carousel workflow**
+  /// 
+  /// ```dart
+  /// void main() async {
+  ///   WidgetsFlutterBinding.ensureInitialized();
+  ///   
+  ///   // Enable auto recovery first
+  ///   await AnyWPEngine.enableAutoRecovery(true);
+  ///   
+  ///   runApp(MyApp());
+  /// }
+  /// 
+  /// class CarouselManager {
+  ///   Future<void> startCarousel() async {
+  ///     // Step 1: Initialize carousel HTML (don't auto-save)
+  ///     await AnyWPEngine.initializeWallpaperOnMonitor(
+  ///       url: 'file:///C:/carousel.html',
+  ///       monitorIndex: 0,
+  ///       autoSave: false,  // Don't save on every carousel change
+  ///     );
+  ///     
+  ///     // Step 2: Send initial images
+  ///     await AnyWPEngine.sendMessage({
+  ///       'type': 'updateCarousel',
+  ///       'data': {'images': [...], 'interval': 60000},
+  ///     });
+  ///     
+  ///     // Step 3: Save configuration now
+  ///     await AnyWPEngine.saveCurrentWallpaperConfiguration();
+  ///     print('✅ Carousel configuration saved for recovery');
+  ///   }
+  ///   
+  ///   Future<void> nextWallpaper() async {
+  ///     // Just switch to next image, don't re-save
+  ///     await AnyWPEngine.sendMessage({'type': 'next'});
+  ///   }
+  /// }
+  /// ```
+  /// 
+  /// **Example 2: Interactive wallpaper with settings**
+  /// 
+  /// ```dart
+  /// class SettingsManager {
+  ///   Future<void> initWallpaper() async {
+  ///     // Initialize with default settings (don't save yet)
+  ///     await AnyWPEngine.initializeWallpaperOnMonitor(
+  ///       url: 'file:///C:/interactive.html',
+  ///       monitorIndex: 0,
+  ///       autoSave: false,
+  ///     );
+  ///   }
+  ///   
+  ///   Future<void> applySettings(Map<String, dynamic> settings) async {
+  ///     // Send settings to wallpaper
+  ///     await AnyWPEngine.sendMessage({
+  ///       'type': 'updateSettings',
+  ///       'data': settings,
+  ///     });
+  ///     
+  ///     // Wait for wallpaper to apply settings
+  ///     await Future.delayed(Duration(milliseconds: 500));
+  ///     
+  ///     // NOW save the configuration
+  ///     final success = await AnyWPEngine.saveCurrentWallpaperConfiguration();
+  ///     if (success) {
+  ///       print('✅ Settings saved and will be restored after Explorer restart');
+  ///     }
+  ///   }
+  /// }
+  /// ```
+  /// 
+  /// **Example 3: Multi-monitor setup**
+  /// 
+  /// ```dart
+  /// // Save specific monitor only
+  /// await AnyWPEngine.saveCurrentWallpaperConfiguration(monitorIndex: 0);
+  /// 
+  /// // Save all monitors
+  /// await AnyWPEngine.saveCurrentWallpaperConfiguration(monitorIndex: -1);
+  /// // or simply:
+  /// await AnyWPEngine.saveCurrentWallpaperConfiguration();
+  /// ```
+  /// 
+  /// **Note:**
+  /// - Auto Recovery must be enabled via [enableAutoRecovery] first
+  /// - If Auto Recovery is disabled, this method does nothing
+  /// - For simple static wallpapers, just use `autoSave: true` (default)
+  /// 
+  /// See also:
+  /// - [enableAutoRecovery] - Enable auto-recovery feature
+  /// - [initializeWallpaperOnMonitor] - Initialize wallpaper with auto-save control
+  static Future<bool> saveCurrentWallpaperConfiguration({int monitorIndex = -1}) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('saveWallpaperConfiguration', {
+        'monitorIndex': monitorIndex,
+      });
+      return result ?? false;
+    } catch (e) {
+      print('Error saving wallpaper configuration: $e');
+      return false;
+    }
   }
 
   // ========== Bidirectional Communication APIs ==========

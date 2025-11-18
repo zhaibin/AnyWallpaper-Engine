@@ -25,6 +25,10 @@ void main() async {
   // Set application name for storage isolation
   await AnyWPEngine.setApplicationName('AnyWallpaperDemo');
   
+  // v2.3.2+ Enable auto recovery (simple mode - zero maintenance!)
+  await AnyWPEngine.enableAutoRecovery(true);
+  print('[APP] Auto recovery enabled');
+  
   // Print storage path for verification
   final storagePath = await AnyWPEngine.getStoragePath();
   print('[APP] Storage path: $storagePath');

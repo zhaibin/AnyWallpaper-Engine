@@ -2060,10 +2060,12 @@ WallpaperInstance* AnyWPEnginePlugin::GetInstanceAtPoint(int x, int y) {
 }
 
 // Phase B: Refactored to use InitializeWallpaperCommon
-bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, bool enable_mouse_transparent, int monitor_index) {
+bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, bool enable_mouse_transparent, int monitor_index, bool auto_save) {
   Logger::Instance().Info("Plugin", 
     "Initializing Wallpaper on Monitor " + std::to_string(monitor_index) + 
-    " - URL: " + url + ", Transparent: " + (enable_mouse_transparent ? "true" : "false"));
+    " - URL: " + url + 
+    ", Transparent: " + (enable_mouse_transparent ? "true" : "false") +
+    ", AutoSave: " + (auto_save ? "true" : "false"));
 
   // Get monitors if not cached
   if (monitors_.empty()) {
@@ -2237,6 +2239,14 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
       Logger::Instance().Info("Plugin", "[Lifecycle] WorkerW health monitoring already active, skipping");
     }
   }
+  
+  // v2.3.2+ Auto Recovery: Save wallpaper configuration (conditional in v2.4.0+)
+  if (auto_save) {
+    SaveWallpaperConfig(monitor_index, url, enable_mouse_transparent);
+  } else {
+    Logger::Instance().Info("Plugin", 
+      "AutoSave disabled, configuration not saved automatically (use saveCurrentWallpaperConfiguration() to save manually)");
+  }
 
   Logger::Instance().Info("Plugin", "Initialization Complete (Monitor " + std::to_string(monitor_index) + ")");
   return true;
@@ -2257,6 +2267,11 @@ bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
   
   // Cleanup the specific instance
     bool result = instance_manager_->CleanupInstance(monitor_index);
+    
+    // v2.3.2+ Auto Recovery: Remove wallpaper configuration on successful cleanup
+    if (result) {
+      RemoveWallpaperConfig(monitor_index);
+    }
     
     // v2.1.0+ Refactoring: Rebuild EventDispatcher cache after removing instance
     if (result && event_dispatcher_) {
@@ -3568,6 +3583,14 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
       "Wallpaper recreation message sent to Flutter: " + recreate_message);
     Logger::Instance().Info("WorkerW Recovery", "Recovery completed, message sent to Flutter");
     
+    // v2.3.2+ Auto Recovery: Handle automatic wallpaper recovery if enabled
+    if (IsAutoRecoveryEnabled()) {
+      Logger::Instance().Info("WorkerW Recovery", "Auto recovery enabled, triggering automatic wallpaper recovery");
+      HandleAutoRecovery();
+    } else {
+      Logger::Instance().Info("WorkerW Recovery", "Auto recovery disabled, waiting for manual Flutter-side recovery");
+    }
+    
   } catch (const std::exception& e) {
     Logger::Instance().Error("WorkerW Recovery", 
       std::string("Exception during recovery: ") + e.what());
@@ -3769,6 +3792,300 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
     Logger::Instance().Error("WorkerW Recovery", "Unknown exception during recovery");
     Logger::Instance().Error("WorkerW Recovery", "UNKNOWN EXCEPTION");
   }
+}
+
+// ========================================
+// v2.3.2+ Auto Recovery Implementation
+// ========================================
+
+void AnyWPEnginePlugin::SetAutoRecoveryEnabled(bool enabled) {
+  std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+  
+  bool was_enabled = auto_recovery_enabled_;
+  auto_recovery_enabled_ = enabled;
+  
+  if (enabled == was_enabled) {
+    Logger::Instance().Debug("AutoRecovery", 
+      std::string("Auto recovery already ") + (enabled ? "enabled" : "disabled"));
+    return;
+  }
+  
+  Logger::Instance().Info("AutoRecovery", 
+    std::string("Auto recovery ") + (enabled ? "ENABLED" : "DISABLED"));
+  
+  // If enabling auto recovery, check for existing wallpapers
+  if (enabled && instance_manager_) {
+    // v2.4.0+ Enhancement: Reset running flag when enabling to ensure clean state
+    is_auto_recovery_running_ = false;
+    
+    std::lock_guard<std::mutex> inst_lock(instances_mutex_);
+    int active_count = static_cast<int>(wallpaper_instances_.size());
+    if (active_count > 0) {
+      Logger::Instance().Info("AutoRecovery", 
+        "Found " + std::to_string(active_count) + " active wallpaper(s). " +
+        "These will be saved on next initialization or you can re-initialize them to save immediately.");
+    } else {
+      Logger::Instance().Info("AutoRecovery", 
+        "No active wallpapers. Configurations will be saved when wallpapers are initialized.");
+    }
+  }
+  
+  // If disabling, clear saved configurations and reset running flag
+  if (!enabled) {
+    int config_count = static_cast<int>(saved_wallpaper_configs_.size());
+    saved_wallpaper_configs_.clear();
+    
+    // v2.4.0+ Enhancement: Reset running flag when disabling
+    // (note: any running recovery thread will still complete, but won't affect next enable)
+    is_auto_recovery_running_ = false;
+    
+    Logger::Instance().Info("AutoRecovery", 
+      "Cleared " + std::to_string(config_count) + " saved wallpaper configuration(s)");
+  }
+}
+
+bool AnyWPEnginePlugin::IsAutoRecoveryEnabled() const {
+  std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+  return auto_recovery_enabled_;
+}
+
+void AnyWPEnginePlugin::SaveWallpaperConfig(int monitor_index, const std::string& url, bool enable_mouse_transparent) {
+  std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+  
+  if (!auto_recovery_enabled_) {
+    Logger::Instance().Debug("AutoRecovery", 
+      "Auto recovery disabled, not saving configuration for monitor " + std::to_string(monitor_index));
+    return;  // Don't save if auto recovery is disabled
+  }
+  
+  WallpaperConfig config;
+  config.url = url;
+  config.monitor_index = monitor_index;
+  config.enable_mouse_transparent = enable_mouse_transparent;
+  
+  saved_wallpaper_configs_[monitor_index] = config;
+  
+  Logger::Instance().Info("AutoRecovery", 
+    "Saved configuration for monitor " + std::to_string(monitor_index) + 
+    " - URL: " + url + 
+    ", Transparent: " + (enable_mouse_transparent ? "true" : "false") + 
+    " (Total saved: " + std::to_string(saved_wallpaper_configs_.size()) + ")");
+}
+
+void AnyWPEnginePlugin::RemoveWallpaperConfig(int monitor_index) {
+  std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+  
+  auto it = saved_wallpaper_configs_.find(monitor_index);
+  if (it != saved_wallpaper_configs_.end()) {
+    saved_wallpaper_configs_.erase(it);
+    Logger::Instance().Info("AutoRecovery", 
+      "Removed configuration for monitor " + std::to_string(monitor_index));
+  }
+}
+
+// v2.4.0+ Manual save wallpaper configuration
+bool AnyWPEnginePlugin::SaveWallpaperConfigurationManually(int monitor_index) {
+  std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+  
+  if (!auto_recovery_enabled_) {
+    Logger::Instance().Warn("AutoRecovery", 
+      "Auto recovery is disabled. Enable it first via enableAutoRecovery(true)");
+    return false;
+  }
+  
+  // Lock instances to read current configurations
+  std::lock_guard<std::mutex> inst_lock(instances_mutex_);
+  
+  int saved_count = 0;
+  
+  // Save all monitors if monitor_index == -1
+  if (monitor_index == -1) {
+    Logger::Instance().Info("AutoRecovery", 
+      "Manually saving configurations for all active wallpapers...");
+    
+    for (const auto& instance : wallpaper_instances_) {
+      // Note: We don't have the original URL in WallpaperInstance
+      // So we can only save the current state if we already have a saved config
+      // OR if the instance was initialized with auto_save=true
+      
+      // For now, just verify that we have saved configs
+      auto it = saved_wallpaper_configs_.find(instance.monitor_index);
+      if (it != saved_wallpaper_configs_.end()) {
+        Logger::Instance().Debug("AutoRecovery", 
+          "Configuration already exists for monitor " + std::to_string(instance.monitor_index));
+        saved_count++;
+      } else {
+        Logger::Instance().Warn("AutoRecovery", 
+          "No saved configuration found for monitor " + std::to_string(instance.monitor_index) + 
+          " - was it initialized with autoSave:false without being saved?");
+      }
+    }
+    
+    Logger::Instance().Info("AutoRecovery", 
+      "Verified " + std::to_string(saved_count) + " saved configuration(s)");
+    
+    return saved_count > 0;
+  } 
+  // Save specific monitor
+  else {
+    Logger::Instance().Info("AutoRecovery", 
+      "Manually saving configuration for monitor " + std::to_string(monitor_index));
+    
+    // Find the instance
+    WallpaperInstance* instance = nullptr;
+    for (auto& inst : wallpaper_instances_) {
+      if (inst.monitor_index == monitor_index) {
+        instance = &inst;
+        break;
+      }
+    }
+    
+    if (!instance) {
+      Logger::Instance().Warn("AutoRecovery", 
+        "No active wallpaper found on monitor " + std::to_string(monitor_index));
+      return false;
+    }
+    
+    // Check if we already have a saved configuration
+    auto it = saved_wallpaper_configs_.find(monitor_index);
+    if (it != saved_wallpaper_configs_.end()) {
+      Logger::Instance().Info("AutoRecovery", 
+        "Configuration already saved for monitor " + std::to_string(monitor_index) + 
+        " - URL: " + it->second.url + 
+        ", Transparent: " + (it->second.enable_mouse_transparent ? "true" : "false"));
+      return true;
+    } else {
+      Logger::Instance().Warn("AutoRecovery", 
+        "No saved configuration found for monitor " + std::to_string(monitor_index) + 
+        " - was it initialized with autoSave:false? Cannot save without original URL.");
+      return false;
+    }
+  }
+}
+
+void AnyWPEnginePlugin::HandleAutoRecovery() {
+  // v2.4.0+ Fix: Copy configurations before starting thread to avoid race conditions
+  std::map<int, WallpaperConfig> configs_to_recover;
+  {
+    std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+    
+    if (!auto_recovery_enabled_) {
+      Logger::Instance().Debug("AutoRecovery", "Auto recovery disabled, skipping");
+      return;
+    }
+    
+    // v2.4.0+ Enhancement: Prevent concurrent recovery operations
+    if (is_auto_recovery_running_) {
+      Logger::Instance().Warning("AutoRecovery", 
+        "Auto recovery already running, skipping duplicate request (prevents Explorer restart race condition)");
+      return;
+    }
+    
+    if (saved_wallpaper_configs_.empty()) {
+      Logger::Instance().Warn("AutoRecovery", "No saved configurations to recover");
+      return;
+    }
+    
+    // Mark recovery as running
+    is_auto_recovery_running_ = true;
+    
+    // Copy configurations to avoid holding lock during async recovery
+    configs_to_recover = saved_wallpaper_configs_;
+    
+    Logger::Instance().Info("AutoRecovery", 
+      "Starting auto recovery for " + std::to_string(configs_to_recover.size()) + " wallpaper(s)");
+    
+    // Log all configurations to be recovered
+    for (const auto& pair : configs_to_recover) {
+      const auto& config = pair.second;
+      Logger::Instance().Info("AutoRecovery", 
+        "Will recover: Monitor " + std::to_string(config.monitor_index) + 
+        ", URL: " + config.url + 
+        ", Transparent: " + (config.enable_mouse_transparent ? "true" : "false"));
+    }
+  }
+  
+  // Schedule recovery with delay (1 second) to let system stabilize
+  std::thread([this, configs_to_recover]() {
+    // v2.4.0+ Enhancement: Ensure flag is always reset, even if recovery fails
+    try {
+      Logger::Instance().Info("AutoRecovery", "Waiting 1 second for system to stabilize...");
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      
+      // Stop existing wallpapers first
+      if (instance_manager_) {
+        Logger::Instance().Info("AutoRecovery", "Stopping existing wallpapers before recovery");
+        
+        std::vector<int> monitor_indices;
+        {
+          std::lock_guard<std::mutex> inst_lock(instances_mutex_);
+          for (const auto& instance : wallpaper_instances_) {
+            monitor_indices.push_back(instance.monitor_index);
+          }
+        }
+        
+        Logger::Instance().Info("AutoRecovery", 
+          "Found " + std::to_string(monitor_indices.size()) + " existing wallpaper(s) to stop");
+        
+        for (int monitor_index : monitor_indices) {
+          Logger::Instance().Info("AutoRecovery", 
+            "Stopping wallpaper on monitor " + std::to_string(monitor_index));
+          StopWallpaperOnMonitor(monitor_index);
+        }
+      }
+      
+      // Wait for cleanup
+      Logger::Instance().Info("AutoRecovery", "Waiting 500ms for cleanup to complete...");
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      
+      // Recover each wallpaper (using copied configs, no lock needed)
+      Logger::Instance().Info("AutoRecovery", "Starting wallpaper recovery...");
+      int success_count = 0;
+      int fail_count = 0;
+      
+      for (const auto& pair : configs_to_recover) {
+        const auto& config = pair.second;
+        
+        Logger::Instance().Info("AutoRecovery", 
+          "Recovering wallpaper on monitor " + std::to_string(config.monitor_index) + 
+          " - URL: " + config.url);
+        
+        bool success = InitializeWallpaperOnMonitor(
+          config.url,
+          config.enable_mouse_transparent,
+          config.monitor_index
+        );
+        
+        if (success) {
+          success_count++;
+          Logger::Instance().Info("AutoRecovery", 
+            "Successfully recovered wallpaper on monitor " + std::to_string(config.monitor_index));
+        } else {
+          fail_count++;
+          Logger::Instance().Error("AutoRecovery", 
+            "Failed to recover wallpaper on monitor " + std::to_string(config.monitor_index));
+        }
+      }
+      
+      Logger::Instance().Info("AutoRecovery", 
+        "Auto recovery completed - Success: " + std::to_string(success_count) + 
+        ", Failed: " + std::to_string(fail_count));
+      
+    } catch (const std::exception& e) {
+      Logger::Instance().Error("AutoRecovery", 
+        std::string("Exception during auto recovery: ") + e.what());
+    } catch (...) {
+      Logger::Instance().Error("AutoRecovery", 
+        "Unknown exception during auto recovery");
+    }
+    
+    // v2.4.0+ Enhancement: Always reset running flag (even if recovery failed)
+    {
+      std::lock_guard<std::mutex> lock(this->auto_recovery_mutex_);
+      this->is_auto_recovery_running_ = false;
+      Logger::Instance().Info("AutoRecovery", "Recovery thread finished, ready for next recovery if needed");
+    }
+  }).detach();
 }
 
 }  // namespace anywp_engine

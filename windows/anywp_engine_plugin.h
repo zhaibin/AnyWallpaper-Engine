@@ -17,6 +17,7 @@
 #include <psapi.h>
 #include <mutex>
 #include <queue>
+#include <map>
 
 // Forward declarations of modular classes
 #include "utils/url_validator.h"
@@ -104,7 +105,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
 
   // Multi-monitor support
   std::vector<MonitorInfo> GetMonitors();
-  bool InitializeWallpaperOnMonitor(const std::string& url, bool enable_mouse_transparent, int monitor_index);
+  bool InitializeWallpaperOnMonitor(const std::string& url, bool enable_mouse_transparent, int monitor_index, bool auto_save = true);
   bool StopWallpaperOnMonitor(int monitor_index);
   bool NavigateToUrlOnMonitor(const std::string& url, int monitor_index);
   
@@ -370,6 +371,29 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   bool need_wallpaper_recreate_ = false;
   std::string wallpaper_recreate_reason_;
   std::mutex wallpaper_recreate_mutex_;
+  
+  // ========== v2.3.2+ Auto Recovery ==========
+  // Auto recovery configuration
+  struct WallpaperConfig {
+    std::string url;
+    int monitor_index;
+    bool enable_mouse_transparent;
+  };
+  
+  bool auto_recovery_enabled_ = false;  // Auto recovery enabled flag
+  bool is_auto_recovery_running_ = false;  // Prevent concurrent recovery operations
+  std::map<int, WallpaperConfig> saved_wallpaper_configs_;  // Saved configurations per monitor
+  mutable std::mutex auto_recovery_mutex_;  // Protect auto recovery state (mutable for const methods)
+  
+  // Auto recovery methods
+  void SetAutoRecoveryEnabled(bool enabled);
+  bool IsAutoRecoveryEnabled() const;
+  void SaveWallpaperConfig(int monitor_index, const std::string& url, bool enable_mouse_transparent);
+  void RemoveWallpaperConfig(int monitor_index);
+  
+  // v2.4.0+ Manual save wallpaper configuration
+  bool SaveWallpaperConfigurationManually(int monitor_index = -1);
+  void HandleAutoRecovery();  // Triggered when wallpaper needs recreation
 };
 
 }  // namespace anywp_engine

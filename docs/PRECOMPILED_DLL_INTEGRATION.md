@@ -82,12 +82,12 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.4.0_precompiled.zip
+anywp_engine_v2.4.1_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.4.0_source.zip
+anywp_engine_v2.4.1_source.zip
 ```
 
 ### 2. 解压到项目目录
@@ -843,8 +843,8 @@ verify.bat
 
 ---
 
-**Version**: 2.4.0  
-**Updated**: 2025-11-18  
+**Version**: 2.4.1  
+**Updated**: 2025-11-19  
 **主要变更**:
 - ✅ **自动恢复 API** - 1 行代码实现 Explorer 重启自动恢复（从 20 行简化到 1 行）
 - ✅ **日志系统现代化** - 100% Logger 覆盖，日志量减少 35.5%
