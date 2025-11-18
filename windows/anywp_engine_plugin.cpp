@@ -3372,13 +3372,11 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
   std::cout << "[AnyWP] [WorkerW Recovery] ========== Starting WorkerW Recovery ==========" << std::endl;
   
   try {
-    // Step 1: Stop health monitoring during recovery
-    if (workerw_health_monitor_ && workerw_health_monitor_->IsMonitoring()) {
-      workerw_health_monitor_->StopMonitoring();
-      Logger::Instance().Info("WorkerW Recovery", "Health monitoring stopped");
-    }
+    // v2.3.1+ IMPORTANT: Do NOT stop monitoring thread here!
+    // This function is called FROM the monitoring thread, stopping it would cause deadlock.
+    // The monitoring thread will automatically detect health improvement after recovery.
     
-    // Step 2: Reset DesktopWallpaperHelper cache
+    // Step 1: Reset DesktopWallpaperHelper cache
     DesktopWallpaperHelper::Instance().Reset();
     Logger::Instance().Info("WorkerW Recovery", "DesktopWallpaperHelper cache cleared");
     
@@ -3500,13 +3498,13 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
       }
     }
     
-    // Step 6: Restart health monitoring with new WorkerW
+    // Step 6: Update WorkerW handle in health monitor (DO NOT restart monitoring thread)
+    // v2.3.1+ The monitoring thread is still running (this function is called from it)
+    // Just update the WorkerW handle, the thread will automatically detect health improvement
     if (workerw_health_monitor_) {
       workerw_health_monitor_->UpdateWorkerW(new_workerw);
-      if (workerw_health_monitor_->StartMonitoring(new_workerw, 5000)) {
-        Logger::Instance().Info("WorkerW Recovery", "Health monitoring restarted with new WorkerW");
-        std::cout << "[AnyWP] [WorkerW Recovery] Health monitoring restarted" << std::endl;
-      }
+      Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated in health monitor");
+      std::cout << "[AnyWP] [WorkerW Recovery] WorkerW handle updated" << std::endl;
     }
     
     Logger::Instance().Info("WorkerW Recovery", "Recovery completed successfully");
