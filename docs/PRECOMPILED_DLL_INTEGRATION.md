@@ -82,12 +82,12 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.3.1_precompiled.zip
+anywp_engine_v2.3.2_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.3.1_source.zip
+anywp_engine_v2.3.2_source.zip
 ```
 
 ### 2. 解压到项目目录
@@ -843,7 +843,7 @@ verify.bat
 
 ---
 
-**Version**: 2.3.1  
+**Version**: 2.3.2  
 **Updated**: 2025-11-18  
 **主要变更**:
 - ✅ **WorkerW 自动恢复** - 支持 Explorer 重启后自动重建壁纸
