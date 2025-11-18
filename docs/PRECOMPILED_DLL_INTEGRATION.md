@@ -82,12 +82,12 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.3.2_precompiled.zip
+anywp_engine_v2.4.0_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.3.2_source.zip
+anywp_engine_v2.4.0_source.zip
 ```
 
 ### 2. 解压到项目目录
@@ -843,10 +843,11 @@ verify.bat
 
 ---
 
-**Version**: 2.3.2  
+**Version**: 2.4.0  
 **Updated**: 2025-11-18  
 **主要变更**:
-- ✅ **WorkerW 自动恢复** - 支持 Explorer 重启后自动重建壁纸
+- ✅ **自动恢复 API** - 1 行代码实现 Explorer 重启自动恢复（从 20 行简化到 1 行）
+- ✅ **日志系统现代化** - 100% Logger 覆盖，日志量减少 35.5%
 - ✅ **Lively 风格优化** - 优化 WorkerW 创建和查找策略
 - ✅ **Windows 11 兼容** - 支持 Raised Desktop 模式
 - ✅ **修复 verify.bat 脚本** - 解决预编译包验证脚本执行错误

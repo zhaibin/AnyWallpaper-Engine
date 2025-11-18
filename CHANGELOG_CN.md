@@ -2,7 +2,98 @@
 
 所有重要的项目变更都将记录在此文件中。
 
-## [2.3.2] - 2025-11-18
+## [2.4.0] - 2025-11-18
+
+### ⚡ 简化集成：自动恢复 API（Auto Recovery）
+
+#### 问题背景
+
+在 `v2.3.1` 中引入了 WorkerW 自动恢复功能，但需要开发者手动实现大约 20 行的监听和恢复代码：
+- ❌ 必须监听 `WALLPAPER_RECREATE_REQUIRED` 消息
+- ❌ 必须手动保存壁纸配置（URL、显示器索引）
+- ❌ 必须手动停止和重建壁纸
+- ❌ 必须处理延迟和清理逻辑
+- ❌ 集成复杂，学习成本高
+
+#### 解决方案：`enableAutoRecovery` API
+
+新增 **2 个 API**，将 20 行代码简化为 **2 行**：
+
+```dart
+// 1️⃣ 在 main() 中启用自动恢复（一次性设置）
+await AnyWPEngine.enableAutoRecovery(true);
+
+// 2️⃣ 正常初始化壁纸
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'https://example.com',
+  monitorIndex: 0,
+);
+
+// ✅ 完成！Explorer 重启时，插件会自动恢复壁纸
+// ✅ 无需任何额外代码
+```
+
+#### 新增 API
+
+##### 1. `enableAutoRecovery(bool enabled)` ⭐
+- **功能**: 启用或禁用自动恢复模式
+- **默认值**: `false`（保持向后兼容）
+- **自动保存**: 壁纸 URL、显示器索引、鼠标模式
+- **自动恢复**: Explorer 重启、WorkerW 销毁、显示配置变化
+- **智能延迟**: 插件自动处理系统稳定等待（1-2 秒）
+- **多显示器**: 自动恢复所有显示器的壁纸
+- **持久化**: 配置保存在内存中，应用重启后需重新启用
+
+##### 2. `isAutoRecoveryEnabled()` 
+- **功能**: 检查自动恢复是否启用
+- **返回值**: `bool`
+
+#### 集成对比
+
+**方案 A：自动恢复模式（推荐 - 99% 用户）**
+```dart
+// main() 中一次性设置
+await AnyWPEngine.enableAutoRecovery(true);
+```
+- ✅ **极简集成** - 仅 1 行代码
+- ✅ **零维护** - 插件自动保存和恢复
+- ✅ **零学习成本** - 不需要理解底层机制
+
+**方案 B：手动控制模式（高级用户）**
+```dart
+// 自定义恢复逻辑（例如：根据时间选择不同壁纸）
+AnyWPEngine.setOnMessageCallback((message) {
+  if (message['type'] == 'WALLPAPER_RECREATE_REQUIRED') {
+    // 约 20 行自定义恢复代码
+  }
+});
+```
+- ⚠️ **仅适合** 需要自定义恢复逻辑的高级用户
+- ⚠️ **代码量大** - 约 20 行代码
+- ⚠️ **需手动管理** - 保存配置、处理延迟
+
+#### 技术实现
+
+**C++ 层**：
+- 新增 `auto_recovery_enabled_` 标志位
+- 新增 `saved_wallpaper_configs_` 保存每个显示器的配置
+- 在 `InitializeWallpaperOnMonitor` 成功时自动保存配置
+- 在 `StopWallpaperOnMonitor` 成功时自动移除配置
+- 在检测到 WorkerW 恢复时调用 `HandleAutoRecovery()`
+- 自动延迟 1 秒等待系统稳定，然后依次恢复所有壁纸
+
+**Dart 层**：
+- 新增 `enableAutoRecovery(bool enabled)` API
+- 新增 `isAutoRecoveryEnabled()` API
+- 完整的文档注释和使用示例
+
+#### 文档更新
+
+- ✅ `docs/FOR_FLUTTER_DEVELOPERS.md` - 新增自动恢复 vs 手动恢复对比
+- ✅ `lib/anywp_engine.dart` - 新增 API 文档注释
+- ✅ `example/lib/main.dart` - 更新示例代码使用自动恢复
+
+---
 
 ### 🎯 日志系统现代化改造
 

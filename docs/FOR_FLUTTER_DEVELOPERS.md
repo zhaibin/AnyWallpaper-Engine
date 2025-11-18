@@ -378,7 +378,42 @@ decryptFile(encryptedPath, destPath) -> bool // 解密文件（XOR）
 
 #### 📚 Flutter 开发者集成指南（重要）⭐
 
-**必须实现的消息监听**（用于处理 Explorer 重启）：
+**⚡ 方案 A：自动恢复模式（推荐 - 仅 2 行代码）**
+
+```dart
+import 'package:anywp_engine/anywp_engine.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 1️⃣ 启用自动恢复（一次性设置）
+  await AnyWPEngine.enableAutoRecovery(true);
+  
+  runApp(MyApp());
+}
+
+// 2️⃣ 正常初始化壁纸
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'https://example.com',
+  monitorIndex: 0,
+);
+
+// ✅ 完成！Explorer 重启时，插件会自动恢复壁纸
+// ✅ 无需任何额外代码
+```
+
+**✨ 优势**：
+- ✅ **极简集成** - 只需 2 行代码（启用 + 初始化）
+- ✅ **零维护** - 插件自动保存和恢复配置
+- ✅ **多显示器支持** - 自动恢复所有显示器的壁纸
+- ✅ **智能延迟** - 插件自动处理系统稳定等待
+- ✅ **零学习成本** - 不需要理解底层恢复机制
+
+---
+
+**🔧 方案 B：手动控制模式（高级用户）**
+
+如果需要自定义恢复逻辑（例如：根据时间或条件选择不同 URL），可使用手动模式：
 
 ```dart
 import 'package:anywp_engine/anywp_engine.dart';
@@ -392,37 +427,68 @@ void setupWallpaperRecovery() {
       final reason = message['data']['reason'] as String;
       print('需要重建壁纸: $reason');
       
-      // 自动重建（推荐延迟 1-2 秒等待系统稳定）
+      // 自定义恢复逻辑
       Future.delayed(Duration(seconds: 1), () async {
-        // 停止旧壁纸（清理被销毁的窗口句柄）
         await AnyWPEngine.stopWallpaper();
-        
-        // 等待清理完成
         await Future.delayed(Duration(milliseconds: 500));
         
-        // 使用保存的设置重建壁纸
-        // 💡 开发者需要自己保存 URL 和 monitorIndex
+        // 💡 自定义：根据时间选择不同壁纸
+        final hour = DateTime.now().hour;
+        final url = (hour >= 6 && hour < 18) 
+          ? 'file:///day_wallpaper.html'  // 白天壁纸
+          : 'file:///night_wallpaper.html'; // 夜间壁纸
+        
         await AnyWPEngine.initializeWallpaperOnMonitor(
-          url: savedUrl,  // 你保存的 URL
-          monitorIndex: savedMonitorIndex,  // 你保存的显示器索引
+          url: url,
+          monitorIndex: savedMonitorIndex,
         );
         
         print('壁纸重建完成！');
       });
       return;
     }
-    
-    // 处理其他消息类型...
   });
 }
 ```
 
-#### ⚠️ 重要提示
+**🎯 使用场景**：
+- 需要动态选择壁纸 URL
+- 需要在恢复前执行额外逻辑
+- 需要自定义恢复延迟时间
+- 需要特殊的错误处理
 
-- ✅ **必须**设置 `setOnMessageCallback` 才能接收系统消息
-- ✅ **建议**保存当前壁纸设置（URL、显示器索引等）以便快速恢复
-- ✅ **推荐**延迟 1-2 秒后再重建，等待 Windows 桌面完全稳定
-- ✅ 多显示器应用需要遍历所有活动的壁纸并重建
+---
+
+#### ⚠️ 重要说明
+
+**方案 A（自动恢复）**：
+- ✅ **推荐 99% 的用户使用**
+- ✅ 插件自动保存所有壁纸配置（URL、显示器索引、鼠标模式）
+- ✅ 插件自动处理延迟和清理逻辑
+- ✅ 支持单显示器和多显示器
+- ⚠️ 如果未启用，Explorer 重启后壁纸会消失（需手动重启应用）
+
+**方案 B（手动控制）**：
+- ⚠️ **仅适合需要自定义恢复逻辑的高级用户**
+- ⚠️ 需要开发者自己保存配置（URL、monitorIndex）
+- ⚠️ 需要手动处理延迟和清理
+- ⚠️ 代码量较大（约 20 行）
+
+**推荐配置**：
+```dart
+// 在 main() 中一次性配置
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 启用自动恢复（推荐）
+  await AnyWPEngine.enableAutoRecovery(true);
+  
+  // 设置应用名称（用于存储隔离）
+  await AnyWPEngine.setApplicationName('MyAwesomeApp');
+  
+  runApp(MyApp());
+}
+```
 
 **完整示例**：参考 `example/lib/main.dart` 中的实现
 
