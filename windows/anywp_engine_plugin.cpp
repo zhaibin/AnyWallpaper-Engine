@@ -2605,7 +2605,7 @@ std::vector<std::pair<std::string, std::string>> AnyWPEnginePlugin::GetPendingPo
 
 // Setup power saving monitoring
 void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
-  std::cout << "[AnyWP] [PowerSaving] Setting up power saving monitoring..." << std::endl;
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Setting up power saving monitoring...");
   
   // Register window class for power events
   WNDCLASSEXW wc = {0};
@@ -2617,7 +2617,7 @@ void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
   if (!RegisterClassExW(&wc)) {
     DWORD error = GetLastError();
     if (error != ERROR_CLASS_ALREADY_EXISTS) {
-      std::cout << "[AnyWP] [PowerSaving] Failed to register window class: " << error << std::endl;
+      Logger::Instance().Error("PowerSaving", "[PowerSaving] Failed to register window class: " + std::to_string(error));
       return;
     }
   }
@@ -2659,30 +2659,32 @@ void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
   
   if (power_listener_hwnd_) {
     ShowWindow(power_listener_hwnd_, SW_HIDE);
-    std::cout << "[AnyWP] [PowerSaving] Power listener window created: " << power_listener_hwnd_ << std::endl;
+    Logger::Instance().Info("PowerSaving", 
+      "[PowerSaving] Power listener window created: " + std::to_string(reinterpret_cast<uintptr_t>(power_listener_hwnd_)));
     
     // Register for session change notifications (lock/unlock)
     WTSRegisterSessionNotification(power_listener_hwnd_, NOTIFY_FOR_THIS_SESSION);
     
   } else {
-    std::cout << "[AnyWP] [PowerSaving] Failed to create listener window: " << GetLastError() << std::endl;
+    Logger::Instance().Error("PowerSaving", "[PowerSaving] Failed to create listener window: " + std::to_string(GetLastError()));
   }
   
   // Initialize session state flags
   is_remote_session_.store(GetSystemMetrics(SM_REMOTESESSION) != 0);
   is_session_locked_.store(false);  // Assume unlocked at startup
   
-  std::cout << "[AnyWP] [PowerSaving] Initial session state: remote=" 
-            << is_remote_session_.load() << ", locked=" << is_session_locked_.load() << std::endl;
+  Logger::Instance().Info("PowerSaving", 
+    "[PowerSaving] Initial session state: remote=" + std::to_string(is_remote_session_.load()) + 
+    ", locked=" + std::to_string(is_session_locked_.load()));
   
   // Note: Fullscreen detection is started by PowerManager::Enable() after initialization
   
-  std::cout << "[AnyWP] [PowerSaving] Monitoring setup complete" << std::endl;
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Monitoring setup complete");
 }
 
 // Cleanup power saving monitoring
 void AnyWPEnginePlugin::CleanupPowerSavingMonitoring() {
-  std::cout << "[AnyWP] [PowerSaving] Cleaning up monitoring..." << std::endl;
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Cleaning up monitoring...");
   
   // Note: Fullscreen detection is stopped by PowerManager destructor
   
@@ -2705,7 +2707,7 @@ void AnyWPEnginePlugin::CleanupPowerSavingMonitoring() {
     power_listener_hwnd_ = nullptr;
   }
   
-  std::cout << "[AnyWP] [PowerSaving] Cleanup complete" << std::endl;
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Cleanup complete");
 }
 
 // Power saving window procedure
@@ -2838,17 +2840,17 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
       // Power state changed
       switch (wParam) {
         case PBT_APMSUSPEND:
-          std::cout << "[AnyWP] [PowerSaving] System SUSPENDING" << std::endl;
+          Logger::Instance().Info("PowerSaving", "[PowerSaving] System SUSPENDING");
           display_change_instance_->PauseWallpaper("SUSPEND");
           break;
         case PBT_APMRESUMEAUTOMATIC:
         case PBT_APMRESUMESUSPEND:
-          std::cout << "[AnyWP] [PowerSaving] System RESUMING" << std::endl;
+          Logger::Instance().Info("PowerSaving", "[PowerSaving] System RESUMING");
           display_change_instance_->ResumeWallpaper("SUSPEND");
           break;
         case PBT_APMPOWERSTATUSCHANGE:
           // Check if monitor is off
-          std::cout << "[AnyWP] [PowerSaving] Power status changed" << std::endl;
+          Logger::Instance().Info("PowerSaving", "[PowerSaving] Power status changed");
           display_change_instance_->UpdatePowerState();
           break;
       }
@@ -2890,7 +2892,7 @@ void AnyWPEnginePlugin::StartFullscreenDetection() {
   if (power_manager_) {
     try {
       power_manager_->StartFullscreenDetection();
-      std::cout << "[AnyWP] [Refactor] Fullscreen detection delegated to PowerManager" << std::endl;
+      Logger::Instance().Info("Plugin", "[Refactor] Fullscreen detection delegated to PowerManager");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("PowerManager", "StartFullscreenDetection", 
         "PowerManager::StartFullscreenDetection() failed",
@@ -2915,7 +2917,7 @@ void AnyWPEnginePlugin::StopFullscreenDetection() {
   if (power_manager_) {
     try {
       power_manager_->StopFullscreenDetection();
-      std::cout << "[AnyWP] [Refactor] Fullscreen detection stop delegated to PowerManager" << std::endl;
+      Logger::Instance().Info("Plugin", "[Refactor] Fullscreen detection stop delegated to PowerManager");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("PowerManager", "StopFullscreenDetection", 
         "PowerManager::StopFullscreenDetection() failed",
@@ -2958,9 +2960,9 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
     }
   }
 
-  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER ==========" << std::endl;
-  std::cout << "[AnyWP] [PowerSaving] Current power state: " << power_state_str << std::endl;
-  std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
+  Logger::Instance().Banner("PowerSaving", "[PowerSaving] ========== PAUSING WALLPAPER ==========");
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Current power state: " + power_state_str);
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Reason: " + reason);
   
   // Execute pause scripts for all scenarios (fullscreen, lock screen, etc.)
   if (power_manager_) {
@@ -2972,7 +2974,7 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   // Light memory trim
   SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper paused - last frame frozen" << std::endl;
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Wallpaper paused - last frame frozen");
 }
 
 // v1.4.1+ Phase G: Validate wallpaper windows state
