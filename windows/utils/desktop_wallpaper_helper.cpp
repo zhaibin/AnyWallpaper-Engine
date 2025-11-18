@@ -68,11 +68,23 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
   // Send 0x052C message multiple times with short intervals for better compatibility
   Logger::Instance().Info("DesktopWallpaperHelper", "Triggering WorkerW creation (aggressive mode)");
   
+  // CRITICAL FIX: Use SMTO_NORMAL instead of SMTO_ABORTIFHUNG
+  // SMTO_ABORTIFHUNG may return too early without waiting for Progman to process
+  // Also increase timeout to 1000ms (Lively uses this)
   for (int i = 0; i < 3; i++) {
-    SendMessageTimeoutW(info_.progman, 0x052C, 0, 0, SMTO_ABORTIFHUNG, 100, nullptr);
+    DWORD_PTR result = 0;
+    LRESULT ret = SendMessageTimeoutW(info_.progman, 0x052C, 0, 0, 
+                                       SMTO_NORMAL, 1000, &result);
+    if (ret == 0) {
+      DWORD error = GetLastError();
+      Logger::Instance().Warning("DesktopWallpaperHelper", 
+        "SendMessageTimeout failed or timed out (attempt " + std::to_string(i + 1) + 
+        "), error: " + std::to_string(error));
+    } else {
+      Logger::Instance().Debug("DesktopWallpaperHelper", 
+        "Sent 0x052C to Progman successfully (attempt " + std::to_string(i + 1) + "/3), result: " + std::to_string(result));
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
-    Logger::Instance().Debug("DesktopWallpaperHelper", 
-      "Sent 0x052C to Progman (attempt " + std::to_string(i + 1) + "/3)");
   }
   
   // Additional trick: Create and immediately destroy a temporary window
@@ -90,8 +102,8 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
     Logger::Instance().Debug("DesktopWallpaperHelper", "Created and destroyed temporary trigger window (safe)");
   }
   
-  // Wait for system to process
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  // Wait longer for system to process (v2.3.1+: increased from 200ms to 500ms)
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
   
   return true;
 }
