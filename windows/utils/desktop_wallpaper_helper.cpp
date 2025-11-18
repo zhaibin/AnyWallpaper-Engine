@@ -66,14 +66,15 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
 
   // v2.3.1+ Enhanced: Aggressive WorkerW creation strategy (Lively-style)
   // Send 0x052C message multiple times with short intervals for better compatibility
-  Logger::Instance().Info("DesktopWallpaperHelper", "Triggering WorkerW creation (aggressive mode)");
+  Logger::Instance().Info("DesktopWallpaperHelper", "Triggering WorkerW creation (Lively-compatible mode)");
   
-  // CRITICAL FIX: Use SMTO_NORMAL instead of SMTO_ABORTIFHUNG
-  // SMTO_ABORTIFHUNG may return too early without waiting for Progman to process
-  // Also increase timeout to 1000ms (Lively uses this)
+  // CRITICAL FIX v2.3.1+: Use Lively's exact parameters!
+  // wParam = 0xD (13), lParam = 0x1 (1)
+  // This is the CORRECT way to trigger WorkerW creation on Windows 10/11
+  // Source: Lively Wallpaper's WinDesktopCore.cs
   for (int i = 0; i < 3; i++) {
     DWORD_PTR result = 0;
-    LRESULT ret = SendMessageTimeoutW(info_.progman, 0x052C, 0, 0, 
+    LRESULT ret = SendMessageTimeoutW(info_.progman, 0x052C, 0xD, 0x1, 
                                        SMTO_NORMAL, 1000, &result);
     if (ret == 0) {
       DWORD error = GetLastError();
@@ -159,27 +160,57 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
     "No WorkerW with SHELLDLL_DefView found (total WorkerW: " + std::to_string(info_.workerw_count) + ")");
   
   // Fallback 1: Check if SHELLDLL_DefView is in Progman
+  // v2.3.1+ CRITICAL FIX: Follow Lively's exact logic for Windows 11!
+  // Windows 11 has a special "Raised Desktop with Layered ShellView" mode
+  // where the desktop structure is different
   if (info_.progman && HasSHELLDLL(info_.progman)) {
-    HWND shelldll = info_.shelldll;
-    HWND icon_parent = shelldll ? GetParent(shelldll) : nullptr;
-    if (icon_parent && icon_parent != info_.progman) {
-      info_.icon_layer = icon_parent;
+    info_.icon_layer = info_.progman;
+    info_.found_shelldll = true;
+    
+    Logger::Instance().Info("DesktopWallpaperHelper", 
+      "SHELLDLL_DefView found in Progman, detecting desktop mode...");
+
+    // Check if Progman has WS_EX_NOREDIRECTIONBITMAP style (Windows 11 Raised Desktop mode)
+    LONG_PTR exStyle = GetWindowLongPtrW(info_.progman, GWL_EXSTYLE);
+    bool isRaisedDesktopMode = (exStyle & WS_EX_NOREDIRECTIONBITMAP) != 0;
+    
+    if (isRaisedDesktopMode) {
+      // Windows 11 Raised Desktop mode:
+      // Structure: Progman -> SHELLDLL_DefView + WorkerW (both as children)
+      // WorkerW is a CHILD of Progman, not a sibling!
       Logger::Instance().Info("DesktopWallpaperHelper", 
-        "SHELLDLL_DefView parent is WorkerW: " + std::to_string((long long)icon_parent));
+        "✨ Windows 11 Raised Desktop mode detected (WS_EX_NOREDIRECTIONBITMAP)");
+      
+      HWND child_workerw = FindWindowExW(info_.progman, nullptr, L"WorkerW", nullptr);
+      if (child_workerw) {
+        info_.wallpaper_layer = child_workerw;
+        Logger::Instance().Info("DesktopWallpaperHelper", 
+          "✅ Found WorkerW as CHILD of Progman: " + 
+          std::to_string((long long)child_workerw));
+      } else {
+        info_.wallpaper_layer = info_.progman;
+        Logger::Instance().Warning("DesktopWallpaperHelper", 
+          "No WorkerW child in Progman, using Progman itself");
+      }
     } else {
-      info_.icon_layer = info_.progman;
+      // Normal mode (Windows 10 or older Windows 11):
+      // WorkerW is a SIBLING of Progman (next top-level window)
+      Logger::Instance().Info("DesktopWallpaperHelper", 
+        "Normal desktop mode, finding next sibling WorkerW");
+      
+      HWND next_workerw = FindWindowExW(nullptr, info_.progman, L"WorkerW", nullptr);
+      if (next_workerw) {
+        info_.wallpaper_layer = next_workerw;
+        Logger::Instance().Info("DesktopWallpaperHelper", 
+          "✅ Found WorkerW as SIBLING of Progman: " + 
+          std::to_string((long long)next_workerw));
+      } else {
+        info_.wallpaper_layer = info_.progman;
+        Logger::Instance().Warning("DesktopWallpaperHelper", 
+          "No WorkerW sibling, using Progman as fallback");
+      }
     }
 
-    Logger::Instance().Info("DesktopWallpaperHelper", 
-      "SHELLDLL_DefView found in Progman, attempting to find WorkerW behind it");
-
-    // When SHELLDLL is in Progman, we need WorkerW that is BEHIND Progman in Z-order
-    // Use Progman itself as the parent - this is the correct approach for this scenario
-    info_.wallpaper_layer = info_.progman;
-    Logger::Instance().Info("DesktopWallpaperHelper", 
-      "Using Progman as wallpaper parent (SHELLDLL is inside Progman)");
-
-    info_.found_shelldll = true;
     return true;
   }
   
