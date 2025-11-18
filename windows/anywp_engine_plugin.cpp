@@ -1566,27 +1566,27 @@ void AnyWPEnginePlugin::SetupMouseHook() {
     return;
   }
   
-  try {
-    bool success = mouse_hook_manager_->Install();
-    if (success) {
+    try {
+      bool success = mouse_hook_manager_->Install();
+      if (success) {
       Logger::Instance().Info("Plugin", "[Refactor] MouseHookManager hook installed successfully");
-    } else {
-      LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
-        "MouseHookManager::Install() returned false",
+      } else {
+        LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
+          "MouseHookManager::Install() returned false",
+          ErrorHandler::ErrorCategory::EXTERNAL_API, 
+          ErrorHandler::ErrorLevel::ERROR);
+      }
+    } catch (const std::exception& e) {
+      LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Install", 
+        "MouseHookManager::Install() failed",
         ErrorHandler::ErrorCategory::EXTERNAL_API, 
+        ErrorHandler::ErrorLevel::ERROR, &e);
+    } catch (...) {
+      LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
+        "MouseHookManager::Install() failed (unknown exception)",
+        ErrorHandler::ErrorCategory::UNKNOWN, 
         ErrorHandler::ErrorLevel::ERROR);
     }
-  } catch (const std::exception& e) {
-    LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Install", 
-      "MouseHookManager::Install() failed",
-      ErrorHandler::ErrorCategory::EXTERNAL_API, 
-      ErrorHandler::ErrorLevel::ERROR, &e);
-  } catch (...) {
-    LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
-      "MouseHookManager::Install() failed (unknown exception)",
-      ErrorHandler::ErrorCategory::UNKNOWN, 
-      ErrorHandler::ErrorLevel::ERROR);
-  }
 }
 
 // Remove mouse hook (delegated to MouseHookManager)
@@ -1604,20 +1604,20 @@ void AnyWPEnginePlugin::RemoveMouseHook() {
   if (!mouse_hook_manager_->IsInstalled()) {
     Logger::Instance().Info("Plugin", "[Lifecycle] MouseHook not installed, skipping removal");
     return;
-  }
-  
-  try {
-    mouse_hook_manager_->Uninstall();
+}
+
+    try {
+      mouse_hook_manager_->Uninstall();
     Logger::Instance().Info("Plugin", "[Refactor] MouseHookManager hook uninstalled successfully");
-  } catch (const std::exception& e) {
-    LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Uninstall", 
-      "MouseHookManager::Uninstall() failed",
-      ErrorHandler::ErrorCategory::EXTERNAL_API, 
-      ErrorHandler::ErrorLevel::ERROR, &e);
-  } catch (...) {
-    LOG_AND_REPORT_ERROR("MouseHookManager", "Uninstall", 
-      "MouseHookManager::Uninstall() failed (unknown exception)",
-      ErrorHandler::ErrorCategory::UNKNOWN, 
+    } catch (const std::exception& e) {
+      LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Uninstall", 
+        "MouseHookManager::Uninstall() failed",
+        ErrorHandler::ErrorCategory::EXTERNAL_API, 
+        ErrorHandler::ErrorLevel::ERROR, &e);
+    } catch (...) {
+      LOG_AND_REPORT_ERROR("MouseHookManager", "Uninstall", 
+        "MouseHookManager::Uninstall() failed (unknown exception)",
+        ErrorHandler::ErrorCategory::UNKNOWN, 
       ErrorHandler::ErrorLevel::ERROR);
   }
 }
@@ -1787,11 +1787,11 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   if (workerw_health_monitor_ && worker_w_hwnd_) {
     if (!workerw_health_monitor_->IsMonitoring()) {
       Logger::Instance().Info("Plugin", "[Lifecycle] Starting WorkerW health monitoring (first instance)...");
-      if (workerw_health_monitor_->StartMonitoring(worker_w_hwnd_, 5000)) {  // Check every 5 seconds
-        Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring started");
+    if (workerw_health_monitor_->StartMonitoring(worker_w_hwnd_, 5000)) {  // Check every 5 seconds
+      Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring started");
         Logger::Instance().Info("Plugin", "WorkerW health monitoring active (check interval: 5s)");
-      } else {
-        Logger::Instance().Warning("AnyWPEngine", "Failed to start WorkerW health monitoring");
+    } else {
+      Logger::Instance().Warning("AnyWPEngine", "Failed to start WorkerW health monitoring");
       }
     } else {
       Logger::Instance().Info("Plugin", "[Lifecycle] WorkerW health monitoring already active, skipping");
@@ -2289,13 +2289,13 @@ bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
   }
   
   // Cleanup the specific instance
-  bool result = instance_manager_->CleanupInstance(monitor_index);
-  
-  // v2.1.0+ Refactoring: Rebuild EventDispatcher cache after removing instance
-  if (result && event_dispatcher_) {
-    event_dispatcher_->RebuildHwndCache();
-  }
-  
+    bool result = instance_manager_->CleanupInstance(monitor_index);
+    
+    // v2.1.0+ Refactoring: Rebuild EventDispatcher cache after removing instance
+    if (result && event_dispatcher_) {
+      event_dispatcher_->RebuildHwndCache();
+    }
+    
   // v2.3.2+: Check if this is the last active instance
   size_t active_count = GetActiveInstanceCount();
   Logger::Instance().Info("Plugin", "[Lifecycle] Active instances after cleanup: " + std::to_string(active_count));
@@ -3478,8 +3478,8 @@ void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
       }
     }
     
-    std::cout << "[AnyWP] [PowerSaving] Power state change queued: " 
-              << oldStateStr << " -> " << newStateStr << std::endl;
+    Logger::Instance().Info("PowerSaving", 
+      "[PowerSaving] Power state change queued: " + oldStateStr + " -> " + newStateStr);
     Logger::Instance().Info("AnyWPEngine", 
       "Power state change queued (queue size: " + 
       std::to_string(pending_power_state_changes_.size()) + ")");
@@ -3496,7 +3496,7 @@ void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
 
 void AnyWPEnginePlugin::RecoverWorkerW() {
   Logger::Instance().Warning("AnyWPEngine", "WorkerW recovery initiated (Lively-style full recreate)");
-  std::cout << "[AnyWP] [WorkerW Recovery] ========== Starting WorkerW Recovery (Full Recreate) ==========" << std::endl;
+  Logger::Instance().Banner("WorkerW Recovery", "[WorkerW Recovery] ========== Starting WorkerW Recovery (Full Recreate) ==========");
   
   try {
     // v2.3.1+ Lively-style Recovery: Complete wallpaper recreation
@@ -3535,14 +3535,14 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     // Step 2: Windows were destroyed, need full recreation
     Logger::Instance().Warning("WorkerW Recovery", 
       "Windows destroyed, initiating full wallpaper recreation (Lively method)");
-    std::cout << "[AnyWP] [WorkerW Recovery] Windows destroyed, need full recreation" << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", "Windows destroyed, need full recreation");
     
     // Step 3: Reset DesktopWallpaperHelper cache
     DesktopWallpaperHelper::Instance().Reset();
     Logger::Instance().Info("WorkerW Recovery", "DesktopWallpaperHelper cache cleared");
     
     // Step 4: Clear all destroyed window handles
-    std::cout << "[AnyWP] [WorkerW Recovery] Clearing destroyed window handles..." << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", "Clearing destroyed window handles...");
     webview_host_hwnd_ = nullptr;
     worker_w_hwnd_ = nullptr;
     webview_controller_ = nullptr;
@@ -3554,14 +3554,14 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     Logger::Instance().Info("WorkerW Recovery", "Window handles cleared (instances will be cleaned up by next init)");
     
     // Step 5: Find new WorkerW (v2.3.1+ CRITICAL: Use shorter timeout to avoid blocking)
-    std::cout << "[AnyWP] [WorkerW Recovery] Re-finding WorkerW (fast mode)..." << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", "Re-finding WorkerW (fast mode)...");
     
     // v2.3.1+ CRITICAL FIX: Use much shorter timeout (1000ms) to avoid blocking other threads
     // If it fails, monitoring thread will retry automatically later
     if (!DesktopWallpaperHelper::Instance().FindWorkerW(1000)) {
       Logger::Instance().Warning("WorkerW Recovery", 
         "Fast WorkerW search failed, will retry in next monitoring cycle");
-      std::cout << "[AnyWP] [WorkerW Recovery] WorkerW not found yet, will retry later" << std::endl;
+      Logger::Instance().Warning("WorkerW Recovery", "WorkerW not found yet, will retry later");
       
       // Mark recovery as failed, monitoring thread will retry
       if (workerw_health_monitor_) {
@@ -3578,7 +3578,8 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     
     Logger::Instance().Info("WorkerW Recovery", 
       "New WorkerW found: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
-    std::cout << "[AnyWP] [WorkerW Recovery] New WorkerW: " << new_workerw << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", 
+      "New WorkerW: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
     
     // Step 6: Update WorkerW in health monitor
     if (workerw_health_monitor_) {
@@ -3602,23 +3603,23 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     
     Logger::Instance().Warning("WorkerW Recovery", 
       "Wallpaper recreation message sent to Flutter: " + recreate_message);
-    std::cout << "[AnyWP] [WorkerW Recovery] Wallpaper recreation message sent to Flutter" << std::endl;
-    std::cout << "[AnyWP] [WorkerW Recovery] ========== Recovery Completed (Message Sent) ==========" << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", "Wallpaper recreation message sent to Flutter");
+    Logger::Instance().Banner("WorkerW Recovery", "[WorkerW Recovery] ========== Recovery Completed (Message Sent) ==========");
     
   } catch (const std::exception& e) {
     Logger::Instance().Error("WorkerW Recovery", 
       std::string("Exception during recovery: ") + e.what());
-    std::cout << "[AnyWP] [WorkerW Recovery] EXCEPTION: " << e.what() << std::endl;
+    Logger::Instance().Error("WorkerW Recovery", std::string("EXCEPTION: ") + e.what());
   } catch (...) {
     Logger::Instance().Error("WorkerW Recovery", "Unknown exception during recovery");
-    std::cout << "[AnyWP] [WorkerW Recovery] UNKNOWN EXCEPTION" << std::endl;
+    Logger::Instance().Error("WorkerW Recovery", "UNKNOWN EXCEPTION");
   }
 }
 
 // v2.3.1+ New method: Re-parent recovery for non-destroyed windows
 void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
   Logger::Instance().Info("WorkerW Recovery", "Starting re-parent recovery");
-  std::cout << "[AnyWP] [WorkerW Recovery] ========== Starting Re-parent Recovery ==========" << std::endl;
+  Logger::Instance().Banner("WorkerW Recovery", "[WorkerW Recovery] ========== Starting Re-parent Recovery ==========");
   
   try {
     // Find new WorkerW
@@ -3643,7 +3644,7 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
     
     // Step 4: Update single-monitor mode (if active)
     if (webview_host_hwnd_) {
-      std::cout << "[AnyWP] [WorkerW Recovery] Re-parenting single-monitor wallpaper..." << std::endl;
+      Logger::Instance().Info("WorkerW Recovery", "Re-parenting single-monitor wallpaper...");
       
       // v2.3.1+ CRITICAL: Validate all window handles before SetParent
       bool webview_valid = IsWindow(webview_host_hwnd_);
@@ -3657,14 +3658,15 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
         " (valid=" + std::to_string(workerw_valid) + 
         "), current_parent=" + std::to_string((long long)current_parent) + ")");
       
-      std::cout << "[AnyWP] [WorkerW Recovery] Validation: webview=" << webview_host_hwnd_ 
-                << " (valid=" << webview_valid << "), workerw=" << new_workerw 
-                << " (valid=" << workerw_valid << "), parent=" << current_parent << std::endl;
+      Logger::Instance().Debug("WorkerW Recovery", 
+        "Validation: webview=" + std::to_string(reinterpret_cast<uintptr_t>(webview_host_hwnd_)) + 
+        " (valid=" + std::to_string(webview_valid) + "), workerw=" + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)) + 
+        " (valid=" + std::to_string(workerw_valid) + "), parent=" + std::to_string(reinterpret_cast<uintptr_t>(current_parent)));
       
       if (!webview_valid) {
         Logger::Instance().Error("WorkerW Recovery", 
           "WebView host window handle is invalid (window destroyed)");
-        std::cout << "[AnyWP] [WorkerW Recovery] ERROR: WebView window invalid!" << std::endl;
+        Logger::Instance().Error("WorkerW Recovery", "ERROR: WebView window invalid!");
         webview_host_hwnd_ = nullptr;
         worker_w_hwnd_ = nullptr;
         return;
@@ -3673,7 +3675,7 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
       if (!workerw_valid) {
         Logger::Instance().Error("WorkerW Recovery", 
           "New WorkerW handle is invalid (WorkerW not created properly)");
-        std::cout << "[AnyWP] [WorkerW Recovery] ERROR: WorkerW invalid!" << std::endl;
+        Logger::Instance().Error("WorkerW Recovery", "ERROR: WorkerW invalid!");
         return;
       }
       
@@ -3682,7 +3684,7 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
       if (old_parent || GetLastError() == 0) {
         worker_w_hwnd_ = new_workerw;
         Logger::Instance().Info("WorkerW Recovery", "Single-monitor wallpaper re-parented successfully");
-        std::cout << "[AnyWP] [WorkerW Recovery] Single-monitor wallpaper re-parented" << std::endl;
+        Logger::Instance().Info("WorkerW Recovery", "Single-monitor wallpaper re-parented");
         
         // Fix Z-order
         if (window_manager_) {
@@ -3699,7 +3701,7 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
         DWORD error = GetLastError();
         Logger::Instance().Error("WorkerW Recovery", 
           "Failed to re-parent single-monitor wallpaper: error " + std::to_string(error));
-        std::cout << "[AnyWP] [WorkerW Recovery] ERROR: Failed to re-parent, error: " << error << std::endl;
+        Logger::Instance().Error("WorkerW Recovery", "ERROR: Failed to re-parent, error: " + std::to_string(error));
         
         // v2.3.1+ Check if it's a permission issue
         if (error == ERROR_ACCESS_DENIED) {
@@ -3713,8 +3715,8 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
     {
       std::lock_guard<std::mutex> lock(instances_mutex_);
       if (!wallpaper_instances_.empty()) {
-        std::cout << "[AnyWP] [WorkerW Recovery] Re-parenting " << wallpaper_instances_.size() 
-                  << " multi-monitor wallpapers..." << std::endl;
+        Logger::Instance().Info("WorkerW Recovery", 
+          "Re-parenting " + std::to_string(wallpaper_instances_.size()) + " multi-monitor wallpapers...");
         
         int success_count = 0;
         for (auto& instance : wallpaper_instances_) {
@@ -3724,17 +3726,18 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
             bool workerw_valid = IsWindow(new_workerw);
             HWND current_parent = GetParent(instance.webview_host_hwnd);
             
-            std::cout << "[AnyWP] [WorkerW Recovery] Monitor " << instance.monitor_index 
-                      << " validation: webview=" << instance.webview_host_hwnd 
-                      << " (valid=" << webview_valid << "), workerw=" << new_workerw 
-                      << " (valid=" << workerw_valid << "), parent=" << current_parent << std::endl;
+            Logger::Instance().Debug("WorkerW Recovery", 
+              "Monitor " + std::to_string(instance.monitor_index) + 
+              " validation: webview=" + std::to_string(reinterpret_cast<uintptr_t>(instance.webview_host_hwnd)) + 
+              " (valid=" + std::to_string(webview_valid) + "), workerw=" + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)) + 
+              " (valid=" + std::to_string(workerw_valid) + "), parent=" + std::to_string(reinterpret_cast<uintptr_t>(current_parent)));
             
             if (!webview_valid) {
               Logger::Instance().Error("WorkerW Recovery", 
                 "Monitor " + std::to_string(instance.monitor_index) + 
                 " webview window handle is invalid (window destroyed)");
-              std::cout << "[AnyWP] [WorkerW Recovery] ERROR: Monitor " << instance.monitor_index 
-                        << " webview window invalid!" << std::endl;
+              Logger::Instance().Error("WorkerW Recovery", 
+                "ERROR: Monitor " + std::to_string(instance.monitor_index) + " webview window invalid!");
               continue;
             }
             
@@ -3742,8 +3745,8 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
               Logger::Instance().Error("WorkerW Recovery", 
                 "Monitor " + std::to_string(instance.monitor_index) + 
                 " WorkerW handle is invalid");
-              std::cout << "[AnyWP] [WorkerW Recovery] ERROR: Monitor " << instance.monitor_index 
-                        << " WorkerW invalid!" << std::endl;
+              Logger::Instance().Error("WorkerW Recovery", 
+                "ERROR: Monitor " + std::to_string(instance.monitor_index) + " WorkerW invalid!");
               continue;
             }
             
@@ -3780,8 +3783,9 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
         Logger::Instance().Info("WorkerW Recovery", 
           "Re-parented " + std::to_string(success_count) + "/" + 
           std::to_string(wallpaper_instances_.size()) + " wallpapers");
-        std::cout << "[AnyWP] [WorkerW Recovery] Re-parented " << success_count << "/" 
-                  << wallpaper_instances_.size() << " wallpapers" << std::endl;
+        Logger::Instance().Info("WorkerW Recovery", 
+          "Re-parented " + std::to_string(success_count) + "/" + 
+          std::to_string(wallpaper_instances_.size()) + " wallpapers");
       }
     }
     
@@ -3791,19 +3795,19 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
     if (workerw_health_monitor_) {
       workerw_health_monitor_->UpdateWorkerW(new_workerw);
       Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated in health monitor");
-      std::cout << "[AnyWP] [WorkerW Recovery] WorkerW handle updated" << std::endl;
+      Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated");
     }
     
     Logger::Instance().Info("WorkerW Recovery", "Recovery completed successfully");
-    std::cout << "[AnyWP] [WorkerW Recovery] ========== Recovery Completed ==========" << std::endl;
+    Logger::Instance().Banner("WorkerW Recovery", "[WorkerW Recovery] ========== Recovery Completed ==========");
     
   } catch (const std::exception& e) {
     Logger::Instance().Error("WorkerW Recovery", 
       std::string("Exception during recovery: ") + e.what());
-    std::cout << "[AnyWP] [WorkerW Recovery] EXCEPTION: " << e.what() << std::endl;
+    Logger::Instance().Error("WorkerW Recovery", std::string("EXCEPTION: ") + e.what());
   } catch (...) {
     Logger::Instance().Error("WorkerW Recovery", "Unknown exception during recovery");
-    std::cout << "[AnyWP] [WorkerW Recovery] UNKNOWN EXCEPTION" << std::endl;
+    Logger::Instance().Error("WorkerW Recovery", "UNKNOWN EXCEPTION");
   }
 }
 
