@@ -2979,14 +2979,16 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
 
 // v1.4.1+ Phase G: Validate wallpaper windows state
 bool AnyWPEnginePlugin::ValidateWallpaperWindows() {
-  std::cout << "[AnyWP] [PowerSaving] Verifying wallpaper window state..." << std::endl;
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Verifying wallpaper window state...");
   
   // Check single-monitor mode
   if (webview_host_hwnd_) {
-    std::cout << "[AnyWP] [PowerSaving] Single-monitor mode detected" << std::endl;
-    std::cout << "[AnyWP] [PowerSaving] WebView window: " << webview_host_hwnd_ << std::endl;
-    std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(webview_host_hwnd_) 
-              << ", IsVisible: " << (IsWindow(webview_host_hwnd_) ? IsWindowVisible(webview_host_hwnd_) : false) << std::endl;
+    Logger::Instance().Info("PowerSaving", "[PowerSaving] Single-monitor mode detected");
+    Logger::Instance().Debug("PowerSaving", 
+      "[PowerSaving] WebView window: " + std::to_string(reinterpret_cast<uintptr_t>(webview_host_hwnd_)));
+    Logger::Instance().Debug("PowerSaving", 
+      "[PowerSaving] IsWindow: " + std::to_string(IsWindow(webview_host_hwnd_)) + 
+      ", IsVisible: " + std::to_string(IsWindow(webview_host_hwnd_) ? IsWindowVisible(webview_host_hwnd_) : false));
     
     if (!IsWindow(webview_host_hwnd_) || !IsWindowVisible(webview_host_hwnd_)) {
       Logger::Instance().Warning("PowerSaving", "Wallpaper window invalid or hidden!");
@@ -2995,29 +2997,36 @@ bool AnyWPEnginePlugin::ValidateWallpaperWindows() {
     
     // Verify parent relationship
     HWND parent = GetParent(webview_host_hwnd_);
-    std::cout << "[AnyWP] [PowerSaving] Expected parent (WorkerW): " << worker_w_hwnd_ << std::endl;
-    std::cout << "[AnyWP] [PowerSaving] Actual parent: " << parent << std::endl;
-    std::cout << "[AnyWP] [PowerSaving] WorkerW valid: " << IsWindow(worker_w_hwnd_) << std::endl;
+    Logger::Instance().Debug("PowerSaving", 
+      "[PowerSaving] Expected parent (WorkerW): " + std::to_string(reinterpret_cast<uintptr_t>(worker_w_hwnd_)));
+    Logger::Instance().Debug("PowerSaving", 
+      "[PowerSaving] Actual parent: " + std::to_string(reinterpret_cast<uintptr_t>(parent)));
+    Logger::Instance().Debug("PowerSaving", 
+      "[PowerSaving] WorkerW valid: " + std::to_string(IsWindow(worker_w_hwnd_)));
     
     if (parent != worker_w_hwnd_ || !IsWindow(worker_w_hwnd_)) {
       Logger::Instance().Warning("PowerSaving", "Parent window relationship broken!");
       return false;  // Need reinitialize
     }
     
-    std::cout << "[AnyWP] [PowerSaving] [OK] Window valid, parent relationship OK" << std::endl;
+    Logger::Instance().Info("PowerSaving", "[PowerSaving] [OK] Window valid, parent relationship OK");
   }
   
   // Check multi-monitor mode
   {
     std::lock_guard<std::mutex> lock(instances_mutex_);
     if (!wallpaper_instances_.empty()) {
-      std::cout << "[AnyWP] [PowerSaving] Multi-monitor mode detected (" << wallpaper_instances_.size() << " instances)" << std::endl;
+      Logger::Instance().Info("PowerSaving", 
+        "[PowerSaving] Multi-monitor mode detected (" + std::to_string(wallpaper_instances_.size()) + " instances)");
       
       for (auto& instance : wallpaper_instances_) {
-        std::cout << "[AnyWP] [PowerSaving] Checking monitor " << instance.monitor_index << std::endl;
-        std::cout << "[AnyWP] [PowerSaving] WebView window: " << instance.webview_host_hwnd << std::endl;
-        std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(instance.webview_host_hwnd) 
-                  << ", IsVisible: " << IsWindowVisible(instance.webview_host_hwnd) << std::endl;
+        Logger::Instance().Debug("PowerSaving", 
+          "[PowerSaving] Checking monitor " + std::to_string(instance.monitor_index));
+        Logger::Instance().Debug("PowerSaving", 
+          "[PowerSaving] WebView window: " + std::to_string(reinterpret_cast<uintptr_t>(instance.webview_host_hwnd)));
+        Logger::Instance().Debug("PowerSaving", 
+          "[PowerSaving] IsWindow: " + std::to_string(IsWindow(instance.webview_host_hwnd)) + 
+          ", IsVisible: " + std::to_string(IsWindowVisible(instance.webview_host_hwnd)));
         
         if (!IsWindow(instance.webview_host_hwnd) || !IsWindowVisible(instance.webview_host_hwnd)) {
           Logger::Instance().Warning("PowerSaving", 
@@ -3025,8 +3034,8 @@ bool AnyWPEnginePlugin::ValidateWallpaperWindows() {
           return false;  // Need reinitialize
         }
         
-        std::cout << "[AnyWP] [PowerSaving] [OK] Monitor " << instance.monitor_index 
-                  << " window valid" << std::endl;
+        Logger::Instance().Info("PowerSaving", 
+          "[PowerSaving] [OK] Monitor " + std::to_string(instance.monitor_index) + " window valid");
       }
     }
   }
@@ -3045,8 +3054,8 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     return false;
   }
   
-  std::cout << "[AnyWP] [PowerSaving] ========== RESTORING LOST WALLPAPER ==========" << std::endl;
-  std::cout << "[AnyWP] [PowerSaving] Re-initializing wallpaper with URL: " << url << std::endl;
+  Logger::Instance().Banner("PowerSaving", "[PowerSaving] ========== RESTORING LOST WALLPAPER ==========");
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Re-initializing wallpaper with URL: " + url);
   
   // Save current URL and use ORIGINAL monitor configuration
   std::vector<int> saved_monitor_indices;
@@ -3058,20 +3067,22 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     // Use original configuration (device names, survives session switches)
     saved_monitor_devices = original_monitor_devices_;
     
-    std::cout << "[AnyWP] [PowerSaving] Using original monitor configuration: " 
-              << saved_monitor_devices.size() << " monitor(s)" << std::endl;
+    Logger::Instance().Info("PowerSaving", 
+      "[PowerSaving] Using original monitor configuration: " + 
+      std::to_string(saved_monitor_devices.size()) + " monitor(s)");
     
     // v2.0.1+ Bug Fix: Save transparency settings for each instance before stopping
     for (const auto& instance : wallpaper_instances_) {
       saved_transparency_settings[instance.monitor_index] = instance.enable_mouse_transparent;
-      std::cout << "[AnyWP] [PowerSaving] Saved transparency setting for monitor " 
-                << instance.monitor_index << ": " 
-                << (instance.enable_mouse_transparent ? "transparent" : "interactive") << std::endl;
+      Logger::Instance().Info("PowerSaving", 
+        "[PowerSaving] Saved transparency setting for monitor " + 
+        std::to_string(instance.monitor_index) + ": " + 
+        (instance.enable_mouse_transparent ? "transparent" : "interactive"));
     }
     
     // Fallback: if no original config, try current instances
     if (saved_monitor_devices.empty()) {
-      std::cout << "[AnyWP] [PowerSaving] No original config, using current instances" << std::endl;
+      Logger::Instance().Info("PowerSaving", "[PowerSaving] No original config, using current instances");
       for (const auto& instance : wallpaper_instances_) {
         // Find device name for this instance's monitor index
         for (const auto& monitor : monitors_) {
@@ -3094,22 +3105,23 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     }
   }
   
-  std::cout << "[AnyWP] [PowerSaving] Will restore " << saved_monitor_indices.size() 
-            << " monitor(s)" << std::endl;
+  Logger::Instance().Info("PowerSaving", 
+    "[PowerSaving] Will restore " + std::to_string(saved_monitor_indices.size()) + " monitor(s)");
   
   // CRITICAL: Always stop existing wallpaper before recreating
-  std::cout << "[AnyWP] [PowerSaving] Stopping existing wallpaper (if any)..." << std::endl;
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Stopping existing wallpaper (if any)...");
   StopWallpaper();
   
   // CRITICAL: Re-enumerate monitors before rebuilding (session may have different monitors)
-  std::cout << "[AnyWP] [PowerSaving] Re-enumerating monitors for current session..." << std::endl;
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Re-enumerating monitors for current session...");
   GetMonitors();
-  std::cout << "[AnyWP] [PowerSaving] Current session has " << monitors_.size() << " monitor(s)" << std::endl;
+  Logger::Instance().Info("PowerSaving", 
+    "[PowerSaving] Current session has " + std::to_string(monitors_.size()) + " monitor(s)");
   
   if (!saved_monitor_indices.empty()) {
     // Restore wallpaper on all previously active monitors that still exist
-    std::cout << "[AnyWP] [PowerSaving] Attempting to restore " 
-              << saved_monitor_indices.size() << " monitor(s)..." << std::endl;
+    Logger::Instance().Info("PowerSaving", 
+      "[PowerSaving] Attempting to restore " + std::to_string(saved_monitor_indices.size()) + " monitor(s)...");
     
     int restored_count = 0;
     for (int monitor_index : saved_monitor_indices) {
@@ -3123,17 +3135,17 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
       }
       
       if (monitor_exists) {
-        std::cout << "[AnyWP] [PowerSaving] Restoring wallpaper on monitor " 
-                  << monitor_index << std::endl;
+        Logger::Instance().Info("PowerSaving", 
+          "[PowerSaving] Restoring wallpaper on monitor " + std::to_string(monitor_index));
         
         // v2.0.1+ Bug Fix: Use saved transparency setting for this monitor, fallback to global if not found
         bool use_transparent = saved_transparency_settings.count(monitor_index) > 0 
                               ? saved_transparency_settings[monitor_index] 
                               : !enable_interaction_;
         
-        std::cout << "[AnyWP] [PowerSaving] Using " 
-                  << (use_transparent ? "transparent" : "interactive") 
-                  << " mode for monitor " << monitor_index << std::endl;
+        Logger::Instance().Info("PowerSaving", 
+          "[PowerSaving] Using " + std::string(use_transparent ? "transparent" : "interactive") + 
+          " mode for monitor " + std::to_string(monitor_index));
         
         bool success = InitializeWallpaperOnMonitor(url, use_transparent, monitor_index);
         if (success) {
