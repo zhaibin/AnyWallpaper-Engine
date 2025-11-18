@@ -74,6 +74,8 @@ HWND WindowManager::CreateWebViewHostWindow(
   }
 
   // Create as CHILD window of WorkerW
+  // Note: When Explorer restarts, child windows will be destroyed automatically.
+  // The recovery mechanism will detect this and recreate everything (Lively-style approach)
   HWND hwnd = CreateWindowExW(
       ex_style,
       L"STATIC",

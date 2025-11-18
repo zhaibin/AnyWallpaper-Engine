@@ -357,8 +357,14 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // WorkerWHealthMonitor module for WorkerW health monitoring (v2.3.1+ Enhancement)
   std::unique_ptr<class WorkerWHealthMonitor> workerw_health_monitor_;
   
-  // WorkerW recovery method (called by health monitor)
-  void RecoverWorkerW();
+  // WorkerW recovery methods (called by health monitor)
+  void RecoverWorkerW();  // Main recovery entry point (Lively-style: detect and decide)
+  void RecoverWorkerW_Reparent();  // Re-parent existing windows (when not destroyed)
+  
+  // Wallpaper recreation state (v2.3.1+ Lively-style recovery)
+  bool need_wallpaper_recreate_ = false;
+  std::string wallpaper_recreate_reason_;
+  std::mutex wallpaper_recreate_mutex_;
 };
 
 }  // namespace anywp_engine

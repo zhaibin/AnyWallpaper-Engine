@@ -149,6 +149,56 @@ class _MyAppState extends State<MyApp> with WindowListener {
           }
         });
         
+        // v2.3.1+ Handle wallpaper recreation request from C++ side
+        if (messageType == 'WALLPAPER_RECREATE_REQUIRED') {
+          print('[APP] 🔄 Wallpaper recreation required!');
+          print('[APP]   Reason: ${messageData['reason']}');
+          
+          // Auto-recreate wallpaper after a short delay
+          Future.delayed(Duration(seconds: 1), () async {
+            print('[APP] 🔄 Starting automatic wallpaper recreation...');
+            
+            // Stop current wallpaper (cleanup destroyed windows)
+            await AnyWPEngine.stopWallpaper();
+            print('[APP] Wallpaper stopped, old handles cleared');
+            
+            // Wait for cleanup to complete
+            await Future.delayed(Duration(milliseconds: 500));
+            
+            // Recreate wallpaper for each monitor that was running
+            int recreatedCount = 0;
+            for (final entry in Map.from(_monitorWallpapers).entries) {
+              if (entry.value == true) {
+                final monitorIndex = entry.key;
+                final controller = _monitorUrlControllers[monitorIndex];
+                if (controller != null) {
+                  final url = controller.text.trim();
+                  if (url.isNotEmpty) {
+                    print('[APP] Recreating wallpaper on monitor $monitorIndex: $url');
+                    final success = await AnyWPEngine.initializeWallpaperOnMonitor(
+                      url: url,
+                      monitorIndex: monitorIndex,
+                    );
+                    
+                    setState(() {
+                      _monitorWallpapers[monitorIndex] = success;
+                    });
+                    
+                    if (success) {
+                      recreatedCount++;
+                      print('[APP] ✅ Monitor $monitorIndex recreated successfully');
+                    } else {
+                      print('[APP] ❌ Monitor $monitorIndex recreation failed');
+                    }
+                  }
+                }
+              }
+            }
+            
+            print('[APP] 🎉 Wallpaper recreation complete: $recreatedCount monitor(s) restored');
+          });
+        }
+        
         // Auto-reply to ping messages
         if (messageType == 'pong' && messageData.containsKey('requestId')) {
           final requestId = messageData['requestId'];

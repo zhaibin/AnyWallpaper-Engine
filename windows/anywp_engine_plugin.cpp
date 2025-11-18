@@ -3368,39 +3368,78 @@ void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
 // ========== v2.3.1+ Enhancement: WorkerW Recovery ==========
 
 void AnyWPEnginePlugin::RecoverWorkerW() {
-  Logger::Instance().Warning("AnyWPEngine", "WorkerW recovery initiated");
-  std::cout << "[AnyWP] [WorkerW Recovery] ========== Starting WorkerW Recovery ==========" << std::endl;
+  Logger::Instance().Warning("AnyWPEngine", "WorkerW recovery initiated (Lively-style full recreate)");
+  std::cout << "[AnyWP] [WorkerW Recovery] ========== Starting WorkerW Recovery (Full Recreate) ==========" << std::endl;
   
   try {
-    // v2.3.1+ IMPORTANT: Do NOT stop monitoring thread here!
-    // This function is called FROM the monitoring thread, stopping it would cause deadlock.
-    // The monitoring thread will automatically detect health improvement after recovery.
+    // v2.3.1+ Lively-style Recovery: Complete wallpaper recreation
+    // When Explorer restarts, child windows are destroyed by Windows.
+    // Instead of trying to fix them, we recreate everything from scratch (like Lively does)
     
-    // Step 1: Reset DesktopWallpaperHelper cache
+    // Step 1: Check if windows were destroyed
+    bool need_recreate = false;
+    
+    if (webview_host_hwnd_ && !IsWindow(webview_host_hwnd_)) {
+      Logger::Instance().Warning("WorkerW Recovery", 
+        "Single-monitor webview host window destroyed (Explorer restart detected)");
+      need_recreate = true;
+    }
+    
+    {
+      std::lock_guard<std::mutex> lock(instances_mutex_);
+      for (const auto& instance : wallpaper_instances_) {
+        if (instance.webview_host_hwnd && !IsWindow(instance.webview_host_hwnd)) {
+          Logger::Instance().Warning("WorkerW Recovery", 
+            "Multi-monitor window destroyed (Explorer restart detected)");
+          need_recreate = true;
+          break;
+        }
+      }
+    }
+    
+    if (!need_recreate) {
+      // Windows still exist, just re-parent them (old behavior for other scenarios)
+      Logger::Instance().Info("WorkerW Recovery", 
+        "Windows still valid, performing re-parent recovery (not Explorer restart)");
+      RecoverWorkerW_Reparent();
+      return;
+    }
+    
+    // Step 2: Windows were destroyed, need full recreation
+    Logger::Instance().Warning("WorkerW Recovery", 
+      "Windows destroyed, initiating full wallpaper recreation (Lively method)");
+    std::cout << "[AnyWP] [WorkerW Recovery] Windows destroyed, need full recreation" << std::endl;
+    
+    // Step 3: Reset DesktopWallpaperHelper cache
     DesktopWallpaperHelper::Instance().Reset();
     Logger::Instance().Info("WorkerW Recovery", "DesktopWallpaperHelper cache cleared");
     
-    // Step 3: Find new WorkerW (v2.3.1+ Enhanced: Aggressive strategy)
-    std::cout << "[AnyWP] [WorkerW Recovery] Re-finding WorkerW with aggressive strategy..." << std::endl;
+    // Step 4: Clear all destroyed window handles
+    std::cout << "[AnyWP] [WorkerW Recovery] Clearing destroyed window handles..." << std::endl;
+    webview_host_hwnd_ = nullptr;
+    worker_w_hwnd_ = nullptr;
+    webview_controller_ = nullptr;
     
-    // Force trigger WorkerW creation multiple times
-    for (int attempt = 0; attempt < 3; attempt++) {
-      if (DesktopWallpaperHelper::Instance().FindWorkerW(5000)) {
-        break;  // Success
-      }
-      
+    // v2.3.1+ CRITICAL FIX: Don't clear instances here to avoid deadlock!
+    // Just let them be - they will be invalid handles anyway.
+    // Clearing them while holding lock can cause deadlock with PowerManager thread.
+    // Instead, mark them as invalid and let next initialization clean up.
+    Logger::Instance().Info("WorkerW Recovery", "Window handles cleared (instances will be cleaned up by next init)");
+    
+    // Step 5: Find new WorkerW (v2.3.1+ CRITICAL: Use shorter timeout to avoid blocking)
+    std::cout << "[AnyWP] [WorkerW Recovery] Re-finding WorkerW (fast mode)..." << std::endl;
+    
+    // v2.3.1+ CRITICAL FIX: Use much shorter timeout (1000ms) to avoid blocking other threads
+    // If it fails, monitoring thread will retry automatically later
+    if (!DesktopWallpaperHelper::Instance().FindWorkerW(1000)) {
       Logger::Instance().Warning("WorkerW Recovery", 
-        "FindWorkerW attempt " + std::to_string(attempt + 1) + " failed, retrying...");
+        "Fast WorkerW search failed, will retry in next monitoring cycle");
+      std::cout << "[AnyWP] [WorkerW Recovery] WorkerW not found yet, will retry later" << std::endl;
       
-      // Aggressive retry: Force trigger again
-      DesktopWallpaperHelper::Instance().TriggerWorkerWCreation();
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
-    
-    // Final check
-    if (!DesktopWallpaperHelper::Instance().FindWorkerW(2000)) {
-      Logger::Instance().Error("WorkerW Recovery", "Failed to find new WorkerW after 3 attempts");
-      std::cout << "[AnyWP] [WorkerW Recovery] ERROR: Failed to find new WorkerW" << std::endl;
+      // Mark recovery as failed, monitoring thread will retry
+      if (workerw_health_monitor_) {
+        workerw_health_monitor_->UpdateWorkerW(nullptr);
+      }
       return;
     }
     
@@ -3414,9 +3453,102 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
       "New WorkerW found: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
     std::cout << "[AnyWP] [WorkerW Recovery] New WorkerW: " << new_workerw << std::endl;
     
+    // Step 6: Update WorkerW in health monitor
+    if (workerw_health_monitor_) {
+      workerw_health_monitor_->UpdateWorkerW(new_workerw);
+      Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated in health monitor");
+    }
+    
+    // Step 7: Notify Flutter to recreate wallpaper via message queue
+    // We can't recreate WebView2 from here (wrong thread), so send a message to Flutter
+    {
+      std::lock_guard<std::mutex> lock(wallpaper_recreate_mutex_);
+      need_wallpaper_recreate_ = true;
+      wallpaper_recreate_reason_ = "Explorer restart detected, windows were destroyed";
+    }
+    
+    // v2.3.1+ CRITICAL: Send JSON message to Flutter to trigger recreation
+    // Using existing message queue mechanism (thread-safe)
+    std::string recreate_message = R"({"type":"WALLPAPER_RECREATE_REQUIRED","data":{"reason":")" + 
+                                   wallpaper_recreate_reason_ + R"("}})";
+    NotifyFlutterMessage(recreate_message);
+    
+    Logger::Instance().Warning("WorkerW Recovery", 
+      "Wallpaper recreation message sent to Flutter: " + recreate_message);
+    std::cout << "[AnyWP] [WorkerW Recovery] Wallpaper recreation message sent to Flutter" << std::endl;
+    std::cout << "[AnyWP] [WorkerW Recovery] ========== Recovery Completed (Message Sent) ==========" << std::endl;
+    
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("WorkerW Recovery", 
+      std::string("Exception during recovery: ") + e.what());
+    std::cout << "[AnyWP] [WorkerW Recovery] EXCEPTION: " << e.what() << std::endl;
+  } catch (...) {
+    Logger::Instance().Error("WorkerW Recovery", "Unknown exception during recovery");
+    std::cout << "[AnyWP] [WorkerW Recovery] UNKNOWN EXCEPTION" << std::endl;
+  }
+}
+
+// v2.3.1+ New method: Re-parent recovery for non-destroyed windows
+void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
+  Logger::Instance().Info("WorkerW Recovery", "Starting re-parent recovery");
+  std::cout << "[AnyWP] [WorkerW Recovery] ========== Starting Re-parent Recovery ==========" << std::endl;
+  
+  try {
+    // Find new WorkerW
+    for (int attempt = 0; attempt < 3; attempt++) {
+      if (DesktopWallpaperHelper::Instance().FindWorkerW(5000)) {
+        break;
+      }
+      Logger::Instance().Warning("WorkerW Recovery", 
+        "FindWorkerW attempt " + std::to_string(attempt + 1) + " failed");
+      DesktopWallpaperHelper::Instance().TriggerWorkerWCreation();
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+    
+    HWND new_workerw = DesktopWallpaperHelper::Instance().GetWallpaperParent();
+    if (!new_workerw) {
+      Logger::Instance().Error("WorkerW Recovery", "GetWallpaperParent returned null");
+      return;
+    }
+    
+    Logger::Instance().Info("WorkerW Recovery", 
+      "New WorkerW found: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
+    
     // Step 4: Update single-monitor mode (if active)
     if (webview_host_hwnd_) {
       std::cout << "[AnyWP] [WorkerW Recovery] Re-parenting single-monitor wallpaper..." << std::endl;
+      
+      // v2.3.1+ CRITICAL: Validate all window handles before SetParent
+      bool webview_valid = IsWindow(webview_host_hwnd_);
+      bool workerw_valid = IsWindow(new_workerw);
+      HWND current_parent = GetParent(webview_host_hwnd_);
+      
+      Logger::Instance().Info("WorkerW Recovery", 
+        "Window validation: webview_host=" + std::to_string((long long)webview_host_hwnd_) + 
+        " (valid=" + std::to_string(webview_valid) + 
+        "), new_workerw=" + std::to_string((long long)new_workerw) + 
+        " (valid=" + std::to_string(workerw_valid) + 
+        "), current_parent=" + std::to_string((long long)current_parent) + ")");
+      
+      std::cout << "[AnyWP] [WorkerW Recovery] Validation: webview=" << webview_host_hwnd_ 
+                << " (valid=" << webview_valid << "), workerw=" << new_workerw 
+                << " (valid=" << workerw_valid << "), parent=" << current_parent << std::endl;
+      
+      if (!webview_valid) {
+        Logger::Instance().Error("WorkerW Recovery", 
+          "WebView host window handle is invalid (window destroyed)");
+        std::cout << "[AnyWP] [WorkerW Recovery] ERROR: WebView window invalid!" << std::endl;
+        webview_host_hwnd_ = nullptr;
+        worker_w_hwnd_ = nullptr;
+        return;
+      }
+      
+      if (!workerw_valid) {
+        Logger::Instance().Error("WorkerW Recovery", 
+          "New WorkerW handle is invalid (WorkerW not created properly)");
+        std::cout << "[AnyWP] [WorkerW Recovery] ERROR: WorkerW invalid!" << std::endl;
+        return;
+      }
       
       // Re-parent the WebView host window to new WorkerW
       HWND old_parent = SetParent(webview_host_hwnd_, new_workerw);
@@ -3460,6 +3592,34 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
         int success_count = 0;
         for (auto& instance : wallpaper_instances_) {
           if (instance.webview_host_hwnd) {
+            // v2.3.1+ CRITICAL: Validate all window handles before SetParent
+            bool webview_valid = IsWindow(instance.webview_host_hwnd);
+            bool workerw_valid = IsWindow(new_workerw);
+            HWND current_parent = GetParent(instance.webview_host_hwnd);
+            
+            std::cout << "[AnyWP] [WorkerW Recovery] Monitor " << instance.monitor_index 
+                      << " validation: webview=" << instance.webview_host_hwnd 
+                      << " (valid=" << webview_valid << "), workerw=" << new_workerw 
+                      << " (valid=" << workerw_valid << "), parent=" << current_parent << std::endl;
+            
+            if (!webview_valid) {
+              Logger::Instance().Error("WorkerW Recovery", 
+                "Monitor " + std::to_string(instance.monitor_index) + 
+                " webview window handle is invalid (window destroyed)");
+              std::cout << "[AnyWP] [WorkerW Recovery] ERROR: Monitor " << instance.monitor_index 
+                        << " webview window invalid!" << std::endl;
+              continue;
+            }
+            
+            if (!workerw_valid) {
+              Logger::Instance().Error("WorkerW Recovery", 
+                "Monitor " + std::to_string(instance.monitor_index) + 
+                " WorkerW handle is invalid");
+              std::cout << "[AnyWP] [WorkerW Recovery] ERROR: Monitor " << instance.monitor_index 
+                        << " WorkerW invalid!" << std::endl;
+              continue;
+            }
+            
             HWND old_parent = SetParent(instance.webview_host_hwnd, new_workerw);
             if (old_parent || GetLastError() == 0) {
               instance.worker_w_hwnd = new_workerw;
