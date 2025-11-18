@@ -77,6 +77,13 @@
 - `HandleDisplayChange()` 中添加 `DesktopWallpaperHelper::Reset()`
 - 显示设置变更时主动清除 WorkerW 缓存，确保下次初始化时重新查找
 
+**监控启动修复**（🐛 关键修复）：
+- 修复了健康监控模块初始化后未启动监控线程的问题
+- 在 `SetupWebView2WithManager` 的 NavigationCompleted 回调中启动监控
+- SDK 注入成功后自动启动 WorkerW 健康监控
+- 支持单/多显示器模式下的监控启动
+- 确保监控线程能够检测 Explorer 重启和定期强制刷新
+
 **Explorer 重启检测**：
 - 监控 `Shell_TrayWnd` 窗口的进程 PID
 - PID 变化 = Explorer 重启 → 立即触发恢复

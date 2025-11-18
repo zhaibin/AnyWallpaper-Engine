@@ -770,6 +770,36 @@ void AnyWPEnginePlugin::SetupWebView2WithManager(HWND hwnd, const std::string& u
               
               Logger::Instance().Info("Plugin", "SDK injection completed successfully");
               
+              // v2.3.1+ Enhanced: Start WorkerW health monitoring after wallpaper initialization
+              if (!use_legacy && monitor_index >= 0) {
+                // Multi-monitor mode: start monitoring after first wallpaper
+                static bool monitoring_started = false;
+                if (!monitoring_started && workerw_health_monitor_) {
+                  // Get current WorkerW from any instance
+                  HWND worker_w = nullptr;
+                  {
+                    std::lock_guard<std::mutex> lock(instances_mutex_);
+                    if (!wallpaper_instances_.empty()) {
+                      worker_w = wallpaper_instances_[0].worker_w_hwnd;
+                    }
+                  }
+                  
+                  if (worker_w && workerw_health_monitor_->StartMonitoring(worker_w, 5000)) {
+                    Logger::Instance().Info("WorkerW Recovery", 
+                      "Health monitoring started after wallpaper initialization");
+                    std::cout << "[AnyWP] [WorkerW Recovery] Health monitoring started" << std::endl;
+                    monitoring_started = true;
+                  }
+                }
+              } else if (use_legacy && workerw_health_monitor_) {
+                // Legacy single-monitor mode
+                if (worker_w_hwnd_ && workerw_health_monitor_->StartMonitoring(worker_w_hwnd_, 5000)) {
+                  Logger::Instance().Info("WorkerW Recovery", 
+                    "Health monitoring started after wallpaper initialization (legacy)");
+                  std::cout << "[AnyWP] [WorkerW Recovery] Health monitoring started (legacy)" << std::endl;
+                }
+              }
+              
               // Send interaction mode after SDK is loaded
               // Determine the correct interaction mode for this specific monitor/webview
               bool current_interaction_enabled = false;
