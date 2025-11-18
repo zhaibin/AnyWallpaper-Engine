@@ -77,6 +77,7 @@ add_library(${PLUGIN_NAME} SHARED
   "modules/event_dispatcher.cpp"
   "modules/memory_optimizer.cpp"
   "modules/custom_scheme_handler.cpp"
+  "modules/workerw_health_monitor.cpp"
 )
 
 apply_standard_settings(${PLUGIN_NAME})

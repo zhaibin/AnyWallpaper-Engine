@@ -32,6 +32,7 @@
 #include "modules/window_manager.h"  // v2.0.0+ Phase2: WindowManager module
 #include "modules/initialization_coordinator.h"  // v2.0+ Refactoring: InitializationCoordinator module
 #include "modules/webview_configurator.h"  // v2.0+ Refactoring: WebViewConfigurator module
+#include "modules/workerw_health_monitor.h"  // v2.3.1+ Enhancement: WorkerW health monitoring
 
 namespace anywp_engine {
 
@@ -352,6 +353,12 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // MemoryOptimizer module for unified memory management (v2.1.0+ Refactoring)
   std::unique_ptr<class MemoryOptimizer> memory_optimizer_;
+  
+  // WorkerWHealthMonitor module for WorkerW health monitoring (v2.3.1+ Enhancement)
+  std::unique_ptr<class WorkerWHealthMonitor> workerw_health_monitor_;
+  
+  // WorkerW recovery method (called by health monitor)
+  void RecoverWorkerW();
 };
 
 }  // namespace anywp_engine
