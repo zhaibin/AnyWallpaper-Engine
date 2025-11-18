@@ -1087,7 +1087,7 @@ void AnyWPEnginePlugin::SetupMessageBridge(ICoreWebView2* webview) {
   ICoreWebView2* target_webview = webview ? webview : webview_.Get();
   if (!target_webview) return;
   
-  std::cout << "[AnyWP] [API] Setting up message bridge..." << std::endl;
+  Logger::Instance().Info("API", "[API] Setting up message bridge...");
   
   target_webview->add_WebMessageReceived(
     Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>(
@@ -1105,7 +1105,7 @@ void AnyWPEnginePlugin::SetupMessageBridge(ICoreWebView2* webview) {
         // Check if this is a pause/resume result message
         if (msg.find("\"type\":\"pauseResult\"") != std::string::npos || 
             msg.find("\"type\":\"resumeResult\"") != std::string::npos) {
-          std::cout << "[AnyWP] [Script Result] " << msg << std::endl;
+          Logger::Instance().Debug("API", "[Script Result] " + msg);
         }
         
         HandleWebMessage(msg);
@@ -1114,14 +1114,14 @@ void AnyWPEnginePlugin::SetupMessageBridge(ICoreWebView2* webview) {
         return S_OK;
       }).Get(), nullptr);
   
-  std::cout << "[AnyWP] [API] Message bridge ready" << std::endl;
+  Logger::Instance().Info("API", "[API] Message bridge ready");
 }
 
 // API Bridge: Handle messages from web
 // Phase B Refactoring: Simplified dispatcher delegates to specialized handlers
 // v1.4.1+ Phase D: Delegate message handling to SDKBridge
 void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
-  std::cout << "[AnyWP] [API] Received message: " << message << std::endl;
+  Logger::Instance().Debug("API", "[API] Received message: " + message);
   
   if (sdk_bridge_) {
     sdk_bridge_->HandleMessage(message);
@@ -1141,7 +1141,7 @@ void AnyWPEnginePlugin::HandleIframeDataWebMessage(const std::string& message) {
   // Use first instance for now (TODO: improve for multi-monitor)
   if (!wallpaper_instances_.empty()) {
     target_instance = &wallpaper_instances_[0];
-    std::cout << "[AnyWP] [API] Using wallpaper instance for iframe data" << std::endl;
+    Logger::Instance().Debug("API", "[API] Using wallpaper instance for iframe data");
   }
   
   HandleIframeDataMessage(message, target_instance);
@@ -1154,7 +1154,7 @@ void AnyWPEnginePlugin::HandleOpenUrlWebMessage(const std::string& message) {
   size_t url_end = message.find("\"", url_start);
   if (url_start != std::string::npos && url_end != std::string::npos) {
     std::string url = message.substr(url_start, url_end - url_start);
-    std::cout << "[AnyWP] [API] Opening URL: " << url << std::endl;
+    Logger::Instance().Info("API", "[API] Opening URL: " + url);
     
     // Open URL using ShellExecute
     std::wstring wurl(url.begin(), url.end());
@@ -1169,7 +1169,7 @@ void AnyWPEnginePlugin::HandleReadyWebMessage(const std::string& message) {
   size_t name_end = message.find("\"", name_start);
   if (name_start != std::string::npos && name_end != std::string::npos) {
     std::string name = message.substr(name_start, name_end - name_start);
-    std::cout << "[AnyWP] [API] Wallpaper ready: " << name << std::endl;
+    Logger::Instance().Info("API", "[API] Wallpaper ready: " + name);
   }
 }
 
@@ -1180,7 +1180,7 @@ void AnyWPEnginePlugin::HandleLogWebMessage(const std::string& message) {
   size_t msg_end = message.find("\"", msg_start);
   if (msg_start != std::string::npos && msg_end != std::string::npos) {
     std::string log_msg = message.substr(msg_start, msg_end - msg_start);
-    std::cout << "[AnyWP] [WebLog] " << log_msg << std::endl;
+    Logger::Instance().Info("WebLog", log_msg);
   }
 }
 
@@ -1196,11 +1196,11 @@ void AnyWPEnginePlugin::HandleConsoleLogWebMessage(const std::string& message) {
     bool is_warn = message.find("\"level\":\"warn\"") != std::string::npos;
     
     if (is_error) {
-      std::cout << "[JS-ERROR] " << log_msg << std::endl;
+      Logger::Instance().Error("JavaScript", log_msg);
     } else if (is_warn) {
-      std::cout << "[JS-WARN] " << log_msg << std::endl;
+      Logger::Instance().Warning("JavaScript", log_msg);
     } else {
-      std::cout << "[JS-LOG] " << log_msg << std::endl;
+      Logger::Instance().Debug("JavaScript", log_msg);
     }
   }
 }
