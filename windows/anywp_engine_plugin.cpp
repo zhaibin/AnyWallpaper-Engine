@@ -1875,7 +1875,7 @@ bool AnyWPEnginePlugin::StopWallpaper() {
   // CRITICAL: Clear shared WebView2 environment to force recreation
   // This is essential for session switch scenarios where environment becomes invalid
   if (shared_environment_) {
-    std::cout << "[AnyWP] Clearing shared WebView2 environment (will recreate on next init)" << std::endl;
+    Logger::Instance().Info("Plugin", "Clearing shared WebView2 environment (will recreate on next init)");
     shared_environment_ = nullptr;
   }
 
@@ -1924,7 +1924,8 @@ bool AnyWPEnginePlugin::StopWallpaper() {
   {
     std::lock_guard<std::mutex> lock(iframes_mutex_);
     if (!iframes_.empty()) {
-      std::cout << "[AnyWP] [iframe] Clearing " << iframes_.size() << " iframe(s) on stop" << std::endl;
+      Logger::Instance().Info("Plugin", 
+        "[iframe] Clearing " + std::to_string(iframes_.size()) + " iframe(s) on stop");
       iframes_.clear();
     }
   }
@@ -1933,9 +1934,9 @@ bool AnyWPEnginePlugin::StopWallpaper() {
   is_initialized_ = false;
   enable_interaction_ = false;
 
-  std::cout << "[AnyWP] Wallpaper stopped successfully" << std::endl;
-  std::cout << "[AnyWP] [ResourceTracker] Tracked windows: " 
-            << ResourceTracker::Instance().GetTrackedCount() << std::endl;
+  Logger::Instance().Info("Plugin", "Wallpaper stopped successfully");
+  Logger::Instance().Info("Plugin", 
+    "[ResourceTracker] Tracked windows: " + std::to_string(ResourceTracker::Instance().GetTrackedCount()));
   
   return true;
 }
