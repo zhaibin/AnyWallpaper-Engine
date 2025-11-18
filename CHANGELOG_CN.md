@@ -33,24 +33,94 @@
 - `windows/modules/workerw_health_monitor.h/cpp` - 健康监控模块（新增 Explorer 监控）
 - `windows/utils/desktop_wallpaper_helper.h/cpp` - 优化 WorkerW 查找和创建策略
 
-##### ♻️ 自动恢复机制
+##### ♻️ 自动恢复机制（Lively 风格完全重建）
 `AnyWPEnginePlugin::RecoverWorkerW()` - WorkerW 失效后的自动恢复流程：
 
-**恢复步骤**：
-1. **停止健康监控** - 暂停监控，避免恢复过程中的干扰
-2. **重置缓存** - 调用 `DesktopWallpaperHelper::Reset()` 清除旧的 WorkerW 信息
-3. **重新查找 WorkerW** - 调用 `DesktopWallpaperHelper::FindWorkerW()` 查找新的 WorkerW
-4. **重新挂载壁纸**：
-   - 单显示器模式：重新 `SetParent` 到新 WorkerW
-   - 多显示器模式：遍历所有实例，逐个重新挂载
-5. **修复 Z-order** - 调用 `WindowManager::SetWallpaperZOrder` 确保壁纸在桌面图标下方
-6. **重启健康监控** - 使用新 WorkerW 句柄重新启动监控
+**🆕 Lively 风格完全重建策略（v2.3.1 最终版）**：
+
+针对 **Explorer 重启场景**（Windows 会销毁所有子窗口）：
+1. **检测窗口销毁** - 使用 `IsWindow()` 检查 WebView2 主机窗口是否仍然有效
+2. **如果窗口已销毁**（Explorer 重启）：
+   - 重置 `DesktopWallpaperHelper` 缓存
+   - 清除所有内部窗口句柄（`webview_host_hwnd_`, `worker_w_hwnd_`, `webview_controller_`）
+   - 重新查找新的 WorkerW（快速模式，1000ms 超时）
+   - 更新健康监控器的 WorkerW 句柄
+   - **发送消息给 Flutter 侧** 触发完全重建：
+     ```json
+     {
+       "type": "WALLPAPER_RECREATE_REQUIRED",
+       "data": {"reason": "Explorer restart detected, windows were destroyed"}
+     }
+     ```
+3. **Flutter 侧自动重建**（开发者需要实现）：
+   - 监听 `WALLPAPER_RECREATE_REQUIRED` 消息
+   - 停止旧壁纸（清理被销毁的句柄）
+   - 等待 500ms 确保清理完成
+   - 使用保存的设置重新创建壁纸
+
+针对 **其他场景**（窗口仍有效）：
+1. 重新查找 WorkerW（带重试机制）
+2. 验证窗口句柄有效性
+3. 重新 `SetParent` 到新 WorkerW
+4. 强制 UI 刷新（`UpdateWindow` + `InvalidateRect`）
+5. 修复 Z-order
 
 **恢复特性**：
-- **无需重启应用** - 自动恢复，用户无感知
+- **无需手动重启应用** - 完全自动化恢复
+- **支持 Explorer 重启** - 应对最严重的桌面破坏场景
+- **智能策略选择** - 根据窗口状态自动选择重新挂载或完全重建
 - **支持单/多显示器** - 自动识别当前模式并恢复所有壁纸实例
 - **完整错误处理** - 所有操作都有 try-catch 保护和详细日志
 - **状态同步** - 恢复后更新所有相关状态变量
+
+##### 📚 开发者集成指南
+
+**Flutter 侧必须实现的消息监听**（用于处理 Explorer 重启）：
+
+```dart
+import 'package:anywp_engine/anywp_engine.dart';
+
+void setupWallpaperRecovery() {
+  AnyWPEngine.setOnMessageCallback((message) {
+    final messageType = message['type'] as String;
+    
+    // v2.3.1+ 处理 Explorer 重启自动恢复
+    if (messageType == 'WALLPAPER_RECREATE_REQUIRED') {
+      final reason = message['data']['reason'] as String;
+      print('需要重建壁纸: $reason');
+      
+      // 自动重建（推荐延迟 1-2 秒等待系统稳定）
+      Future.delayed(Duration(seconds: 1), () async {
+        // 停止旧壁纸（清理被销毁的窗口句柄）
+        await AnyWPEngine.stopWallpaper();
+        
+        // 等待清理完成
+        await Future.delayed(Duration(milliseconds: 500));
+        
+        // 使用保存的设置重建壁纸
+        // 💡 开发者需要自己保存 URL 和 monitorIndex
+        await AnyWPEngine.initializeWallpaperOnMonitor(
+          url: savedUrl,  // 你保存的 URL
+          monitorIndex: savedMonitorIndex,  // 你保存的显示器索引
+        );
+        
+        print('壁纸重建完成！');
+      });
+      return;
+    }
+    
+    // 处理其他消息类型...
+  });
+}
+```
+
+**重要提示**：
+- ✅ **必须**设置 `setOnMessageCallback` 才能接收系统消息
+- ✅ **建议**保存当前壁纸设置（URL、显示器索引等）以便快速恢复
+- ✅ **推荐**延迟 1-2 秒后再重建，等待 Windows 桌面完全稳定
+- ✅ 多显示器应用需要遍历所有活动的壁纸并重建
+
+**完整示例**：参考 `example/lib/main.dart` 中的实现
 
 ##### 🔧 WorkerW 创建与查找策略优化（Lively-style）
 

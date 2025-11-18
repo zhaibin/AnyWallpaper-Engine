@@ -82,12 +82,12 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.3.0_precompiled.zip
+anywp_engine_v2.3.1_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.3.0_source.zip
+anywp_engine_v2.3.1_source.zip
 ```
 
 ### 2. 解压到项目目录
@@ -843,10 +843,12 @@ verify.bat
 
 ---
 
-**Version**: 2.3.0  
-**Updated**: 2025-11-17  
+**Version**: 2.3.1  
+**Updated**: 2025-11-18  
 **主要变更**:
-- ✅ **移除 flutter 库依赖** - 预编译包 CMakeLists.txt 不再链接 flutter 和 flutter_wrapper_plugin
+- ✅ **WorkerW 自动恢复** - 支持 Explorer 重启后自动重建壁纸
+- ✅ **Lively 风格优化** - 优化 WorkerW 创建和查找策略
+- ✅ **Windows 11 兼容** - 支持 Raised Desktop 模式
 - ✅ **修复 verify.bat 脚本** - 解决预编译包验证脚本执行错误
 - ✅ **集成文档包含在 ZIP 包中** - `INTEGRATION_GUIDE.md` 随包提供
 - ✅ **完善集成文档** - 详细说明预编译专用 CMakeLists.txt 的特点

@@ -955,7 +955,54 @@ await AnyWPEngine.sendMessage(
 - `carouselStateChanged` - Carousel state update
 - `error` - Error occurred in JavaScript
 - `heartbeat` - Keep-alive ping
+- `WALLPAPER_RECREATE_REQUIRED` - **System message** (v2.3.1+): Explorer restart detected, wallpaper needs recreation
 - Custom types - Any string you define
+
+**⚠️ Important: Handling System Messages (v2.3.1+)**
+
+The engine may send system messages like `WALLPAPER_RECREATE_REQUIRED` when critical events occur:
+
+```dart
+AnyWPEngine.setOnMessageCallback((message) {
+  final messageType = message['type'] as String;
+  
+  // v2.3.1+ Handle Explorer restart (automatic wallpaper recreation)
+  if (messageType == 'WALLPAPER_RECREATE_REQUIRED') {
+    final reason = message['data']['reason'] as String;
+    print('System requires wallpaper recreation: $reason');
+    
+    // Automatic recreation (recommended)
+    Future.delayed(Duration(seconds: 1), () async {
+      await AnyWPEngine.stopWallpaper();
+      await Future.delayed(Duration(milliseconds: 500));
+      
+      // Recreate wallpaper with your saved settings
+      await AnyWPEngine.initializeWallpaperOnMonitor(
+        url: savedUrl,
+        monitorIndex: savedMonitorIndex,
+      );
+    });
+    return;
+  }
+  
+  // Handle your custom messages
+  switch (messageType) {
+    case 'ready': /* ... */ break;
+    case 'error': /* ... */ break;
+    // ...
+  }
+});
+```
+
+**Why does this happen?**
+- When Windows Explorer restarts, wallpaper windows are destroyed by the system
+- The engine detects this and notifies your app to recreate the wallpaper
+- This ensures wallpapers survive Explorer crashes/restarts without manual intervention
+
+**Best Practice:**
+- Always handle `WALLPAPER_RECREATE_REQUIRED` in production apps
+- Keep track of current wallpaper settings (URL, monitor index) for quick recreation
+- Use a delay (1-2 seconds) before recreation to allow system stabilization
 
 **Error Handling:**
 ```dart

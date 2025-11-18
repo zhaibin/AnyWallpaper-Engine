@@ -1,6 +1,6 @@
 # AnyWP Engine - Web SDK v2.3.0
 
-**Flutter Plugin Version**: v2.3.0
+**Flutter Plugin Version**: v2.3.1
 **JS SDK Version**: v2.3.0
 
 Standalone Web SDK package for wallpaper developers.

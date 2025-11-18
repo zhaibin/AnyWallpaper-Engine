@@ -11,6 +11,7 @@ A Flutter Windows plugin that embeds WebView2 as a desktop wallpaper, displaying
 - 🖱️ **Simple Mode** - Clicks pass through to desktop icons (default behavior)
 - 📺 **Multi-Monitor Support** - Different content on each display
 - 🔥 **Smart Hot-Plug** (v1.3.1 ✨) - Auto-detects monitors, restores configurations, handles failures
+- 🔄 **Explorer Restart Recovery** (v2.3.1 ✨) - Automatically recreates wallpapers after Windows Explorer restarts
 - 🪟 **Windows 10/11 Support** - Optimized for modern Windows
 
 ### Architecture (v2.0 ✨)
