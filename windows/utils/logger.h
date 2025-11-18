@@ -24,20 +24,32 @@ namespace anywp_engine {
  * - Console and file output
  * - Automatic timestamping
  * - Log file rotation (optional)
+ * - Configurable output modes
  * 
  * Log Format Specification:
- * [YYYY-MM-DD HH:MM:SS.mmm] [LEVEL] [COMPONENT] message
+ * File:    [YYYY-MM-DD HH:MM:SS.mmm] [LEVEL] [COMPONENT] message
+ * Console: [AnyWP] [COMPONENT] message
  * 
  * Examples:
- * [2025-01-15 10:30:45.123] [INFO] [Plugin] Plugin initialized
- * [2025-01-15 10:30:45.124] [ERROR] [WebViewManager] Failed to create WebView
+ * File:    [2025-01-15 10:30:45.123] [INFO] [Plugin] Plugin initialized
+ * Console: [AnyWP] [Plugin] Plugin initialized
  * 
- * Guidelines:
- * - Use Logger::Instance() for all production logs
+ * Usage Guidelines:
+ * - Use Logger::Instance() for ALL logging (replace std::cout)
  * - Component name should be PascalCase (e.g., "WebViewManager", "FlutterBridge")
  * - Messages should be in English, no emoji or special symbols
- * - Use appropriate log levels: DEBUG for detailed info, INFO for normal operations,
- *   WARNING for recoverable issues, ERROR for failures
+ * - Use appropriate log levels: 
+ *   * DEBUG: Detailed diagnostic info (only in Debug builds)
+ *   * INFO: Normal operations, state changes, initialization
+ *   * WARNING: Recoverable issues, unexpected but handled situations
+ *   * ERROR: Failures, exceptions, critical issues
+ * 
+ * Output Modes:
+ * - FILE_ONLY: Log to file only (Release default)
+ * - CONSOLE_ONLY: Log to console only (for testing)
+ * - BOTH: Log to both file and console (Debug default)
+ * 
+ * v2.3.2+: Enhanced for unified logging (replaces std::cout)
  */
 class Logger {
 public:
@@ -46,6 +58,13 @@ public:
     INFO,
     WARNING,
     ERROR
+  };
+  
+  // v2.3.2+: Output mode control
+  enum class OutputMode {
+    FILE_ONLY,      // Log to file only (Release default)
+    CONSOLE_ONLY,   // Log to console only (for testing)
+    BOTH            // Log to both (Debug default)
   };
 
   static Logger& Instance() {
@@ -62,12 +81,20 @@ public:
   
   // Generic log method
   void Log(Level level, const std::string& component, const std::string& message);
+  
+  // v2.3.2+: Special formatting methods
+  void Banner(const std::string& component, const std::string& title);  // Print banner with separators
+  void Section(const std::string& component, const std::string& title);  // Print section header
 
   // Configuration
   void SetMinLevel(Level level);
   void EnableFileLogging(const std::string& file_path);
   void DisableFileLogging();
   void EnableConsoleLogging(bool enable);
+  
+  // v2.3.2+: Output mode control
+  void SetOutputMode(OutputMode mode);
+  OutputMode GetOutputMode() const;
 
   // v2.1.0+ Enhanced features
   void Flush();  // Manually flush buffered logs
@@ -98,6 +125,9 @@ private:
   std::string log_file_path_;
   std::ofstream log_file_;
   mutable std::mutex mutex_;
+  
+  // v2.3.2+: Output mode
+  OutputMode output_mode_;
   
   // v2.1.0+ Enhanced features
   bool buffering_enabled_;
