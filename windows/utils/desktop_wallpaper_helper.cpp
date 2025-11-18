@@ -81,7 +81,7 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
         "SendMessageTimeout failed or timed out (attempt " + std::to_string(i + 1) + 
         "), error: " + std::to_string(error));
     } else {
-      Logger::Instance().Debug("DesktopWallpaperHelper", 
+      Logger::Instance().Info("DesktopWallpaperHelper", 
         "Sent 0x052C to Progman successfully (attempt " + std::to_string(i + 1) + "/3), result: " + std::to_string(result));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
@@ -99,7 +99,7 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
   if (tmp) {
     ShowWindow(tmp, SW_HIDE);
     DestroyWindow(tmp);  // Safe: destroying our own window
-    Logger::Instance().Debug("DesktopWallpaperHelper", "Created and destroyed temporary trigger window (safe)");
+    Logger::Instance().Info("DesktopWallpaperHelper", "Created and destroyed temporary trigger window (safe)");
   }
   
   // Wait longer for system to process (v2.3.1+: increased from 200ms to 500ms)
@@ -221,15 +221,16 @@ bool DesktopWallpaperHelper::FindWorkerW(int timeout_ms) {
     return false;
   }
 
-  // Step 2: Trigger WorkerW creation (v2.1.10+ Enhanced for Windows 11)
-  // Windows 11 may require multiple triggers to create the second WorkerW
-  for (int trigger_attempt = 0; trigger_attempt < 3; trigger_attempt++) {
-    if (!TriggerWorkerWCreation()) {
-      return false;
-    }
-    // Wait longer for Windows 11 to process
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  // Step 2: Trigger WorkerW creation (v2.3.1+ CRITICAL FIX: Only trigger ONCE!)
+  // Triggering multiple times can confuse Progman and prevent WorkerW creation
+  // Lively only triggers once and it works reliably
+  if (!TriggerWorkerWCreation()) {
+    return false;
   }
+  
+  // Wait for Progman to process and create WorkerW structure
+  // This is critical! Don't immediately check, give system time to reorganize desktop layers
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   // Step 3: Enumerate WorkerW windows with retry
   auto start_time = std::chrono::steady_clock::now();
@@ -279,8 +280,15 @@ bool DesktopWallpaperHelper::FindWorkerW(int timeout_ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     retry_count++;
     
-    // Re-trigger on retry
-    TriggerWorkerWCreation();
+    // v2.3.1+ CRITICAL FIX: Don't re-trigger on every retry!
+    // Only re-trigger after multiple failed attempts (e.g., every 5 retries)
+    // Over-triggering can confuse Progman
+    if (retry_count % 5 == 0) {
+      Logger::Instance().Info("DesktopWallpaperHelper", 
+        "Re-triggering WorkerW creation after " + std::to_string(retry_count) + " failed attempts");
+      TriggerWorkerWCreation();
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
   }
 
   Logger::Instance().Error("DesktopWallpaperHelper", 
