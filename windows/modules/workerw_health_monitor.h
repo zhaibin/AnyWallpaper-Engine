@@ -136,6 +136,13 @@ private:
   std::chrono::steady_clock::time_point last_recovery_time_;
   int min_recovery_interval_ms_ = 2000; // 最小恢复间隔 2 秒
   
+  // v2.3.1+ Enhanced: Explorer 进程监控（检测桌面重建）
+  DWORD last_explorer_pid_;
+  
+  // v2.3.1+ Enhanced: 定期强制刷新计数器
+  int check_counter_;
+  int force_refresh_interval_ = 30; // 每30次检查强制刷新一次（约150秒）
+  
   // 互斥锁
   mutable std::mutex mutex_;
   

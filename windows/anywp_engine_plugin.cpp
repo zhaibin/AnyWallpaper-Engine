@@ -3352,10 +3352,26 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     DesktopWallpaperHelper::Instance().Reset();
     Logger::Instance().Info("WorkerW Recovery", "DesktopWallpaperHelper cache cleared");
     
-    // Step 3: Find new WorkerW
-    std::cout << "[AnyWP] [WorkerW Recovery] Re-finding WorkerW..." << std::endl;
-    if (!DesktopWallpaperHelper::Instance().FindWorkerW(5000)) {
-      Logger::Instance().Error("WorkerW Recovery", "Failed to find new WorkerW");
+    // Step 3: Find new WorkerW (v2.3.1+ Enhanced: Aggressive strategy)
+    std::cout << "[AnyWP] [WorkerW Recovery] Re-finding WorkerW with aggressive strategy..." << std::endl;
+    
+    // Force trigger WorkerW creation multiple times
+    for (int attempt = 0; attempt < 3; attempt++) {
+      if (DesktopWallpaperHelper::Instance().FindWorkerW(5000)) {
+        break;  // Success
+      }
+      
+      Logger::Instance().Warning("WorkerW Recovery", 
+        "FindWorkerW attempt " + std::to_string(attempt + 1) + " failed, retrying...");
+      
+      // Aggressive retry: Force trigger again
+      DesktopWallpaperHelper::Instance().TriggerWorkerWCreation();
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+    
+    // Final check
+    if (!DesktopWallpaperHelper::Instance().FindWorkerW(2000)) {
+      Logger::Instance().Error("WorkerW Recovery", "Failed to find new WorkerW after 3 attempts");
       std::cout << "[AnyWP] [WorkerW Recovery] ERROR: Failed to find new WorkerW" << std::endl;
       return;
     }

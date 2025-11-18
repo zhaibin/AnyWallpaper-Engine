@@ -12,8 +12,20 @@ WorkerWHealthMonitor::WorkerWHealthMonitor()
       consecutive_failures_(0),
       check_interval_ms_(3000),
       last_check_time_(std::chrono::steady_clock::now()),
-      last_recovery_time_(std::chrono::steady_clock::now()) {
+      last_recovery_time_(std::chrono::steady_clock::now()),
+      last_explorer_pid_(0),
+      check_counter_(0) {
   Logger::Instance().Info("WorkerWHealthMonitor", "Health monitor initialized");
+  
+  // v2.3.1+ Enhanced: Initialize Explorer PID
+  HWND hShell = FindWindowW(L"Shell_TrayWnd", nullptr);
+  if (hShell) {
+    GetWindowThreadProcessId(hShell, &last_explorer_pid_);
+    if (last_explorer_pid_ > 0) {
+      Logger::Instance().Info("WorkerWHealthMonitor", 
+        "Initial Explorer PID: " + std::to_string(last_explorer_pid_));
+    }
+  }
 }
 
 WorkerWHealthMonitor::~WorkerWHealthMonitor() {
@@ -143,7 +155,55 @@ void WorkerWHealthMonitor::MonitorThreadProc() {
   
   while (!should_stop_.load()) {
     try {
-      // 执行健康检查
+      check_counter_++;
+      
+      // v2.3.1+ Enhanced: Check Explorer restart (Lively-style)
+      HWND hShell = FindWindowW(L"Shell_TrayWnd", nullptr);
+      DWORD current_explorer_pid = 0;
+      if (hShell) {
+        GetWindowThreadProcessId(hShell, &current_explorer_pid);
+      }
+      
+      if (current_explorer_pid > 0 && current_explorer_pid != last_explorer_pid_) {
+        Logger::Instance().Warning("WorkerWHealthMonitor", 
+          "Explorer restart detected! PID changed: " + 
+          std::to_string(last_explorer_pid_) + " -> " + 
+          std::to_string(current_explorer_pid));
+        
+        last_explorer_pid_ = current_explorer_pid;
+        
+        // Explorer 重启意味着桌面完全重建，立即触发恢复
+        Logger::Instance().Error("WorkerWHealthMonitor", 
+          "Triggering recovery due to Explorer restart");
+        health_status_.store(HealthStatus::UNHEALTHY);
+        TriggerRecovery();
+        
+        // 重置检查计数器
+        check_counter_ = 0;
+        continue;
+      }
+      
+      // v2.3.1+ Enhanced: Periodic forced refresh (Lively-style)
+      // Every N checks, force a refresh to ensure stability
+      if (check_counter_ >= force_refresh_interval_) {
+        Logger::Instance().Info("WorkerWHealthMonitor", 
+          "Periodic forced refresh (every " + std::to_string(force_refresh_interval_) + " checks)");
+        
+        // Force refresh by triggering recovery if needed
+        // This helps maintain stability over long periods
+        bool is_healthy = CheckHealth();
+        if (!is_healthy) {
+          Logger::Instance().Warning("WorkerWHealthMonitor", 
+            "Periodic check failed, triggering recovery");
+          health_status_.store(HealthStatus::UNHEALTHY);
+          TriggerRecovery();
+        }
+        
+        check_counter_ = 0;
+        continue;
+      }
+      
+      // 执行常规健康检查
       bool is_healthy = CheckHealth();
       
       if (!is_healthy) {

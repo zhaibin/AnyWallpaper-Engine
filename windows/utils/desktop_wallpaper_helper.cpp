@@ -64,17 +64,30 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
     }
   }
 
-  // v2.1.10+ Enhanced: Send 0x052C message multiple times for Windows 11
-  // Windows 11 may require multiple messages to properly create the second WorkerW
-  for (int i = 0; i < 2; i++) {
-    SendMessageTimeoutW(info_.progman, 0x052C, 0, 0, SMTO_NORMAL, 1000, nullptr);
-    if (i == 0) {
-      Logger::Instance().Info("DesktopWallpaperHelper", "Sent 0x052C to Progman (attempt " + std::to_string(i + 1) + ")");
-    }
+  // v2.3.1+ Enhanced: Aggressive WorkerW creation strategy (Lively-style)
+  // Send 0x052C message multiple times with short intervals for better compatibility
+  Logger::Instance().Info("DesktopWallpaperHelper", "Triggering WorkerW creation (aggressive mode)");
+  
+  for (int i = 0; i < 3; i++) {
+    SendMessageTimeoutW(info_.progman, 0x052C, 0, 0, SMTO_ABORTIFHUNG, 100, nullptr);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    Logger::Instance().Debug("DesktopWallpaperHelper", 
+      "Sent 0x052C to Progman (attempt " + std::to_string(i + 1) + "/3)");
   }
   
-  // Wait longer for Windows 11 to process (increased from 150ms)
-  std::this_thread::sleep_for(std::chrono::milliseconds(250));
+  // Additional trick: Create and immediately destroy a temporary window
+  // This helps refresh the desktop layer hierarchy (Lively technique)
+  HWND tmp = CreateWindowExW(WS_EX_TOOLWINDOW, L"STATIC", L"TempWorkerWTrigger",
+                              WS_POPUP | WS_VISIBLE, 0, 0, 1, 1,
+                              nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+  if (tmp) {
+    ShowWindow(tmp, SW_HIDE);
+    DestroyWindow(tmp);
+    Logger::Instance().Debug("DesktopWallpaperHelper", "Created temporary trigger window");
+  }
+  
+  // Wait for system to process
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
   
   return true;
 }
@@ -278,6 +291,85 @@ void DesktopWallpaperHelper::Reset() {
   info_.shelldll = nullptr;
   info_.workerw_count = 0;
   info_.found_shelldll = false;
+}
+
+// v2.3.1+ Enhanced: Aggressive SHELLDLL_DefView finding (Lively-style)
+HWND DesktopWallpaperHelper::FindSHELLDLL_DefView_Aggressive() {
+  HWND result = nullptr;
+  
+  // Strategy 1: Enumerate all top-level windows to find WorkerW containing SHELLDLL_DefView
+  EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
+    HWND* out = (HWND*)lParam;
+    HWND def = FindWindowExW(hwnd, nullptr, L"SHELLDLL_DefView", nullptr);
+    if (def) {
+      *out = def;
+      return FALSE;  // Stop enumeration
+    }
+    return TRUE;
+  }, (LPARAM)&result);
+  
+  if (result) {
+    Logger::Instance().Info("DesktopWallpaperHelper", 
+      "Found SHELLDLL_DefView via window enumeration");
+    return result;
+  }
+  
+  // Strategy 2: Check Progman directly (Win11 common case)
+  if (info_.progman) {
+    result = FindWindowExW(info_.progman, nullptr, L"SHELLDLL_DefView", nullptr);
+    if (result) {
+      Logger::Instance().Info("DesktopWallpaperHelper", 
+        "Found SHELLDLL_DefView in Progman");
+      return result;
+    }
+  }
+  
+  // Strategy 3: Check Desktop window (fallback)
+  HWND desktop = GetDesktopWindow();
+  if (desktop) {
+    result = FindWindowExW(desktop, nullptr, L"SHELLDLL_DefView", nullptr);
+    if (result) {
+      Logger::Instance().Info("DesktopWallpaperHelper", 
+        "Found SHELLDLL_DefView under Desktop");
+      return result;
+    }
+  }
+  
+  // Strategy 4: Recursive search in all WorkerW windows
+  HWND hwnd = nullptr;
+  while ((hwnd = FindWindowExW(nullptr, hwnd, L"WorkerW", nullptr)) != nullptr) {
+    result = FindChildWindowByClass(hwnd, L"SHELLDLL_DefView");
+    if (result) {
+      Logger::Instance().Info("DesktopWallpaperHelper", 
+        "Found SHELLDLL_DefView via recursive search in WorkerW");
+      return result;
+    }
+  }
+  
+  Logger::Instance().Warning("DesktopWallpaperHelper", 
+    "Could not find SHELLDLL_DefView with any strategy");
+  return nullptr;
+}
+
+// v2.3.1+ Enhanced: Get Explorer process ID for restart detection
+DWORD DesktopWallpaperHelper::GetExplorerProcessId() {
+  // Find Shell_TrayWnd (taskbar window created by explorer.exe)
+  HWND hShell = FindWindowW(L"Shell_TrayWnd", nullptr);
+  if (!hShell) {
+    Logger::Instance().Warning("DesktopWallpaperHelper", 
+      "Could not find Shell_TrayWnd for Explorer PID detection");
+    return 0;
+  }
+  
+  DWORD pid = 0;
+  GetWindowThreadProcessId(hShell, &pid);
+  
+  if (pid > 0) {
+    Logger::Instance().Debug("DesktopWallpaperHelper", 
+      "Explorer process ID: " + std::to_string(pid));
+  }
+  
+  return pid;
 }
 
 }  // namespace anywp_engine
