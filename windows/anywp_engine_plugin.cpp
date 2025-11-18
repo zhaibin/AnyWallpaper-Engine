@@ -2267,18 +2267,18 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
         Logger::Instance().Warning("AnyWPEngine", "Failed to start WorkerW health monitoring");
       }
     } else {
-      std::cout << "[AnyWP] [Lifecycle] WorkerW health monitoring already active, skipping" << std::endl;
+      Logger::Instance().Info("Plugin", "[Lifecycle] WorkerW health monitoring already active, skipping");
     }
   }
 
-  std::cout << "[AnyWP] Initialization Complete (Monitor " << monitor_index << ")" << std::endl;
+  Logger::Instance().Info("Plugin", "Initialization Complete (Monitor " + std::to_string(monitor_index) + ")");
   return true;
 }
 
 // v2.0.0+ Phase2: Delegated to InstanceManager
 // v2.3.2+: Added instance count check for global resource cleanup
 bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
-  std::cout << "[AnyWP] Stopping wallpaper on monitor " << monitor_index << "..." << std::endl;
+  Logger::Instance().Info("Plugin", "Stopping wallpaper on monitor " + std::to_string(monitor_index) + "...");
 
   if (!instance_manager_) {
     LOG_AND_REPORT_ERROR("InstanceManager", "StopWallpaperOnMonitor", 
@@ -2298,14 +2298,14 @@ bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
   
   // v2.3.2+: Check if this is the last active instance
   size_t active_count = GetActiveInstanceCount();
-  std::cout << "[AnyWP] [Lifecycle] Active instances after cleanup: " << active_count << std::endl;
+  Logger::Instance().Info("Plugin", "[Lifecycle] Active instances after cleanup: " + std::to_string(active_count));
   
   if (active_count == 0) {
-    std::cout << "[AnyWP] [Lifecycle] Last instance stopped, cleaning up global resources..." << std::endl;
+    Logger::Instance().Info("Plugin", "[Lifecycle] Last instance stopped, cleaning up global resources...");
     
     // Stop WorkerW health monitoring
     if (workerw_health_monitor_ && workerw_health_monitor_->IsMonitoring()) {
-      std::cout << "[AnyWP] [Lifecycle] Stopping WorkerW health monitoring..." << std::endl;
+      Logger::Instance().Info("Plugin", "[Lifecycle] Stopping WorkerW health monitoring...");
       workerw_health_monitor_->StopMonitoring();
       Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring stopped (last instance)");
     }
@@ -2315,7 +2315,7 @@ bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
     
     // Clear default URL
     default_wallpaper_url_.clear();
-    std::cout << "[AnyWP] [Lifecycle] Global resources cleaned up" << std::endl;
+    Logger::Instance().Info("Plugin", "[Lifecycle] Global resources cleaned up");
   }
   
   return result;
@@ -2338,8 +2338,9 @@ bool AnyWPEnginePlugin::NavigateToUrlOnMonitor(const std::string& url, int monit
   // P0-3: Permission check
   auto perm_result = PermissionManager::Instance().CheckUrlAccess(url);
   if (!perm_result.granted) {
-    std::cout << "[AnyWP] [Security] URL access denied on monitor " << monitor_index 
-              << ": " << url << " - " << perm_result.reason << std::endl;
+    Logger::Instance().Warning("Security", 
+      "[Security] URL access denied on monitor " + std::to_string(monitor_index) + 
+      ": " + url + " - " + perm_result.reason);
     Logger::Instance().Warning("PermissionManager", 
       "NavigateToUrlOnMonitor - URL access denied: " + perm_result.reason);
     return false;
@@ -2347,7 +2348,7 @@ bool AnyWPEnginePlugin::NavigateToUrlOnMonitor(const std::string& url, int monit
   
   // Fallback: Legacy URL validator
   if (!url_validator_.IsAllowed(url)) {
-    std::cout << "[AnyWP] [Security] URL validation failed: " << url << std::endl;
+    Logger::Instance().Warning("Security", "[Security] URL validation failed: " + url);
     LogError("URL validation failed: " + url);
     return false;
   }
@@ -2363,7 +2364,7 @@ bool AnyWPEnginePlugin::NavigateToUrlOnMonitor(const std::string& url, int monit
   HRESULT hr = instance->webview->Navigate(wurl.c_str());
   
   if (SUCCEEDED(hr)) {
-    std::cout << "[AnyWP] Navigated to: " << url << " on monitor " << monitor_index << std::endl;
+    Logger::Instance().Info("Plugin", "Navigated to: " + url + " on monitor " + std::to_string(monitor_index));
     
     // AUTO-OPTIMIZE: Safe delayed optimization (no dangling pointers)
     if (instance && instance->webview) {
@@ -2403,8 +2404,9 @@ bool AnyWPEnginePlugin::NavigateToUrlOnMonitor(const std::string& url, int monit
 // Window procedure for display change listener
 LRESULT CALLBACK AnyWPEnginePlugin::DisplayChangeWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
   if (message == WM_DISPLAYCHANGE) {
-    std::cout << "[AnyWP] [DisplayChange] Display configuration changed!" << std::endl;
-    std::cout << "[AnyWP] [DisplayChange] New resolution: " << LOWORD(lParam) << "x" << HIWORD(lParam) << std::endl;
+    Logger::Instance().Info("DisplayChange", "[DisplayChange] Display configuration changed!");
+    Logger::Instance().Info("DisplayChange", 
+      "[DisplayChange] New resolution: " + std::to_string(LOWORD(lParam)) + "x" + std::to_string(HIWORD(lParam)));
     
     if (display_change_instance_) {
       display_change_instance_->HandleDisplayChange();
@@ -2413,7 +2415,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::DisplayChangeWndProc(HWND hwnd, UINT message
     return 0;
   }
   else if (message == WM_NOTIFY_MONITOR_CHANGE) {
-    std::cout << "[AnyWP] [DisplayChange] Received WM_NOTIFY_MONITOR_CHANGE in main thread" << std::endl;
+    Logger::Instance().Info("DisplayChange", "[DisplayChange] Received WM_NOTIFY_MONITOR_CHANGE in main thread");
     
     // Now we're in the window's message loop thread (safer for Flutter)
     if (display_change_instance_) {
@@ -2457,7 +2459,7 @@ void AnyWPEnginePlugin::HandleDisplayChange() {
   // This ensures WorkerW is re-detected after display configuration changes
   DesktopWallpaperHelper::Instance().Reset();
   Logger::Instance().Info("AnyWPEngine", "DesktopWallpaperHelper reset due to display change");
-  std::cout << "[AnyWP] [DisplayChange] DesktopWallpaperHelper cache cleared" << std::endl;
+  Logger::Instance().Info("DisplayChange", "[DisplayChange] DesktopWallpaperHelper cache cleared");
   
   if (display_change_coordinator_) {
     display_change_coordinator_->HandleDisplayChange();
@@ -2479,14 +2481,16 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
     return;
   }
   
-  std::cout << "[AnyWP] [DisplayChange] Notifying Dart about monitor change via channel: " << method_channel_ << std::endl;
+  Logger::Instance().Debug("DisplayChange", 
+    "[DisplayChange] Notifying Dart about monitor change via channel: " + 
+    std::to_string(reinterpret_cast<uintptr_t>(method_channel_)));
   
   // CRITICAL: InvokeMethod must be called carefully
   // WM_DISPLAYCHANGE comes from window message loop
   // We need to ensure it's safe to call Flutter API from this context
   
   try {
-    std::cout << "[AnyWP] [DisplayChange] Monitor change detected" << std::endl;
+    Logger::Instance().Info("DisplayChange", "[DisplayChange] Monitor change detected");
     
     // CRITICAL: InvokeMethod causes deadlock/crash even with message queue
     // Root cause: Flutter engine thread synchronization issues
@@ -2495,21 +2499,21 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
     // Do NOT call InvokeMethod - it will hang the application
     // method_channel_->InvokeMethod("onMonitorChange", std::move(args));
     
-    std::cout << "[AnyWP] [DisplayChange] Skipping InvokeMethod to prevent deadlock" << std::endl;
-    std::cout << "[AnyWP] [DisplayChange] Dart side will detect changes via polling" << std::endl;
+    Logger::Instance().Warning("DisplayChange", "[DisplayChange] Skipping InvokeMethod to prevent deadlock");
+    Logger::Instance().Info("DisplayChange", "[DisplayChange] Dart side will detect changes via polling");
     
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [DisplayChange] EXCEPTION: " << e.what() << std::endl;
+    Logger::Instance().Error("DisplayChange", std::string("[DisplayChange] EXCEPTION: ") + e.what());
   } catch (...) {
-    std::cout << "[AnyWP] [DisplayChange] UNKNOWN EXCEPTION" << std::endl;
+    Logger::Instance().Error("DisplayChange", "[DisplayChange] UNKNOWN EXCEPTION");
   }
   
-  std::cout << "[AnyWP] [DisplayChange] NotifyMonitorChange completed" << std::endl;
+  Logger::Instance().Info("DisplayChange", "[DisplayChange] NotifyMonitorChange completed");
 }
 
 // Notify monitor change (simplified after MonitorManager refactoring)
 void AnyWPEnginePlugin::SafeNotifyMonitorChange() {
-  std::cout << "[AnyWP] [DisplayChange] Notifying monitor change..." << std::endl;
+  Logger::Instance().Info("DisplayChange", "[DisplayChange] Notifying monitor change...");
   NotifyMonitorChange();
 }
 
