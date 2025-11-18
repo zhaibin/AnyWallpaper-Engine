@@ -1,4 +1,4 @@
-﻿#include "anywp_engine_plugin.h"
+#include "anywp_engine_plugin.h"
 #include "sdk_loader.h"
 #include "version.h"  // v2.3.0+: Auto-generated version header
 #include <flutter/method_channel.h>
@@ -133,7 +133,7 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   instance_manager_->Initialize(
       [this]() { this->RemoveMouseHook(); this->enable_interaction_ = false; },
       [this]() { this->default_wallpaper_url_.clear(); 
-                 std::cout << "[AnyWP] All wallpapers stopped, cleared default URL" << std::endl; },
+                 Logger::Instance().Info("Plugin", "All wallpapers stopped, cleared default URL"); },
       [](HWND hwnd) { ResourceTracker::Instance().UntrackWindow(hwnd); },
       &wallpaper_instances_,
       &monitors_,
@@ -196,9 +196,9 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
                   << static_cast<int>(plugin_new_state) << std::endl;
         
         // Notify Dart about state change (uses message queue to avoid thread safety issues)
-        std::cout << "[AnyWP] [PowerManager] Calling NotifyPowerStateChange..." << std::endl;
+        Logger::Instance().Info("PowerManager", "Calling NotifyPowerStateChange...");
         this->NotifyPowerStateChange(plugin_new_state);
-        std::cout << "[AnyWP] [PowerManager] NotifyPowerStateChange completed" << std::endl;
+        Logger::Instance().Info("PowerManager", "NotifyPowerStateChange completed");
       } catch (const std::exception& e) {
         std::cerr << "[AnyWP] [PowerManager] ERROR in state change callback: " 
                   << e.what() << std::endl;
@@ -307,7 +307,7 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
       }
       
       if (should_log_chain) {
-        std::cout << "[AnyWP] [HWND Check] NO MATCH" << std::endl;
+        Logger::Instance().Info("HWND Check", "NO MATCH");
       }
       return false;
     });
@@ -440,7 +440,7 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   Logger::Instance().Info("Plugin", "Destructor - starting cleanup");
   
   // v2.3.2+: Stop all wallpaper instances first (will stop WorkerW monitoring and remove MouseHook)
-  std::cout << "[AnyWP] [Lifecycle] Destructor: Stopping wallpaper instances..." << std::endl;
+  Logger::Instance().Info("Lifecycle", "Destructor: Stopping wallpaper instances...");
   StopWallpaper();
   
   // v2.3.2+: Cleanup WorkerWHealthMonitor module (no need to call StopMonitoring, already stopped in StopWallpaper)
@@ -608,7 +608,7 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   
   display_change_instance_ = nullptr;
   
-  std::cout << "[AnyWP] [Lifecycle] Plugin cleanup complete" << std::endl;
+  Logger::Instance().Info("Lifecycle", "Plugin cleanup complete");
 }
 
 void AnyWPEnginePlugin::HandleMethodCall(
@@ -788,7 +788,7 @@ void AnyWPEnginePlugin::SetupWebView2WithManager(HWND hwnd, const std::string& u
                   if (worker_w && workerw_health_monitor_->StartMonitoring(worker_w, 5000)) {
                     Logger::Instance().Info("WorkerW Recovery", 
                       "Health monitoring started after wallpaper initialization");
-                    std::cout << "[AnyWP] [WorkerW Recovery] Health monitoring started" << std::endl;
+                    Logger::Instance().Info("WorkerW Recovery", "Health monitoring started");
                     monitoring_started = true;
                   }
                 }
@@ -797,7 +797,7 @@ void AnyWPEnginePlugin::SetupWebView2WithManager(HWND hwnd, const std::string& u
                 if (worker_w_hwnd_ && workerw_health_monitor_->StartMonitoring(worker_w_hwnd_, 5000)) {
                   Logger::Instance().Info("WorkerW Recovery", 
                     "Health monitoring started after wallpaper initialization (legacy)");
-                  std::cout << "[AnyWP] [WorkerW Recovery] Health monitoring started (legacy)" << std::endl;
+                  Logger::Instance().Info("WorkerW Recovery", "Health monitoring started (legacy)");
                 }
               }
               
@@ -885,7 +885,7 @@ bool AnyWPEnginePlugin::InitializeWithRetry(const std::string& url, bool enable_
   
   if (!success && init_retry_count_ < max_retries - 1) {
     init_retry_count_++;
-    std::cout << "[AnyWP] [Retry] Initialization failed, retrying in 1 second..." << std::endl;
+    Logger::Instance().Info("Retry", "Initialization failed, retrying in 1 second...");
     Sleep(1000);
     return InitializeWithRetry(url, enable_mouse_transparent, max_retries);
   }
@@ -911,7 +911,7 @@ void AnyWPEnginePlugin::LogError(const std::string& error) {
 
 // P1-2: Clear WebView cache (v2.1.0+ delegated to MemoryOptimizer)
 void AnyWPEnginePlugin::ClearWebViewCache() {
-  std::cout << "[AnyWP] [Cache] Clearing browser cache..." << std::endl;
+  Logger::Instance().Info("Cache", "Clearing browser cache...");
   
   if (memory_optimizer_) {
     // v2.1.0+: Use MemoryOptimizer module
@@ -928,9 +928,9 @@ void AnyWPEnginePlugin::ClearWebViewCache() {
       memory_optimizer_->ClearWebViewCache(webview_);
     }
     
-    std::cout << "[AnyWP] [Cache] Cache cleared by MemoryOptimizer" << std::endl;
+    Logger::Instance().Info("Cache", "Cache cleared by MemoryOptimizer");
   } else {
-    std::cout << "[AnyWP] [Cache] MemoryOptimizer not initialized" << std::endl;
+    Logger::Instance().Info("Cache", "MemoryOptimizer not initialized");
   }
 }
 
@@ -941,7 +941,7 @@ void AnyWPEnginePlugin::PeriodicCleanup() {
   
   // Use configured cleanup interval
   if (elapsed.count() >= cleanup_interval_minutes_) {
-    std::cout << "[AnyWP] [Maintenance] Performing periodic cleanup..." << std::endl;
+    Logger::Instance().Info("Maintenance", "Performing periodic cleanup...");
     
     // Only optimize memory if usage exceeds configured threshold
     size_t memory_mb = GetCurrentMemoryUsage() / 1024 / 1024;
@@ -961,7 +961,7 @@ void AnyWPEnginePlugin::ConfigurePermissions(ICoreWebView2* webview) {
   ICoreWebView2* target_webview = webview ? webview : webview_.Get();
   if (!target_webview) return;
   
-  std::cout << "[AnyWP] [Security] Configuring permissions..." << std::endl;
+  Logger::Instance().Info("Security", "Configuring permissions...");
   
   target_webview->add_PermissionRequested(
     Microsoft::WRL::Callback<ICoreWebView2PermissionRequestedEventHandler>(
@@ -985,7 +985,7 @@ void AnyWPEnginePlugin::ConfigurePermissions(ICoreWebView2* webview) {
         return S_OK;
       }).Get(), nullptr);
   
-  std::cout << "[AnyWP] [Security] Permissions configured" << std::endl;
+  Logger::Instance().Info("Security", "Permissions configured");
 }
 
 // P1-3: Setup security handlers
@@ -995,7 +995,7 @@ void AnyWPEnginePlugin::SetupSecurityHandlers(ICoreWebView2* webview) {
   ICoreWebView2* target_webview = webview ? webview : webview_.Get();
   if (!target_webview) return;
   
-  std::cout << "[AnyWP] [Security] Setting up security handlers..." << std::endl;
+  Logger::Instance().Info("Security", "Setting up security handlers...");
   
   // P0-3: Navigation filter with URL validation
   target_webview->add_NavigationStarting(
@@ -1024,7 +1024,7 @@ void AnyWPEnginePlugin::SetupSecurityHandlers(ICoreWebView2* webview) {
         return S_OK;
       }).Get(), nullptr);
   
-  std::cout << "[AnyWP] [Security] Security handlers installed" << std::endl;
+  Logger::Instance().Info("Security", "Security handlers installed");
 }
 
 // API Bridge: Load SDK JavaScript
@@ -1074,7 +1074,7 @@ void AnyWPEnginePlugin::SetupMessageBridge(ICoreWebView2* webview) {
   ICoreWebView2* target_webview = webview ? webview : webview_.Get();
   if (!target_webview) return;
   
-  std::cout << "[AnyWP] [API] Setting up message bridge..." << std::endl;
+  Logger::Instance().Info("API", "Setting up message bridge...");
   
   target_webview->add_WebMessageReceived(
     Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>(
@@ -1101,7 +1101,7 @@ void AnyWPEnginePlugin::SetupMessageBridge(ICoreWebView2* webview) {
         return S_OK;
       }).Get(), nullptr);
   
-  std::cout << "[AnyWP] [API] Message bridge ready" << std::endl;
+  Logger::Instance().Info("API", "Message bridge ready");
 }
 
 // API Bridge: Handle messages from web
@@ -1128,7 +1128,7 @@ void AnyWPEnginePlugin::HandleIframeDataWebMessage(const std::string& message) {
   // Use first instance for now (TODO: improve for multi-monitor)
   if (!wallpaper_instances_.empty()) {
     target_instance = &wallpaper_instances_[0];
-    std::cout << "[AnyWP] [API] Using wallpaper instance for iframe data" << std::endl;
+    Logger::Instance().Info("API", "Using wallpaper instance for iframe data");
   }
   
   HandleIframeDataMessage(message, target_instance);
@@ -1230,7 +1230,7 @@ void AnyWPEnginePlugin::HandleSaveStateWebMessage(const std::string& message) {
         instance.webview->ExecuteScript(wjs_code.c_str(), nullptr);
       }
     }
-    std::cout << "[AnyWP] [State] Sent stateSaved event to all instances" << std::endl;
+    Logger::Instance().Info("State", "Sent stateSaved event to all instances");
   } else {
     LOG_AND_REPORT_ERROR("StatePersistence", "HandleSaveStateWebMessage", 
       "Failed to parse saveState message",
@@ -1263,7 +1263,7 @@ void AnyWPEnginePlugin::HandleLoadStateWebMessage(const std::string& message) {
     // Send to legacy webview if exists
     if (webview_) {
       webview_->ExecuteScript(wjs_code.c_str(), nullptr);
-      std::cout << "[AnyWP] [State] Sent stateLoaded event to legacy webview" << std::endl;
+      Logger::Instance().Info("State", "Sent stateLoaded event to legacy webview");
     }
     
     // Send to all multi-monitor instances
@@ -1272,14 +1272,14 @@ void AnyWPEnginePlugin::HandleLoadStateWebMessage(const std::string& message) {
         instance.webview->ExecuteScript(wjs_code.c_str(), nullptr);
       }
     }
-    std::cout << "[AnyWP] [State] Sent stateLoaded event to all instances" << std::endl;
+    Logger::Instance().Info("State", "Sent stateLoaded event to all instances");
   }
 }
 
 // Phase B: Handle clearState messages
 void AnyWPEnginePlugin::HandleClearStateWebMessage(const std::string& message) {
   bool success = ClearState();
-  std::cout << "[AnyWP] [State] Cleared all state via WebMessage" << std::endl;
+  Logger::Instance().Info("State", "Cleared all state via WebMessage");
   
   // Send success notification back to ALL webviews
   std::ostringstream js;
@@ -1301,7 +1301,7 @@ void AnyWPEnginePlugin::HandleClearStateWebMessage(const std::string& message) {
       instance.webview->ExecuteScript(wjs_code.c_str(), nullptr);
     }
   }
-  std::cout << "[AnyWP] [State] Sent stateCleared event to all instances" << std::endl;
+  Logger::Instance().Info("State", "Sent stateCleared event to all instances");
 }
 
 // ========== State Persistence Helper Functions ==========
@@ -1548,14 +1548,14 @@ void AnyWPEnginePlugin::SetupMouseHook() {
   
   // v2.3.2+: Skip if already installed
   if (mouse_hook_manager_->IsInstalled()) {
-    std::cout << "[AnyWP] [Lifecycle] MouseHook already installed, skipping" << std::endl;
+    Logger::Instance().Info("Lifecycle", "MouseHook already installed, skipping");
     return;
   }
   
   try {
     bool success = mouse_hook_manager_->Install();
     if (success) {
-      std::cout << "[AnyWP] [Refactor] MouseHookManager hook installed successfully" << std::endl;
+      Logger::Instance().Info("Refactor", "MouseHookManager hook installed successfully");
     } else {
       LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
         "MouseHookManager::Install() returned false",
@@ -1588,13 +1588,13 @@ void AnyWPEnginePlugin::RemoveMouseHook() {
   
   // v2.3.2+: Skip if not installed
   if (!mouse_hook_manager_->IsInstalled()) {
-    std::cout << "[AnyWP] [Lifecycle] MouseHook not installed, skipping removal" << std::endl;
+    Logger::Instance().Info("Lifecycle", "MouseHook not installed, skipping removal");
     return;
   }
   
   try {
     mouse_hook_manager_->Uninstall();
-    std::cout << "[AnyWP] [Refactor] MouseHookManager hook uninstalled successfully" << std::endl;
+    Logger::Instance().Info("Refactor", "MouseHookManager hook uninstalled successfully");
   } catch (const std::exception& e) {
     LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Uninstall", 
       "MouseHookManager::Uninstall() failed",
@@ -1708,7 +1708,7 @@ bool AnyWPEnginePlugin::InitializeWallpaperCommon(const std::string& url, bool e
   // CRITICAL: Always setup MouseHook for BOTH modes!
   // Why? WebView is BELOW desktop icons in Z-order, mouse events are captured by desktop first.
   // MouseHook is the ONLY way to forward events to our WebView.
-  std::cout << "[AnyWP] Setting up MouseHook for event forwarding..." << std::endl;
+  Logger::Instance().Info("Plugin", "Setting up MouseHook for event forwarding...");
   SetupMouseHook();
   
   // Return created handles
@@ -1724,7 +1724,7 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
             << ", Mouse Transparent: " << (enable_mouse_transparent ? "true" : "false") << std::endl;
 
   if (is_initialized_) {
-    std::cout << "[AnyWP] Already initialized, stopping first..." << std::endl;
+    Logger::Instance().Info("Plugin", "Already initialized, stopping first...");
     StopWallpaper();
   }
   
@@ -1748,10 +1748,10 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   
   // v2.1.10+ Fix: Verify window visibility after ShowWindow
   if (window_manager_) {
-    std::cout << "[AnyWP] Verifying window visibility after ShowWindow..." << std::endl;
+    Logger::Instance().Info("Plugin", "Verifying window visibility after ShowWindow...");
     bool is_visible = window_manager_->DiagnoseWindowVisibility(webview_host_hwnd_, worker_w_hwnd_);
     if (!is_visible) {
-      std::cout << "[AnyWP] WARNING: Window visibility check failed, attempting additional fixes..." << std::endl;
+      Logger::Instance().Info("Plugin", "WARNING: Window visibility check failed, attempting additional fixes...");
       // Force redraw
       RedrawWindow(webview_host_hwnd_, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
     }
@@ -1769,28 +1769,28 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   // v2.3.2+: Only start if not already monitoring
   if (workerw_health_monitor_ && worker_w_hwnd_) {
     if (!workerw_health_monitor_->IsMonitoring()) {
-      std::cout << "[AnyWP] [Lifecycle] Starting WorkerW health monitoring (first instance)..." << std::endl;
+      Logger::Instance().Info("Lifecycle", "Starting WorkerW health monitoring (first instance)...");
       if (workerw_health_monitor_->StartMonitoring(worker_w_hwnd_, 5000)) {  // Check every 5 seconds
         Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring started");
-        std::cout << "[AnyWP] WorkerW health monitoring active (check interval: 5s)" << std::endl;
+        Logger::Instance().Info("Plugin", "WorkerW health monitoring active (check interval: 5s)");
       } else {
         Logger::Instance().Warning("AnyWPEngine", "Failed to start WorkerW health monitoring");
       }
     } else {
-      std::cout << "[AnyWP] [Lifecycle] WorkerW health monitoring already active, skipping" << std::endl;
+      Logger::Instance().Info("Lifecycle", "WorkerW health monitoring already active, skipping");
     }
   }
 
-  std::cout << "[AnyWP] Initialization Complete" << std::endl;
+  Logger::Instance().Info("Plugin", "Initialization Complete");
   return true;
 }
 
 bool AnyWPEnginePlugin::StopWallpaper() {
-  std::cout << "[AnyWP] Stopping wallpaper..." << std::endl;
+  Logger::Instance().Info("Plugin", "Stopping wallpaper...");
 
   // v2.3.1+ Enhancement: Stop WorkerW health monitoring
   if (workerw_health_monitor_ && workerw_health_monitor_->IsMonitoring()) {
-    std::cout << "[AnyWP] Stopping WorkerW health monitoring..." << std::endl;
+    Logger::Instance().Info("Plugin", "Stopping WorkerW health monitoring...");
     workerw_health_monitor_->StopMonitoring();
     Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring stopped");
   }
@@ -1849,14 +1849,14 @@ bool AnyWPEnginePlugin::StopWallpaper() {
       wallpaper_instances_.clear();
       // DON'T clear original_monitor_indices_ - needed for session switch rebuild
       // DON'T clear default_wallpaper_url_ - needed for session switch rebuild
-      std::cout << "[AnyWP] All wallpapers stopped (URL and original config preserved for rebuild)" << std::endl;
+      Logger::Instance().Info("Plugin", "All wallpapers stopped (URL and original config preserved for rebuild)");
     }
   }
   
   // CRITICAL: Clear shared WebView2 environment to force recreation
   // This is essential for session switch scenarios where environment becomes invalid
   if (shared_environment_) {
-    std::cout << "[AnyWP] Clearing shared WebView2 environment (will recreate on next init)" << std::endl;
+    Logger::Instance().Info("Plugin", "Clearing shared WebView2 environment (will recreate on next init)");
     shared_environment_ = nullptr;
   }
 
@@ -1914,7 +1914,7 @@ bool AnyWPEnginePlugin::StopWallpaper() {
   is_initialized_ = false;
   enable_interaction_ = false;
 
-  std::cout << "[AnyWP] Wallpaper stopped successfully" << std::endl;
+  Logger::Instance().Info("Plugin", "Wallpaper stopped successfully");
   std::cout << "[AnyWP] [ResourceTracker] Tracked windows: " 
             << ResourceTracker::Instance().GetTrackedCount() << std::endl;
   
@@ -2102,7 +2102,7 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
   if (existing) {
     std::cout << "[AnyWP] Monitor " << monitor_index << " already has wallpaper, stopping first..." << std::endl;
     StopWallpaperOnMonitor(monitor_index);
-    std::cout << "[AnyWP] Waiting for resources to be released..." << std::endl;
+    Logger::Instance().Info("Plugin", "Waiting for resources to be released...");
     Sleep(500);
   }
   
@@ -2163,7 +2163,7 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
   
   // Verify window styles based on user's mode selection
   if (new_instance.webview_host_hwnd && window_manager_) {
-    std::cout << "[AnyWP] ========== Verifying Window Styles ==========" << std::endl;
+    Logger::Instance().Banner("Plugin", "Verifying Window Styles");
     std::cout << "[AnyWP] Window HWND: " << new_instance.webview_host_hwnd << std::endl;
     std::cout << "[AnyWP] User selected: " << (enable_mouse_transparent ? "TRANSPARENT (pass-through)" : "INTERACTIVE (clickable)") << std::endl;
     
@@ -2196,9 +2196,9 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
       std::cout << "[AnyWP] After SetInteractive - Has WS_EX_TRANSPARENT: " << ((ex_style_after & WS_EX_TRANSPARENT) ? "YES" : "NO") << std::endl;
       
       if (should_be_interactive) {
-        std::cout << "[AnyWP] [OK] Window set to INTERACTIVE mode - mouse events enabled" << std::endl;
+        Logger::Instance().Info("OK", "Window set to INTERACTIVE mode - mouse events enabled");
       } else {
-        std::cout << "[AnyWP] [OK] Window set to TRANSPARENT mode - mouse pass-through enabled" << std::endl;
+        Logger::Instance().Info("OK", "Window set to TRANSPARENT mode - mouse pass-through enabled");
       }
     } else {
       LOG_AND_REPORT_ERROR("WindowManager", "SetWindowMode", 
@@ -2206,7 +2206,7 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
         ErrorHandler::ErrorCategory::EXTERNAL_API, 
         ErrorHandler::ErrorLevel::ERROR);
     }
-    std::cout << "[AnyWP] ================================================================" << std::endl;
+    Logger::Instance().Info("Plugin", "================================================================");
   }
   
   // Save URL as default
@@ -2218,15 +2218,15 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
   // v2.3.2+: Start WorkerW health monitoring if this is the first instance
   if (workerw_health_monitor_ && new_instance.worker_w_hwnd) {
     if (!workerw_health_monitor_->IsMonitoring()) {
-      std::cout << "[AnyWP] [Lifecycle] Starting WorkerW health monitoring (first multi-monitor instance)..." << std::endl;
+      Logger::Instance().Info("Lifecycle", "Starting WorkerW health monitoring (first multi-monitor instance)...");
       if (workerw_health_monitor_->StartMonitoring(new_instance.worker_w_hwnd, 5000)) {
         Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring started (monitor " + std::to_string(monitor_index) + ")");
-        std::cout << "[AnyWP] WorkerW health monitoring active (check interval: 5s)" << std::endl;
+        Logger::Instance().Info("Plugin", "WorkerW health monitoring active (check interval: 5s)");
       } else {
         Logger::Instance().Warning("AnyWPEngine", "Failed to start WorkerW health monitoring");
       }
     } else {
-      std::cout << "[AnyWP] [Lifecycle] WorkerW health monitoring already active, skipping" << std::endl;
+      Logger::Instance().Info("Lifecycle", "WorkerW health monitoring already active, skipping");
     }
   }
 
@@ -2260,11 +2260,11 @@ bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
   std::cout << "[AnyWP] [Lifecycle] Active instances after cleanup: " << active_count << std::endl;
   
   if (active_count == 0) {
-    std::cout << "[AnyWP] [Lifecycle] Last instance stopped, cleaning up global resources..." << std::endl;
+    Logger::Instance().Info("Lifecycle", "Last instance stopped, cleaning up global resources...");
     
     // Stop WorkerW health monitoring
     if (workerw_health_monitor_ && workerw_health_monitor_->IsMonitoring()) {
-      std::cout << "[AnyWP] [Lifecycle] Stopping WorkerW health monitoring..." << std::endl;
+      Logger::Instance().Info("Lifecycle", "Stopping WorkerW health monitoring...");
       workerw_health_monitor_->StopMonitoring();
       Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring stopped (last instance)");
     }
@@ -2274,7 +2274,7 @@ bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
     
     // Clear default URL
     default_wallpaper_url_.clear();
-    std::cout << "[AnyWP] [Lifecycle] Global resources cleaned up" << std::endl;
+    Logger::Instance().Info("Lifecycle", "Global resources cleaned up");
   }
   
   return result;
@@ -2362,7 +2362,7 @@ bool AnyWPEnginePlugin::NavigateToUrlOnMonitor(const std::string& url, int monit
 // Window procedure for display change listener
 LRESULT CALLBACK AnyWPEnginePlugin::DisplayChangeWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
   if (message == WM_DISPLAYCHANGE) {
-    std::cout << "[AnyWP] [DisplayChange] Display configuration changed!" << std::endl;
+    Logger::Instance().Info("DisplayChange", "Display configuration changed!");
     std::cout << "[AnyWP] [DisplayChange] New resolution: " << LOWORD(lParam) << "x" << HIWORD(lParam) << std::endl;
     
     if (display_change_instance_) {
@@ -2372,7 +2372,7 @@ LRESULT CALLBACK AnyWPEnginePlugin::DisplayChangeWndProc(HWND hwnd, UINT message
     return 0;
   }
   else if (message == WM_NOTIFY_MONITOR_CHANGE) {
-    std::cout << "[AnyWP] [DisplayChange] Received WM_NOTIFY_MONITOR_CHANGE in main thread" << std::endl;
+    Logger::Instance().Info("DisplayChange", "Received WM_NOTIFY_MONITOR_CHANGE in main thread");
     
     // Now we're in the window's message loop thread (safer for Flutter)
     if (display_change_instance_) {
@@ -2416,7 +2416,7 @@ void AnyWPEnginePlugin::HandleDisplayChange() {
   // This ensures WorkerW is re-detected after display configuration changes
   DesktopWallpaperHelper::Instance().Reset();
   Logger::Instance().Info("AnyWPEngine", "DesktopWallpaperHelper reset due to display change");
-  std::cout << "[AnyWP] [DisplayChange] DesktopWallpaperHelper cache cleared" << std::endl;
+  Logger::Instance().Info("DisplayChange", "DesktopWallpaperHelper cache cleared");
   
   if (display_change_coordinator_) {
     display_change_coordinator_->HandleDisplayChange();
@@ -2445,7 +2445,7 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
   // We need to ensure it's safe to call Flutter API from this context
   
   try {
-    std::cout << "[AnyWP] [DisplayChange] Monitor change detected" << std::endl;
+    Logger::Instance().Info("DisplayChange", "Monitor change detected");
     
     // CRITICAL: InvokeMethod causes deadlock/crash even with message queue
     // Root cause: Flutter engine thread synchronization issues
@@ -2454,21 +2454,21 @@ void AnyWPEnginePlugin::NotifyMonitorChange() {
     // Do NOT call InvokeMethod - it will hang the application
     // method_channel_->InvokeMethod("onMonitorChange", std::move(args));
     
-    std::cout << "[AnyWP] [DisplayChange] Skipping InvokeMethod to prevent deadlock" << std::endl;
-    std::cout << "[AnyWP] [DisplayChange] Dart side will detect changes via polling" << std::endl;
+    Logger::Instance().Info("DisplayChange", "Skipping InvokeMethod to prevent deadlock");
+    Logger::Instance().Info("DisplayChange", "Dart side will detect changes via polling");
     
   } catch (const std::exception& e) {
     std::cout << "[AnyWP] [DisplayChange] EXCEPTION: " << e.what() << std::endl;
   } catch (...) {
-    std::cout << "[AnyWP] [DisplayChange] UNKNOWN EXCEPTION" << std::endl;
+    Logger::Instance().Info("DisplayChange", "UNKNOWN EXCEPTION");
   }
   
-  std::cout << "[AnyWP] [DisplayChange] NotifyMonitorChange completed" << std::endl;
+  Logger::Instance().Info("DisplayChange", "NotifyMonitorChange completed");
 }
 
 // Notify monitor change (simplified after MonitorManager refactoring)
 void AnyWPEnginePlugin::SafeNotifyMonitorChange() {
-  std::cout << "[AnyWP] [DisplayChange] Notifying monitor change..." << std::endl;
+  Logger::Instance().Info("DisplayChange", "Notifying monitor change...");
   NotifyMonitorChange();
 }
 
@@ -2560,7 +2560,7 @@ std::vector<std::pair<std::string, std::string>> AnyWPEnginePlugin::GetPendingPo
 
 // Setup power saving monitoring
 void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
-  std::cout << "[AnyWP] [PowerSaving] Setting up power saving monitoring..." << std::endl;
+  Logger::Instance().Info("PowerSaving", "Setting up power saving monitoring...");
   
   // Register window class for power events
   WNDCLASSEXW wc = {0};
@@ -2632,12 +2632,12 @@ void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
   
   // Note: Fullscreen detection is started by PowerManager::Enable() after initialization
   
-  std::cout << "[AnyWP] [PowerSaving] Monitoring setup complete" << std::endl;
+  Logger::Instance().Info("PowerSaving", "Monitoring setup complete");
 }
 
 // Cleanup power saving monitoring
 void AnyWPEnginePlugin::CleanupPowerSavingMonitoring() {
-  std::cout << "[AnyWP] [PowerSaving] Cleaning up monitoring..." << std::endl;
+  Logger::Instance().Info("PowerSaving", "Cleaning up monitoring...");
   
   // Note: Fullscreen detection is stopped by PowerManager destructor
   
@@ -2660,7 +2660,7 @@ void AnyWPEnginePlugin::CleanupPowerSavingMonitoring() {
     power_listener_hwnd_ = nullptr;
   }
   
-  std::cout << "[AnyWP] [PowerSaving] Cleanup complete" << std::endl;
+  Logger::Instance().Info("PowerSaving", "Cleanup complete");
 }
 
 // Power saving window procedure
@@ -2793,17 +2793,17 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
       // Power state changed
       switch (wParam) {
         case PBT_APMSUSPEND:
-          std::cout << "[AnyWP] [PowerSaving] System SUSPENDING" << std::endl;
+          Logger::Instance().Info("PowerSaving", "System SUSPENDING");
           display_change_instance_->PauseWallpaper("SUSPEND");
           break;
         case PBT_APMRESUMEAUTOMATIC:
         case PBT_APMRESUMESUSPEND:
-          std::cout << "[AnyWP] [PowerSaving] System RESUMING" << std::endl;
+          Logger::Instance().Info("PowerSaving", "System RESUMING");
           display_change_instance_->ResumeWallpaper("SUSPEND");
           break;
         case PBT_APMPOWERSTATUSCHANGE:
           // Check if monitor is off
-          std::cout << "[AnyWP] [PowerSaving] Power status changed" << std::endl;
+          Logger::Instance().Info("PowerSaving", "Power status changed");
           display_change_instance_->UpdatePowerState();
           break;
       }
@@ -2845,7 +2845,7 @@ void AnyWPEnginePlugin::StartFullscreenDetection() {
   if (power_manager_) {
     try {
       power_manager_->StartFullscreenDetection();
-      std::cout << "[AnyWP] [Refactor] Fullscreen detection delegated to PowerManager" << std::endl;
+      Logger::Instance().Info("Refactor", "Fullscreen detection delegated to PowerManager");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("PowerManager", "StartFullscreenDetection", 
         "PowerManager::StartFullscreenDetection() failed",
@@ -2870,7 +2870,7 @@ void AnyWPEnginePlugin::StopFullscreenDetection() {
   if (power_manager_) {
     try {
       power_manager_->StopFullscreenDetection();
-      std::cout << "[AnyWP] [Refactor] Fullscreen detection stop delegated to PowerManager" << std::endl;
+      Logger::Instance().Info("Refactor", "Fullscreen detection stop delegated to PowerManager");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("PowerManager", "StopFullscreenDetection", 
         "PowerManager::StopFullscreenDetection() failed",
@@ -2913,7 +2913,7 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
     }
   }
 
-  std::cout << "[AnyWP] [PowerSaving] ========== PAUSING WALLPAPER ==========" << std::endl;
+  Logger::Instance().Banner("PowerSaving", "PAUSING WALLPAPER");
   std::cout << "[AnyWP] [PowerSaving] Current power state: " << power_state_str << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   
@@ -2927,16 +2927,16 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   // Light memory trim
   SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper paused - last frame frozen" << std::endl;
+  Logger::Instance().Info("PowerSaving", "Wallpaper paused - last frame frozen");
 }
 
 // v1.4.1+ Phase G: Validate wallpaper windows state
 bool AnyWPEnginePlugin::ValidateWallpaperWindows() {
-  std::cout << "[AnyWP] [PowerSaving] Verifying wallpaper window state..." << std::endl;
+  Logger::Instance().Info("PowerSaving", "Verifying wallpaper window state...");
   
   // Check single-monitor mode
   if (webview_host_hwnd_) {
-    std::cout << "[AnyWP] [PowerSaving] Single-monitor mode detected" << std::endl;
+    Logger::Instance().Info("PowerSaving", "Single-monitor mode detected");
     std::cout << "[AnyWP] [PowerSaving] WebView window: " << webview_host_hwnd_ << std::endl;
     std::cout << "[AnyWP] [PowerSaving] IsWindow: " << IsWindow(webview_host_hwnd_) 
               << ", IsVisible: " << (IsWindow(webview_host_hwnd_) ? IsWindowVisible(webview_host_hwnd_) : false) << std::endl;
@@ -2957,7 +2957,7 @@ bool AnyWPEnginePlugin::ValidateWallpaperWindows() {
       return false;  // Need reinitialize
     }
     
-    std::cout << "[AnyWP] [PowerSaving] [OK] Window valid, parent relationship OK" << std::endl;
+    Logger::Instance().Info("PowerSaving", "[OK] Window valid, parent relationship OK");
   }
   
   // Check multi-monitor mode
@@ -2998,7 +2998,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     return false;
   }
   
-  std::cout << "[AnyWP] [PowerSaving] ========== RESTORING LOST WALLPAPER ==========" << std::endl;
+  Logger::Instance().Banner("PowerSaving", "RESTORING LOST WALLPAPER");
   std::cout << "[AnyWP] [PowerSaving] Re-initializing wallpaper with URL: " << url << std::endl;
   
   // Save current URL and use ORIGINAL monitor configuration
@@ -3024,7 +3024,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     
     // Fallback: if no original config, try current instances
     if (saved_monitor_devices.empty()) {
-      std::cout << "[AnyWP] [PowerSaving] No original config, using current instances" << std::endl;
+      Logger::Instance().Info("PowerSaving", "No original config, using current instances");
       for (const auto& instance : wallpaper_instances_) {
         // Find device name for this instance's monitor index
         for (const auto& monitor : monitors_) {
@@ -3051,11 +3051,11 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
             << " monitor(s)" << std::endl;
   
   // CRITICAL: Always stop existing wallpaper before recreating
-  std::cout << "[AnyWP] [PowerSaving] Stopping existing wallpaper (if any)..." << std::endl;
+  Logger::Instance().Info("PowerSaving", "Stopping existing wallpaper (if any)...");
   StopWallpaper();
   
   // CRITICAL: Re-enumerate monitors before rebuilding (session may have different monitors)
-  std::cout << "[AnyWP] [PowerSaving] Re-enumerating monitors for current session..." << std::endl;
+  Logger::Instance().Info("PowerSaving", "Re-enumerating monitors for current session...");
   GetMonitors();
   std::cout << "[AnyWP] [PowerSaving] Current session has " << monitors_.size() << " monitor(s)" << std::endl;
   
@@ -3103,7 +3103,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     
     // If no monitors were restored, try primary display as fallback
     if (restored_count == 0 && !monitors_.empty()) {
-      std::cout << "[AnyWP] [PowerSaving] No original monitors available, falling back to primary display" << std::endl;
+      Logger::Instance().Info("PowerSaving", "No original monitors available, falling back to primary display");
       
       // v2.0.1+ Bug Fix: Use saved setting for monitor 0 if available, otherwise use global
       bool use_transparent = saved_transparency_settings.count(0) > 0 
@@ -3113,7 +3113,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     }
   } else {
     // Fallback: initialize on primary display
-    std::cout << "[AnyWP] [PowerSaving] No saved monitor config, using primary display (monitor 0)" << std::endl;
+    Logger::Instance().Info("PowerSaving", "No saved monitor config, using primary display (monitor 0)");
     
     // v2.0.1+ Bug Fix: Use saved setting for monitor 0 if available, otherwise use global
     bool use_transparent = saved_transparency_settings.count(0) > 0 
@@ -3122,7 +3122,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     InitializeWallpaperOnMonitor(url, use_transparent, 0);
   }
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper restoration complete" << std::endl;
+  Logger::Instance().Info("PowerSaving", "Wallpaper restoration complete");
   
   // Set power state to active
   power_state_ = PowerState::ACTIVE;
@@ -3154,11 +3154,11 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     }
   }
 
-  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER ==========" << std::endl;
+  Logger::Instance().Banner("PowerSaving", "RESUMING WALLPAPER");
   std::cout << "[AnyWP] [PowerSaving] Current power state: " << power_state_str << std::endl;
   std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
   if (force_reinit) {
-    std::cout << "[AnyWP] [PowerSaving] Force reinitialize: YES (session switch)" << std::endl;
+    Logger::Instance().Info("PowerSaving", "Force reinitialize: YES (session switch)");
   }
   
   // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
@@ -3184,7 +3184,7 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     });
   }
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed - animations restarted" << std::endl;
+  Logger::Instance().Info("PowerSaving", "Wallpaper resumed - animations restarted");
 }
 
 // Optimize memory usage (delegated to PowerManager)
@@ -3198,7 +3198,7 @@ void AnyWPEnginePlugin::OptimizeMemoryUsage() {
 void AnyWPEnginePlugin::ConfigureWebView2Memory() {
   // Note: WebView2 doesn't expose direct memory limit API
   // But we can configure browser arguments for lower memory usage
-  std::cout << "[AnyWP] [Memory] WebView2 memory configuration applied" << std::endl;
+  Logger::Instance().Info("Memory", "WebView2 memory configuration applied");
 }
 
 // SAFE: Schedule memory optimization using JavaScript setTimeout (no dangling pointers)
@@ -3207,7 +3207,7 @@ void AnyWPEnginePlugin::ScheduleSafeMemoryOptimization(ICoreWebView2* webview) {
     return;  // Safety check
   }
   
-  std::cout << "[AnyWP] [Memory] Scheduling safe auto-optimization..." << std::endl;
+  Logger::Instance().Info("Memory", "Scheduling safe auto-optimization...");
   
   // Use JavaScript setTimeout - runs in WebView2 context, no C++ object dependency
   std::wstring safe_optimize_script = L"setTimeout(function() {"
@@ -3267,7 +3267,7 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
                   std::cout << "[AnyWP] [ScriptExecution] Result: " << result_str << std::endl;
                 } else {
                   Logger::Instance().Info("ScriptExecution", "Script executed successfully, but returned null/empty");
-                  std::cout << "[AnyWP] [ScriptExecution] Script executed, no return value" << std::endl;
+                  Logger::Instance().Info("ScriptExecution", "Script executed, no return value");
                 }
               } else {
                 std::stringstream ss;
@@ -3297,7 +3297,7 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
               std::cout << "[AnyWP] [ScriptExecution] (Legacy) Result: " << result_str << std::endl;
             } else {
               Logger::Instance().Info("ScriptExecution", "Script executed successfully (legacy), no return value");
-              std::cout << "[AnyWP] [ScriptExecution] (Legacy) Script executed, no return value" << std::endl;
+              Logger::Instance().Info("ScriptExecution", "(Legacy) Script executed, no return value");
             }
           } else {
             std::stringstream ss;
@@ -3377,7 +3377,7 @@ void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
             << " (" << PowerStateToString(last_power_state_) << ")" << std::endl;
   
   if (newState == power_state_) {
-    std::cout << "[AnyWP] [PowerSaving] No change detected, returning early" << std::endl;
+    Logger::Instance().Info("PowerSaving", "No change detected, returning early");
     return;  // No change
   }
   
@@ -3430,7 +3430,7 @@ void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
 
 void AnyWPEnginePlugin::RecoverWorkerW() {
   Logger::Instance().Warning("AnyWPEngine", "WorkerW recovery initiated (Lively-style full recreate)");
-  std::cout << "[AnyWP] [WorkerW Recovery] ========== Starting WorkerW Recovery (Full Recreate) ==========" << std::endl;
+  Logger::Instance().Banner("WorkerW Recovery", "Starting WorkerW Recovery (Full Recreate)");
   
   try {
     // v2.3.1+ Lively-style Recovery: Complete wallpaper recreation
@@ -3469,14 +3469,14 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     // Step 2: Windows were destroyed, need full recreation
     Logger::Instance().Warning("WorkerW Recovery", 
       "Windows destroyed, initiating full wallpaper recreation (Lively method)");
-    std::cout << "[AnyWP] [WorkerW Recovery] Windows destroyed, need full recreation" << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", "Windows destroyed, need full recreation");
     
     // Step 3: Reset DesktopWallpaperHelper cache
     DesktopWallpaperHelper::Instance().Reset();
     Logger::Instance().Info("WorkerW Recovery", "DesktopWallpaperHelper cache cleared");
     
     // Step 4: Clear all destroyed window handles
-    std::cout << "[AnyWP] [WorkerW Recovery] Clearing destroyed window handles..." << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", "Clearing destroyed window handles...");
     webview_host_hwnd_ = nullptr;
     worker_w_hwnd_ = nullptr;
     webview_controller_ = nullptr;
@@ -3488,14 +3488,14 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     Logger::Instance().Info("WorkerW Recovery", "Window handles cleared (instances will be cleaned up by next init)");
     
     // Step 5: Find new WorkerW (v2.3.1+ CRITICAL: Use shorter timeout to avoid blocking)
-    std::cout << "[AnyWP] [WorkerW Recovery] Re-finding WorkerW (fast mode)..." << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", "Re-finding WorkerW (fast mode)...");
     
     // v2.3.1+ CRITICAL FIX: Use much shorter timeout (1000ms) to avoid blocking other threads
     // If it fails, monitoring thread will retry automatically later
     if (!DesktopWallpaperHelper::Instance().FindWorkerW(1000)) {
       Logger::Instance().Warning("WorkerW Recovery", 
         "Fast WorkerW search failed, will retry in next monitoring cycle");
-      std::cout << "[AnyWP] [WorkerW Recovery] WorkerW not found yet, will retry later" << std::endl;
+      Logger::Instance().Info("WorkerW Recovery", "WorkerW not found yet, will retry later");
       
       // Mark recovery as failed, monitoring thread will retry
       if (workerw_health_monitor_) {
@@ -3536,8 +3536,8 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     
     Logger::Instance().Warning("WorkerW Recovery", 
       "Wallpaper recreation message sent to Flutter: " + recreate_message);
-    std::cout << "[AnyWP] [WorkerW Recovery] Wallpaper recreation message sent to Flutter" << std::endl;
-    std::cout << "[AnyWP] [WorkerW Recovery] ========== Recovery Completed (Message Sent) ==========" << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", "Wallpaper recreation message sent to Flutter");
+    Logger::Instance().Banner("WorkerW Recovery", "Recovery Completed (Message Sent)");
     
   } catch (const std::exception& e) {
     Logger::Instance().Error("WorkerW Recovery", 
@@ -3545,14 +3545,14 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     std::cout << "[AnyWP] [WorkerW Recovery] EXCEPTION: " << e.what() << std::endl;
   } catch (...) {
     Logger::Instance().Error("WorkerW Recovery", "Unknown exception during recovery");
-    std::cout << "[AnyWP] [WorkerW Recovery] UNKNOWN EXCEPTION" << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", "UNKNOWN EXCEPTION");
   }
 }
 
 // v2.3.1+ New method: Re-parent recovery for non-destroyed windows
 void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
   Logger::Instance().Info("WorkerW Recovery", "Starting re-parent recovery");
-  std::cout << "[AnyWP] [WorkerW Recovery] ========== Starting Re-parent Recovery ==========" << std::endl;
+  Logger::Instance().Banner("WorkerW Recovery", "Starting Re-parent Recovery");
   
   try {
     // Find new WorkerW
@@ -3577,7 +3577,7 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
     
     // Step 4: Update single-monitor mode (if active)
     if (webview_host_hwnd_) {
-      std::cout << "[AnyWP] [WorkerW Recovery] Re-parenting single-monitor wallpaper..." << std::endl;
+      Logger::Instance().Info("WorkerW Recovery", "Re-parenting single-monitor wallpaper...");
       
       // v2.3.1+ CRITICAL: Validate all window handles before SetParent
       bool webview_valid = IsWindow(webview_host_hwnd_);
@@ -3598,7 +3598,7 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
       if (!webview_valid) {
         Logger::Instance().Error("WorkerW Recovery", 
           "WebView host window handle is invalid (window destroyed)");
-        std::cout << "[AnyWP] [WorkerW Recovery] ERROR: WebView window invalid!" << std::endl;
+        Logger::Instance().Info("WorkerW Recovery", "ERROR: WebView window invalid!");
         webview_host_hwnd_ = nullptr;
         worker_w_hwnd_ = nullptr;
         return;
@@ -3607,7 +3607,7 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
       if (!workerw_valid) {
         Logger::Instance().Error("WorkerW Recovery", 
           "New WorkerW handle is invalid (WorkerW not created properly)");
-        std::cout << "[AnyWP] [WorkerW Recovery] ERROR: WorkerW invalid!" << std::endl;
+        Logger::Instance().Info("WorkerW Recovery", "ERROR: WorkerW invalid!");
         return;
       }
       
@@ -3616,7 +3616,7 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
       if (old_parent || GetLastError() == 0) {
         worker_w_hwnd_ = new_workerw;
         Logger::Instance().Info("WorkerW Recovery", "Single-monitor wallpaper re-parented successfully");
-        std::cout << "[AnyWP] [WorkerW Recovery] Single-monitor wallpaper re-parented" << std::endl;
+        Logger::Instance().Info("WorkerW Recovery", "Single-monitor wallpaper re-parented");
         
         // Fix Z-order
         if (window_manager_) {
@@ -3725,11 +3725,11 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
     if (workerw_health_monitor_) {
       workerw_health_monitor_->UpdateWorkerW(new_workerw);
       Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated in health monitor");
-      std::cout << "[AnyWP] [WorkerW Recovery] WorkerW handle updated" << std::endl;
+      Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated");
     }
     
     Logger::Instance().Info("WorkerW Recovery", "Recovery completed successfully");
-    std::cout << "[AnyWP] [WorkerW Recovery] ========== Recovery Completed ==========" << std::endl;
+    Logger::Instance().Banner("WorkerW Recovery", "Recovery Completed");
     
   } catch (const std::exception& e) {
     Logger::Instance().Error("WorkerW Recovery", 
@@ -3737,7 +3737,7 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
     std::cout << "[AnyWP] [WorkerW Recovery] EXCEPTION: " << e.what() << std::endl;
   } catch (...) {
     Logger::Instance().Error("WorkerW Recovery", "Unknown exception during recovery");
-    std::cout << "[AnyWP] [WorkerW Recovery] UNKNOWN EXCEPTION" << std::endl;
+    Logger::Instance().Info("WorkerW Recovery", "UNKNOWN EXCEPTION");
   }
 }
 

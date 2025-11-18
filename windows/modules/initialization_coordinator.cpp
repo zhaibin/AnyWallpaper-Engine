@@ -75,10 +75,10 @@ InitializationCoordinator::Initialize(const InitConfig& config) {
   
   // Step 6: v2.1.10+ Fix - Diagnose window visibility after initialization
   if (window_manager_) {
-    std::cout << "[AnyWP] [InitCoordinator] Running window visibility diagnosis..." << std::endl;
+    Logger::Instance().Info("InitCoordinator", "Running window visibility diagnosis...");
     bool is_visible = window_manager_->DiagnoseWindowVisibility(result.host_window, result.worker_w_window);
     if (!is_visible) {
-      std::cout << "[AnyWP] [InitCoordinator] WARNING: Window visibility diagnosis failed, attempting fixes..." << std::endl;
+      Logger::Instance().Info("InitCoordinator", "WARNING: Window visibility diagnosis failed, attempting fixes...");
       
       // Attempt to fix visibility issues
       ShowWindow(result.host_window, SW_SHOW);
@@ -88,13 +88,13 @@ InitializationCoordinator::Initialize(const InitConfig& config) {
       // Verify again
       is_visible = window_manager_->DiagnoseWindowVisibility(result.host_window, result.worker_w_window);
       if (!is_visible) {
-        std::cout << "[AnyWP] [InitCoordinator] ERROR: Window visibility issues persist after fixes" << std::endl;
+        Logger::Instance().Info("InitCoordinator", "ERROR: Window visibility issues persist after fixes");
         Logger::Instance().Warning("InitCoordinator", "Window visibility issues detected after initialization");
       } else {
-        std::cout << "[AnyWP] [InitCoordinator] ✓ Window visibility fixed" << std::endl;
+        Logger::Instance().Info("InitCoordinator", "✓ Window visibility fixed");
       }
     } else {
-      std::cout << "[AnyWP] [InitCoordinator] ✓ Window visibility verified" << std::endl;
+      Logger::Instance().Info("InitCoordinator", "✓ Window visibility verified");
     }
   }
   
@@ -219,11 +219,11 @@ void InitializationCoordinator::ConfigureMouseHook(bool enable_mouse_transparent
   
   // Log explanation
   if (enable_mouse_transparent) {
-    std::cout << "[AnyWP] [InitCoordinator] Mode: TRANSPARENT (pass-through)" << std::endl;
-    std::cout << "[AnyWP] [InitCoordinator] MouseHook will forward events (WebView cannot receive focus)" << std::endl;
+    Logger::Instance().Info("InitCoordinator", "Mode: TRANSPARENT (pass-through)");
+    Logger::Instance().Info("InitCoordinator", "MouseHook will forward events (WebView cannot receive focus)");
   } else {
-    std::cout << "[AnyWP] [InitCoordinator] Mode: INTERACTIVE (clickable)" << std::endl;
-    std::cout << "[AnyWP] [InitCoordinator] MouseHook will inject events into WebView via JavaScript" << std::endl;
+    Logger::Instance().Info("InitCoordinator", "Mode: INTERACTIVE (clickable)");
+    Logger::Instance().Info("InitCoordinator", "MouseHook will inject events into WebView via JavaScript");
   }
   
   // Note: Actual mouse hook setup is handled by MouseHookManager in the main plugin
@@ -247,7 +247,7 @@ void InitializationCoordinator::LogInitializationStart(const InitConfig& config)
     ", Transparent: " + (config.enable_mouse_transparent ? "true" : "false") +
     ", Monitor: " + std::to_string(config.monitor_index));
   
-  std::cout << "[AnyWP] [InitCoordinator] ========== Initialization Start ==========" << std::endl;
+  Logger::Instance().Banner("InitCoordinator", "Initialization Start");
   std::cout << "[AnyWP] [InitCoordinator] URL: " << config.url << std::endl;
   std::cout << "[AnyWP] [InitCoordinator] Transparent: " << (config.enable_mouse_transparent ? "true" : "false") << std::endl;
   
@@ -255,14 +255,14 @@ void InitializationCoordinator::LogInitializationStart(const InitConfig& config)
     std::cout << "[AnyWP] [InitCoordinator] Target Monitor: " << config.monitor->device_name 
               << " [" << config.monitor->width << "x" << config.monitor->height << "]" << std::endl;
   } else {
-    std::cout << "[AnyWP] [InitCoordinator] Mode: Single-monitor (legacy)" << std::endl;
+    Logger::Instance().Info("InitCoordinator", "Mode: Single-monitor (legacy)");
   }
 }
 
 void InitializationCoordinator::LogInitializationSuccess(const InitResult& result) {
   Logger::Instance().Info("InitCoordinator", "Initialization completed successfully");
   
-  std::cout << "[AnyWP] [InitCoordinator] ========== Initialization Success ==========" << std::endl;
+  Logger::Instance().Banner("InitCoordinator", "Initialization Success");
   std::cout << "[AnyWP] [InitCoordinator] Host Window: " << result.host_window << std::endl;
   std::cout << "[AnyWP] [InitCoordinator] WorkerW Window: " << result.worker_w_window << std::endl;
 }
@@ -270,7 +270,7 @@ void InitializationCoordinator::LogInitializationSuccess(const InitResult& resul
 void InitializationCoordinator::LogInitializationFailure(const InitResult& result) {
   Logger::Instance().Error("InitCoordinator", "Initialization failed: " + result.error_message);
   
-  std::cout << "[AnyWP] [InitCoordinator] ========== Initialization Failed ==========" << std::endl;
+  Logger::Instance().Banner("InitCoordinator", "Initialization Failed");
   std::cout << "[AnyWP] [InitCoordinator] Error: " << result.error_message << std::endl;
 }
 
