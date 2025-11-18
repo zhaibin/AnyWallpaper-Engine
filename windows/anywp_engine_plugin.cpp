@@ -1956,8 +1956,8 @@ bool AnyWPEnginePlugin::NavigateToUrl(const std::string& url) {
   // P0-3: Permission check with PermissionManager
   auto perm_result = PermissionManager::Instance().CheckUrlAccess(url);
   if (!perm_result.granted) {
-    std::cout << "[AnyWP] [Security] URL access denied: " << url 
-              << " - " << perm_result.reason << std::endl;
+    Logger::Instance().Warning("Security", 
+      "[Security] URL access denied: " + url + " - " + perm_result.reason);
     Logger::Instance().Warning("PermissionManager", 
       "NavigateToUrl - URL access denied: " + perm_result.reason);
     return false;
@@ -1965,7 +1965,7 @@ bool AnyWPEnginePlugin::NavigateToUrl(const std::string& url) {
   
   // Fallback: Legacy URL validator
   if (!url_validator_.IsAllowed(url)) {
-    std::cout << "[AnyWP] [Security] URL validation failed: " << url << std::endl;
+    Logger::Instance().Warning("Security", "[Security] URL validation failed: " + url);
     LogError("URL validation failed: " + url);
     return false;
   }
@@ -1974,7 +1974,8 @@ bool AnyWPEnginePlugin::NavigateToUrl(const std::string& url) {
   {
     std::lock_guard<std::mutex> lock(iframes_mutex_);
     if (!iframes_.empty()) {
-      std::cout << "[AnyWP] [iframe] Clearing " << iframes_.size() << " iframe(s) before navigation" << std::endl;
+      Logger::Instance().Info("Plugin", 
+        "[iframe] Clearing " + std::to_string(iframes_.size()) + " iframe(s) before navigation");
       iframes_.clear();
     }
   }
@@ -1987,7 +1988,7 @@ bool AnyWPEnginePlugin::NavigateToUrl(const std::string& url) {
   HRESULT hr = webview_->Navigate(wurl.c_str());
   
   if (SUCCEEDED(hr)) {
-    std::cout << "[AnyWP] Navigated to: " << url << std::endl;
+    Logger::Instance().Info("Plugin", "Navigated to: " + url);
     
     // AUTO-OPTIMIZE: Safe delayed optimization (no dangling pointers)
     if (webview_) {
@@ -2051,10 +2052,11 @@ BOOL CALLBACK AnyWPEnginePlugin::MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonit
     
     monitors->push_back(info);
     
-    std::cout << "[AnyWP] [Monitor] Found: " << info.device_name 
-              << " [" << info.width << "x" << info.height << "]"
-              << " at (" << info.left << "," << info.top << ")"
-              << (info.is_primary ? " (PRIMARY)" : "") << std::endl;
+    Logger::Instance().Info("Monitor", 
+      "[Monitor] Found: " + info.device_name + 
+      " [" + std::to_string(info.width) + "x" + std::to_string(info.height) + "]" +
+      " at (" + std::to_string(info.left) + "," + std::to_string(info.top) + ")" +
+      (info.is_primary ? " (PRIMARY)" : ""));
   }
   
   return TRUE;  // Continue enumeration
@@ -2091,8 +2093,9 @@ WallpaperInstance* AnyWPEnginePlugin::GetInstanceAtPoint(int x, int y) {
 
 // Phase B: Refactored to use InitializeWallpaperCommon
 bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, bool enable_mouse_transparent, int monitor_index) {
-  std::cout << "[AnyWP] Initializing Wallpaper on Monitor " << monitor_index 
-            << " - URL: " << url << ", Transparent: " << (enable_mouse_transparent ? "true" : "false") << std::endl;
+  Logger::Instance().Info("Plugin", 
+    "Initializing Wallpaper on Monitor " + std::to_string(monitor_index) + 
+    " - URL: " + url + ", Transparent: " + (enable_mouse_transparent ? "true" : "false"));
 
   // Get monitors if not cached
   if (monitors_.empty()) {
@@ -2120,9 +2123,10 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
   // Check if already initialized on this monitor
   WallpaperInstance* existing = GetInstanceForMonitor(monitor_index);
   if (existing) {
-    std::cout << "[AnyWP] Monitor " << monitor_index << " already has wallpaper, stopping first..." << std::endl;
+    Logger::Instance().Info("Plugin", 
+      "Monitor " + std::to_string(monitor_index) + " already has wallpaper, stopping first...");
     StopWallpaperOnMonitor(monitor_index);
-    std::cout << "[AnyWP] Waiting for resources to be released..." << std::endl;
+    Logger::Instance().Info("Plugin", "Waiting for resources to be released...");
     Sleep(500);
   }
   
@@ -2158,8 +2162,9 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
   if (std::find(original_monitor_devices_.begin(), original_monitor_devices_.end(), device_name) 
       == original_monitor_devices_.end()) {
     original_monitor_devices_.push_back(device_name);
-    std::cout << "[AnyWP] Saved monitor " << device_name << " (index " << monitor_index 
-              << ") to original configuration" << std::endl;
+    Logger::Instance().Info("Plugin", 
+      "Saved monitor " + device_name + " (index " + std::to_string(monitor_index) + 
+      ") to original configuration");
   }
   
   // Show window
@@ -2168,10 +2173,13 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
 
   // v2.1.10+ Fix: Verify window visibility after ShowWindow (multi-monitor)
   if (window_manager_) {
-    std::cout << "[AnyWP] Verifying window visibility after ShowWindow (monitor " << monitor_index << ")..." << std::endl;
+    Logger::Instance().Info("Plugin", 
+      "Verifying window visibility after ShowWindow (monitor " + std::to_string(monitor_index) + ")...");
     bool is_visible = window_manager_->DiagnoseWindowVisibility(new_instance.webview_host_hwnd, new_instance.worker_w_hwnd);
     if (!is_visible) {
-      std::cout << "[AnyWP] WARNING: Window visibility check failed for monitor " << monitor_index << ", attempting additional fixes..." << std::endl;
+      Logger::Instance().Warning("Plugin", 
+        "Window visibility check failed for monitor " + std::to_string(monitor_index) + 
+        ", attempting additional fixes...");
       // Force redraw
       RedrawWindow(new_instance.webview_host_hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
     }
@@ -2183,27 +2191,36 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
   
   // Verify window styles based on user's mode selection
   if (new_instance.webview_host_hwnd && window_manager_) {
-    std::cout << "[AnyWP] ========== Verifying Window Styles ==========" << std::endl;
-    std::cout << "[AnyWP] Window HWND: " << new_instance.webview_host_hwnd << std::endl;
-    std::cout << "[AnyWP] User selected: " << (enable_mouse_transparent ? "TRANSPARENT (pass-through)" : "INTERACTIVE (clickable)") << std::endl;
+    Logger::Instance().Banner("Plugin", "========== Verifying Window Styles ==========");
+    Logger::Instance().Info("Plugin", 
+      "Window HWND: " + std::to_string(reinterpret_cast<uintptr_t>(new_instance.webview_host_hwnd)));
+    Logger::Instance().Info("Plugin", 
+      std::string("User selected: ") + (enable_mouse_transparent ? "TRANSPARENT (pass-through)" : "INTERACTIVE (clickable)"));
     
     // Get current window styles for debugging
     LONG style = GetWindowLongW(new_instance.webview_host_hwnd, GWL_STYLE);
     LONG ex_style = GetWindowLongW(new_instance.webview_host_hwnd, GWL_EXSTYLE);
-    std::cout << "[AnyWP] Current Style: 0x" << std::hex << style << std::dec << std::endl;
-    std::cout << "[AnyWP] Current ExStyle: 0x" << std::hex << ex_style << std::dec << std::endl;
-    std::cout << "[AnyWP] Has WS_EX_TRANSPARENT: " << ((ex_style & WS_EX_TRANSPARENT) ? "YES" : "NO") << std::endl;
+    
+    std::ostringstream ss_style, ss_exstyle;
+    ss_style << "0x" << std::hex << style;
+    ss_exstyle << "0x" << std::hex << ex_style;
+    Logger::Instance().Debug("Plugin", "Current Style: " + ss_style.str());
+    Logger::Instance().Debug("Plugin", "Current ExStyle: " + ss_exstyle.str());
+    Logger::Instance().Debug("Plugin", 
+      std::string("Has WS_EX_TRANSPARENT: ") + ((ex_style & WS_EX_TRANSPARENT) ? "YES" : "NO"));
     
     // Get window position for debugging
     RECT rect;
     if (GetWindowRect(new_instance.webview_host_hwnd, &rect)) {
-      std::cout << "[AnyWP] Window position: (" << rect.left << "," << rect.top 
-                << ") size: " << (rect.right - rect.left) << "x" << (rect.bottom - rect.top) << std::endl;
+      Logger::Instance().Debug("Plugin", 
+        "Window position: (" + std::to_string(rect.left) + "," + std::to_string(rect.top) + 
+        ") size: " + std::to_string(rect.right - rect.left) + "x" + std::to_string(rect.bottom - rect.top));
     }
     
     // Get parent window for debugging
     HWND parent = GetParent(new_instance.webview_host_hwnd);
-    std::cout << "[AnyWP] Parent window: " << parent << std::endl;
+    Logger::Instance().Debug("Plugin", 
+      "Parent window: " + std::to_string(reinterpret_cast<uintptr_t>(parent)));
     
     // Respect user's choice: Set interactive mode based on enable_mouse_transparent parameter
     bool should_be_interactive = !enable_mouse_transparent;
@@ -2212,13 +2229,17 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
     if (success) {
       // Verify the change
       LONG ex_style_after = GetWindowLongW(new_instance.webview_host_hwnd, GWL_EXSTYLE);
-      std::cout << "[AnyWP] After SetInteractive - ExStyle: 0x" << std::hex << ex_style_after << std::dec << std::endl;
-      std::cout << "[AnyWP] After SetInteractive - Has WS_EX_TRANSPARENT: " << ((ex_style_after & WS_EX_TRANSPARENT) ? "YES" : "NO") << std::endl;
+      std::ostringstream ss_after;
+      ss_after << "0x" << std::hex << ex_style_after;
+      Logger::Instance().Debug("Plugin", "After SetInteractive - ExStyle: " + ss_after.str());
+      Logger::Instance().Debug("Plugin", 
+        std::string("After SetInteractive - Has WS_EX_TRANSPARENT: ") + 
+        ((ex_style_after & WS_EX_TRANSPARENT) ? "YES" : "NO"));
       
       if (should_be_interactive) {
-        std::cout << "[AnyWP] [OK] Window set to INTERACTIVE mode - mouse events enabled" << std::endl;
+        Logger::Instance().Info("Plugin", "[OK] Window set to INTERACTIVE mode - mouse events enabled");
       } else {
-        std::cout << "[AnyWP] [OK] Window set to TRANSPARENT mode - mouse pass-through enabled" << std::endl;
+        Logger::Instance().Info("Plugin", "[OK] Window set to TRANSPARENT mode - mouse pass-through enabled");
       }
     } else {
       LOG_AND_REPORT_ERROR("WindowManager", "SetWindowMode", 
@@ -2226,22 +2247,22 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
         ErrorHandler::ErrorCategory::EXTERNAL_API, 
         ErrorHandler::ErrorLevel::ERROR);
     }
-    std::cout << "[AnyWP] ================================================================" << std::endl;
+    Logger::Instance().Banner("Plugin", "================================================================");
   }
   
   // Save URL as default
   if (default_wallpaper_url_.empty()) {
     default_wallpaper_url_ = url;
-    std::cout << "[AnyWP] Set default wallpaper URL for auto-start: " << url << std::endl;
+    Logger::Instance().Info("Plugin", "Set default wallpaper URL for auto-start: " + url);
   }
 
   // v2.3.2+: Start WorkerW health monitoring if this is the first instance
   if (workerw_health_monitor_ && new_instance.worker_w_hwnd) {
     if (!workerw_health_monitor_->IsMonitoring()) {
-      std::cout << "[AnyWP] [Lifecycle] Starting WorkerW health monitoring (first multi-monitor instance)..." << std::endl;
+      Logger::Instance().Info("Plugin", "[Lifecycle] Starting WorkerW health monitoring (first multi-monitor instance)...");
       if (workerw_health_monitor_->StartMonitoring(new_instance.worker_w_hwnd, 5000)) {
         Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring started (monitor " + std::to_string(monitor_index) + ")");
-        std::cout << "[AnyWP] WorkerW health monitoring active (check interval: 5s)" << std::endl;
+        Logger::Instance().Info("Plugin", "WorkerW health monitoring active (check interval: 5s)");
       } else {
         Logger::Instance().Warning("AnyWPEngine", "Failed to start WorkerW health monitoring");
       }
