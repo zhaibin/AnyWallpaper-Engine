@@ -54,11 +54,13 @@
 
 ##### 🔧 WorkerW 创建与查找策略优化（Lively-style）
 
-**1. 激进的 WorkerW 创建策略** (`TriggerWorkerWCreation()`)：
+**1. 激进的 WorkerW 创建策略** (`TriggerWorkerWCreation()`):
 - 发送 3 次 `0x052C` 消息到 Progman（间隔 150ms）
-- 使用 `SMTO_ABORTIFHUNG` 标志，避免卡死
+- **🐛 关键修复**：改用 `SMTO_NORMAL` 标志（原 `SMTO_ABORTIFHUNG` 导致消息过早返回）
+- **🐛 关键修复**：超时时间从 100ms 增加到 1000ms（与 Lively 一致）
+- 检查 `SendMessageTimeout` 返回值并记录结果/错误码
 - 创建并销毁临时窗口，触发桌面层级刷新（Lively 技巧）
-- 增加等待时间到 200ms，确保系统完成处理
+- **🐛 关键修复**：最终等待时间从 200ms 增加到 500ms，确保系统完成 WorkerW 结构重建
 
 **2. 多重 fallback 查找策略** (`FindSHELLDLL_DefView_Aggressive()`)：
 - **策略 1**：枚举所有顶层窗口，查找包含 `SHELLDLL_DefView` 的 WorkerW
@@ -67,10 +69,14 @@
 - **策略 4**：递归搜索所有 WorkerW 子窗口
 - 每个策略失败后自动尝试下一个，提高成功率
 
-**3. 恢复流程增强** (`RecoverWorkerW()`)：
+**3. 恢复流程增强** (`RecoverWorkerW()`):
+- **🐛 关键修复**：移除停止/重启监控线程的代码（会导致死锁）
+- 恢复函数从监控线程内调用，不能停止自己
+- 只更新 WorkerW 句柄（`UpdateWorkerW`），监控线程自动检测健康改善
 - 最多尝试 3 次查找 WorkerW
 - 每次失败后强制触发 WorkerW 创建
 - 间隔 500ms 后重试，给系统足够的响应时间
+- 添加 WebView2 UI 刷新（`UpdateWindow` + `InvalidateRect`）确保线程同步
 
 ##### 🔍 系统事件响应增强
 **显示设置变更监听**：
