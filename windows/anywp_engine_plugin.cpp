@@ -439,11 +439,14 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
 AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   Logger::Instance().Info("Plugin", "Destructor - starting cleanup");
   
-  // Cleanup WorkerWHealthMonitor module (v2.3.1+)
+  // v2.3.2+: Stop all wallpaper instances first (will stop WorkerW monitoring and remove MouseHook)
+  std::cout << "[AnyWP] [Lifecycle] Destructor: Stopping wallpaper instances..." << std::endl;
+  StopWallpaper();
+  
+  // v2.3.2+: Cleanup WorkerWHealthMonitor module (no need to call StopMonitoring, already stopped in StopWallpaper)
   if (workerw_health_monitor_) {
     Logger::Instance().Info("Refactor", "Cleaning up WorkerWHealthMonitor module...");
     try {
-      workerw_health_monitor_->StopMonitoring();
       workerw_health_monitor_.reset();
       Logger::Instance().Info("Refactor", "WorkerWHealthMonitor module cleaned up successfully");
     } catch (const std::exception& e) {
@@ -520,10 +523,10 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   }
   
   // ========== v1.4.0+ Refactoring: Cleanup MouseHookManager module ==========
+  // v2.3.2+: No need to call Uninstall(), already done in StopWallpaper()
   if (mouse_hook_manager_) {
     Logger::Instance().Info("Refactor", "Cleaning up MouseHookManager module...");
     try {
-      mouse_hook_manager_->Uninstall();
       mouse_hook_manager_.reset();
       Logger::Instance().Info("Refactor", "MouseHookManager module cleaned up successfully");
     } catch (const std::exception& e) {
@@ -597,17 +600,15 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   }
   
   // v1.4.0+ Note: Display/Power/Mouse cleanup delegated to modules above
+  // v2.3.2+: StopWallpaper() already called at the beginning of destructor
   // Old cleanup methods removed to avoid double-cleanup errors
-  
-  // P0: Cleanup wallpaper instances
-  StopWallpaper();
   
   // P0-1: Cleanup all tracked resources
   ResourceTracker::Instance().CleanupAll();
   
   display_change_instance_ = nullptr;
   
-  std::cout << "[AnyWP] Plugin cleanup complete" << std::endl;
+  std::cout << "[AnyWP] [Lifecycle] Plugin cleanup complete" << std::endl;
 }
 
 void AnyWPEnginePlugin::HandleMethodCall(
@@ -1535,58 +1536,74 @@ void AnyWPEnginePlugin::SendClickToWebView(int x, int y, const char* event_type)
 
 // Mouse Hook: Setup hook
 // Setup mouse hook (delegated to MouseHookManager)
+// v2.3.2+: Added IsInstalled() check to prevent duplicate installation
 void AnyWPEnginePlugin::SetupMouseHook() {
-  if (mouse_hook_manager_) {
-    try {
-      bool success = mouse_hook_manager_->Install();
-      if (success) {
-        std::cout << "[AnyWP] [Refactor] MouseHookManager hook installed successfully" << std::endl;
-      } else {
-        LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
-          "MouseHookManager::Install() returned false",
-          ErrorHandler::ErrorCategory::EXTERNAL_API, 
-          ErrorHandler::ErrorLevel::ERROR);
-      }
-    } catch (const std::exception& e) {
-      LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Install", 
-        "MouseHookManager::Install() failed",
-        ErrorHandler::ErrorCategory::EXTERNAL_API, 
-        ErrorHandler::ErrorLevel::ERROR, &e);
-    } catch (...) {
-      LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
-        "MouseHookManager::Install() failed (unknown exception)",
-        ErrorHandler::ErrorCategory::UNKNOWN, 
-        ErrorHandler::ErrorLevel::ERROR);
-    }
-  } else {
+  if (!mouse_hook_manager_) {
     LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
       "MouseHookManager not initialized",
       ErrorHandler::ErrorCategory::INITIALIZATION, 
+      ErrorHandler::ErrorLevel::ERROR);
+    return;
+  }
+  
+  // v2.3.2+: Skip if already installed
+  if (mouse_hook_manager_->IsInstalled()) {
+    std::cout << "[AnyWP] [Lifecycle] MouseHook already installed, skipping" << std::endl;
+    return;
+  }
+  
+  try {
+    bool success = mouse_hook_manager_->Install();
+    if (success) {
+      std::cout << "[AnyWP] [Refactor] MouseHookManager hook installed successfully" << std::endl;
+    } else {
+      LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
+        "MouseHookManager::Install() returned false",
+        ErrorHandler::ErrorCategory::EXTERNAL_API, 
+        ErrorHandler::ErrorLevel::ERROR);
+    }
+  } catch (const std::exception& e) {
+    LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Install", 
+      "MouseHookManager::Install() failed",
+      ErrorHandler::ErrorCategory::EXTERNAL_API, 
+      ErrorHandler::ErrorLevel::ERROR, &e);
+  } catch (...) {
+    LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
+      "MouseHookManager::Install() failed (unknown exception)",
+      ErrorHandler::ErrorCategory::UNKNOWN, 
       ErrorHandler::ErrorLevel::ERROR);
   }
 }
 
 // Remove mouse hook (delegated to MouseHookManager)
+// v2.3.2+: Added IsInstalled() check to prevent duplicate uninstallation
 void AnyWPEnginePlugin::RemoveMouseHook() {
-  if (mouse_hook_manager_) {
-    try {
-      mouse_hook_manager_->Uninstall();
-      std::cout << "[AnyWP] [Refactor] MouseHookManager hook uninstalled successfully" << std::endl;
-    } catch (const std::exception& e) {
-      LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Uninstall", 
-        "MouseHookManager::Uninstall() failed",
-        ErrorHandler::ErrorCategory::EXTERNAL_API, 
-        ErrorHandler::ErrorLevel::ERROR, &e);
-    } catch (...) {
-      LOG_AND_REPORT_ERROR("MouseHookManager", "Uninstall", 
-        "MouseHookManager::Uninstall() failed (unknown exception)",
-        ErrorHandler::ErrorCategory::UNKNOWN, 
-        ErrorHandler::ErrorLevel::ERROR);
-    }
-  } else {
+  if (!mouse_hook_manager_) {
     LOG_AND_REPORT_ERROR("MouseHookManager", "Uninstall", 
       "MouseHookManager not initialized",
       ErrorHandler::ErrorCategory::INITIALIZATION, 
+      ErrorHandler::ErrorLevel::ERROR);
+    return;
+  }
+  
+  // v2.3.2+: Skip if not installed
+  if (!mouse_hook_manager_->IsInstalled()) {
+    std::cout << "[AnyWP] [Lifecycle] MouseHook not installed, skipping removal" << std::endl;
+    return;
+  }
+  
+  try {
+    mouse_hook_manager_->Uninstall();
+    std::cout << "[AnyWP] [Refactor] MouseHookManager hook uninstalled successfully" << std::endl;
+  } catch (const std::exception& e) {
+    LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Uninstall", 
+      "MouseHookManager::Uninstall() failed",
+      ErrorHandler::ErrorCategory::EXTERNAL_API, 
+      ErrorHandler::ErrorLevel::ERROR, &e);
+  } catch (...) {
+    LOG_AND_REPORT_ERROR("MouseHookManager", "Uninstall", 
+      "MouseHookManager::Uninstall() failed (unknown exception)",
+      ErrorHandler::ErrorCategory::UNKNOWN, 
       ErrorHandler::ErrorLevel::ERROR);
   }
 }
@@ -1749,13 +1766,18 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   std::cout << "[AnyWP] Saved wallpaper URL for auto-recovery: " << url << std::endl;
 
   // v2.3.1+ Enhancement: Start WorkerW health monitoring
+  // v2.3.2+: Only start if not already monitoring
   if (workerw_health_monitor_ && worker_w_hwnd_) {
-    std::cout << "[AnyWP] Starting WorkerW health monitoring..." << std::endl;
-    if (workerw_health_monitor_->StartMonitoring(worker_w_hwnd_, 5000)) {  // Check every 5 seconds
-      Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring started");
-      std::cout << "[AnyWP] WorkerW health monitoring active (check interval: 5s)" << std::endl;
+    if (!workerw_health_monitor_->IsMonitoring()) {
+      std::cout << "[AnyWP] [Lifecycle] Starting WorkerW health monitoring (first instance)..." << std::endl;
+      if (workerw_health_monitor_->StartMonitoring(worker_w_hwnd_, 5000)) {  // Check every 5 seconds
+        Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring started");
+        std::cout << "[AnyWP] WorkerW health monitoring active (check interval: 5s)" << std::endl;
+      } else {
+        Logger::Instance().Warning("AnyWPEngine", "Failed to start WorkerW health monitoring");
+      }
     } else {
-      Logger::Instance().Warning("AnyWPEngine", "Failed to start WorkerW health monitoring");
+      std::cout << "[AnyWP] [Lifecycle] WorkerW health monitoring already active, skipping" << std::endl;
     }
   }
 
@@ -2193,30 +2215,69 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
     std::cout << "[AnyWP] Set default wallpaper URL for auto-start: " << url << std::endl;
   }
 
+  // v2.3.2+: Start WorkerW health monitoring if this is the first instance
+  if (workerw_health_monitor_ && new_instance.worker_w_hwnd) {
+    if (!workerw_health_monitor_->IsMonitoring()) {
+      std::cout << "[AnyWP] [Lifecycle] Starting WorkerW health monitoring (first multi-monitor instance)..." << std::endl;
+      if (workerw_health_monitor_->StartMonitoring(new_instance.worker_w_hwnd, 5000)) {
+        Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring started (monitor " + std::to_string(monitor_index) + ")");
+        std::cout << "[AnyWP] WorkerW health monitoring active (check interval: 5s)" << std::endl;
+      } else {
+        Logger::Instance().Warning("AnyWPEngine", "Failed to start WorkerW health monitoring");
+      }
+    } else {
+      std::cout << "[AnyWP] [Lifecycle] WorkerW health monitoring already active, skipping" << std::endl;
+    }
+  }
+
   std::cout << "[AnyWP] Initialization Complete (Monitor " << monitor_index << ")" << std::endl;
   return true;
 }
 
 // v2.0.0+ Phase2: Delegated to InstanceManager
+// v2.3.2+: Added instance count check for global resource cleanup
 bool AnyWPEnginePlugin::StopWallpaperOnMonitor(int monitor_index) {
   std::cout << "[AnyWP] Stopping wallpaper on monitor " << monitor_index << "..." << std::endl;
 
-  if (instance_manager_) {
-    bool result = instance_manager_->CleanupInstance(monitor_index);
-    
-    // v2.1.0+ Refactoring: Rebuild EventDispatcher cache after removing instance
-    if (result && event_dispatcher_) {
-      event_dispatcher_->RebuildHwndCache();
-    }
-    
-    return result;
+  if (!instance_manager_) {
+    LOG_AND_REPORT_ERROR("InstanceManager", "StopWallpaperOnMonitor", 
+      "InstanceManager not initialized",
+      ErrorHandler::ErrorCategory::INITIALIZATION, 
+      ErrorHandler::ErrorLevel::ERROR);
+    return false;
   }
   
-  LOG_AND_REPORT_ERROR("InstanceManager", "InitializeWallpaperOnMonitor", 
-    "InstanceManager not initialized",
-    ErrorHandler::ErrorCategory::INITIALIZATION, 
-    ErrorHandler::ErrorLevel::ERROR);
-  return false;
+  // Cleanup the specific instance
+  bool result = instance_manager_->CleanupInstance(monitor_index);
+  
+  // v2.1.0+ Refactoring: Rebuild EventDispatcher cache after removing instance
+  if (result && event_dispatcher_) {
+    event_dispatcher_->RebuildHwndCache();
+  }
+  
+  // v2.3.2+: Check if this is the last active instance
+  size_t active_count = GetActiveInstanceCount();
+  std::cout << "[AnyWP] [Lifecycle] Active instances after cleanup: " << active_count << std::endl;
+  
+  if (active_count == 0) {
+    std::cout << "[AnyWP] [Lifecycle] Last instance stopped, cleaning up global resources..." << std::endl;
+    
+    // Stop WorkerW health monitoring
+    if (workerw_health_monitor_ && workerw_health_monitor_->IsMonitoring()) {
+      std::cout << "[AnyWP] [Lifecycle] Stopping WorkerW health monitoring..." << std::endl;
+      workerw_health_monitor_->StopMonitoring();
+      Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring stopped (last instance)");
+    }
+    
+    // Remove MouseHook
+    RemoveMouseHook();
+    
+    // Clear default URL
+    default_wallpaper_url_.clear();
+    std::cout << "[AnyWP] [Lifecycle] Global resources cleaned up" << std::endl;
+  }
+  
+  return result;
 }
 
 // Navigate to URL on specific monitor
