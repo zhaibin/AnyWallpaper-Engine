@@ -240,7 +240,7 @@ var AnyWPBundle = (function (exports) {
             window.addEventListener('AnyWP:visibility', this._eventHandlers.visibility);
             window.addEventListener('resize', this._eventHandlers.resize);
             this._setupCompleted = true;
-            console.log('[AnyWP] Events setup completed');
+            // Silent initialization - reduces log noise
         },
         // Register mouse callback
         onMouse(anyWP, callback) {
@@ -1292,10 +1292,9 @@ var AnyWPBundle = (function (exports) {
             log$1.warn('WebMessage listener already registered (EARLY), skipping duplicate');
             return;
         }
-        log$1.info('Setting up WebMessage listener (EARLY)');
+        // Silent initialization - reduces log noise
         globalAny._anywpEarlyMessageListenerRegistered = true;
         window.chrome.webview.addEventListener('message', handleWebMessage);
-        log$1.info('WebMessage listener setup complete (EARLY)');
     }
     /**
      * Main WebMessage event handler
@@ -1607,7 +1606,7 @@ var AnyWPBundle = (function (exports) {
                 }
             }
         });
-        log$1.info('Flutter message listener setup complete');
+        // Silent initialization - reduces log noise
     }
     /**
      * Handle powerStateChange messages from C++ (v2.1.7+)
@@ -1955,7 +1954,7 @@ var AnyWPBundle = (function (exports) {
             console.info('[AnyWP] This is expected when C++ plugin injects SDK multiple times');
         }
         else {
-            console.info('[AnyWP] Initializing SDK for the first time');
+            // Silent initialization - reduces log noise
             window.AnyWP = AnyWP;
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', function () {
@@ -1965,7 +1964,8 @@ var AnyWPBundle = (function (exports) {
             else {
                 AnyWP._init();
             }
-            console.info('[AnyWP] SDK loaded successfully');
+            // SDK ready, log version only
+            console.info(`✅ AnyWP SDK 已加载: ${AnyWP.version}`);
         }
     }
 

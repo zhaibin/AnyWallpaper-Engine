@@ -57,12 +57,9 @@ export function setupWebMessageListener(): void {
     return;
   }
   
-  log.info('Setting up WebMessage listener (EARLY)');
+  // Silent initialization - reduces log noise
   globalAny._anywpEarlyMessageListenerRegistered = true;
-  
   (window as any).chrome.webview.addEventListener('message', handleWebMessage);
-  
-  log.info('WebMessage listener setup complete (EARLY)');
 }
 
 /**
@@ -421,7 +418,7 @@ export function setupFlutterMessageListener(): void {
     }
   });
 
-  log.info('Flutter message listener setup complete');
+  // Silent initialization - reduces log noise
 }
 
 /**

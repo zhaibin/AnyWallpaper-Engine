@@ -4,6 +4,7 @@
 #include "../utils/input_validator.h"
 #include "custom_scheme_handler.h"  // v2.1.10+ Custom scheme support
 #include <iostream>
+#include <set>
 
 namespace anywp_engine {
 
@@ -29,7 +30,19 @@ void FlutterBridge::HandleMethodCall(
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
   
   const std::string& method_name = method_call.method_name();
-  Logger::Instance().Info("FlutterBridge", "Method called: " + method_name);
+  
+  // Polling methods use DEBUG level to reduce noise
+  static const std::set<std::string> polling_methods = {
+    "getPendingPowerStateChanges",
+    "getPendingMessages",
+    "getMonitors"
+  };
+  
+  if (polling_methods.count(method_name) > 0) {
+    Logger::Instance().Debug("FlutterBridge", "Method called: " + method_name);
+  } else {
+    Logger::Instance().Info("FlutterBridge", "Method called: " + method_name);
+  }
 
   // Find and invoke handler
   auto it = handlers_.find(method_name);

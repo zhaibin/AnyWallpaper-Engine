@@ -122,8 +122,7 @@ if (typeof window !== 'undefined') {
     console.info('[AnyWP] SDK already loaded, skipping re-initialization');
     console.info('[AnyWP] This is expected when C++ plugin injects SDK multiple times');
   } else {
-    console.info('[AnyWP] Initializing SDK for the first time');
-    
+    // Silent initialization - reduces log noise
     window.AnyWP = AnyWP;
     
     if (document.readyState === 'loading') {
@@ -134,6 +133,7 @@ if (typeof window !== 'undefined') {
       AnyWP._init();
     }
     
-    console.info('[AnyWP] SDK loaded successfully');
+    // SDK ready, log version only
+    console.info(`✅ AnyWP SDK 已加载: ${AnyWP.version}`);
   }
 }
