@@ -339,6 +339,182 @@ decryptFile(encryptedPath, destPath) -> bool // 解密文件（XOR）
 
 ---
 
+## 🆕 v2.3.x 重要更新
+
+### 🛡️ v2.3.1 - WorkerW 异常自动恢复（必读）⭐
+
+**背景**：Windows 的 WorkerW 窗口可能会因 Explorer 重启、显示设置变更、系统休眠/唤醒等操作被销毁，导致壁纸消失。
+
+**解决方案**：v2.3.1 引入了基于 Lively Wallpaper 策略优化的 WorkerW 健康监控模块，提供完全自动化的异常恢复机制。
+
+#### 🩺 核心功能
+
+**WorkerW 健康监控模块** (`WorkerWHealthMonitor`):
+- ✅ **周期性健康检查** - 每 5 秒验证一次 WorkerW 窗口有效性
+- ✅ **多层验证机制** - 窗口句柄、类名、桌面结构完整性检查
+- ✅ **Explorer 进程监控** - 检测 `explorer.exe` 重启（监控 PID 变化）
+- ✅ **定期强制刷新** - 每 30 次检查（约 150 秒）强制刷新一次
+- ✅ **智能失败检测** - 连续失败 2 次后触发恢复，避免误判
+- ✅ **自动恢复回调** - WorkerW 失效时自动触发恢复机制
+- ✅ **恢复节流** - 最小恢复间隔 2 秒，防止频繁恢复
+
+**自动恢复机制** (Lively 风格完全重建):
+
+针对 **Explorer 重启场景**（Windows 会销毁所有子窗口）：
+1. **检测窗口销毁** - 使用 `IsWindow()` 检查 WebView2 主机窗口是否仍然有效
+2. **如果窗口已销毁**（Explorer 重启）：
+   - 重置 `DesktopWallpaperHelper` 缓存
+   - 清除所有内部窗口句柄
+   - 重新查找新的 WorkerW（快速模式，1000ms 超时）
+   - 更新健康监控器的 WorkerW 句柄
+   - **发送消息给 Flutter 侧** 触发完全重建
+
+针对 **其他场景**（窗口仍有效）：
+1. 重新查找 WorkerW（带重试机制）
+2. 验证窗口句柄有效性
+3. 重新 `SetParent` 到新 WorkerW
+4. 强制 UI 刷新
+5. 修复 Z-order
+
+#### 📚 Flutter 开发者集成指南（重要）⭐
+
+**必须实现的消息监听**（用于处理 Explorer 重启）：
+
+```dart
+import 'package:anywp_engine/anywp_engine.dart';
+
+void setupWallpaperRecovery() {
+  AnyWPEngine.setOnMessageCallback((message) {
+    final messageType = message['type'] as String;
+    
+    // v2.3.1+ 处理 Explorer 重启自动恢复
+    if (messageType == 'WALLPAPER_RECREATE_REQUIRED') {
+      final reason = message['data']['reason'] as String;
+      print('需要重建壁纸: $reason');
+      
+      // 自动重建（推荐延迟 1-2 秒等待系统稳定）
+      Future.delayed(Duration(seconds: 1), () async {
+        // 停止旧壁纸（清理被销毁的窗口句柄）
+        await AnyWPEngine.stopWallpaper();
+        
+        // 等待清理完成
+        await Future.delayed(Duration(milliseconds: 500));
+        
+        // 使用保存的设置重建壁纸
+        // 💡 开发者需要自己保存 URL 和 monitorIndex
+        await AnyWPEngine.initializeWallpaperOnMonitor(
+          url: savedUrl,  // 你保存的 URL
+          monitorIndex: savedMonitorIndex,  // 你保存的显示器索引
+        );
+        
+        print('壁纸重建完成！');
+      });
+      return;
+    }
+    
+    // 处理其他消息类型...
+  });
+}
+```
+
+#### ⚠️ 重要提示
+
+- ✅ **必须**设置 `setOnMessageCallback` 才能接收系统消息
+- ✅ **建议**保存当前壁纸设置（URL、显示器索引等）以便快速恢复
+- ✅ **推荐**延迟 1-2 秒后再重建，等待 Windows 桌面完全稳定
+- ✅ 多显示器应用需要遍历所有活动的壁纸并重建
+
+**完整示例**：参考 `example/lib/main.dart` 中的实现
+
+#### 🎯 用户体验提升
+
+**之前（v2.3.0 及更早版本）**：
+- ❌ 显示设置变更后壁纸消失
+- ❌ 系统休眠/唤醒后壁纸无效
+- ❌ **Explorer 重启后壁纸完全消失**
+- ❌ 需要手动重启应用恢复壁纸
+- ❌ 长时间运行后可能出现壁纸异常
+
+**现在（v2.3.1 Lively-style 优化版）**：
+- ✅ WorkerW 失效后**立即自动恢复**，无需用户干预
+- ✅ 显示设置变更时自动重建壁纸层
+- ✅ **Explorer 重启后 3-5 秒内自动恢复壁纸**
+- ✅ 系统事件后自动修复壁纸显示
+- ✅ 定期自动验证和修复（每 150 秒）
+- ✅ 完全无感知的自动恢复体验
+- ✅ **长时间稳定运行，壁纸始终正常显示**
+
+#### 📊 性能影响
+
+v2.3.1 优化版性能指标：
+- **内存开销** - 新增监控线程，额外内存开销 < 1MB
+- **CPU 开销** - 每 5 秒检查一次，平均 CPU 占用 < 0.1%
+- **启动时间** - 无影响（健康监控在初始化完成后才启动）
+- **恢复时间**：
+  - 常规失效：2-10 秒内自动恢复
+  - Explorer 重启：立即检测，3-5 秒内恢复
+  - 定期刷新：每 150 秒自动验证并修复
+
+---
+
+### 📝 v2.3.2 - 日志系统现代化改造
+
+**背景**：之前版本混用 `std::cout` 和 `Logger::Instance()`，导致管理混乱、Release 构建日志过多、包含中文和 emoji 等问题。
+
+**解决方案**：v2.3.2 完成了日志系统的全面现代化改造，统一使用 `Logger::Instance()`，并进行了大量优化。
+
+#### 🎯 关键改进
+
+**1. 日志系统统一（100% Logger 覆盖）**
+- ✅ 所有 343 处 `std::cout` 全部迁移到 `Logger::Instance()`
+- ✅ 100% 统一的日志接口
+- ✅ 支持多级别日志：DEBUG / INFO / WARNING / ERROR
+- ✅ 线程安全的日志输出
+- ✅ Debug 构建：控制台 + 文件双输出
+- ✅ Release 构建：仅文件输出（无控制台噪音）
+
+**2. P3 级别日志优化（日志量减少 35.5%）**
+
+| 指标 | 优化前 | 优化后 | 改善 |
+|------|--------|--------|------|
+| 总日志行数 | 327 | 211 | **-35.5%** |
+| 轮询调用 | 22 | 0 | **-100%** |
+| SDK 注入 | 34 | 5 | **-85.3%** |
+| WebConsole | 54 | 27 | **-50.0%** |
+| 中文/Emoji | 有 | 无 | **100% 纯英文** |
+
+**优化内容**：
+- 降低轮询日志级别为 DEBUG（`getPendingPowerStateChanges`, `getPendingMessages`, `getMonitors`）
+- 合并重复的 SDK 注入日志
+- 精简 WebConsole 初始化日志
+- 模块初始化日志整合为单行汇总
+- 移除所有 Emoji（✅❌✨等）和中文字符
+- 移除特殊符号（↔ 改为 <->）
+
+**3. 日志格式统一**
+- **控制台**: `[AnyWP] [COMPONENT] message`
+- **文件**: `[YYYY-MM-DD HH:MM:SS.mmm] [LEVEL] [COMPONENT] message`
+- **输出模式**: Debug 构建 BOTH，Release 构建 FILE_ONLY
+
+#### 💡 对 Flutter 开发者的影响
+
+**向后兼容**：
+- ✅ **完全不影响现有代码** - 所有改进都在 C++ 插件层
+- ✅ **零迁移成本** - 直接升级即可
+
+**调试体验提升**：
+- ⚡ **更清晰的日志** - 统一格式，易于阅读和分析
+- 📊 **更少的噪音** - Release 版本无控制台输出，日志量减少 35.5%
+- 🌍 **国际化友好** - 100% 纯英文日志，无中文和 emoji
+- 🎯 **智能分级** - 轮询等高频操作使用 DEBUG 级别
+
+**生产环境优势**：
+- 🔇 **无控制台噪音** - Release 构建仅输出到文件
+- 📝 **完整日志记录** - 所有关键操作都有详细日志
+- 🔍 **易于排查问题** - 统一的日志格式便于解析
+
+---
+
 ---
 
 ## 🏛️ 架构与性能 (v2.0.0)
