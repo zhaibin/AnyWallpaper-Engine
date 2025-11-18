@@ -1221,7 +1221,7 @@ void AnyWPEnginePlugin::HandleSaveStateWebMessage(const std::string& message) {
     std::string value = message.substr(value_start, value_end - value_start);
     
     bool success = SaveState(key, value);
-    std::cout << "[AnyWP] [State] Saved via WebMessage: " << key << " = " << value << std::endl;
+    Logger::Instance().Info("State", "[State] Saved via WebMessage: " + key + " = " + value);
     
     // Send success notification back to ALL webviews
     std::ostringstream js;
@@ -1243,7 +1243,7 @@ void AnyWPEnginePlugin::HandleSaveStateWebMessage(const std::string& message) {
         instance.webview->ExecuteScript(wjs_code.c_str(), nullptr);
       }
     }
-    std::cout << "[AnyWP] [State] Sent stateSaved event to all instances" << std::endl;
+    Logger::Instance().Info("State", "[State] Sent stateSaved event to all instances");
   } else {
     LOG_AND_REPORT_ERROR("StatePersistence", "HandleSaveStateWebMessage", 
       "Failed to parse saveState message",
@@ -1262,7 +1262,7 @@ void AnyWPEnginePlugin::HandleLoadStateWebMessage(const std::string& message) {
     std::string key = message.substr(key_start, key_end - key_start);
     std::string value = LoadState(key);
     
-    std::cout << "[AnyWP] [State] Loaded via WebMessage: " << key << " = " << value << std::endl;
+    Logger::Instance().Info("State", "[State] Loaded via WebMessage: " + key + " = " + value);
     
     // Send result back to ALL webviews (to ensure it reaches the right one)
     std::ostringstream js;
@@ -1276,7 +1276,7 @@ void AnyWPEnginePlugin::HandleLoadStateWebMessage(const std::string& message) {
     // Send to legacy webview if exists
     if (webview_) {
       webview_->ExecuteScript(wjs_code.c_str(), nullptr);
-      std::cout << "[AnyWP] [State] Sent stateLoaded event to legacy webview" << std::endl;
+      Logger::Instance().Info("State", "[State] Sent stateLoaded event to legacy webview");
     }
     
     // Send to all multi-monitor instances
@@ -1285,14 +1285,14 @@ void AnyWPEnginePlugin::HandleLoadStateWebMessage(const std::string& message) {
         instance.webview->ExecuteScript(wjs_code.c_str(), nullptr);
       }
     }
-    std::cout << "[AnyWP] [State] Sent stateLoaded event to all instances" << std::endl;
+    Logger::Instance().Info("State", "[State] Sent stateLoaded event to all instances");
   }
 }
 
 // Phase B: Handle clearState messages
 void AnyWPEnginePlugin::HandleClearStateWebMessage(const std::string& message) {
   bool success = ClearState();
-  std::cout << "[AnyWP] [State] Cleared all state via WebMessage" << std::endl;
+  Logger::Instance().Info("State", "[State] Cleared all state via WebMessage");
   
   // Send success notification back to ALL webviews
   std::ostringstream js;
@@ -1314,7 +1314,7 @@ void AnyWPEnginePlugin::HandleClearStateWebMessage(const std::string& message) {
       instance.webview->ExecuteScript(wjs_code.c_str(), nullptr);
     }
   }
-  std::cout << "[AnyWP] [State] Sent stateCleared event to all instances" << std::endl;
+  Logger::Instance().Info("State", "[State] Sent stateCleared event to all instances");
 }
 
 // ========== State Persistence Helper Functions ==========
