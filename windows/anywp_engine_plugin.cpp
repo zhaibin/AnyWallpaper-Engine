@@ -1506,8 +1506,9 @@ bool AnyWPEnginePlugin::SetInteractiveOnMonitor(bool interactive, int monitor_in
       if (success) {
         // v2.0.1+ Bug Fix: Update saved transparency setting
         instance.enable_mouse_transparent = !interactive;
-        std::cout << "[AnyWP] [SetInteractive] Updated transparency setting for monitor " 
-                  << monitor_index << " to " << (interactive ? "interactive" : "transparent") << std::endl;
+        Logger::Instance().Info("Plugin", 
+          "[SetInteractive] Updated transparency setting for monitor " + 
+          std::to_string(monitor_index) + " to " + (interactive ? "interactive" : "transparent"));
         
         Logger::Instance().Info("AnyWPEnginePlugin", 
           "Interactive mode updated successfully for monitor " + std::to_string(monitor_index));
@@ -1561,14 +1562,14 @@ void AnyWPEnginePlugin::SetupMouseHook() {
   
   // v2.3.2+: Skip if already installed
   if (mouse_hook_manager_->IsInstalled()) {
-    std::cout << "[AnyWP] [Lifecycle] MouseHook already installed, skipping" << std::endl;
+    Logger::Instance().Info("Plugin", "[Lifecycle] MouseHook already installed, skipping");
     return;
   }
   
   try {
     bool success = mouse_hook_manager_->Install();
     if (success) {
-      std::cout << "[AnyWP] [Refactor] MouseHookManager hook installed successfully" << std::endl;
+      Logger::Instance().Info("Plugin", "[Refactor] MouseHookManager hook installed successfully");
     } else {
       LOG_AND_REPORT_ERROR("MouseHookManager", "Install", 
         "MouseHookManager::Install() returned false",
@@ -1601,13 +1602,13 @@ void AnyWPEnginePlugin::RemoveMouseHook() {
   
   // v2.3.2+: Skip if not installed
   if (!mouse_hook_manager_->IsInstalled()) {
-    std::cout << "[AnyWP] [Lifecycle] MouseHook not installed, skipping removal" << std::endl;
+    Logger::Instance().Info("Plugin", "[Lifecycle] MouseHook not installed, skipping removal");
     return;
   }
   
   try {
     mouse_hook_manager_->Uninstall();
-    std::cout << "[AnyWP] [Refactor] MouseHookManager hook uninstalled successfully" << std::endl;
+    Logger::Instance().Info("Plugin", "[Refactor] MouseHookManager hook uninstalled successfully");
   } catch (const std::exception& e) {
     LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Uninstall", 
       "MouseHookManager::Uninstall() failed",
@@ -1721,7 +1722,7 @@ bool AnyWPEnginePlugin::InitializeWallpaperCommon(const std::string& url, bool e
   // CRITICAL: Always setup MouseHook for BOTH modes!
   // Why? WebView is BELOW desktop icons in Z-order, mouse events are captured by desktop first.
   // MouseHook is the ONLY way to forward events to our WebView.
-  std::cout << "[AnyWP] Setting up MouseHook for event forwarding..." << std::endl;
+  Logger::Instance().Info("Plugin", "Setting up MouseHook for event forwarding...");
   SetupMouseHook();
   
   // Return created handles
@@ -1733,11 +1734,12 @@ bool AnyWPEnginePlugin::InitializeWallpaperCommon(const std::string& url, bool e
 
 // Phase B: Refactored to use InitializeWallpaperCommon
 bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_mouse_transparent) {
-  std::cout << "[AnyWP] Initializing Wallpaper - URL: " << url 
-            << ", Mouse Transparent: " << (enable_mouse_transparent ? "true" : "false") << std::endl;
+  Logger::Instance().Info("Plugin", 
+    "Initializing Wallpaper - URL: " + url + 
+    ", Mouse Transparent: " + std::string(enable_mouse_transparent ? "true" : "false"));
 
   if (is_initialized_) {
-    std::cout << "[AnyWP] Already initialized, stopping first..." << std::endl;
+    Logger::Instance().Info("Plugin", "Already initialized, stopping first...");
     StopWallpaper();
   }
   
@@ -1745,7 +1747,8 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   {
     std::lock_guard<std::mutex> lock(iframes_mutex_);
     if (!iframes_.empty()) {
-      std::cout << "[AnyWP] [iframe] Clearing " << iframes_.size() << " residual iframe(s)" << std::endl;
+      Logger::Instance().Info("Plugin", 
+        "[iframe] Clearing " + std::to_string(iframes_.size()) + " residual iframe(s)");
       iframes_.clear();
     }
   }
@@ -1761,10 +1764,11 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   
   // v2.1.10+ Fix: Verify window visibility after ShowWindow
   if (window_manager_) {
-    std::cout << "[AnyWP] Verifying window visibility after ShowWindow..." << std::endl;
+    Logger::Instance().Info("Plugin", "Verifying window visibility after ShowWindow...");
     bool is_visible = window_manager_->DiagnoseWindowVisibility(webview_host_hwnd_, worker_w_hwnd_);
     if (!is_visible) {
-      std::cout << "[AnyWP] WARNING: Window visibility check failed, attempting additional fixes..." << std::endl;
+      Logger::Instance().Warning("Plugin", 
+        "Window visibility check failed, attempting additional fixes...");
       // Force redraw
       RedrawWindow(webview_host_hwnd_, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
     }
@@ -1776,34 +1780,34 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   
   // Save URL for recovery after long-term lock/sleep
   default_wallpaper_url_ = url;
-  std::cout << "[AnyWP] Saved wallpaper URL for auto-recovery: " << url << std::endl;
+  Logger::Instance().Info("Plugin", "Saved wallpaper URL for auto-recovery: " + url);
 
   // v2.3.1+ Enhancement: Start WorkerW health monitoring
   // v2.3.2+: Only start if not already monitoring
   if (workerw_health_monitor_ && worker_w_hwnd_) {
     if (!workerw_health_monitor_->IsMonitoring()) {
-      std::cout << "[AnyWP] [Lifecycle] Starting WorkerW health monitoring (first instance)..." << std::endl;
+      Logger::Instance().Info("Plugin", "[Lifecycle] Starting WorkerW health monitoring (first instance)...");
       if (workerw_health_monitor_->StartMonitoring(worker_w_hwnd_, 5000)) {  // Check every 5 seconds
         Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring started");
-        std::cout << "[AnyWP] WorkerW health monitoring active (check interval: 5s)" << std::endl;
+        Logger::Instance().Info("Plugin", "WorkerW health monitoring active (check interval: 5s)");
       } else {
         Logger::Instance().Warning("AnyWPEngine", "Failed to start WorkerW health monitoring");
       }
     } else {
-      std::cout << "[AnyWP] [Lifecycle] WorkerW health monitoring already active, skipping" << std::endl;
+      Logger::Instance().Info("Plugin", "[Lifecycle] WorkerW health monitoring already active, skipping");
     }
   }
 
-  std::cout << "[AnyWP] Initialization Complete" << std::endl;
+  Logger::Instance().Info("Plugin", "Initialization Complete");
   return true;
 }
 
 bool AnyWPEnginePlugin::StopWallpaper() {
-  std::cout << "[AnyWP] Stopping wallpaper..." << std::endl;
+  Logger::Instance().Info("Plugin", "Stopping wallpaper...");
 
   // v2.3.1+ Enhancement: Stop WorkerW health monitoring
   if (workerw_health_monitor_ && workerw_health_monitor_->IsMonitoring()) {
-    std::cout << "[AnyWP] Stopping WorkerW health monitoring..." << std::endl;
+    Logger::Instance().Info("Plugin", "Stopping WorkerW health monitoring...");
     workerw_health_monitor_->StopMonitoring();
     Logger::Instance().Info("AnyWPEngine", "WorkerW health monitoring stopped");
   }
@@ -1815,7 +1819,8 @@ bool AnyWPEnginePlugin::StopWallpaper() {
   {
     std::lock_guard<std::mutex> lock(instances_mutex_);
     if (!wallpaper_instances_.empty()) {
-      std::cout << "[AnyWP] Stopping " << wallpaper_instances_.size() << " multi-monitor instance(s)..." << std::endl;
+      Logger::Instance().Info("Plugin", 
+        "Stopping " + std::to_string(wallpaper_instances_.size()) + " multi-monitor instance(s)...");
       
       for (auto& instance : wallpaper_instances_) {
         // Close WebView
@@ -1862,7 +1867,8 @@ bool AnyWPEnginePlugin::StopWallpaper() {
       wallpaper_instances_.clear();
       // DON'T clear original_monitor_indices_ - needed for session switch rebuild
       // DON'T clear default_wallpaper_url_ - needed for session switch rebuild
-      std::cout << "[AnyWP] All wallpapers stopped (URL and original config preserved for rebuild)" << std::endl;
+      Logger::Instance().Info("Plugin", 
+        "All wallpapers stopped (URL and original config preserved for rebuild)");
     }
   }
   
