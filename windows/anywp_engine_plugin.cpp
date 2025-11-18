@@ -3152,17 +3152,20 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
           restored_count++;
         }
       } else {
-        std::cout << "[AnyWP] [PowerSaving] Skipping monitor " << monitor_index 
-                  << " (not available in current session)" << std::endl;
+        Logger::Instance().Info("PowerSaving", 
+          "[PowerSaving] Skipping monitor " + std::to_string(monitor_index) + 
+          " (not available in current session)");
       }
     }
     
-    std::cout << "[AnyWP] [PowerSaving] Successfully restored " << restored_count 
-              << " of " << saved_monitor_indices.size() << " monitor(s)" << std::endl;
+    Logger::Instance().Info("PowerSaving", 
+      "[PowerSaving] Successfully restored " + std::to_string(restored_count) + 
+      " of " + std::to_string(saved_monitor_indices.size()) + " monitor(s)");
     
     // If no monitors were restored, try primary display as fallback
     if (restored_count == 0 && !monitors_.empty()) {
-      std::cout << "[AnyWP] [PowerSaving] No original monitors available, falling back to primary display" << std::endl;
+      Logger::Instance().Info("PowerSaving", 
+        "[PowerSaving] No original monitors available, falling back to primary display");
       
       // v2.0.1+ Bug Fix: Use saved setting for monitor 0 if available, otherwise use global
       bool use_transparent = saved_transparency_settings.count(0) > 0 
@@ -3172,7 +3175,8 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     }
   } else {
     // Fallback: initialize on primary display
-    std::cout << "[AnyWP] [PowerSaving] No saved monitor config, using primary display (monitor 0)" << std::endl;
+    Logger::Instance().Info("PowerSaving", 
+      "[PowerSaving] No saved monitor config, using primary display (monitor 0)");
     
     // v2.0.1+ Bug Fix: Use saved setting for monitor 0 if available, otherwise use global
     bool use_transparent = saved_transparency_settings.count(0) > 0 
@@ -3181,7 +3185,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     InitializeWallpaperOnMonitor(url, use_transparent, 0);
   }
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper restoration complete" << std::endl;
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Wallpaper restoration complete");
   
   // Set power state to active
   power_state_ = PowerState::ACTIVE;
@@ -3213,11 +3217,11 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     }
   }
 
-  std::cout << "[AnyWP] [PowerSaving] ========== RESUMING WALLPAPER ==========" << std::endl;
-  std::cout << "[AnyWP] [PowerSaving] Current power state: " << power_state_str << std::endl;
-  std::cout << "[AnyWP] [PowerSaving] Reason: " << reason << std::endl;
+  Logger::Instance().Banner("PowerSaving", "[PowerSaving] ========== RESUMING WALLPAPER ==========");
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Current power state: " + power_state_str);
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Reason: " + reason);
   if (force_reinit) {
-    std::cout << "[AnyWP] [PowerSaving] Force reinitialize: YES (session switch)" << std::endl;
+    Logger::Instance().Info("PowerSaving", "[PowerSaving] Force reinitialize: YES (session switch)");
   }
   
   // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
@@ -3243,7 +3247,7 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     });
   }
   
-  std::cout << "[AnyWP] [PowerSaving] Wallpaper resumed - animations restarted" << std::endl;
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Wallpaper resumed - animations restarted");
 }
 
 // Optimize memory usage (delegated to PowerManager)
@@ -3257,7 +3261,7 @@ void AnyWPEnginePlugin::OptimizeMemoryUsage() {
 void AnyWPEnginePlugin::ConfigureWebView2Memory() {
   // Note: WebView2 doesn't expose direct memory limit API
   // But we can configure browser arguments for lower memory usage
-  std::cout << "[AnyWP] [Memory] WebView2 memory configuration applied" << std::endl;
+  Logger::Instance().Info("Memory", "[Memory] WebView2 memory configuration applied");
 }
 
 // SAFE: Schedule memory optimization using JavaScript setTimeout (no dangling pointers)
@@ -3266,7 +3270,7 @@ void AnyWPEnginePlugin::ScheduleSafeMemoryOptimization(ICoreWebView2* webview) {
     return;  // Safety check
   }
   
-  std::cout << "[AnyWP] [Memory] Scheduling safe auto-optimization..." << std::endl;
+  Logger::Instance().Info("Memory", "[Memory] Scheduling safe auto-optimization...");
   
   // Use JavaScript setTimeout - runs in WebView2 context, no C++ object dependency
   std::wstring safe_optimize_script = L"setTimeout(function() {"
@@ -3323,10 +3327,10 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
                   std::wstring wresult(result);
                   std::string result_str(wresult.begin(), wresult.end());
                   Logger::Instance().Info("ScriptExecution", "Script executed successfully, result: " + result_str);
-                  std::cout << "[AnyWP] [ScriptExecution] Result: " << result_str << std::endl;
+                  Logger::Instance().Debug("ScriptExecution", "[ScriptExecution] Result: " + result_str);
                 } else {
                   Logger::Instance().Info("ScriptExecution", "Script executed successfully, but returned null/empty");
-                  std::cout << "[AnyWP] [ScriptExecution] Script executed, no return value" << std::endl;
+                  Logger::Instance().Debug("ScriptExecution", "[ScriptExecution] Script executed, no return value");
                 }
               } else {
                 std::stringstream ss;
@@ -3353,10 +3357,10 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
               std::wstring wresult(result);
               std::string result_str(wresult.begin(), wresult.end());
               Logger::Instance().Info("ScriptExecution", "Script executed successfully (legacy), result: " + result_str);
-              std::cout << "[AnyWP] [ScriptExecution] (Legacy) Result: " << result_str << std::endl;
+              Logger::Instance().Debug("ScriptExecution", "[ScriptExecution] (Legacy) Result: " + result_str);
             } else {
               Logger::Instance().Info("ScriptExecution", "Script executed successfully (legacy), no return value");
-              std::cout << "[AnyWP] [ScriptExecution] (Legacy) Script executed, no return value" << std::endl;
+              Logger::Instance().Debug("ScriptExecution", "[ScriptExecution] (Legacy) Script executed, no return value");
             }
           } else {
             std::stringstream ss;
@@ -3373,7 +3377,8 @@ void AnyWPEnginePlugin::ExecuteScriptToAllInstances(const std::wstring& script) 
 
 // Notify web content about visibility change (Page Visibility API with safety checks)
 void AnyWPEnginePlugin::NotifyWebContentVisibility(bool visible) {
-  std::cout << "[AnyWP] [PowerSaving] Notifying web content: " << (visible ? "VISIBLE" : "HIDDEN") << std::endl;
+  Logger::Instance().Info("PowerSaving", 
+    "[PowerSaving] Notifying web content: " + std::string(visible ? "VISIBLE" : "HIDDEN"));
   
   // Use Page Visibility API to notify web content
   // This allows web apps to pause/resume animations gracefully
@@ -3428,15 +3433,16 @@ std::string AnyWPEnginePlugin::PowerStateToString(PowerState state) {
 // v2.1.1+ Fix: Use message queue instead of InvokeMethod to avoid thread safety issues
 void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
   // Debug: Log current state before check
-  std::cout << "[AnyWP] [PowerSaving] NotifyPowerStateChange called: newState=" 
-            << static_cast<int>(newState) << " (" << PowerStateToString(newState) 
-            << "), current power_state_=" << static_cast<int>(power_state_) 
-            << " (" << PowerStateToString(power_state_) 
-            << "), last_power_state_=" << static_cast<int>(last_power_state_) 
-            << " (" << PowerStateToString(last_power_state_) << ")" << std::endl;
+  Logger::Instance().Debug("PowerSaving", 
+    "[PowerSaving] NotifyPowerStateChange called: newState=" + 
+    std::to_string(static_cast<int>(newState)) + " (" + PowerStateToString(newState) + 
+    "), current power_state_=" + std::to_string(static_cast<int>(power_state_)) + 
+    " (" + PowerStateToString(power_state_) + 
+    "), last_power_state_=" + std::to_string(static_cast<int>(last_power_state_)) + 
+    " (" + PowerStateToString(last_power_state_) + ")");
   
   if (newState == power_state_) {
-    std::cout << "[AnyWP] [PowerSaving] No change detected, returning early" << std::endl;
+    Logger::Instance().Debug("PowerSaving", "[PowerSaving] No change detected, returning early");
     return;  // No change
   }
   
@@ -3445,7 +3451,8 @@ void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
   std::string oldStateStr = PowerStateToString(power_state_);
   std::string newStateStr = PowerStateToString(newState);
   
-  std::cout << "[AnyWP] [PowerSaving] State changed: " << oldStateStr << " -> " << newStateStr << std::endl;
+  Logger::Instance().Info("PowerSaving", 
+    "[PowerSaving] State changed: " + oldStateStr + " -> " + newStateStr);
   
   // Update states: save current state as last, then update current
   last_power_state_ = power_state_;
