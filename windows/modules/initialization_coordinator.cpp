@@ -88,13 +88,12 @@ InitializationCoordinator::Initialize(const InitConfig& config) {
       // Verify again
       is_visible = window_manager_->DiagnoseWindowVisibility(result.host_window, result.worker_w_window);
       if (!is_visible) {
-        std::cout << "[AnyWP] [InitCoordinator] ERROR: Window visibility issues persist after fixes" << std::endl;
-        Logger::Instance().Warning("InitCoordinator", "Window visibility issues detected after initialization");
+        Logger::Instance().Error("InitCoordinator", "Window visibility issues persist after fixes");
       } else {
-        std::cout << "[AnyWP] [InitCoordinator] ✓ Window visibility fixed" << std::endl;
+        Logger::Instance().Info("InitCoordinator", "[OK] Window visibility fixed");
       }
     } else {
-      std::cout << "[AnyWP] [InitCoordinator] ✓ Window visibility verified" << std::endl;
+      Logger::Instance().Info("InitCoordinator", "[OK] Window visibility verified");
     }
   }
   

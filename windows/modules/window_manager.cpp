@@ -351,7 +351,7 @@ bool WindowManager::SetWallpaperZOrder(HWND hwnd, HWND worker_w) {
   }
   
   if (result) {
-    Logger::Instance().Info("WindowManager", "✓ Z-order set successfully: Icons on top, WebView below");
+    Logger::Instance().Info("WindowManager", "[OK] Z-order set successfully: Icons on top, WebView below");
     
     // v2.1.10+ Fix: Force window update after Z-order change
     UpdateWindow(hwnd);
@@ -371,7 +371,7 @@ bool WindowManager::SetWallpaperZOrder(HWND hwnd, HWND worker_w) {
       }
       if (found_shelldll_after) {
         Logger::Instance().Info("WindowManager", 
-          "✓ Z-order verified: Window is correctly behind SHELLDLL_DefView (sibling check)");
+          "[OK] Z-order verified: Window is correctly behind SHELLDLL_DefView (sibling check)");
       } else {
         Logger::Instance().Warning("WindowManager", 
           "Z-order verification: SHELLDLL_DefView not found after window in sibling chain");
@@ -381,7 +381,7 @@ bool WindowManager::SetWallpaperZOrder(HWND hwnd, HWND worker_w) {
       HWND window_after = GetWindow(hwnd, GW_HWNDNEXT);
       if (window_after == shelldll) {
         Logger::Instance().Info("WindowManager", 
-          "✓ Z-order verified: Window is correctly behind SHELLDLL_DefView");
+          "[OK] Z-order verified: Window is correctly behind SHELLDLL_DefView");
       } else {
         Logger::Instance().Warning("WindowManager", 
           "Z-order verification: Window after is " + std::to_string(reinterpret_cast<uintptr_t>(window_after)) + 
@@ -398,7 +398,7 @@ bool WindowManager::SetWallpaperZOrder(HWND hwnd, HWND worker_w) {
       UpdateWindow(hwnd);
       RedrawWindow(hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
     } else {
-      Logger::Instance().Info("WindowManager", "✓ Window is visible after Z-order change");
+      Logger::Instance().Info("WindowManager", "[OK] Window is visible after Z-order change");
     }
     
     return true;
@@ -618,7 +618,7 @@ bool WindowManager::InitializeAsWallpaper(HWND hwnd, bool enable_transparent) {
     UpdateWindow(hwnd);
     ShowWindow(hwnd, SW_SHOW);
     
-    Logger::Instance().Info("WindowManager", "✓ Wallpaper initialization complete!");
+    Logger::Instance().Info("WindowManager", "[OK] Wallpaper initialization complete!");
     Logger::Instance().Info("WindowManager", "Window embedded as desktop wallpaper successfully");
     return true;
 
@@ -715,42 +715,42 @@ bool WindowManager::DiagnoseWindowVisibility(HWND hwnd, HWND worker_w) {
     return false;
   }
   
-  Logger::Instance().Banner("WindowManager", "========== Window Visibility Diagnosis ==========");
-  Logger::Instance().Info("WindowManager", 
+  Logger::Instance().Debug("WindowManager", "========== Window Visibility Diagnosis ==========");
+  Logger::Instance().Debug("WindowManager", 
     "[Diagnosis] Window HWND: " + std::to_string(reinterpret_cast<uintptr_t>(hwnd)));
   
   // Check 1: Window validity
   BOOL is_window = IsWindow(hwnd);
-  Logger::Instance().Info("WindowManager", 
+  Logger::Instance().Debug("WindowManager", 
     std::string("[Diagnosis] IsWindow: ") + (is_window ? "YES" : "NO"));
   if (!is_window) {
-    Logger::Instance().Error("WindowManager", "[Diagnosis] ❌ Window handle is invalid!");
+    Logger::Instance().Error("WindowManager", "[Diagnosis] [FAIL] Window handle is invalid!");
     return false;
   }
   
   // Check 2: Window visibility
   BOOL is_visible = IsWindowVisible(hwnd);
-  Logger::Instance().Info("WindowManager", 
+  Logger::Instance().Debug("WindowManager", 
     std::string("[Diagnosis] IsWindowVisible: ") + (is_visible ? "YES" : "NO"));
   
   // Check 3: Window styles
   LONG style = GetWindowLongW(hwnd, GWL_STYLE);
   bool has_visible_style = (style & WS_VISIBLE) != 0;
   bool has_child_style = (style & WS_CHILD) != 0;
-  Logger::Instance().Info("WindowManager", "[Diagnosis] Window styles:");
-  Logger::Instance().Info("WindowManager", 
+  Logger::Instance().Debug("WindowManager", "[Diagnosis] Window styles:");
+  Logger::Instance().Debug("WindowManager", 
     std::string("[Diagnosis]   - WS_VISIBLE: ") + (has_visible_style ? "YES" : "NO"));
-  Logger::Instance().Info("WindowManager", 
+  Logger::Instance().Debug("WindowManager", 
     std::string("[Diagnosis]   - WS_CHILD: ") + (has_child_style ? "YES" : "NO"));
   
   // Check 4: Extended styles
   LONG ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE);
   bool has_transparent = (ex_style & WS_EX_TRANSPARENT) != 0;
   bool has_noactivate = (ex_style & WS_EX_NOACTIVATE) != 0;
-  Logger::Instance().Info("WindowManager", "[Diagnosis] Extended styles:");
-  Logger::Instance().Info("WindowManager", 
+  Logger::Instance().Debug("WindowManager", "[Diagnosis] Extended styles:");
+  Logger::Instance().Debug("WindowManager", 
     std::string("[Diagnosis]   - WS_EX_TRANSPARENT: ") + (has_transparent ? "YES" : "NO"));
-  Logger::Instance().Info("WindowManager", 
+  Logger::Instance().Debug("WindowManager", 
     std::string("[Diagnosis]   - WS_EX_NOACTIVATE: ") + (has_noactivate ? "YES" : "NO"));
   
   // Check 5: Window position and size
@@ -758,7 +758,7 @@ bool WindowManager::DiagnoseWindowVisibility(HWND hwnd, HWND worker_w) {
   if (GetWindowRect(hwnd, &rect)) {
     int width = rect.right - rect.left;
     int height = rect.bottom - rect.top;
-    Logger::Instance().Info("WindowManager", 
+    Logger::Instance().Debug("WindowManager", 
       "[Diagnosis] Window rect: (" + std::to_string(rect.left) + "," + std::to_string(rect.top) + 
       ") " + std::to_string(width) + "x" + std::to_string(height));
     if (width == 0 || height == 0) {
@@ -770,7 +770,7 @@ bool WindowManager::DiagnoseWindowVisibility(HWND hwnd, HWND worker_w) {
   
   // Check 6: Parent window
   HWND parent = GetParent(hwnd);
-  Logger::Instance().Info("WindowManager", 
+  Logger::Instance().Debug("WindowManager", 
     "[Diagnosis] Parent window: " + std::to_string(reinterpret_cast<uintptr_t>(parent)) + 
     " (expected: " + std::to_string(reinterpret_cast<uintptr_t>(worker_w)) + ")");
   if (parent != worker_w) {
@@ -779,23 +779,23 @@ bool WindowManager::DiagnoseWindowVisibility(HWND hwnd, HWND worker_w) {
   
   if (parent && IsWindow(parent)) {
     BOOL parent_visible = IsWindowVisible(parent);
-    Logger::Instance().Info("WindowManager", 
+    Logger::Instance().Debug("WindowManager", 
       std::string("[Diagnosis] Parent visible: ") + (parent_visible ? "YES" : "NO"));
     if (!parent_visible) {
-      Logger::Instance().Error("WindowManager", "[Diagnosis] ❌ Parent window is not visible!");
+      Logger::Instance().Error("WindowManager", "[Diagnosis] [FAIL] Parent window is not visible!");
     }
   } else {
-    Logger::Instance().Error("WindowManager", "[Diagnosis] ❌ Parent window is invalid!");
+    Logger::Instance().Error("WindowManager", "[Diagnosis] [FAIL] Parent window is invalid!");
   }
   
   // Check 7: Window Z-order (check if window is behind desktop icons)
   HWND shelldll = FindSHELLDLL_DefView(worker_w);
   if (shelldll) {
-    Logger::Instance().Info("WindowManager", 
+    Logger::Instance().Debug("WindowManager", 
       "[Diagnosis] SHELLDLL_DefView found: " + std::to_string(reinterpret_cast<uintptr_t>(shelldll)));
     // Check if our window is actually behind shelldll
     HWND window_after = GetWindow(hwnd, GW_HWNDNEXT);
-    Logger::Instance().Info("WindowManager", 
+    Logger::Instance().Debug("WindowManager", 
       "[Diagnosis] Window after in Z-order: " + std::to_string(reinterpret_cast<uintptr_t>(window_after)));
   } else {
     Logger::Instance().Warning("WindowManager", "[Diagnosis] SHELLDLL_DefView not found");
@@ -806,14 +806,14 @@ bool WindowManager::DiagnoseWindowVisibility(HWND hwnd, HWND worker_w) {
                           parent && IsWindow(parent) && IsWindowVisible(parent) &&
                           (rect.right - rect.left) > 0 && (rect.bottom - rect.top) > 0;
   
-  Logger::Instance().Banner("WindowManager", "========== Summary ==========");
-  Logger::Instance().Info("WindowManager", 
+  Logger::Instance().Debug("WindowManager", "========== Summary ==========");
+  Logger::Instance().Debug("WindowManager", 
     std::string("[Diagnosis] Window should be visible: ") + (should_be_visible ? "YES" : "NO"));
   
   if (!should_be_visible) {
-    Logger::Instance().Error("WindowManager", "[Diagnosis] ❌ Visibility issues detected!");
+    Logger::Instance().Error("WindowManager", "[Diagnosis] [FAIL] Visibility issues detected!");
   } else {
-    Logger::Instance().Info("WindowManager", "[Diagnosis] ✓ Window appears to be properly configured");
+    Logger::Instance().Debug("WindowManager", "[Diagnosis] [OK] Window appears to be properly configured");
   }
   
   return should_be_visible;

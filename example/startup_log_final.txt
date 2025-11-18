@@ -1,0 +1,403 @@
+The Dart VM service is listening on http://127.0.0.1:53824/3JMIu7ELm90=/
+[AnyWP] [Plugin] Plugin initialized
+[AnyWP] [PermissionManager] Policy updated, 11 permissions granted
+[AnyWP] [Plugin] PermissionManager initialized with default policy
+[AnyWP] [FlutterBridge] Initializing FlutterBridge
+[AnyWP] [FlutterBridge] Registered 29 method handlers
+[AnyWP] [DisplayChangeCoordinator] Module initialized
+[AnyWP] [DisplayChangeCoordinator] Callbacks initialized
+[AnyWP] [InstanceManager] Module initialized
+[AnyWP] [InstanceManager] Callbacks initialized
+[AnyWP] [WindowManager] Module initialized
+[AnyWP] [Security] Added to blacklist: file:///c:/windows
+[AnyWP] [Security] Added to blacklist: file:///c:/program
+[AnyWP] [PowerSaving] [PowerSaving] Setting up power saving monitoring...
+[AnyWP] [PowerSaving] [PowerSaving] Power listener window created: 3670202
+[AnyWP] [PowerSaving] [PowerSaving] Initial session state: remote=1, locked=0
+[AnyWP] [PowerSaving] [PowerSaving] Monitoring setup complete
+[AnyWP] [PowerManager] Enabling power management
+[AnyWP] [MonitorManager] Starting display change monitoring...
+[AnyWP] [PowerManager] Fullscreen detection thread started
+[AnyWP] [MonitorManager] Listener window created: 00000000003D0336
+[AnyWP] [MouseHook] Installing low-level mouse hook...
+[AnyWP] [MouseHook] Hook installed successfully
+[AnyWP] [SDKBridge] Registered handler for: IFRAME_DATA
+[AnyWP] [SDKBridge] Registered handler for: OPEN_URL
+[AnyWP] [SDKBridge] Registered handler for: openURL
+[AnyWP] [SDKBridge] Registered handler for: READY
+[AnyWP] [SDKBridge] Registered handler for: ready
+[AnyWP] [SDKBridge] Registered handler for: LOG
+[AnyWP] [SDKBridge] Registered handler for: console_log
+[AnyWP] [SDKBridge] Registered handler for: saveState
+[AnyWP] [SDKBridge] Registered handler for: loadState
+[AnyWP] [SDKBridge] Registered handler for: clearState
+[AnyWP] [SDKBridge] Flutter callback registered
+[AnyWP] [WebViewManager] Initializing WebView2 environment...
+[AnyWP] [WebViewManager] Environment initialized successfully
+[AnyWP] [InitCoordinator] Initialization coordinator created
+[AnyWP] [InitCoordinator] WindowManager dependency set
+[AnyWP] [InitCoordinator] WebViewManager dependency set
+[AnyWP] [InitCoordinator] URLValidator dependency set
+[AnyWP] [WebViewConfig] WebView configurator created
+[AnyWP] [EventDispatcher] Module created
+[AnyWP] [EventDispatcher] Cache rebuilt: 0 entries
+[AnyWP] [EventDispatcher] Module initialized successfully
+[AnyWP] [EventDispatcher] Log throttle set to: 100
+[AnyWP] [MemoryOptimizer] Module created
+[AnyWP] [MemoryOptimizer] Initializing module...
+[AnyWP] [MemoryOptimizer] Module initialized successfully
+[AnyWP] [MemoryOptimizer] Configuration updated
+[AnyWP] [WorkerWHealthMonitor] Health monitor initialized
+[AnyWP] [WorkerWHealthMonitor] Initial Explorer PID: 33960
+[AnyWP] [WorkerWHealthMonitor] Recovery callback registered
+[AnyWP] [Plugin] All modules initialized successfully
+[AnyWP] [Plugin] Channel registered at: 2796440751216
+[AnyWP] [FlutterBridge] Method called: setApplicationName
+[AnyWP] [State] Application name set to: AnyWallpaperDemo
+[AnyWP] [FlutterBridge] Method called: getStoragePath
+[APP] Storage path: C:\Users\1\AppData\Local\AnyWPEngine\AnyWallpaperDemo
+[APP] Loading monitors...
+[APP] Monitor polling started (every 3 seconds)
+[AnyWPEngine] Setting up power state change callback
+[AnyWPEngine] Power state polling started (1000ms interval)
+[AnyWPEngine] Power state change callback setup complete
+[APP] Power state change callback registered
+[AnyWPEngine] Setting up message callback
+[AnyWPEngine] Message polling started (1 second interval)
+[AnyWPEngine] Message callback and polling setup complete
+[APP] Bidirectional communication callback set
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[APP] Found 1 monitor(s):
+[APP]   MonitorInfo(index: 0, name: \\.\DISPLAY305, 2560x1440 @ (0, 0) [PRIMARY])
+[APP] Added monitors: {0}
+[APP] Initializing UI for new monitor 0
+[APP] Monitor list updated. Total: 1
+[APP] Window event: show
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[MouseHook] *** CALLBACK FIRST CALL *** nCode=0, wParam=512
+[MouseHook] Callback #1 nCode=0, wParam=512
+[MouseHook] Callback #2 nCode=0, wParam=512
+[MouseHook] Callback #3 nCode=0, wParam=512
+[MouseHook] Callback #4 nCode=0, wParam=512
+[MouseHook] Callback #5 nCode=0, wParam=512
+[MouseHook] Callback #6 nCode=0, wParam=512
+[MouseHook] Callback #7 nCode=0, wParam=512
+[MouseHook] Callback #8 nCode=0, wParam=512
+[MouseHook] Callback #9 nCode=0, wParam=512
+[MouseHook] Callback #10 nCode=0, wParam=512
+[MouseHook] Callback #11 nCode=0, wParam=512
+[MouseHook] Callback #12 nCode=0, wParam=512
+[MouseHook] Callback #13 nCode=0, wParam=512
+[MouseHook] Callback #14 nCode=0, wParam=512
+[MouseHook] Callback #15 nCode=0, wParam=512
+[MouseHook] Callback #16 nCode=0, wParam=512
+[MouseHook] FORWARDING #1 event to WebView
+[MouseHook] Callback #17 nCode=0, wParam=512
+[MouseHook] FORWARDING #2 event to WebView
+[MouseHook] Callback #18 nCode=0, wParam=512
+[MouseHook] FORWARDING #3 event to WebView
+[MouseHook] Callback #19 nCode=0, wParam=512
+[MouseHook] FORWARDING #4 event to WebView
+[MouseHook] Callback #20 nCode=0, wParam=512
+[MouseHook] FORWARDING #5 event to WebView
+[MouseHook] FORWARDING #6 event to WebView
+[MouseHook] FORWARDING #7 event to WebView
+[APP] Auto-starting wallpaper for SDK injection test: https://hkcw-web.pages.dev/wallpapers/theme1
+[APP] Starting wallpaper on monitor 0 with URL: https://hkcw-web.pages.dev/wallpapers/theme1
+[MouseHook] FORWARDING #8 event to WebView
+[AnyWP] [FlutterBridge] Method called: initializeWallpaperOnMonitor
+[FlutterBridge] initializeWallpaperOnMonitor: enableMouseTransparent = true, monitor = 0
+[AnyWP] [Plugin] Initializing Wallpaper on Monitor 0 - URL: https://hkcw-web.pages.dev/wallpapers/theme1, Transparent: true
+[AnyWP] [InitCoordinator] Starting initialization - URL: https://hkcw-web.pages.dev/wallpapers/theme1, Transparent: true, Monitor: 0
+[AnyWP] [InitCoordinator] ============================================================
+Initialization Start
+============================================================
+[AnyWP] [InitCoordinator] URL: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [InitCoordinator] Transparent: true
+[AnyWP] [InitCoordinator] Target Monitor: \\.\DISPLAY305 [2560x1440]
+[AnyWP] [InitCoordinator] URL validated successfully: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [InitCoordinator] Finding WorkerW window...
+[AnyWP] [DesktopWallpaperHelper] Starting WorkerW search...
+[DesktopWallpaperHelper] ========== WorkerW Search Start (v2.1.5+ Enhanced) ==========
+[AnyWP] [DesktopWallpaperHelper] Progman found: 395868
+[AnyWP] [DesktopWallpaperHelper] Triggering WorkerW creation (Lively-compatible mode)
+[AnyWP] [DesktopWallpaperHelper] Sent 0x052C to Progman successfully (attempt 1/3), result: 0
+[MouseHook] FORWARDING #9 event to WebView
+[AnyWP] [DesktopWallpaperHelper] Sent 0x052C to Progman successfully (attempt 2/3), result: 0
+[MouseHook] FORWARDING #10 event to WebView
+[AnyWP] [DesktopWallpaperHelper] Sent 0x052C to Progman successfully (attempt 3/3), result: 0
+[APP] Window event: blur
+[APP] Window event: focus
+[AnyWP] [DesktopWallpaperHelper] Created and destroyed temporary trigger window (safe)
+[AnyWP] [DesktopWallpaperHelper] No WorkerW with SHELLDLL_DefView found (total WorkerW: 14)
+[AnyWP] [DesktopWallpaperHelper] SHELLDLL_DefView found in Progman, detecting desktop mode...
+[AnyWP] [DesktopWallpaperHelper] [OK] Windows 11 Raised Desktop mode detected (WS_EX_NOREDIRECTIONBITMAP)
+[AnyWP] [DesktopWallpaperHelper] [OK] Found WorkerW as CHILD of Progman: 1573984
+[AnyWP] [DesktopWallpaperHelper] WorkerW found successfully on attempt 1 (ideal case)
+[AnyWP] [InitCoordinator] WorkerW window found: 1573984
+[AnyWP] [InitCoordinator] Creating host window...
+[AnyWP] [WindowManager] Creating WebView host window...
+[AnyWP] [WindowManager] Using parent window (WorkerW): 1573984
+[AnyWP] [WindowManager] Using monitor: \\.\DISPLAY305 [2560x1440] at virtual desktop position (0,0)
+[AnyWP] [WindowManager] Creating child window: 2560x1440 at (0,0)
+[AnyWP] [WindowManager] Mouse transparent: enabled
+[AnyWP] [WindowManager] Extended styles: WS_EX_NOACTIVATE | WS_EX_TRANSPARENT (pass-through mode)
+[MouseHook] Event: 513 at (698,1417)
+[MouseHook] WindowAtPoint: 00000000000804AC ClassName: Shell_TrayWnd
+[MouseHook] Root window: 00000000000804AC Class: Shell_TrayWnd
+[MouseHook] HWND Check - window_at_point: 0, root_window: 0
+[MouseHook] is_desktop_window: 1, is_our_window: 0
+[MouseHook] [AnyWP] [EventDispatcher] Event #11: mousedown at (698,1417) target=none
+[AnyWP] [WindowManager] WebView host window created successfully: 4390998
+[AnyWP] [ResourceTracker] Tracking window: 4390998 (Total: 1)
+[AnyWP] [WindowManager] Verifying window visibility...
+[AnyWP] [WindowManager] Window validation:
+[AnyWP] [WindowManager]   - IsWindow: YES
+[AnyWP] [WindowManager]   - IsWindowVisible: YES
+[AnyWP] [WindowManager]   - Parent window: 1573984 (expected: 1573984)
+[AnyWP] [WindowManager] Parent window visible: YES
+[AnyWP] [InitCoordinator] Host window created: 4390998
+[AnyWP] [InitCoordinator] Monitor: \\.\DISPLAY305 [2560x1440]
+[AnyWP] [InitCoordinator] Setting up window Z-order...
+[AnyWP] [WindowManager] SHELLDLL_DefView found in Progman instead of WorkerW
+[AnyWP] [WindowManager] Setting Z-order: Window behind SHELLDLL_DefView (desktop icons)
+[AnyWP] [WindowManager] SHELLDLL_DefView HWND: 854730
+[AnyWP] [WindowManager] Window is child: YES
+[AnyWP] [WindowManager] Parent window: 1573984
+[AnyWP] [WindowManager] SHELLDLL_DefView parent: 395868
+[AnyWP] [WindowManager] Windows have different parents, using HWND_BOTTOM in parent's child chain
+[AnyWP] [WindowManager] [OK] Z-order set successfully: Icons on top, WebView below
+[AnyWP] [WindowManager] Z-order verification: SHELLDLL_DefView not found after window in sibling chain
+[AnyWP] [WindowManager] [OK] Window is visible after Z-order change
+[AnyWP] [InitCoordinator] Window Z-order configured
+[AnyWP] [InitCoordinator] Configuring mouse hook for mode: TRANSPARENT
+[AnyWP] [InitCoordinator] Mode: TRANSPARENT (pass-through)
+[AnyWP] [InitCoordinator] MouseHook will forward events (WebView cannot receive focus)
+[AnyWP] [InitCoordinator] Running window visibility diagnosis...
+[AnyWP] [WindowManager] [Diagnosis] SHELLDLL_DefView not found
+[AnyWP] [InitCoordinator] [OK] Window visibility verified
+[AnyWP] [InitCoordinator] Initialization completed successfully
+[AnyWP] [InitCoordinator] ============================================================
+Initialization Success
+============================================================
+[AnyWP] [InitCoordinator] Host Window: 4390998
+[AnyWP] [InitCoordinator] WorkerW Window: 1573984
+[AnyWP] [Plugin] Setting up MouseHook for event forwarding...
+[AnyWP] [Plugin] [Lifecycle] MouseHook already installed, skipping
+[AnyWP] [InstanceManager] Added instance for monitor 0 (Total: 1)
+[AnyWP] [EventDispatcher] Cache rebuilt: 1 entries
+[AnyWP] [Plugin] Saved monitor \\.\DISPLAY305 (index 0) to original configuration
+[AnyWP] [Plugin] Verifying window visibility after ShowWindow (monitor 0)...
+[AnyWP] [WindowManager] [Diagnosis] SHELLDLL_DefView not found
+[AnyWP] [Plugin] SetupWebView2WithManager called for monitor 0
+[AnyWP] [WebViewManager] Creating WebView for window: 4390998
+[AnyWP] [Plugin] Verifying window styles for monitor 0
+[AnyWP] [Plugin] Window HWND: 4390998
+[AnyWP] [Plugin] User selected: TRANSPARENT (pass-through)
+[AnyWP] [WindowManager] SetInteractive(false): Adding WS_EX_TRANSPARENT
+[AnyWP] [WindowManager] Interactive mode: DISABLED
+[AnyWP] [WindowManager] Window interactive mode changed to false
+[AnyWP] [Plugin] [OK] Window set to TRANSPARENT mode - mouse pass-through enabled
+[AnyWP] [Plugin] Set default wallpaper URL for auto-start: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [Plugin] [Lifecycle] Starting WorkerW health monitoring (first multi-monitor instance)...
+[AnyWP] [WorkerWHealthMonitor] Starting WorkerW health monitoring (interval: 5000ms)
+[AnyWP] [WorkerWHealthMonitor] Health monitor started successfully
+[AnyWP] [AnyWPEngine] WorkerW health monitoring started (monitor 0)
+[AnyWP] [Plugin] WorkerW health monitoring active (check interval: 5s)
+[AnyWP] [Plugin] Initialization Complete (Monitor 0)
+[AnyWP] [WorkerWHealthMonitor] Monitor thread started
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[APP] Wallpaper started on monitor 0
+[AnyWP] [iframe] GetIframeAtPointInVector: checking (698,1417) against 0 iframes
+[AnyWP] [iframe]   No match found
+[AnyWP] [EventDispatcher] Event #13: mouseup at (698,1417) target=found
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[APP] Window event: blur
+[AnyWP] [WebViewManager] Controller created successfully
+[AnyWP] [WebViewManager] WebView configured successfully
+[AnyWP] [Plugin] WebView created successfully via WebViewManager
+[AnyWP] [WebViewConfig] Starting WebView configuration...
+[AnyWP] [WebViewConfig] Setting up permission handlers...
+[AnyWP] [WebViewConfig] Permission handlers configured
+[AnyWP] [WebViewConfig] Security handlers will be configured separately
+[AnyWP] [WebViewConfig] Setting up console listener...
+[AnyWP] [WebViewConfig] Console listener configured
+[AnyWP] [WebViewConfig] Registering anywp:// custom protocol
+[AnyWP] [CustomSchemeHandler] Initialize - Registering anywp:// protocol
+[AnyWP] [CustomSchemeHandler] Successfully registered anywp:// protocol
+[AnyWP] [WebViewConfig] Successfully registered anywp:// custom protocol
+[AnyWP] [WebViewConfig] WebView configuration completed
+[AnyWP] [WebViewConfig] Setting up security handlers...
+[AnyWP] [WebViewConfig] Security handlers configured
+[AnyWP] [API] [API] Setting up message bridge...
+[AnyWP] [API] [API] Message bridge ready
+[AnyWP] [SDKBridge] WebView set
+[AnyWP] [SDKBridge] Injecting AnyWallpaper SDK...
+[AnyWP] [SDK] Loaded embedded SDK successfully (82436 bytes)
+[AnyWP] [SDK] Using embedded SDK (from DLL resource)
+[AnyWP] [SDKBridge] SDK loaded successfully (size: 82436 bytes)
+[AnyWP] [SDKBridge] SDK script size: 82436 bytes
+[AnyWP] [SDKBridge] Attempting to inject SDK into current page...
+[AnyWP] [WebViewManager] Navigation started: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [Plugin] WebView setup completed successfully
+[AnyWP] [WebViewConfig] Navigation allowed: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [WebViewConfig] Navigation allowed: https://hkcw-web.pages.dev/wallpapers/theme1/
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"Setting up WebMessage listener (EARLY)"}],"executionContextId":1,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupWebMessageListener","lineNumber":1294,"scriptId":"7","url":""},{"columnNumber":19,"functionName":"","lineNumber":1949,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763464513237926e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"WebMessage listener setup complete (EARLY)"}],"executionContextId":1,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupWebMessageListener","lineNumber":1297,"scriptId":"7","url":""},{"columnNumber":19,"functionName":"","lineNumber":1949,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763464513238003e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] Initializing SDK for the first time"}],"executionContextId":1,"stackTrace":{"callFrames":[{"columnNumber":20,"functionName":"","lineNumber":1957,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763464513238023e+12,"type":"info"} 
+[AnyWP] [SDKBridge] SDK executed successfully on current page
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"Setting up WebMessage listener (EARLY)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupWebMessageListener","lineNumber":1294,"scriptId":"7","url":""},{"columnNumber":19,"functionName":"","lineNumber":1949,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763464513242807e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"WebMessage listener setup complete (EARLY)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupWebMessageListener","lineNumber":1297,"scriptId":"7","url":""},{"columnNumber":19,"functionName":"","lineNumber":1949,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763464513242865e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] Initializing SDK for the first time"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":20,"functionName":"","lineNumber":1957,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763464513242884e+12,"type":"info"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] SDK loaded successfully"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":20,"functionName":"","lineNumber":1967,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763464513242902e+12,"type":"info"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"Log level set to:"},{"type":"string","value":"INFO"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":17,"functionName":"setLevel","lineNumber":1032,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initLogger","lineNumber":1168,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"initializeAnyWP","lineNumber":1639,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513252503e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"========================================"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1640,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.76346451325256e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"AnyWP Engine v2.1.10 (Simple Mode)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1641,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513252593e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"========================================"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1642,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513252618e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"Screen: 2560x1440"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1643,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513252645e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"DPI Scale: 1x"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1644,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513252674e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"========================================"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1645,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.7634645132527e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] Events setup completed"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":20,"functionName":"setup","lineNumber":242,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1648,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513252811e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Wallpaper controller initialized successfully"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"initWallpaperController","lineNumber":985,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"initializeAnyWP","lineNumber":1650,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513252947e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"Setting up Flutter message listener"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupFlutterMessageListener","lineNumber":1592,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"initializeAnyWP","lineNumber":1654,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513253015e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"Flutter message listener setup complete"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupFlutterMessageListener","lineNumber":1609,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"initializeAnyWP","lineNumber":1654,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513253063e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"Bidirectional communication enabled (Flutter ￢ﾆﾔ JavaScript)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1657,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513253089e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"Debug mode ENABLED automatically"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1660,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763464513253117e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"✅ AnyWP SDK 已加载:"},{"type":"string","value":"2.1.10"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"init","lineNumber":201,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"}]},"timestamp":1.763464513253292e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP][SW] 注册成功:"},{"type":"string","value":"/sw.js"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":26,"functionName":"","lineNumber":31,"scriptId":"8","url":"https://hkcw-web.pages.dev/wallpapers/wallpaper_utils.js"}]},"timestamp":1.763464513284554e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] Refreshed 0 elements"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"refreshBounds","lineNumber":664,"scriptId":"7","url":""},{"columnNumber":33,"functionName":"","lineNumber":232,"scriptId":"7","url":""}]},"timestamp":1.76346451346872e+12,"type":"log"} 
+[AnyWP] [Plugin] Navigation completed - injecting SDK
+[AnyWP] [Plugin] Loading SDK script for injection...
+[AnyWP] [SDK] Loaded embedded SDK successfully (82436 bytes)
+[AnyWP] [SDK] Using embedded SDK (from DLL resource)
+[AnyWP] [API] SDK loaded successfully (size: 82436 bytes)
+[AnyWP] [Plugin] SDK script loaded (82436 bytes), injecting...
+[AnyWP] [Plugin] SDK injection completed successfully
+[AnyWP] [WorkerWHealthMonitor] Already monitoring, stopping previous monitor first
+[AnyWP] [WorkerWHealthMonitor] Stopping health monitor...
+[AnyWP] [WorkerWHealthMonitor] Monitor thread exiting
+[AnyWP] [WorkerWHealthMonitor] Health monitor stopped
+[AnyWP] [WorkerWHealthMonitor] Starting WorkerW health monitoring (interval: 5000ms)
+[AnyWP] [WorkerWHealthMonitor] Health monitor started successfully
+[AnyWP] [WorkerW Recovery] Health monitoring started after wallpaper initialization
+[AnyWP] [WorkerW Recovery] Health monitoring started
+[AnyWP] [Plugin] Monitor 0 interaction mode: DISABLED
+[AnyWP] [MemoryOptimizer] Starting memory optimization...
+[AnyWP] [WorkerWHealthMonitor] Monitor thread started
+[AnyWP] [MemoryOptimizer] WebView cache cleared via script
+[AnyWP] [MemoryOptimizer] Working set trimmed successfully
+[AnyWP] [MemoryOptimizer] Memory optimization complete. Before: 229 MB, After: 1 MB, Freed: 228 MB
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[WARN]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"WebMessage listener already registered (EARLY), skipping duplicate"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":25,"functionName":"console.warn","lineNumber":168,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"warn","lineNumber":1078,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"warn","lineNumber":1119,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"setupWebMessageListener","lineNumber":1291,"scriptId":"7","url":""},{"columnNumber":19,"functionName":"","lineNumber":1949,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763464513603576e+12,"type":"warning"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] SDK already loaded, skipping re-initialization"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":20,"functionName":"","lineNumber":1953,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763464513603681e+12,"type":"info"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] This is expected when C++ plugin injects SDK multiple times"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":20,"functionName":"","lineNumber":1954,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763464513603696e+12,"type":"info"} 
+[AnyWP] [WebViewManager] SDK injected successfully
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[C++] Event dispatched, AnyWP.interactionEnabled ="},{"type":"boolean","value":true}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":238,"functionName":"","lineNumber":0,"scriptId":"11","url":""},{"columnNumber":400,"functionName":"","lineNumber":0,"scriptId":"11","url":""}]},"timestamp":1.763464513658887e+12,"type":"log"} 
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] SDK verification: SDK loaded successfully, version:"},{"type":"string","value":"2.1.10"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":80,"functionName":"","lineNumber":0,"scriptId":"9","url":""}]},"timestamp":1.763464514255161e+12,"type":"log"} 
+[AnyWP] [SDKBridge] Received message: "{\"type\":\"sdkReady\",\"version\":\"2.1.10\"}"
+[AnyWP] [SDKBridge] Unknown message type (showing raw): "{\"type\":\"sdkReady\",\"version\":\"2.1.10\"}"
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [EventDispatcher] Event #48: mousedown at (734,1419) target=found
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] mousedown at (734,1419)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"handleMouseDown","lineNumber":915,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464516330889e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"[DOMDispatch] mousedown dispatched to"},{"type":"string","value":"document"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"handleClickEvent","lineNumber":1509,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464516331064e+12,"type":"log"} 
+[AnyWP] [iframe] GetIframeAtPointInVector: checking (734,1419) against 0 iframes
+[AnyWP] [iframe]   No match found
+[AnyWP] [EventDispatcher] Event #50: mouseup at (734,1419) target=found
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] mouseup at (734,1419)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"handleMouseUp","lineNumber":925,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464516465027e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] === Restoring Transparency ==="}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":937,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"handleMouseUp","lineNumber":927,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464516465163e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Last mouse position: (734,1419)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":938,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"handleMouseUp","lineNumber":927,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464516465199e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Waiting 1 frame for event completion..."}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":940,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"handleMouseUp","lineNumber":927,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.76346451646524e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"[DOMDispatch] mouseup dispatched to"},{"type":"string","value":"document"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"handleClickEvent","lineNumber":1512,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464516465304e+12,"type":"log"} 
+[APP] Window event: focus
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Waiting 1 frame for style update..."}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":947,"scriptId":"7","url":""}]},"timestamp":1.763464516478244e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Forcing mouseover event..."}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":950,"scriptId":"7","url":""}]},"timestamp":1.763464516509799e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] forceMouseOverEvent(734, 1419) called"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":833,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.76346451651035e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Target element: VIDEO"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":843,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.763464516511121e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] MouseEvent dispatched: true"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":858,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.763464516511264e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] [OK] Mouseover events dispatched successfully"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":865,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.763464516511336e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] [OK] Transparency restore sequence complete"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":952,"scriptId":"7","url":""}]},"timestamp":1.763464516511428e+12,"type":"log"} 
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [EventDispatcher] Event #145: mousedown at (557,1420) target=found
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] mousedown at (557,1420)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"handleMouseDown","lineNumber":915,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464521138231e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"[DOMDispatch] mousedown dispatched to"},{"type":"string","value":"document"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"handleClickEvent","lineNumber":1509,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464521138373e+12,"type":"log"} 
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [iframe] GetIframeAtPointInVector: checking (557,1420) against 0 iframes
+[AnyWP] [iframe]   No match found
+[AnyWP] [EventDispatcher] Event #147: mouseup at (557,1420) target=found
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] mouseup at (557,1420)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"handleMouseUp","lineNumber":925,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464521269718e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] === Restoring Transparency ==="}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":937,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"handleMouseUp","lineNumber":927,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464521269864e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Last mouse position: (557,1420)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":938,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"handleMouseUp","lineNumber":927,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464521269928e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Waiting 1 frame for event completion..."}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":940,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"handleMouseUp","lineNumber":927,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464521270004e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"[DOMDispatch] mouseup dispatched to"},{"type":"string","value":"document"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"handleClickEvent","lineNumber":1512,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464521270081e+12,"type":"log"} 
+[APP] Window event: blur
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Waiting 1 frame for style update..."}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":947,"scriptId":"7","url":""}]},"timestamp":1.763464521290561e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Forcing mouseover event..."}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":950,"scriptId":"7","url":""}]},"timestamp":1.763464521321483e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] forceMouseOverEvent(557, 1420) called"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":833,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.763464521321637e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Target element: VIDEO"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":843,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.763464521322104e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] MouseEvent dispatched: true"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":858,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.763464521322181e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] [OK] Mouseover events dispatched successfully"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":865,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.763464521322216e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] [OK] Transparency restore sequence complete"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":952,"scriptId":"7","url":""}]},"timestamp":1.763464521322239e+12,"type":"log"} 
+[AnyWP] [EventDispatcher] Event #173: mousedown at (639,1353) target=found
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] mousedown at (639,1353)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"handleMouseDown","lineNumber":915,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464521915884e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"[DOMDispatch] mousedown dispatched to"},{"type":"string","value":"document"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"handleClickEvent","lineNumber":1509,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.76346452191601e+12,"type":"log"} 
+[AnyWP] [iframe] GetIframeAtPointInVector: checking (640,1353) against 0 iframes
+[AnyWP] [iframe]   No match found
+[AnyWP] [EventDispatcher] Event #177: mouseup at (640,1353) target=found
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] mouseup at (640,1353)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"handleMouseUp","lineNumber":925,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464522019372e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] === Restoring Transparency ==="}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":937,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"handleMouseUp","lineNumber":927,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464522019564e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Last mouse position: (640,1353)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":938,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"handleMouseUp","lineNumber":927,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464522019638e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Waiting 1 frame for event completion..."}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":940,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"handleMouseUp","lineNumber":927,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.76346452201973e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"[DOMDispatch] mouseup dispatched to"},{"type":"string","value":"document"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"handleClickEvent","lineNumber":1512,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763464522019891e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Waiting 1 frame for style update..."}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":947,"scriptId":"7","url":""}]},"timestamp":1.763464522040519e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Forcing mouseover event..."}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":950,"scriptId":"7","url":""}]},"timestamp":1.763464522072141e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] forceMouseOverEvent(640, 1353) called"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":833,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.76346452207242e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Target element: VIDEO"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":843,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.763464522073315e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] MouseEvent dispatched: true"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":858,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.763464522073461e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] [OK] Mouseover events dispatched successfully"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"forceMouseOverEvent","lineNumber":865,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"restoreTransparency","lineNumber":951,"scriptId":"7","url":""}]},"timestamp":1.763464522073627e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] [OK] Transparency restore sequence complete"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"restoreTransparency","lineNumber":952,"scriptId":"7","url":""}]},"timestamp":1.763464522073751e+12,"type":"log"} 
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages

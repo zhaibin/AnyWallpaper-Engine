@@ -179,13 +179,13 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
       // Structure: Progman -> SHELLDLL_DefView + WorkerW (both as children)
       // WorkerW is a CHILD of Progman, not a sibling!
       Logger::Instance().Info("DesktopWallpaperHelper", 
-        "✨ Windows 11 Raised Desktop mode detected (WS_EX_NOREDIRECTIONBITMAP)");
+        "[OK] Windows 11 Raised Desktop mode detected (WS_EX_NOREDIRECTIONBITMAP)");
       
       HWND child_workerw = FindWindowExW(info_.progman, nullptr, L"WorkerW", nullptr);
       if (child_workerw) {
         info_.wallpaper_layer = child_workerw;
         Logger::Instance().Info("DesktopWallpaperHelper", 
-          "✅ Found WorkerW as CHILD of Progman: " + 
+          "[OK] Found WorkerW as CHILD of Progman: " + 
           std::to_string((long long)child_workerw));
       } else {
         info_.wallpaper_layer = info_.progman;
@@ -202,7 +202,7 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
       if (next_workerw) {
         info_.wallpaper_layer = next_workerw;
         Logger::Instance().Info("DesktopWallpaperHelper", 
-          "✅ Found WorkerW as SIBLING of Progman: " + 
+          "[OK] Found WorkerW as SIBLING of Progman: " + 
           std::to_string((long long)next_workerw));
       } else {
         info_.wallpaper_layer = info_.progman;

@@ -114,7 +114,6 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   
   // v2.0.0+ Phase2: Initialize FlutterBridge module
   flutter_bridge_ = std::make_unique<FlutterBridge>(this);
-  Logger::Instance().Info("Plugin", "FlutterBridge module initialized");
   
   // v2.0.0+ Phase2: Initialize DisplayChangeCoordinator module
   display_change_coordinator_ = std::make_unique<DisplayChangeCoordinator>();
@@ -126,7 +125,6 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
       &wallpaper_instances_,
       &instances_mutex_
   );
-  Logger::Instance().Info("Plugin", "DisplayChangeCoordinator module initialized");
   
   // v2.0.0+ Phase2: Initialize InstanceManager module
   instance_manager_ = std::make_unique<InstanceManager>();
@@ -141,11 +139,9 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
       &monitors_,
       &instances_mutex_
   );
-  Logger::Instance().Info("Plugin", "InstanceManager module initialized");
   
   // v2.0.0+ Phase2: Initialize WindowManager module
   window_manager_ = std::make_unique<WindowManager>();
-  Logger::Instance().Info("Plugin", "WindowManager module initialized");
   
   // v2.0.1+ Refactoring: Initialize StatePersistence module (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
   TRY_CATCH_INIT_MODULE("StatePersistence", {
@@ -214,7 +210,6 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     
     // CRITICAL: Enable PowerManager to start power monitoring
     power_manager_->Enable(true);
-    Logger::Instance().Info("PowerManager", "Enabled and monitoring started");
   });
   
   // Initialize MonitorManager module (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
@@ -229,7 +224,6 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     
     // CRITICAL: Start monitoring for display changes
     monitor_manager_->StartMonitoring();
-    Logger::Instance().Info("MonitorManager", "Monitoring started");
   });
   
   // Initialize MouseHookManager module (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
@@ -322,12 +316,7 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     });
     
     // CRITICAL: Install mouse hook to start capturing events
-    bool hook_installed = mouse_hook_manager_->Install();
-    if (hook_installed) {
-      Logger::Instance().Info("MouseHookManager", "Hook installed successfully");
-    } else {
-      Logger::Instance().Warning("MouseHookManager", "Hook installation failed");
-    }
+    mouse_hook_manager_->Install();
   });
   
   // Initialize IframeDetector module (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
@@ -370,13 +359,10 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     sdk_bridge_->RegisterHandler("clearState", [this](const std::string& msg) {
       HandleClearStateWebMessage(msg);
     });
-    Logger::Instance().Info("Refactor", "Registered 9 message handlers with SDKBridge");
-    
     // v2.1.0+ Bidirectional Communication: Set Flutter callback for message forwarding
     sdk_bridge_->SetFlutterCallback([this](const std::string& message) {
       this->NotifyFlutterMessage(message);
     });
-    Logger::Instance().Info("SDKBridge", "Flutter callback connected for bidirectional communication");
   });
   
   // Initialize WebViewManager module (v1.4.1+ Phase A) (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
@@ -410,7 +396,6 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     event_dispatcher_ = std::make_unique<EventDispatcher>();
     event_dispatcher_->Initialize(&wallpaper_instances_, &monitors_, &instances_mutex_);
     event_dispatcher_->SetLogThrottle(100);  // Log every 100 mousemove events
-    Logger::Instance().Info("EventDispatcher", "Module initialized with log throttle=100");
   });
   
   // ========== v2.1.0+ Refactoring: Initialize MemoryOptimizer module ==========
@@ -427,8 +412,6 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     config.trim_working_set = true;
     config.log_operations = true;
     memory_optimizer_->SetOptimizationConfig(config);
-    
-    Logger::Instance().Info("MemoryOptimizer", "Module initialized with auto-optimization (threshold=250MB)");
   });
   
   // ========== v2.3.1+ Enhancement: Initialize WorkerWHealthMonitor module ==========
@@ -440,9 +423,10 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
       Logger::Instance().Warning("WorkerWHealthMonitor", "Recovery callback triggered");
       this->RecoverWorkerW();
     });
-    
-    Logger::Instance().Info("WorkerWHealthMonitor", "Module initialized (monitoring will start after wallpaper initialization)");
   });
+  
+  // v2.3.2+: Initialization complete
+  Logger::Instance().Info("Plugin", "All modules initialized successfully");
 }
 
 AnyWPEnginePlugin::~AnyWPEnginePlugin() {
@@ -454,10 +438,8 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   
   // v2.3.2+: Cleanup WorkerWHealthMonitor module (no need to call StopMonitoring, already stopped in StopWallpaper)
   if (workerw_health_monitor_) {
-    Logger::Instance().Info("Refactor", "Cleaning up WorkerWHealthMonitor module...");
     try {
       workerw_health_monitor_.reset();
-      Logger::Instance().Info("Refactor", "WorkerWHealthMonitor module cleaned up successfully");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("WorkerWHealthMonitor", "Shutdown", 
         "Failed to cleanup WorkerWHealthMonitor", 
@@ -473,11 +455,9 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   
   // Cleanup MemoryOptimizer module
   if (memory_optimizer_) {
-    Logger::Instance().Info("Refactor", "Cleaning up MemoryOptimizer module...");
     try {
       memory_optimizer_->Shutdown();
       memory_optimizer_.reset();
-      Logger::Instance().Info("Refactor", "MemoryOptimizer module cleaned up successfully");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("MemoryOptimizer", "Shutdown", 
         "Failed to cleanup MemoryOptimizer", 
@@ -493,11 +473,9 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   
   // Cleanup PowerManager module
   if (power_manager_) {
-    Logger::Instance().Info("Refactor", "Cleaning up PowerManager module...");
     try {
       power_manager_->Enable(false);
       power_manager_.reset();
-      Logger::Instance().Info("Refactor", "PowerManager module cleaned up successfully");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("PowerManager", "Shutdown", 
         "Failed to cleanup PowerManager", 
@@ -513,11 +491,9 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   
   // Cleanup MonitorManager module
   if (monitor_manager_) {
-    Logger::Instance().Info("Refactor", "Cleaning up MonitorManager module...");
     try {
       monitor_manager_->StopMonitoring();
       monitor_manager_.reset();
-      Logger::Instance().Info("Refactor", "MonitorManager module cleaned up successfully");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("MonitorManager", "Shutdown", 
         "Failed to cleanup MonitorManager", 
@@ -534,10 +510,8 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   // ========== v1.4.0+ Refactoring: Cleanup MouseHookManager module ==========
   // v2.3.2+: No need to call Uninstall(), already done in StopWallpaper()
   if (mouse_hook_manager_) {
-    Logger::Instance().Info("Refactor", "Cleaning up MouseHookManager module...");
     try {
       mouse_hook_manager_.reset();
-      Logger::Instance().Info("Refactor", "MouseHookManager module cleaned up successfully");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("MouseHookManager", "Shutdown", 
         "Failed to cleanup MouseHookManager", 
@@ -553,10 +527,8 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   
   // ========== v1.4.0+ Refactoring: Cleanup IframeDetector module ==========
   if (iframe_detector_) {
-    Logger::Instance().Info("Refactor", "Cleaning up IframeDetector module...");
     try {
       iframe_detector_.reset();
-      Logger::Instance().Info("Refactor", "IframeDetector module cleaned up successfully");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("IframeDetector", "Shutdown", 
         "Failed to cleanup IframeDetector", 
@@ -572,10 +544,8 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   
   // ========== v1.4.1+ Phase A: Cleanup WebViewManager module ==========
   if (webview_manager_) {
-    Logger::Instance().Info("Refactor", "Cleaning up WebViewManager module...");
     try {
       webview_manager_.reset();
-      Logger::Instance().Info("Refactor", "WebViewManager module cleaned up successfully");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("WebViewManager", "Shutdown", 
         "Failed to cleanup WebViewManager", 
@@ -591,10 +561,8 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   
   // ========== v1.4.0+ Refactoring: Cleanup SDKBridge module ==========
   if (sdk_bridge_) {
-    Logger::Instance().Info("Refactor", "Cleaning up SDKBridge module...");
     try {
       sdk_bridge_.reset();
-      Logger::Instance().Info("Refactor", "SDKBridge module cleaned up successfully");
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("SDKBridge", "Shutdown", 
         "Failed to cleanup SDKBridge", 
@@ -2191,7 +2159,7 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
   
   // Verify window styles based on user's mode selection
   if (new_instance.webview_host_hwnd && window_manager_) {
-    Logger::Instance().Banner("Plugin", "========== Verifying Window Styles ==========");
+    Logger::Instance().Info("Plugin", "Verifying window styles for monitor " + std::to_string(monitor_index));
     Logger::Instance().Info("Plugin", 
       "Window HWND: " + std::to_string(reinterpret_cast<uintptr_t>(new_instance.webview_host_hwnd)));
     Logger::Instance().Info("Plugin", 
@@ -2247,7 +2215,6 @@ bool AnyWPEnginePlugin::InitializeWallpaperOnMonitor(const std::string& url, boo
         ErrorHandler::ErrorCategory::EXTERNAL_API, 
         ErrorHandler::ErrorLevel::ERROR);
     }
-    Logger::Instance().Banner("Plugin", "================================================================");
   }
   
   // Save URL as default
@@ -2960,8 +2927,7 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
     }
   }
 
-  Logger::Instance().Banner("PowerSaving", "[PowerSaving] ========== PAUSING WALLPAPER ==========");
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Current power state: " + power_state_str);
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Pausing wallpaper, state: " + power_state_str);
   Logger::Instance().Info("PowerSaving", "[PowerSaving] Reason: " + reason);
   
   // Execute pause scripts for all scenarios (fullscreen, lock screen, etc.)
@@ -3054,8 +3020,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     return false;
   }
   
-  Logger::Instance().Banner("PowerSaving", "[PowerSaving] ========== RESTORING LOST WALLPAPER ==========");
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Re-initializing wallpaper with URL: " + url);
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Restoring lost wallpaper with URL: " + url);
   
   // Save current URL and use ORIGINAL monitor configuration
   std::vector<int> saved_monitor_indices;
@@ -3217,8 +3182,7 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     }
   }
 
-  Logger::Instance().Banner("PowerSaving", "[PowerSaving] ========== RESUMING WALLPAPER ==========");
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Current power state: " + power_state_str);
+  Logger::Instance().Info("PowerSaving", "[PowerSaving] Resuming wallpaper, state: " + power_state_str);
   Logger::Instance().Info("PowerSaving", "[PowerSaving] Reason: " + reason);
   if (force_reinit) {
     Logger::Instance().Info("PowerSaving", "[PowerSaving] Force reinitialize: YES (session switch)");
@@ -3495,8 +3459,7 @@ void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
 // ========== v2.3.1+ Enhancement: WorkerW Recovery ==========
 
 void AnyWPEnginePlugin::RecoverWorkerW() {
-  Logger::Instance().Warning("AnyWPEngine", "WorkerW recovery initiated (Lively-style full recreate)");
-  Logger::Instance().Banner("WorkerW Recovery", "[WorkerW Recovery] ========== Starting WorkerW Recovery (Full Recreate) ==========");
+  Logger::Instance().Warning("WorkerW Recovery", "Starting WorkerW recovery (Lively-style full recreate)");
   
   try {
     // v2.3.1+ Lively-style Recovery: Complete wallpaper recreation
@@ -3603,8 +3566,7 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     
     Logger::Instance().Warning("WorkerW Recovery", 
       "Wallpaper recreation message sent to Flutter: " + recreate_message);
-    Logger::Instance().Info("WorkerW Recovery", "Wallpaper recreation message sent to Flutter");
-    Logger::Instance().Banner("WorkerW Recovery", "[WorkerW Recovery] ========== Recovery Completed (Message Sent) ==========");
+    Logger::Instance().Info("WorkerW Recovery", "Recovery completed, message sent to Flutter");
     
   } catch (const std::exception& e) {
     Logger::Instance().Error("WorkerW Recovery", 
@@ -3619,7 +3581,6 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
 // v2.3.1+ New method: Re-parent recovery for non-destroyed windows
 void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
   Logger::Instance().Info("WorkerW Recovery", "Starting re-parent recovery");
-  Logger::Instance().Banner("WorkerW Recovery", "[WorkerW Recovery] ========== Starting Re-parent Recovery ==========");
   
   try {
     // Find new WorkerW
@@ -3799,7 +3760,6 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
     }
     
     Logger::Instance().Info("WorkerW Recovery", "Recovery completed successfully");
-    Logger::Instance().Banner("WorkerW Recovery", "[WorkerW Recovery] ========== Recovery Completed ==========");
     
   } catch (const std::exception& e) {
     Logger::Instance().Error("WorkerW Recovery", 

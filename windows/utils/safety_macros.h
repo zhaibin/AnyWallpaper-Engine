@@ -215,17 +215,18 @@
   } while(0)
 
 // v2.0+ Phase 5.3: Specialized macro for module initialization
+// v2.3.2+: Module init logs moved to DEBUG level, errors remain at ERROR level
 #define TRY_CATCH_INIT_MODULE(module_name, init_code) \
   do { \
     try { \
       init_code \
-      anywp_engine::Logger::Instance().Info("Refactor", \
-        module_name " module initialized successfully"); \
+      anywp_engine::Logger::Instance().Debug("Plugin", \
+        module_name " module initialized"); \
     } catch (const std::exception& e) { \
-      anywp_engine::Logger::Instance().Error("Refactor", \
+      anywp_engine::Logger::Instance().Error("Plugin", \
         std::string("Failed to initialize " module_name ": ") + e.what()); \
     } catch (...) { \
-      anywp_engine::Logger::Instance().Error("Refactor", \
+      anywp_engine::Logger::Instance().Error("Plugin", \
         "Unknown exception initializing " module_name); \
     } \
   } while(0)
