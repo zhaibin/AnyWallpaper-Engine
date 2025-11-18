@@ -245,7 +245,6 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
 
 bool DesktopWallpaperHelper::FindWorkerW(int timeout_ms) {
   Logger::Instance().Info("DesktopWallpaperHelper", "Starting WorkerW search...");
-  std::cout << "[DesktopWallpaperHelper] ========== WorkerW Search Start (v2.1.5+ Enhanced) ==========" << std::endl;
   
   // Step 1: Find Progman
   if (!FindProgman()) {

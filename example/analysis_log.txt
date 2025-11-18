@@ -1,0 +1,354 @@
+The Dart VM service is listening on http://127.0.0.1:49633/7cgWLfg66zI=/
+[AnyWP] [Plugin] Plugin initialized
+[AnyWP] [PermissionManager] Policy updated, 11 permissions granted
+[AnyWP] [Plugin] PermissionManager initialized with default policy
+[AnyWP] [FlutterBridge] Initializing FlutterBridge
+[AnyWP] [FlutterBridge] Registered 29 method handlers
+[AnyWP] [DisplayChangeCoordinator] Module initialized
+[AnyWP] [DisplayChangeCoordinator] Callbacks initialized
+[AnyWP] [InstanceManager] Module initialized
+[AnyWP] [InstanceManager] Callbacks initialized
+[AnyWP] [WindowManager] Module initialized
+[AnyWP] [Security] Added to blacklist: file:///c:/windows
+[AnyWP] [Security] Added to blacklist: file:///c:/program
+[AnyWP] [PowerSaving] [PowerSaving] Setting up power saving monitoring...
+[AnyWP] [PowerSaving] [PowerSaving] Power listener window created: 1575646
+[AnyWP] [PowerSaving] [PowerSaving] Initial session state: remote=1, locked=0
+[AnyWP] [PowerSaving] [PowerSaving] Monitoring setup complete
+[AnyWP] [PowerManager] Enabling power management
+[AnyWP] [MonitorManager] Starting display change monitoring...
+[AnyWP] [PowerManager] Fullscreen detection thread started
+[AnyWP] [MonitorManager] Listener window created: 00000000002100B2
+[AnyWP] [MouseHook] Installing low-level mouse hook...
+[AnyWP] [MouseHook] Hook installed successfully
+[AnyWP] [SDKBridge] Registered handler for: IFRAME_DATA
+[AnyWP] [SDKBridge] Registered handler for: OPEN_URL
+[AnyWP] [SDKBridge] Registered handler for: openURL
+[AnyWP] [SDKBridge] Registered handler for: READY
+[AnyWP] [SDKBridge] Registered handler for: ready
+[AnyWP] [SDKBridge] Registered handler for: LOG
+[AnyWP] [SDKBridge] Registered handler for: console_log
+[AnyWP] [SDKBridge] Registered handler for: saveState
+[AnyWP] [SDKBridge] Registered handler for: loadState
+[AnyWP] [SDKBridge] Registered handler for: clearState
+[AnyWP] [SDKBridge] Flutter callback registered
+[AnyWP] [WebViewManager] Initializing WebView2 environment...
+[AnyWP] [WebViewManager] Environment initialized successfully
+[AnyWP] [InitCoordinator] Initialization coordinator created
+[AnyWP] [InitCoordinator] WindowManager dependency set
+[AnyWP] [InitCoordinator] WebViewManager dependency set
+[AnyWP] [InitCoordinator] URLValidator dependency set
+[AnyWP] [WebViewConfig] WebView configurator created
+[AnyWP] [EventDispatcher] Module created
+[AnyWP] [EventDispatcher] Cache rebuilt: 0 entries
+[AnyWP] [EventDispatcher] Module initialized successfully
+[AnyWP] [EventDispatcher] Log throttle set to: 100
+[AnyWP] [MemoryOptimizer] Module created
+[AnyWP] [MemoryOptimizer] Initializing module...
+[AnyWP] [MemoryOptimizer] Module initialized successfully
+[AnyWP] [MemoryOptimizer] Configuration updated
+[AnyWP] [WorkerWHealthMonitor] Health monitor initialized
+[AnyWP] [WorkerWHealthMonitor] Initial Explorer PID: 33960
+[AnyWP] [WorkerWHealthMonitor] Recovery callback registered
+[AnyWP] [Plugin] All modules initialized successfully
+[AnyWP] [Plugin] Channel registered at: 2506238317360
+[AnyWP] [FlutterBridge] Method called: setApplicationName
+[AnyWP] [State] Application name set to: AnyWallpaperDemo
+[AnyWP] [FlutterBridge] Method called: getStoragePath
+[APP] Storage path: C:\Users\1\AppData\Local\AnyWPEngine\AnyWallpaperDemo
+[APP] Loading monitors...
+[APP] Monitor polling started (every 3 seconds)
+[AnyWPEngine] Setting up power state change callback
+[AnyWPEngine] Power state polling started (1000ms interval)
+[AnyWPEngine] Power state change callback setup complete
+[APP] Power state change callback registered
+[AnyWPEngine] Setting up message callback
+[AnyWPEngine] Message polling started (1 second interval)
+[AnyWPEngine] Message callback and polling setup complete
+[APP] Bidirectional communication callback set
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[APP] Found 1 monitor(s):
+[APP]   MonitorInfo(index: 0, name: \\.\DISPLAY305, 2560x1440 @ (0, 0) [PRIMARY])
+[APP] Added monitors: {0}
+[APP] Initializing UI for new monitor 0
+[APP] Monitor list updated. Total: 1
+[MouseHook] *** CALLBACK FIRST CALL *** nCode=0, wParam=512
+[MouseHook] Callback #1 nCode=0, wParam=512
+[MouseHook] Callback #2 nCode=0, wParam=512
+[MouseHook] Callback #3 nCode=0, wParam=512
+[MouseHook] Callback #4 nCode=0, wParam=512
+[APP] Window event: show
+[MouseHook] Callback #5 nCode=0, wParam=512
+[MouseHook] Callback #6 nCode=0, wParam=512
+[MouseHook] Callback #7 nCode=0, wParam=512
+[MouseHook] Callback #8 nCode=0, wParam=512
+[MouseHook] Callback #9 nCode=0, wParam=512
+[MouseHook] Callback #10 nCode=0, wParam=512
+[MouseHook] Callback #11 nCode=0, wParam=512
+[MouseHook] Callback #12 nCode=0, wParam=512
+[MouseHook] Callback #13 nCode=0, wParam=512
+[MouseHook] Callback #14 nCode=0, wParam=512
+[MouseHook] Callback #15 nCode=0, wParam=512
+[MouseHook] Callback #16 nCode=0, wParam=512
+[MouseHook] Callback #17 nCode=0, wParam=512
+[MouseHook] Callback #18 nCode=0, wParam=512
+[MouseHook] Callback #19 nCode=0, wParam=512
+[MouseHook] Callback #20 nCode=0, wParam=512
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[MouseHook] Callback #30 nCode=0, wParam=512
+[MouseHook] Callback #40 nCode=0, wParam=512
+[MouseHook] Callback #50 nCode=0, wParam=512
+[MouseHook] Event: 512 at (1661,385)
+[MouseHook] WindowAtPoint: 0000000000390946 ClassName: FLUTTERVIEW
+[MouseHook] Root window: 00000000001B045C Class: FLUTTER_RUNNER_WIN32_WINDOW
+[MouseHook] HWND Check - window_at_point: 0, root_window: 0
+[MouseHook] is_desktop_window: 0, is_our_window: 0
+[MouseHook] BLOCKED - is_app_window = true, mouse button not down
+[MouseHook] Callback #60 nCode=0, wParam=512
+[MouseHook] Callback #70 nCode=0, wParam=512
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[APP] Auto-starting wallpaper for SDK injection test: https://hkcw-web.pages.dev/wallpapers/theme1
+[APP] Starting wallpaper on monitor 0 with URL: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: initializeWallpaperOnMonitor
+[FlutterBridge] initializeWallpaperOnMonitor: enableMouseTransparent = true, monitor = 0
+[AnyWP] [Plugin] Initializing Wallpaper on Monitor 0 - URL: https://hkcw-web.pages.dev/wallpapers/theme1, Transparent: true
+[AnyWP] [InitCoordinator] Starting initialization - URL: https://hkcw-web.pages.dev/wallpapers/theme1, Transparent: true, Monitor: 0
+[AnyWP] [InitCoordinator] ============================================================
+Initialization Start
+============================================================
+[AnyWP] [InitCoordinator] URL: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [InitCoordinator] Transparent: true
+[AnyWP] [InitCoordinator] Target Monitor: \\.\DISPLAY305 [2560x1440]
+[AnyWP] [InitCoordinator] URL validated successfully: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [InitCoordinator] Finding WorkerW window...
+[AnyWP] [DesktopWallpaperHelper] Starting WorkerW search...
+[DesktopWallpaperHelper] ========== WorkerW Search Start (v2.1.5+ Enhanced) ==========
+[AnyWP] [DesktopWallpaperHelper] Progman found: 395868
+[AnyWP] [DesktopWallpaperHelper] Triggering WorkerW creation (Lively-compatible mode)
+[AnyWP] [DesktopWallpaperHelper] Sent 0x052C to Progman successfully (attempt 1/3), result: 0
+[AnyWP] [DesktopWallpaperHelper] Sent 0x052C to Progman successfully (attempt 2/3), result: 0
+[AnyWP] [DesktopWallpaperHelper] Sent 0x052C to Progman successfully (attempt 3/3), result: 0
+[APP] Window event: blur
+[AnyWP] [DesktopWallpaperHelper] Created and destroyed temporary trigger window (safe)
+[AnyWP] [DesktopWallpaperHelper] No WorkerW with SHELLDLL_DefView found (total WorkerW: 14)
+[AnyWP] [DesktopWallpaperHelper] SHELLDLL_DefView found in Progman, detecting desktop mode...
+[AnyWP] [DesktopWallpaperHelper] [OK] Windows 11 Raised Desktop mode detected (WS_EX_NOREDIRECTIONBITMAP)
+[AnyWP] [DesktopWallpaperHelper] [OK] Found WorkerW as CHILD of Progman: 1573984
+[AnyWP] [DesktopWallpaperHelper] WorkerW found successfully on attempt 1 (ideal case)
+[AnyWP] [InitCoordinator] WorkerW window found: 1573984
+[AnyWP] [InitCoordinator] Creating host window...
+[AnyWP] [WindowManager] Creating WebView host window...
+[AnyWP] [WindowManager] Using parent window (WorkerW): 1573984
+[AnyWP] [WindowManager] Using monitor: \\.\DISPLAY305 [2560x1440] at virtual desktop position (0,0)
+[AnyWP] [WindowManager] Creating child window: 2560x1440 at (0,0)
+[AnyWP] [WindowManager] Mouse transparent: enabled
+[AnyWP] [WindowManager] Extended styles: WS_EX_NOACTIVATE | WS_EX_TRANSPARENT (pass-through mode)
+[AnyWP] [WindowManager] WebView host window created successfully: 5769512
+[AnyWP] [ResourceTracker] Tracking window: 5769512 (Total: 1)
+[AnyWP] [WindowManager] Verifying window visibility...
+[AnyWP] [WindowManager] Window validation:
+[AnyWP] [WindowManager]   - IsWindow: YES
+[AnyWP] [WindowManager]   - IsWindowVisible: YES
+[AnyWP] [WindowManager]   - Parent window: 1573984 (expected: 1573984)
+[AnyWP] [WindowManager] Parent window visible: YES
+[AnyWP] [InitCoordinator] Host window created: 5769512
+[AnyWP] [InitCoordinator] Monitor: \\.\DISPLAY305 [2560x1440]
+[AnyWP] [InitCoordinator] Setting up window Z-order...
+[AnyWP] [WindowManager] SHELLDLL_DefView found in Progman instead of WorkerW
+[AnyWP] [WindowManager] Setting Z-order: Window behind SHELLDLL_DefView (desktop icons)
+[AnyWP] [WindowManager] SHELLDLL_DefView HWND: 854730
+[AnyWP] [WindowManager] Window is child: YES
+[AnyWP] [WindowManager] Parent window: 1573984
+[AnyWP] [WindowManager] SHELLDLL_DefView parent: 395868
+[AnyWP] [WindowManager] Windows have different parents, using HWND_BOTTOM in parent's child chain
+[AnyWP] [WindowManager] [OK] Z-order set successfully: Icons on top, WebView below
+[AnyWP] [WindowManager] Z-order verification: SHELLDLL_DefView not found after window in sibling chain
+[AnyWP] [WindowManager] [OK] Window is visible after Z-order change
+[AnyWP] [InitCoordinator] Window Z-order configured
+[AnyWP] [InitCoordinator] Configuring mouse hook for mode: TRANSPARENT
+[AnyWP] [InitCoordinator] Mode: TRANSPARENT (pass-through)
+[AnyWP] [InitCoordinator] MouseHook will forward events (WebView cannot receive focus)
+[AnyWP] [InitCoordinator] Running window visibility diagnosis...
+[AnyWP] [WindowManager] [Diagnosis] SHELLDLL_DefView not found
+[AnyWP] [InitCoordinator] [OK] Window visibility verified
+[AnyWP] [InitCoordinator] Initialization completed successfully
+[AnyWP] [InitCoordinator] ============================================================
+Initialization Success
+============================================================
+[AnyWP] [InitCoordinator] Host Window: 5769512
+[AnyWP] [InitCoordinator] WorkerW Window: 1573984
+[AnyWP] [Plugin] Setting up MouseHook for event forwarding...
+[AnyWP] [Plugin] [Lifecycle] MouseHook already installed, skipping
+[AnyWP] [InstanceManager] Added instance for monitor 0 (Total: 1)
+[AnyWP] [EventDispatcher] Cache rebuilt: 1 entries
+[AnyWP] [Plugin] Saved monitor \\.\DISPLAY305 (index 0) to original configuration
+[AnyWP] [Plugin] Verifying window visibility after ShowWindow (monitor 0)...
+[AnyWP] [WindowManager] [Diagnosis] SHELLDLL_DefView not found
+[AnyWP] [Plugin] SetupWebView2WithManager called for monitor 0
+[AnyWP] [WebViewManager] Creating WebView for window: 5769512
+[AnyWP] [Plugin] Verifying window styles for monitor 0
+[AnyWP] [Plugin] Window HWND: 5769512
+[AnyWP] [Plugin] User selected: TRANSPARENT (pass-through)
+[AnyWP] [WindowManager] SetInteractive(false): Adding WS_EX_TRANSPARENT
+[AnyWP] [WindowManager] Interactive mode: DISABLED
+[AnyWP] [WindowManager] Window interactive mode changed to false
+[AnyWP] [Plugin] [OK] Window set to TRANSPARENT mode - mouse pass-through enabled
+[AnyWP] [Plugin] Set default wallpaper URL for auto-start: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [Plugin] [Lifecycle] Starting WorkerW health monitoring (first multi-monitor instance)...
+[AnyWP] [WorkerWHealthMonitor] Starting WorkerW health monitoring (interval: 5000ms)
+[AnyWP] [WorkerWHealthMonitor] Health monitor started successfully
+[AnyWP] [AnyWPEngine] WorkerW health monitoring started (monitor 0)
+[AnyWP] [Plugin] WorkerW health monitoring active (check interval: 5s)
+[AnyWP] [WorkerWHealthMonitor] Monitor thread started
+[AnyWP] [Plugin] Initialization Complete (Monitor 0)
+[MouseHook] Event: 513 at (1763,331)
+[MouseHook] WindowAtPoint: 0000000000390946 ClassName: FLUTTERVIEW
+[MouseHook] Root window: 00000000001B045C Class: FLUTTER_RUNNER_WIN32_WINDOW
+[MouseHook] HWND Check - window_at_point: 0, root_window: 0
+[MouseHook] is_desktop_window: 0, is_our_window: 0
+[MouseHook] [AnyWP] [EventDispatcher] Event #0: mousedown at (1763,331) target=found
+[APP] Wallpaper started on monitor 0
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [WebViewManager] Controller created successfully
+[AnyWP] [WebViewManager] WebView configured successfully
+[AnyWP] [Plugin] WebView created successfully via WebViewManager
+[AnyWP] [WebViewConfig] Starting WebView configuration...
+[AnyWP] [WebViewConfig] Setting up permission handlers...
+[AnyWP] [WebViewConfig] Permission handlers configured
+[AnyWP] [WebViewConfig] Security handlers will be configured separately
+[AnyWP] [WebViewConfig] Setting up console listener...
+[AnyWP] [WebViewConfig] Console listener configured
+[AnyWP] [WebViewConfig] Registering anywp:// custom protocol
+[AnyWP] [CustomSchemeHandler] Initialize - Registering anywp:// protocol
+[AnyWP] [CustomSchemeHandler] Successfully registered anywp:// protocol
+[AnyWP] [WebViewConfig] Successfully registered anywp:// custom protocol
+[AnyWP] [WebViewConfig] WebView configuration completed
+[AnyWP] [WebViewConfig] Setting up security handlers...
+[AnyWP] [WebViewConfig] Security handlers configured
+[AnyWP] [API] [API] Setting up message bridge...
+[AnyWP] [API] [API] Message bridge ready
+[AnyWP] [SDKBridge] WebView set
+[AnyWP] [SDKBridge] Injecting AnyWallpaper SDK...
+[AnyWP] [SDK] Loaded embedded SDK successfully (82436 bytes)
+[AnyWP] [SDK] Using embedded SDK (from DLL resource)
+[AnyWP] [SDKBridge] SDK loaded successfully (size: 82436 bytes)
+[AnyWP] [SDKBridge] SDK script size: 82436 bytes
+[AnyWP] [SDKBridge] Attempting to inject SDK into current page...
+[AnyWP] [WebViewManager] Navigation started: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [Plugin] WebView setup completed successfully
+[AnyWP] [WebViewConfig] Navigation allowed: https://hkcw-web.pages.dev/wallpapers/theme1
+[AnyWP] [WebViewConfig] Navigation allowed: https://hkcw-web.pages.dev/wallpapers/theme1/
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"Setting up WebMessage listener (EARLY)"}],"executionContextId":1,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupWebMessageListener","lineNumber":1294,"scriptId":"7","url":""},{"columnNumber":19,"functionName":"","lineNumber":1949,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763465128962381e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"WebMessage listener setup complete (EARLY)"}],"executionContextId":1,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupWebMessageListener","lineNumber":1297,"scriptId":"7","url":""},{"columnNumber":19,"functionName":"","lineNumber":1949,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763465128962448e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] Initializing SDK for the first time"}],"executionContextId":1,"stackTrace":{"callFrames":[{"columnNumber":20,"functionName":"","lineNumber":1957,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763465128962476e+12,"type":"info"} 
+[AnyWP] [SDKBridge] SDK executed successfully on current page
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"Setting up WebMessage listener (EARLY)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupWebMessageListener","lineNumber":1294,"scriptId":"7","url":""},{"columnNumber":19,"functionName":"","lineNumber":1949,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763465128970401e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"WebMessage listener setup complete (EARLY)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupWebMessageListener","lineNumber":1297,"scriptId":"7","url":""},{"columnNumber":19,"functionName":"","lineNumber":1949,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763465128970465e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] Initializing SDK for the first time"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":20,"functionName":"","lineNumber":1957,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763465128970483e+12,"type":"info"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] SDK loaded successfully"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":20,"functionName":"","lineNumber":1967,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763465128970502e+12,"type":"info"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"Log level set to:"},{"type":"string","value":"INFO"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":17,"functionName":"setLevel","lineNumber":1032,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initLogger","lineNumber":1168,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"initializeAnyWP","lineNumber":1639,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128980818e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"========================================"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1640,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128980888e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"AnyWP Engine v2.1.10 (Simple Mode)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1641,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128980925e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"========================================"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1642,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128980949e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"Screen: 2560x1440"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1643,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128980975e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"DPI Scale: 1x"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1644,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128981001e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"========================================"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1645,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128981032e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] Events setup completed"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":20,"functionName":"setup","lineNumber":242,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1648,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128981158e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] Wallpaper controller initialized successfully"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"initWallpaperController","lineNumber":985,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"initializeAnyWP","lineNumber":1650,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128981299e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"Setting up Flutter message listener"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupFlutterMessageListener","lineNumber":1592,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"initializeAnyWP","lineNumber":1654,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128981374e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"Flutter message listener setup complete"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"setupFlutterMessageListener","lineNumber":1609,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"initializeAnyWP","lineNumber":1654,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128981421e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"Bidirectional communication enabled (Flutter ￢ﾆﾔ JavaScript)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1657,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.763465128981452e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"Debug mode ENABLED automatically"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":15,"functionName":"initializeAnyWP","lineNumber":1660,"scriptId":"7","url":""},{"columnNumber":8,"functionName":"AnyWP._init","lineNumber":1881,"scriptId":"7","url":""},{"columnNumber":26,"functionName":"","lineNumber":1961,"scriptId":"7","url":""}]},"timestamp":1.76346512898148e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"✅ AnyWP SDK 已加载:"},{"type":"string","value":"2.1.10"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"init","lineNumber":201,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"}]},"timestamp":1.763465128981656e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP][SW] 注册成功:"},{"type":"string","value":"/sw.js"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":26,"functionName":"","lineNumber":31,"scriptId":"8","url":"https://hkcw-web.pages.dev/wallpapers/wallpaper_utils.js"}]},"timestamp":1.763465129014282e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] Refreshed 0 elements"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"refreshBounds","lineNumber":664,"scriptId":"7","url":""},{"columnNumber":33,"functionName":"","lineNumber":232,"scriptId":"7","url":""}]},"timestamp":1.763465129198189e+12,"type":"log"} 
+[AnyWP] [Plugin] Navigation completed - injecting SDK
+[AnyWP] [Plugin] Loading SDK script for injection...
+[AnyWP] [SDK] Loaded embedded SDK successfully (82436 bytes)
+[AnyWP] [SDK] Using embedded SDK (from DLL resource)
+[AnyWP] [API] SDK loaded successfully (size: 82436 bytes)
+[AnyWP] [Plugin] SDK script loaded (82436 bytes), injecting...
+[AnyWP] [Plugin] SDK injection completed successfully
+[AnyWP] [WorkerWHealthMonitor] Already monitoring, stopping previous monitor first
+[AnyWP] [WorkerWHealthMonitor] Stopping health monitor...
+[AnyWP] [WorkerWHealthMonitor] Monitor thread exiting
+[AnyWP] [WorkerWHealthMonitor] Health monitor stopped
+[AnyWP] [WorkerWHealthMonitor] Starting WorkerW health monitoring (interval: 5000ms)
+[AnyWP] [WorkerWHealthMonitor] Health monitor started successfully
+[AnyWP] [WorkerW Recovery] Health monitoring started after wallpaper initialization
+[AnyWP] [WorkerW Recovery] Health monitoring started
+[AnyWP] [Plugin] Monitor 0 interaction mode: DISABLED
+[AnyWP] [WorkerWHealthMonitor] Monitor thread started
+[AnyWP] [MemoryOptimizer] Starting memory optimization...
+[AnyWP] [MemoryOptimizer] WebView cache cleared via script
+[AnyWP] [MemoryOptimizer] Working set trimmed successfully
+[AnyWP] [MemoryOptimizer] Memory optimization complete. Before: 227 MB, After: 1 MB, Freed: 226 MB
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[WARN]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"WebMessage listener already registered (EARLY), skipping duplicate"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":25,"functionName":"console.warn","lineNumber":168,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"warn","lineNumber":1078,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"warn","lineNumber":1119,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"setupWebMessageListener","lineNumber":1291,"scriptId":"7","url":""},{"columnNumber":19,"functionName":"","lineNumber":1949,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763465129378774e+12,"type":"warning"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] SDK already loaded, skipping re-initialization"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":20,"functionName":"","lineNumber":1953,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763465129378877e+12,"type":"info"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] This is expected when C++ plugin injects SDK multiple times"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":20,"functionName":"","lineNumber":1954,"scriptId":"7","url":""},{"columnNumber":2,"functionName":"","lineNumber":1975,"scriptId":"7","url":""}]},"timestamp":1.763465129378894e+12,"type":"info"} 
+[AnyWP] [WebViewManager] SDK injected successfully
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[C++] Event dispatched, AnyWP.interactionEnabled ="},{"type":"boolean","value":true}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":238,"functionName":"","lineNumber":0,"scriptId":"11","url":""},{"columnNumber":400,"functionName":"","lineNumber":0,"scriptId":"11","url":""}]},"timestamp":1.76346512939808e+12,"type":"log"} 
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] SDK verification: SDK loaded successfully, version:"},{"type":"string","value":"2.1.10"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":80,"functionName":"","lineNumber":0,"scriptId":"9","url":""}]},"timestamp":1.763465129985263e+12,"type":"log"} 
+[AnyWP] [SDKBridge] Received message: "{\"type\":\"sdkReady\",\"version\":\"2.1.10\"}"
+[AnyWP] [SDKBridge] Unknown message type (showing raw): "{\"type\":\"sdkReady\",\"version\":\"2.1.10\"}"
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [EventDispatcher] Event #1: mousedown at (931,830) target=found
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP] [Wallpaper] mousedown at (931,830)"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"log","lineNumber":149,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"AnyWP._log","lineNumber":1888,"scriptId":"7","url":""},{"columnNumber":14,"functionName":"handleMouseDown","lineNumber":915,"scriptId":"7","url":""},{"columnNumber":21,"functionName":"handleClickEvent","lineNumber":1505,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763465132960812e+12,"type":"log"} 
+[AnyWP] [WebView Console] {"args":[{"type":"string","value":"[AnyWP]"},{"type":"string","value":"[INFO]"},{"type":"string","value":"[WebMessage]"},{"type":"string","value":"[DOMDispatch] mousedown dispatched to"},{"type":"string","value":"document"}],"executionContextId":2,"stackTrace":{"callFrames":[{"columnNumber":24,"functionName":"console.log","lineNumber":160,"scriptId":"10","url":"https://hkcw-web.pages.dev/wallpapers/theme1/"},{"columnNumber":24,"functionName":"info","lineNumber":1086,"scriptId":"7","url":""},{"columnNumber":24,"functionName":"info","lineNumber":1122,"scriptId":"7","url":""},{"columnNumber":18,"functionName":"handleClickEvent","lineNumber":1509,"scriptId":"7","url":""},{"columnNumber":12,"functionName":"handleMouseEvent","lineNumber":1383,"scriptId":"7","url":""},{"columnNumber":16,"functionName":"handleWebMessage","lineNumber":1324,"scriptId":"7","url":""},{"columnNumber":30237,"functionName":"","lineNumber":0,"scriptId":"6","url":""}]},"timestamp":1.763465132960978e+12,"type":"log"} 
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getMonitors
+[AnyWP] [MonitorManager] Found 1 monitor(s)
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages
+[AnyWP] [FlutterBridge] Method called: getPendingPowerStateChanges
+[AnyWP] [FlutterBridge] Method called: getPendingMessages

@@ -238,37 +238,29 @@ bool InitializationCoordinator::ValidateWindowHandle(HWND hwnd) {
 }
 
 void InitializationCoordinator::LogInitializationStart(const InitConfig& config) {
-  Logger::Instance().Info("InitCoordinator", 
-    "Starting initialization - URL: " + config.url + 
+  // v2.3.2+: Simplified initialization logging
+  std::string log = "Starting initialization - URL: " + config.url + 
     ", Transparent: " + (config.enable_mouse_transparent ? "true" : "false") +
-    ", Monitor: " + std::to_string(config.monitor_index));
-  
-  Logger::Instance().Banner("InitCoordinator", "Initialization Start");
-  Logger::Instance().Info("InitCoordinator", "URL: " + config.url);
-  Logger::Instance().Info("InitCoordinator", std::string("Transparent: ") + (config.enable_mouse_transparent ? "true" : "false"));
+    ", Monitor: " + std::to_string(config.monitor_index);
   
   if (config.monitor) {
-    Logger::Instance().Info("InitCoordinator", 
-      "Target Monitor: " + std::string(config.monitor->device_name) + 
-      " [" + std::to_string(config.monitor->width) + "x" + std::to_string(config.monitor->height) + "]");
-  } else {
-    Logger::Instance().Info("InitCoordinator", "Mode: Single-monitor (legacy)");
+    log += " (" + std::string(config.monitor->device_name) + 
+      " [" + std::to_string(config.monitor->width) + "x" + std::to_string(config.monitor->height) + "])";
   }
+  
+  Logger::Instance().Info("InitCoordinator", log);
 }
 
 void InitializationCoordinator::LogInitializationSuccess(const InitResult& result) {
-  Logger::Instance().Info("InitCoordinator", "Initialization completed successfully");
-  
-  Logger::Instance().Banner("InitCoordinator", "Initialization Success");
-  Logger::Instance().Info("InitCoordinator", "Host Window: " + std::to_string(reinterpret_cast<uintptr_t>(result.host_window)));
-  Logger::Instance().Info("InitCoordinator", "WorkerW Window: " + std::to_string(reinterpret_cast<uintptr_t>(result.worker_w_window)));
+  // v2.3.2+: Simplified success logging
+  Logger::Instance().Info("InitCoordinator", 
+    "Initialization completed - Host Window: " + std::to_string(reinterpret_cast<uintptr_t>(result.host_window)) +
+    ", WorkerW: " + std::to_string(reinterpret_cast<uintptr_t>(result.worker_w_window)));
 }
 
 void InitializationCoordinator::LogInitializationFailure(const InitResult& result) {
+  // v2.3.2+: Simplified failure logging
   Logger::Instance().Error("InitCoordinator", "Initialization failed: " + result.error_message);
-  
-  Logger::Instance().Banner("InitCoordinator", "Initialization Failed");
-  Logger::Instance().Error("InitCoordinator", "Error: " + result.error_message);
 }
 
 }  // namespace anywp_engine

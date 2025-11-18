@@ -1055,7 +1055,7 @@ void AnyWPEnginePlugin::SetupMessageBridge(ICoreWebView2* webview) {
   ICoreWebView2* target_webview = webview ? webview : webview_.Get();
   if (!target_webview) return;
   
-  Logger::Instance().Info("API", "[API] Setting up message bridge...");
+  Logger::Instance().Info("API", "Setting up message bridge...");
   
   target_webview->add_WebMessageReceived(
     Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>(
@@ -1082,14 +1082,14 @@ void AnyWPEnginePlugin::SetupMessageBridge(ICoreWebView2* webview) {
         return S_OK;
       }).Get(), nullptr);
   
-  Logger::Instance().Info("API", "[API] Message bridge ready");
+  Logger::Instance().Info("API", "Message bridge ready");
 }
 
 // API Bridge: Handle messages from web
 // Phase B Refactoring: Simplified dispatcher delegates to specialized handlers
 // v1.4.1+ Phase D: Delegate message handling to SDKBridge
 void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
-  Logger::Instance().Debug("API", "[API] Received message: " + message);
+  Logger::Instance().Debug("API", "Received message: " + message);
   
   if (sdk_bridge_) {
     sdk_bridge_->HandleMessage(message);
@@ -1109,7 +1109,7 @@ void AnyWPEnginePlugin::HandleIframeDataWebMessage(const std::string& message) {
   // Use first instance for now (TODO: improve for multi-monitor)
   if (!wallpaper_instances_.empty()) {
     target_instance = &wallpaper_instances_[0];
-    Logger::Instance().Debug("API", "[API] Using wallpaper instance for iframe data");
+    Logger::Instance().Debug("API", "Using wallpaper instance for iframe data");
   }
   
   HandleIframeDataMessage(message, target_instance);
@@ -1122,7 +1122,7 @@ void AnyWPEnginePlugin::HandleOpenUrlWebMessage(const std::string& message) {
   size_t url_end = message.find("\"", url_start);
   if (url_start != std::string::npos && url_end != std::string::npos) {
     std::string url = message.substr(url_start, url_end - url_start);
-    Logger::Instance().Info("API", "[API] Opening URL: " + url);
+    Logger::Instance().Info("API", "Opening URL: " + url);
     
     // Open URL using ShellExecute
     std::wstring wurl(url.begin(), url.end());
@@ -1137,7 +1137,7 @@ void AnyWPEnginePlugin::HandleReadyWebMessage(const std::string& message) {
   size_t name_end = message.find("\"", name_start);
   if (name_start != std::string::npos && name_end != std::string::npos) {
     std::string name = message.substr(name_start, name_end - name_start);
-    Logger::Instance().Info("API", "[API] Wallpaper ready: " + name);
+    Logger::Instance().Info("API", "Wallpaper ready: " + name);
   }
 }
 
@@ -2572,7 +2572,7 @@ std::vector<std::pair<std::string, std::string>> AnyWPEnginePlugin::GetPendingPo
 
 // Setup power saving monitoring
 void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Setting up power saving monitoring...");
+  Logger::Instance().Info("PowerSaving", "Setting up power saving monitoring...");
   
   // Register window class for power events
   WNDCLASSEXW wc = {0};
@@ -2584,7 +2584,7 @@ void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
   if (!RegisterClassExW(&wc)) {
     DWORD error = GetLastError();
     if (error != ERROR_CLASS_ALREADY_EXISTS) {
-      Logger::Instance().Error("PowerSaving", "[PowerSaving] Failed to register window class: " + std::to_string(error));
+      Logger::Instance().Error("PowerSaving", "Failed to register window class: " + std::to_string(error));
       return;
     }
   }
@@ -2627,13 +2627,13 @@ void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
   if (power_listener_hwnd_) {
     ShowWindow(power_listener_hwnd_, SW_HIDE);
     Logger::Instance().Info("PowerSaving", 
-      "[PowerSaving] Power listener window created: " + std::to_string(reinterpret_cast<uintptr_t>(power_listener_hwnd_)));
+      "Power listener window created: " + std::to_string(reinterpret_cast<uintptr_t>(power_listener_hwnd_)));
     
     // Register for session change notifications (lock/unlock)
     WTSRegisterSessionNotification(power_listener_hwnd_, NOTIFY_FOR_THIS_SESSION);
     
   } else {
-    Logger::Instance().Error("PowerSaving", "[PowerSaving] Failed to create listener window: " + std::to_string(GetLastError()));
+    Logger::Instance().Error("PowerSaving", "Failed to create listener window: " + std::to_string(GetLastError()));
   }
   
   // Initialize session state flags
@@ -2641,17 +2641,17 @@ void AnyWPEnginePlugin::SetupPowerSavingMonitoring() {
   is_session_locked_.store(false);  // Assume unlocked at startup
   
   Logger::Instance().Info("PowerSaving", 
-    "[PowerSaving] Initial session state: remote=" + std::to_string(is_remote_session_.load()) + 
+    "Initial session state: remote=" + std::to_string(is_remote_session_.load()) + 
     ", locked=" + std::to_string(is_session_locked_.load()));
   
   // Note: Fullscreen detection is started by PowerManager::Enable() after initialization
   
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Monitoring setup complete");
+  Logger::Instance().Info("PowerSaving", "Monitoring setup complete");
 }
 
 // Cleanup power saving monitoring
 void AnyWPEnginePlugin::CleanupPowerSavingMonitoring() {
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Cleaning up monitoring...");
+  Logger::Instance().Info("PowerSaving", "Cleaning up monitoring...");
   
   // Note: Fullscreen detection is stopped by PowerManager destructor
   
@@ -2674,7 +2674,7 @@ void AnyWPEnginePlugin::CleanupPowerSavingMonitoring() {
     power_listener_hwnd_ = nullptr;
   }
   
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Cleanup complete");
+  Logger::Instance().Info("PowerSaving", "Cleanup complete");
 }
 
 // Power saving window procedure
@@ -2807,17 +2807,17 @@ LRESULT CALLBACK AnyWPEnginePlugin::PowerSavingWndProc(HWND hwnd, UINT message, 
       // Power state changed
       switch (wParam) {
         case PBT_APMSUSPEND:
-          Logger::Instance().Info("PowerSaving", "[PowerSaving] System SUSPENDING");
+          Logger::Instance().Info("PowerSaving", "System SUSPENDING");
           display_change_instance_->PauseWallpaper("SUSPEND");
           break;
         case PBT_APMRESUMEAUTOMATIC:
         case PBT_APMRESUMESUSPEND:
-          Logger::Instance().Info("PowerSaving", "[PowerSaving] System RESUMING");
+          Logger::Instance().Info("PowerSaving", "System RESUMING");
           display_change_instance_->ResumeWallpaper("SUSPEND");
           break;
         case PBT_APMPOWERSTATUSCHANGE:
           // Check if monitor is off
-          Logger::Instance().Info("PowerSaving", "[PowerSaving] Power status changed");
+          Logger::Instance().Info("PowerSaving", "Power status changed");
           display_change_instance_->UpdatePowerState();
           break;
       }
@@ -2927,8 +2927,8 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
     }
   }
 
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Pausing wallpaper, state: " + power_state_str);
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Reason: " + reason);
+  Logger::Instance().Info("PowerSaving", "Pausing wallpaper, state: " + power_state_str);
+  Logger::Instance().Info("PowerSaving", "Reason: " + reason);
   
   // Execute pause scripts for all scenarios (fullscreen, lock screen, etc.)
   if (power_manager_) {
@@ -2940,16 +2940,16 @@ void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
   // Light memory trim
   SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
   
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Wallpaper paused - last frame frozen");
+  Logger::Instance().Info("PowerSaving", "Wallpaper paused - last frame frozen");
 }
 
 // v1.4.1+ Phase G: Validate wallpaper windows state
 bool AnyWPEnginePlugin::ValidateWallpaperWindows() {
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Verifying wallpaper window state...");
+  Logger::Instance().Info("PowerSaving", "Verifying wallpaper window state...");
   
   // Check single-monitor mode
   if (webview_host_hwnd_) {
-    Logger::Instance().Info("PowerSaving", "[PowerSaving] Single-monitor mode detected");
+    Logger::Instance().Info("PowerSaving", "Single-monitor mode detected");
     Logger::Instance().Debug("PowerSaving", 
       "[PowerSaving] WebView window: " + std::to_string(reinterpret_cast<uintptr_t>(webview_host_hwnd_)));
     Logger::Instance().Debug("PowerSaving", 
@@ -2975,7 +2975,7 @@ bool AnyWPEnginePlugin::ValidateWallpaperWindows() {
       return false;  // Need reinitialize
     }
     
-    Logger::Instance().Info("PowerSaving", "[PowerSaving] [OK] Window valid, parent relationship OK");
+    Logger::Instance().Info("PowerSaving", "[OK] Window valid, parent relationship OK");
   }
   
   // Check multi-monitor mode
@@ -3020,7 +3020,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     return false;
   }
   
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Restoring lost wallpaper with URL: " + url);
+  Logger::Instance().Info("PowerSaving", "Restoring lost wallpaper with URL: " + url);
   
   // Save current URL and use ORIGINAL monitor configuration
   std::vector<int> saved_monitor_indices;
@@ -3047,7 +3047,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     
     // Fallback: if no original config, try current instances
     if (saved_monitor_devices.empty()) {
-      Logger::Instance().Info("PowerSaving", "[PowerSaving] No original config, using current instances");
+      Logger::Instance().Info("PowerSaving", "No original config, using current instances");
       for (const auto& instance : wallpaper_instances_) {
         // Find device name for this instance's monitor index
         for (const auto& monitor : monitors_) {
@@ -3074,11 +3074,11 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     "[PowerSaving] Will restore " + std::to_string(saved_monitor_indices.size()) + " monitor(s)");
   
   // CRITICAL: Always stop existing wallpaper before recreating
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Stopping existing wallpaper (if any)...");
+  Logger::Instance().Info("PowerSaving", "Stopping existing wallpaper (if any)...");
   StopWallpaper();
   
   // CRITICAL: Re-enumerate monitors before rebuilding (session may have different monitors)
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Re-enumerating monitors for current session...");
+  Logger::Instance().Info("PowerSaving", "Re-enumerating monitors for current session...");
   GetMonitors();
   Logger::Instance().Info("PowerSaving", 
     "[PowerSaving] Current session has " + std::to_string(monitors_.size()) + " monitor(s)");
@@ -3150,7 +3150,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     InitializeWallpaperOnMonitor(url, use_transparent, 0);
   }
   
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Wallpaper restoration complete");
+  Logger::Instance().Info("PowerSaving", "Wallpaper restoration complete");
   
   // Set power state to active
   power_state_ = PowerState::ACTIVE;
@@ -3182,10 +3182,10 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     }
   }
 
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Resuming wallpaper, state: " + power_state_str);
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Reason: " + reason);
+  Logger::Instance().Info("PowerSaving", "Resuming wallpaper, state: " + power_state_str);
+  Logger::Instance().Info("PowerSaving", "Reason: " + reason);
   if (force_reinit) {
-    Logger::Instance().Info("PowerSaving", "[PowerSaving] Force reinitialize: YES (session switch)");
+    Logger::Instance().Info("PowerSaving", "Force reinitialize: YES (session switch)");
   }
   
   // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
@@ -3211,7 +3211,7 @@ void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_re
     });
   }
   
-  Logger::Instance().Info("PowerSaving", "[PowerSaving] Wallpaper resumed - animations restarted");
+  Logger::Instance().Info("PowerSaving", "Wallpaper resumed - animations restarted");
 }
 
 // Optimize memory usage (delegated to PowerManager)
@@ -3406,7 +3406,7 @@ void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
     " (" + PowerStateToString(last_power_state_) + ")");
   
   if (newState == power_state_) {
-    Logger::Instance().Debug("PowerSaving", "[PowerSaving] No change detected, returning early");
+    Logger::Instance().Debug("PowerSaving", "No change detected, returning early");
     return;  // No change
   }
   

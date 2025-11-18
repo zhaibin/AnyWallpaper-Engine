@@ -168,8 +168,8 @@ void FlutterBridge::HandleInitializeWallpaper(
 
   bool enable_transparent = GetBoolArgument(args, "enableMouseTransparent", false);  // Default: false (interactive mode)
   
-  std::cout << "[FlutterBridge] initializeWallpaper: enableMouseTransparent = " 
-            << (enable_transparent ? "true" : "false") << std::endl;
+  Logger::Instance().Debug("FlutterBridge", 
+    std::string("initializeWallpaper: enableMouseTransparent = ") + (enable_transparent ? "true" : "false"));
 
   // Call plugin method
   bool success = plugin_->InitializeWithRetry(url, enable_transparent, 3);
@@ -265,9 +265,9 @@ void FlutterBridge::HandleInitializeWallpaperOnMonitor(
 
   bool enable_transparent = GetBoolArgument(args, "enableMouseTransparent", false);  // Default: false (interactive mode)
   
-  std::cout << "[FlutterBridge] initializeWallpaperOnMonitor: enableMouseTransparent = " 
-            << (enable_transparent ? "true" : "false") 
-            << ", monitor = " << monitor_index << std::endl;
+  Logger::Instance().Debug("FlutterBridge", 
+    "initializeWallpaperOnMonitor: enableMouseTransparent = " + 
+    std::string(enable_transparent ? "true" : "false") + ", monitor = " + std::to_string(monitor_index));
 
   bool success = plugin_->InitializeWallpaperOnMonitor(url, enable_transparent, monitor_index);
   result->Success(flutter::EncodableValue(success));
