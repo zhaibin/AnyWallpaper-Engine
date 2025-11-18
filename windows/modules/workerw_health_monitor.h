@@ -110,6 +110,12 @@ public:
    * 是否正在监控
    */
   bool IsMonitoring() const;
+  
+  /**
+   * v2.3.1+ 设置定期强制刷新间隔（检查次数）
+   * @param interval 每多少次检查触发一次强制刷新（默认30次 = 约150秒）
+   */
+  void SetForceRefreshInterval(int interval);
 
 private:
   // WorkerW 句柄

@@ -3401,11 +3401,24 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
         if (window_manager_) {
           window_manager_->SetWallpaperZOrder(webview_host_hwnd_, new_workerw);
         }
+        
+        // v2.3.1+ Important: Force UI refresh for WebView2 thread synchronization
+        // SetParent may not immediately update if WebView2 is on different thread
+        UpdateWindow(webview_host_hwnd_);
+        InvalidateRect(webview_host_hwnd_, nullptr, TRUE);
+        
+        Logger::Instance().Debug("WorkerW Recovery", "Forced UI refresh for WebView2 sync");
       } else {
         DWORD error = GetLastError();
         Logger::Instance().Error("WorkerW Recovery", 
           "Failed to re-parent single-monitor wallpaper: error " + std::to_string(error));
         std::cout << "[AnyWP] [WorkerW Recovery] ERROR: Failed to re-parent, error: " << error << std::endl;
+        
+        // v2.3.1+ Check if it's a permission issue
+        if (error == ERROR_ACCESS_DENIED) {
+          Logger::Instance().Warning("WorkerW Recovery", 
+            "Access denied - may require administrator privileges or Explorer policy blocking");
+        }
       }
     }
     
@@ -3428,11 +3441,23 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
               if (window_manager_) {
                 window_manager_->SetWallpaperZOrder(instance.webview_host_hwnd, new_workerw);
               }
+              
+              // v2.3.1+ Important: Force UI refresh for WebView2 thread synchronization
+              UpdateWindow(instance.webview_host_hwnd);
+              InvalidateRect(instance.webview_host_hwnd, nullptr, TRUE);
+              
             } else {
               DWORD error = GetLastError();
               Logger::Instance().Error("WorkerW Recovery", 
                 "Failed to re-parent monitor " + std::to_string(instance.monitor_index) + 
                 ": error " + std::to_string(error));
+              
+              // v2.3.1+ Check if it's a permission issue
+              if (error == ERROR_ACCESS_DENIED) {
+                Logger::Instance().Warning("WorkerW Recovery", 
+                  "Access denied on monitor " + std::to_string(instance.monitor_index) + 
+                  " - may require administrator privileges");
+              }
             }
           }
         }

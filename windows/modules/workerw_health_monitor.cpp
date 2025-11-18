@@ -148,6 +148,18 @@ bool WorkerWHealthMonitor::IsMonitoring() const {
   return is_monitoring_.load();
 }
 
+void WorkerWHealthMonitor::SetForceRefreshInterval(int interval) {
+  if (interval > 0) {
+    force_refresh_interval_ = interval;
+    Logger::Instance().Info("WorkerWHealthMonitor", 
+      "Force refresh interval set to " + std::to_string(interval) + " checks");
+  } else {
+    Logger::Instance().Warning("WorkerWHealthMonitor", 
+      "Invalid force refresh interval, keeping default: " + 
+      std::to_string(force_refresh_interval_));
+  }
+}
+
 // ========== Private Methods ==========
 
 void WorkerWHealthMonitor::MonitorThreadProc() {

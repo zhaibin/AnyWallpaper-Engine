@@ -77,13 +77,17 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
   
   // Additional trick: Create and immediately destroy a temporary window
   // This helps refresh the desktop layer hierarchy (Lively technique)
+  // 
+  // IMPORTANT: We ONLY destroy our own temporary window, NEVER destroy system windows!
+  // Destroying WorkerW/Progman/SHELLDLL_DefView is dangerous and can crash Explorer.
+  // This technique is safe because we create and destroy our own window.
   HWND tmp = CreateWindowExW(WS_EX_TOOLWINDOW, L"STATIC", L"TempWorkerWTrigger",
                               WS_POPUP | WS_VISIBLE, 0, 0, 1, 1,
                               nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
   if (tmp) {
     ShowWindow(tmp, SW_HIDE);
-    DestroyWindow(tmp);
-    Logger::Instance().Debug("DesktopWallpaperHelper", "Created temporary trigger window");
+    DestroyWindow(tmp);  // Safe: destroying our own window
+    Logger::Instance().Debug("DesktopWallpaperHelper", "Created and destroyed temporary trigger window (safe)");
   }
   
   // Wait for system to process
