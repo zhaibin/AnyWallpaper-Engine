@@ -75,10 +75,10 @@ InitializationCoordinator::Initialize(const InitConfig& config) {
   
   // Step 6: v2.1.10+ Fix - Diagnose window visibility after initialization
   if (window_manager_) {
-    Logger::Instance().Info("InitCoordinator", "Running window visibility diagnosis...");
+    std::cout << "[AnyWP] [InitCoordinator] Running window visibility diagnosis..." << std::endl;
     bool is_visible = window_manager_->DiagnoseWindowVisibility(result.host_window, result.worker_w_window);
     if (!is_visible) {
-      Logger::Instance().Info("InitCoordinator", "WARNING: Window visibility diagnosis failed, attempting fixes...");
+      std::cout << "[AnyWP] [InitCoordinator] WARNING: Window visibility diagnosis failed, attempting fixes..." << std::endl;
       
       // Attempt to fix visibility issues
       ShowWindow(result.host_window, SW_SHOW);
@@ -88,13 +88,13 @@ InitializationCoordinator::Initialize(const InitConfig& config) {
       // Verify again
       is_visible = window_manager_->DiagnoseWindowVisibility(result.host_window, result.worker_w_window);
       if (!is_visible) {
-        Logger::Instance().Info("InitCoordinator", "ERROR: Window visibility issues persist after fixes");
+        std::cout << "[AnyWP] [InitCoordinator] ERROR: Window visibility issues persist after fixes" << std::endl;
         Logger::Instance().Warning("InitCoordinator", "Window visibility issues detected after initialization");
       } else {
-        Logger::Instance().Info("InitCoordinator", "✓ Window visibility fixed");
+        std::cout << "[AnyWP] [InitCoordinator] ✓ Window visibility fixed" << std::endl;
       }
     } else {
-      Logger::Instance().Info("InitCoordinator", "✓ Window visibility verified");
+      std::cout << "[AnyWP] [InitCoordinator] ✓ Window visibility verified" << std::endl;
     }
   }
   
@@ -232,9 +232,6 @@ void InitializationCoordinator::ConfigureMouseHook(bool enable_mouse_transparent
 
 void InitializationCoordinator::LogError(const std::string& error) {
   Logger::Instance().Error("InitCoordinator", error);
-  
-  // Also log to stdout for backward compatibility
-  std::cout << "[AnyWP] [InitCoordinator] ERROR: " << error << std::endl;
 }
 
 bool InitializationCoordinator::ValidateWindowHandle(HWND hwnd) {
@@ -248,12 +245,13 @@ void InitializationCoordinator::LogInitializationStart(const InitConfig& config)
     ", Monitor: " + std::to_string(config.monitor_index));
   
   Logger::Instance().Banner("InitCoordinator", "Initialization Start");
-  std::cout << "[AnyWP] [InitCoordinator] URL: " << config.url << std::endl;
-  std::cout << "[AnyWP] [InitCoordinator] Transparent: " << (config.enable_mouse_transparent ? "true" : "false") << std::endl;
+  Logger::Instance().Info("InitCoordinator", "URL: " + config.url);
+  Logger::Instance().Info("InitCoordinator", std::string("Transparent: ") + (config.enable_mouse_transparent ? "true" : "false"));
   
   if (config.monitor) {
-    std::cout << "[AnyWP] [InitCoordinator] Target Monitor: " << config.monitor->device_name 
-              << " [" << config.monitor->width << "x" << config.monitor->height << "]" << std::endl;
+    Logger::Instance().Info("InitCoordinator", 
+      "Target Monitor: " + std::string(config.monitor->device_name) + 
+      " [" + std::to_string(config.monitor->width) + "x" + std::to_string(config.monitor->height) + "]");
   } else {
     Logger::Instance().Info("InitCoordinator", "Mode: Single-monitor (legacy)");
   }
@@ -263,15 +261,15 @@ void InitializationCoordinator::LogInitializationSuccess(const InitResult& resul
   Logger::Instance().Info("InitCoordinator", "Initialization completed successfully");
   
   Logger::Instance().Banner("InitCoordinator", "Initialization Success");
-  std::cout << "[AnyWP] [InitCoordinator] Host Window: " << result.host_window << std::endl;
-  std::cout << "[AnyWP] [InitCoordinator] WorkerW Window: " << result.worker_w_window << std::endl;
+  Logger::Instance().Info("InitCoordinator", "Host Window: " + std::to_string(reinterpret_cast<uintptr_t>(result.host_window)));
+  Logger::Instance().Info("InitCoordinator", "WorkerW Window: " + std::to_string(reinterpret_cast<uintptr_t>(result.worker_w_window)));
 }
 
 void InitializationCoordinator::LogInitializationFailure(const InitResult& result) {
   Logger::Instance().Error("InitCoordinator", "Initialization failed: " + result.error_message);
   
   Logger::Instance().Banner("InitCoordinator", "Initialization Failed");
-  std::cout << "[AnyWP] [InitCoordinator] Error: " << result.error_message << std::endl;
+  Logger::Instance().Error("InitCoordinator", "Error: " + result.error_message);
 }
 
 }  // namespace anywp_engine
