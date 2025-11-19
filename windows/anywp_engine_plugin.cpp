@@ -4112,7 +4112,9 @@ void AnyWPEnginePlugin::SendKeyboardToWebView(const char* event_type, int vk_cod
                   << "\"shiftKey\":" << (shift_down ? "true" : "false")
                   << "}";
       
-      std::wstring json_message = std::wstring(json_stream.str().begin(), json_stream.str().end());
+      // CRITICAL: Save str() result first to avoid iterator invalidation
+      std::string json_str = json_stream.str();
+      std::wstring json_message = std::wstring(json_str.begin(), json_str.end());
       
       // Send to WebView with COM exception protection
       try {
