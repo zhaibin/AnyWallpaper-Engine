@@ -4,7 +4,8 @@ import type {
   ClickHandlerData, 
   PersistedState,
   MouseCallback,
-  KeyboardCallback
+  KeyboardCallback,
+  DraggableData
 } from '../types';
 
 export const AnyWP: AnyWPSDK = {
@@ -26,6 +27,9 @@ export const AnyWP: AnyWPSDK = {
   _autoRefreshEnabled: true,
   _persistedState: {} as PersistedState,
   _onFlutterMessage: null as ((message: any) => void) | null,
+  _draggableElements: [] as DraggableData[],
+  _dragState: null,
+  interactionEnabled: true,
   
   // Initialize (will be implemented in init.ts)
   _init(): void {
@@ -155,6 +159,19 @@ export const AnyWP: AnyWPSDK = {
   
   async decryptFile(_encryptedPath: string, _destPath: string): Promise<boolean> {
     throw new Error('decryptFile must be implemented');
+  },
+  
+  // Drag & Drop (v2.4.1+)
+  makeDraggable(): void {
+    throw new Error('Not implemented');
+  },
+  
+  removeDraggable(): void {
+    throw new Error('Not implemented');
+  },
+  
+  resetPosition(): boolean {
+    throw new Error('Not implemented');
   }
 };
 

@@ -16,11 +16,12 @@ import { Coordinates } from '../utils/coordinates';
 import { throttle } from '../utils/throttle';
 import { logger } from '../utils/logger';
 import type { AnyWPSDK } from '../types';
-import { isMouseEventData } from '../types/webmessage';
+import { isMouseEventData, isKeyboardEventData } from '../types/webmessage';
 import type { 
   WebMessageEvent, 
   WebMessageData, 
-  MouseEventData
+  MouseEventData,
+  KeyboardEventData
 } from '../types/webmessage';
 
 // Create scoped logger for WebMessage module
@@ -91,6 +92,8 @@ function handleWebMessage(event: WebMessageEvent): void {
     // Handle different message types using type guards
     if (isMouseEventData(data)) {
       handleMouseEvent(data);
+    } else if (isKeyboardEventData(data)) {
+      handleKeyboardEvent(data);
     } else if (data.type === 'powerStateChange') {
       // v2.1.7+ Handle power state change notifications from C++
       handlePowerStateChange(data);
@@ -118,6 +121,8 @@ function logMessage(data: WebMessageData): void {
     }
   } else if (data.type === 'mouseEvent') {
     log.debug('WebMessage: ' + data.eventType + ' at (' + data.x + ',' + data.y + ')');
+  } else if (data.type === 'keyboardEvent') {
+    log.debug('WebMessage: ' + data.eventType + ' key: ' + data.key);
   }
 }
 
@@ -187,6 +192,32 @@ const handleMouseMove = throttle((eventInit: MouseEventInit, data: MouseEventDat
   });
   window.dispatchEvent(customEvent);
 }, 16); // ~60 FPS throttle (16ms)
+
+/**
+ * Handle keyboardEvent messages from C++
+ */
+function handleKeyboardEvent(data: KeyboardEventData): void {
+  try {
+    log.debug('[KeyboardEvent] ' + data.eventType + ' key: ' + data.key + ' code: ' + data.code);
+    
+    // Dispatch CustomEvent for AnyWP keyboard callbacks
+    const customEvent = new CustomEvent('AnyWP:keyboard', {
+      detail: {
+        type: data.eventType,
+        key: data.key,
+        code: data.code,
+        ctrlKey: data.ctrlKey || false,
+        shiftKey: data.shiftKey || false,
+        altKey: data.altKey || false
+      }
+    });
+    window.dispatchEvent(customEvent);
+    
+    log.info('[DOMDispatch] keyboard event dispatched: ' + data.eventType);
+  } catch (e) {
+    log.error('Error handling keyboard event:', e);
+  }
+}
 
 /**
  * Get cached or fresh interactive elements

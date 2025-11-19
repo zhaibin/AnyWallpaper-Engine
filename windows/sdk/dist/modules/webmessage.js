@@ -14,7 +14,7 @@
 import { Coordinates } from '../utils/coordinates';
 import { throttle } from '../utils/throttle';
 import { logger } from '../utils/logger';
-import { isMouseEventData } from '../types/webmessage';
+import { isMouseEventData, isKeyboardEventData } from '../types/webmessage';
 // Create scoped logger for WebMessage module
 const log = logger.scope('WebMessage');
 /**
@@ -74,6 +74,9 @@ function handleWebMessage(event) {
         if (isMouseEventData(data)) {
             handleMouseEvent(data);
         }
+        else if (isKeyboardEventData(data)) {
+            handleKeyboardEvent(data);
+        }
         else if (data.type === 'powerStateChange') {
             // v2.1.7+ Handle power state change notifications from C++
             handlePowerStateChange(data);
@@ -100,6 +103,9 @@ function logMessage(data) {
     }
     else if (data.type === 'mouseEvent') {
         log.debug('WebMessage: ' + data.eventType + ' at (' + data.x + ',' + data.y + ')');
+    }
+    else if (data.type === 'keyboardEvent') {
+        log.debug('WebMessage: ' + data.eventType + ' key: ' + data.key);
     }
 }
 /**
@@ -162,6 +168,30 @@ const handleMouseMove = throttle((eventInit, data) => {
     });
     window.dispatchEvent(customEvent);
 }, 16); // ~60 FPS throttle (16ms)
+/**
+ * Handle keyboardEvent messages from C++
+ */
+function handleKeyboardEvent(data) {
+    try {
+        log.debug('[KeyboardEvent] ' + data.eventType + ' key: ' + data.key + ' code: ' + data.code);
+        // Dispatch CustomEvent for AnyWP keyboard callbacks
+        const customEvent = new CustomEvent('AnyWP:keyboard', {
+            detail: {
+                type: data.eventType,
+                key: data.key,
+                code: data.code,
+                ctrlKey: data.ctrlKey || false,
+                shiftKey: data.shiftKey || false,
+                altKey: data.altKey || false
+            }
+        });
+        window.dispatchEvent(customEvent);
+        log.info('[DOMDispatch] keyboard event dispatched: ' + data.eventType);
+    }
+    catch (e) {
+        log.error('Error handling keyboard event:', e);
+    }
+}
 /**
  * Get cached or fresh interactive elements
  */

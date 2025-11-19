@@ -24,6 +24,9 @@ var AnyWPBundle = (function (exports) {
         _autoRefreshEnabled: true,
         _persistedState: {},
         _onFlutterMessage: null,
+        _draggableElements: [],
+        _dragState: null,
+        interactionEnabled: true,
         // Initialize (will be implemented in init.ts)
         _init() {
             throw new Error('_init must be implemented');
@@ -130,6 +133,16 @@ var AnyWPBundle = (function (exports) {
         },
         async decryptFile(_encryptedPath, _destPath) {
             throw new Error('decryptFile must be implemented');
+        },
+        // Drag & Drop (v2.4.1+)
+        makeDraggable() {
+            throw new Error('Not implemented');
+        },
+        removeDraggable() {
+            throw new Error('Not implemented');
+        },
+        resetPosition() {
+            throw new Error('Not implemented');
         }
     };
 
@@ -1250,6 +1263,12 @@ var AnyWPBundle = (function (exports) {
     function isMouseEventData(data) {
         return data.type === 'mouseEvent';
     }
+    /**
+     * Type guard to check if data is KeyboardEventData
+     */
+    function isKeyboardEventData(data) {
+        return data.type === 'keyboardEvent';
+    }
 
     /**
      * WebMessage Handler Module
@@ -1323,6 +1342,9 @@ var AnyWPBundle = (function (exports) {
             if (isMouseEventData(data)) {
                 handleMouseEvent(data);
             }
+            else if (isKeyboardEventData(data)) {
+                handleKeyboardEvent(data);
+            }
             else if (data.type === 'powerStateChange') {
                 // v2.1.7+ Handle power state change notifications from C++
                 handlePowerStateChange(data);
@@ -1349,6 +1371,9 @@ var AnyWPBundle = (function (exports) {
         }
         else if (data.type === 'mouseEvent') {
             log$1.debug('WebMessage: ' + data.eventType + ' at (' + data.x + ',' + data.y + ')');
+        }
+        else if (data.type === 'keyboardEvent') {
+            log$1.debug('WebMessage: ' + data.eventType + ' key: ' + data.key);
         }
     }
     /**
@@ -1411,6 +1436,30 @@ var AnyWPBundle = (function (exports) {
         });
         window.dispatchEvent(customEvent);
     }, 16); // ~60 FPS throttle (16ms)
+    /**
+     * Handle keyboardEvent messages from C++
+     */
+    function handleKeyboardEvent(data) {
+        try {
+            log$1.debug('[KeyboardEvent] ' + data.eventType + ' key: ' + data.key + ' code: ' + data.code);
+            // Dispatch CustomEvent for AnyWP keyboard callbacks
+            const customEvent = new CustomEvent('AnyWP:keyboard', {
+                detail: {
+                    type: data.eventType,
+                    key: data.key,
+                    code: data.code,
+                    ctrlKey: data.ctrlKey || false,
+                    shiftKey: data.shiftKey || false,
+                    altKey: data.altKey || false
+                }
+            });
+            window.dispatchEvent(customEvent);
+            log$1.info('[DOMDispatch] keyboard event dispatched: ' + data.eventType);
+        }
+        catch (e) {
+            log$1.error('Error handling keyboard event:', e);
+        }
+    }
     /**
      * Get cached or fresh interactive elements
      */
@@ -1800,6 +1849,255 @@ var AnyWPBundle = (function (exports) {
         }
     };
 
+    // Drag & Drop module
+    const DragHandler = {
+        // Make element draggable
+        makeDraggable(anyWP, element, options = {}) {
+            const persistKey = options.persistKey || null;
+            const onDragStart = options.onDragStart || null;
+            const onDrag = options.onDrag || null;
+            const onDragEnd = options.onDragEnd || null;
+            const bounds = options.bounds || null;
+            let el;
+            if (typeof element === 'string') {
+                el = document.querySelector(element);
+            }
+            else {
+                el = element;
+            }
+            if (!el) {
+                console.error('[AnyWP] Element not found:', element);
+                return;
+            }
+            // Load persisted position
+            if (persistKey) {
+                Storage.load(anyWP, persistKey, function (savedPos) {
+                    if (savedPos && el) {
+                        el.style.position = 'absolute';
+                        el.style.left = savedPos.left + 'px';
+                        el.style.top = savedPos.top + 'px';
+                        console.log('[AnyWP] Restored position for ' + persistKey + ': ' + savedPos.left + ',' + savedPos.top);
+                    }
+                });
+            }
+            // Register draggable element
+            const draggableData = {
+                element: el,
+                persistKey: persistKey,
+                onDragStart: onDragStart,
+                onDrag: onDrag,
+                onDragEnd: onDragEnd,
+                bounds: bounds
+            };
+            anyWP._draggableElements.push(draggableData);
+            // Setup element styles
+            if (window.getComputedStyle(el).position === 'static') {
+                el.style.position = 'absolute';
+            }
+            el.style.cursor = 'move';
+            el.style.userSelect = 'none';
+            el.style.webkitUserSelect = 'none';
+            el.style.mozUserSelect = 'none';
+            el.style.msUserSelect = 'none';
+            el.draggable = false;
+            el.ondragstart = function (e) {
+                e.preventDefault();
+                return false;
+            };
+            el.onselectstart = function (e) {
+                e.preventDefault();
+                return false;
+            };
+            // Register global mouse handler
+            function handleGlobalMouse(event) {
+                if (!anyWP.interactionEnabled) {
+                    Debug.log('[makeDraggable] Interaction disabled, ignoring event');
+                    return;
+                }
+                const customEvent = event;
+                const detail = customEvent.detail;
+                const mouseX = detail.x;
+                const mouseY = detail.y;
+                const mouseType = detail.type;
+                if (!el)
+                    return;
+                const rect = el.getBoundingClientRect();
+                const dpi = anyWP.dpiScale;
+                const windowLeft = (typeof window.screenX !== 'undefined') ? window.screenX : 0;
+                const windowTop = (typeof window.screenY !== 'undefined') ? window.screenY : 0;
+                const docRect = document.documentElement.getBoundingClientRect();
+                const viewportMouseX = (mouseX / dpi) - windowLeft - docRect.left;
+                const viewportMouseY = (mouseY / dpi) - windowTop - docRect.top;
+                const elementLeft = rect.left;
+                const elementTop = rect.top;
+                const elementRight = rect.right;
+                const elementBottom = rect.bottom;
+                const isOver = viewportMouseX >= elementLeft && viewportMouseX <= elementRight &&
+                    viewportMouseY >= elementTop && viewportMouseY <= elementBottom;
+                if (mouseType === 'mousedown') {
+                    const elementId = el.id || el.className || 'unknown';
+                    console.log('[AnyWP] [makeDraggable] mousedown on ' + elementId + ' - Mouse (screen):', mouseX, mouseY, 'Mouse (viewport CSS):', viewportMouseX.toFixed(1), viewportMouseY.toFixed(1), 'Element (viewport CSS):', elementLeft.toFixed(1), elementTop.toFixed(1), elementRight.toFixed(1), elementBottom.toFixed(1), 'isOver:', isOver, 'dragState:', anyWP._dragState ? 'EXISTS' : 'NULL', 'Window offset:', windowLeft, windowTop, 'Doc offset:', docRect.left.toFixed(1), docRect.top.toFixed(1), 'DPI:', dpi);
+                    const statusEl = document.getElementById('drag-status');
+                    if (statusEl) {
+                        if (isOver) {
+                            statusEl.innerHTML = '📍 检测到点击在 ' + elementId + ' 上 - 准备拖拽';
+                            statusEl.style.color = '#4CAF50';
+                        }
+                        else {
+                            statusEl.innerHTML =
+                                '📍 点击不在 ' + elementId + ' 上 (鼠标: ' + viewportMouseX.toFixed(0) + ',' + viewportMouseY.toFixed(0) +
+                                    ' | 元素: ' + elementLeft.toFixed(0) + ',' + elementTop.toFixed(0) + '-' + elementRight.toFixed(0) + ',' + elementBottom.toFixed(0) + ')';
+                            statusEl.style.color = '#ff9800';
+                        }
+                    }
+                }
+                if (mouseType !== 'mousemove') {
+                    Debug.log('[makeDraggable] Mouse event: ' + mouseType + ' at screen (' + mouseX + ',' + mouseY + ') -> viewport CSS (' + viewportMouseX.toFixed(1) + ',' + viewportMouseY.toFixed(1) + ')');
+                }
+                if (mouseType === 'mousedown' && isOver && !anyWP._dragState) {
+                    console.log('[AnyWP] [Drag] START - Mouse at viewport CSS (' + viewportMouseX.toFixed(1) + ',' + viewportMouseY.toFixed(1) + ')');
+                    anyWP._dragState = {
+                        element: el,
+                        data: draggableData,
+                        startX: viewportMouseX,
+                        startY: viewportMouseY,
+                        offsetX: viewportMouseX - elementLeft,
+                        offsetY: viewportMouseY - elementTop,
+                        initialLeft: elementLeft,
+                        initialTop: elementTop,
+                        windowLeft: windowLeft,
+                        windowTop: windowTop,
+                        docLeft: docRect.left,
+                        docTop: docRect.top,
+                        dpi: dpi
+                    };
+                    if (onDragStart) {
+                        onDragStart({
+                            x: elementLeft,
+                            y: elementTop
+                        });
+                    }
+                    Debug.log('Drag start at: ' + viewportMouseX.toFixed(1) + ',' + viewportMouseY.toFixed(1) + ' (element at ' + elementLeft.toFixed(1) + ',' + elementTop.toFixed(1) + ')', true);
+                }
+                else if (mouseType === 'mousemove' && anyWP._dragState && anyWP._dragState.element === el) {
+                    const currentViewportX = (mouseX / anyWP._dragState.dpi) - anyWP._dragState.windowLeft - anyWP._dragState.docLeft;
+                    const currentViewportY = (mouseY / anyWP._dragState.dpi) - anyWP._dragState.windowTop - anyWP._dragState.docTop;
+                    let newLeft = currentViewportX - anyWP._dragState.offsetX;
+                    let newTop = currentViewportY - anyWP._dragState.offsetY;
+                    if (bounds) {
+                        if (bounds.left !== undefined) {
+                            newLeft = Math.max(bounds.left, newLeft);
+                        }
+                        if (bounds.top !== undefined) {
+                            newTop = Math.max(bounds.top, newTop);
+                        }
+                        if (bounds.right !== undefined) {
+                            newLeft = Math.min(bounds.right - el.offsetWidth, newLeft);
+                        }
+                        if (bounds.bottom !== undefined) {
+                            newTop = Math.min(bounds.bottom - el.offsetHeight, newTop);
+                        }
+                    }
+                    el.style.left = newLeft + 'px';
+                    el.style.top = newTop + 'px';
+                    if (onDrag) {
+                        onDrag({
+                            x: newLeft,
+                            y: newTop,
+                            deltaX: currentViewportX - anyWP._dragState.startX,
+                            deltaY: currentViewportY - anyWP._dragState.startY
+                        });
+                    }
+                }
+                else if (mouseType === 'mouseup' && anyWP._dragState && anyWP._dragState.element === el) {
+                    console.log('[AnyWP] [Drag] END');
+                    const finalRect = el.getBoundingClientRect();
+                    const finalPos = {
+                        x: finalRect.left,
+                        y: finalRect.top
+                    };
+                    if (persistKey) {
+                        Storage.saveElementPosition(anyWP, persistKey, finalPos.x, finalPos.y);
+                    }
+                    if (onDragEnd) {
+                        onDragEnd(finalPos);
+                    }
+                    Debug.log('Drag end at: ' + finalPos.x + ',' + finalPos.y, true);
+                    anyWP._dragState = null;
+                }
+                else if (mouseType === 'mousedown' && !isOver) ;
+                else if (mouseType === 'mousemove' && anyWP._dragState && anyWP._dragState.element !== el) {
+                    console.log('[AnyWP] [makeDraggable] mousemove but wrong element');
+                }
+            }
+            window.addEventListener('AnyWP:mouse', handleGlobalMouse);
+            el.__anyWP_dragHandler = {
+                handleGlobalMouse: handleGlobalMouse
+            };
+            Debug.log('Element made draggable (via mouse hook): ' + (el.id || el.className));
+        },
+        // Remove draggable functionality
+        removeDraggable(anyWP, element) {
+            let el;
+            if (typeof element === 'string') {
+                el = document.querySelector(element);
+            }
+            else {
+                el = element;
+            }
+            if (!el) {
+                console.error('[AnyWP] Element not found:', element);
+                return;
+            }
+            if (el.__anyWP_dragHandler) {
+                window.removeEventListener('AnyWP:mouse', el.__anyWP_dragHandler.handleGlobalMouse);
+                delete el.__anyWP_dragHandler;
+            }
+            anyWP._draggableElements = anyWP._draggableElements.filter(function (d) {
+                return d.element !== el;
+            });
+            el.style.cursor = '';
+            el.style.userSelect = '';
+            Debug.log('Removed draggable from element: ' + (el.id || el.className));
+        },
+        // Reset element position
+        resetPosition(anyWP, element, position) {
+            let el;
+            if (typeof element === 'string') {
+                el = document.querySelector(element);
+            }
+            else {
+                el = element;
+            }
+            if (!el) {
+                console.error('[AnyWP] Element not found:', element);
+                return false;
+            }
+            const draggableData = anyWP._draggableElements.find(function (d) {
+                return d.element === el;
+            });
+            if (!draggableData) {
+                console.error('[AnyWP] Element is not draggable:', element);
+                return false;
+            }
+            if (position) {
+                el.style.left = position.left + 'px';
+                el.style.top = position.top + 'px';
+            }
+            else {
+                el.style.left = '0px';
+                el.style.top = '0px';
+            }
+            if (draggableData.persistKey) {
+                const finalLeft = position ? position.left : 0;
+                const finalTop = position ? position.top : 0;
+                Storage.saveElementPosition(anyWP, draggableData.persistKey, finalLeft, finalTop);
+            }
+            Debug.log('Reset position for element: ' + (el.id || el.className));
+            return true;
+        }
+    };
+
     // File encryption/decryption module (v2.1.10+)
     // Provides API for encrypting and decrypting files via Flutter MethodChannel
     var File;
@@ -1941,6 +2239,16 @@ var AnyWPBundle = (function (exports) {
     };
     AnyWP.decryptFile = function (encryptedPath, destPath) {
         return File.decryptFile.call(this, encryptedPath, destPath);
+    };
+    // Public API: Drag & Drop (v2.4.1+)
+    AnyWP.makeDraggable = function (element, options) {
+        DragHandler.makeDraggable(this, element, options);
+    };
+    AnyWP.removeDraggable = function (element) {
+        DragHandler.removeDraggable(this, element);
+    };
+    AnyWP.resetPosition = function (element, position) {
+        return DragHandler.resetPosition(this, element, position);
     };
     // Auto-initialize when DOM is ready
     if (typeof window !== 'undefined') {

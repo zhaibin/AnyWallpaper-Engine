@@ -16,6 +16,9 @@ export const AnyWP = {
     _autoRefreshEnabled: true,
     _persistedState: {},
     _onFlutterMessage: null,
+    _draggableElements: [],
+    _dragState: null,
+    interactionEnabled: true,
     // Initialize (will be implemented in init.ts)
     _init() {
         throw new Error('_init must be implemented');
@@ -122,6 +125,16 @@ export const AnyWP = {
     },
     async decryptFile(_encryptedPath, _destPath) {
         throw new Error('decryptFile must be implemented');
+    },
+    // Drag & Drop (v2.4.1+)
+    makeDraggable() {
+        throw new Error('Not implemented');
+    },
+    removeDraggable() {
+        throw new Error('Not implemented');
+    },
+    resetPosition() {
+        throw new Error('Not implemented');
     }
 };
 //# sourceMappingURL=AnyWP.js.map

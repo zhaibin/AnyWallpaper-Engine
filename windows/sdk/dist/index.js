@@ -5,6 +5,7 @@ import { initializeAnyWP } from './core/init';
 import { Debug } from './utils/debug';
 import { Events } from './modules/events';
 import { ClickHandler } from './modules/click';
+import { DragHandler } from './modules/drag';
 import { Storage } from './modules/storage';
 import { SPA } from './modules/spa';
 import { WebMessage } from './modules/webmessage';
@@ -74,6 +75,16 @@ AnyWP.encryptFile = function (sourcePath, destPath) {
 };
 AnyWP.decryptFile = function (encryptedPath, destPath) {
     return File.decryptFile.call(this, encryptedPath, destPath);
+};
+// Public API: Drag & Drop (v2.4.1+)
+AnyWP.makeDraggable = function (element, options) {
+    DragHandler.makeDraggable(this, element, options);
+};
+AnyWP.removeDraggable = function (element) {
+    DragHandler.removeDraggable(this, element);
+};
+AnyWP.resetPosition = function (element, position) {
+    return DragHandler.resetPosition(this, element, position);
 };
 // Note: openURL and ready are implemented in core/AnyWP.ts
 // Export for build

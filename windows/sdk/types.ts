@@ -124,6 +124,68 @@ export type VisibilityCallback = (visible: boolean) => void;
 export type StateLoadCallback = (data: StateValue | null) => void;
 
 /**
+ * Draggable options
+ */
+export interface DraggableOptions {
+  persistKey?: string | null;
+  onDragStart?: ((pos: Position) => void) | null;
+  onDrag?: ((pos: DragPosition) => void) | null;
+  onDragEnd?: ((pos: Position) => void) | null;
+  bounds?: {
+    left?: number;
+    top?: number;
+    right?: number;
+    bottom?: number;
+  } | null;
+}
+
+/**
+ * Drag position with delta
+ */
+export interface DragPosition {
+  x: number;
+  y: number;
+  deltaX?: number;
+  deltaY?: number;
+}
+
+/**
+ * Draggable element data
+ */
+export interface DraggableData {
+  element: HTMLElement;
+  persistKey: string | null;
+  onDragStart: ((pos: Position) => void) | null;
+  onDrag: ((pos: DragPosition) => void) | null;
+  onDragEnd: ((pos: Position) => void) | null;
+  bounds: {
+    left?: number;
+    top?: number;
+    right?: number;
+    bottom?: number;
+  } | null;
+}
+
+/**
+ * Drag state
+ */
+export interface DragState {
+  element: HTMLElement;
+  data: DraggableData;
+  startX: number;
+  startY: number;
+  offsetX: number;
+  offsetY: number;
+  initialLeft: number;
+  initialTop: number;
+  windowLeft: number;
+  windowTop: number;
+  docLeft: number;
+  docTop: number;
+  dpi: number;
+}
+
+/**
  * Main AnyWP SDK interface
  */
 export interface AnyWPSDK {
@@ -145,6 +207,9 @@ export interface AnyWPSDK {
   _autoRefreshEnabled: boolean;
   _persistedState: PersistedState;
   _onFlutterMessage: ((message: any) => void) | null;
+  _draggableElements: DraggableData[];
+  _dragState: DragState | null;
+  interactionEnabled: boolean;
   
   // Methods
   _init(): void;
@@ -172,6 +237,11 @@ export interface AnyWPSDK {
   // File encryption/decryption (v2.1.10+)
   encryptFile(sourcePath: string, destPath: string): Promise<boolean>;
   decryptFile(encryptedPath: string, destPath: string): Promise<boolean>;
+  
+  // Drag & Drop (v2.4.1+)
+  makeDraggable(element: string | HTMLElement, options?: DraggableOptions): void;
+  removeDraggable(element: string | HTMLElement): void;
+  resetPosition(element: string | HTMLElement, position?: { left: number; top: number }): boolean;
 }
 
 /**
