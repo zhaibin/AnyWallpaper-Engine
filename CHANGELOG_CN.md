@@ -4,6 +4,44 @@
 
 ## [2.4.1] - 2025-11-19
 
+### ⚡ 增强：API 调用参数日志
+
+#### 功能
+为 FlutterBridge 添加详细的参数日志记录，方便调试和问题排查。
+
+#### 实现
+- **自动参数序列化**：添加 `EncodableValueToString` 辅助函数，智能转换 Flutter 参数为可读字符串
+- **支持所有类型**：bool, int, double, string, list, map 等所有 Flutter 类型
+- **智能截断**：
+  - List 超过 5 个元素时显示 "... (N items)"
+  - Map 超过 5 个键时显示 "... (N keys)"
+  - 嵌套深度超过 3 层时显示 "..."
+  - 参数超过 10 个时显示 "... (N parameters total)"
+- **排除轮询方法**：`getPendingMessages`, `getPendingPowerStateChanges`, `getMonitors` 等高频轮询方法不记录参数，避免日志噪音
+
+#### 日志示例
+
+```log
+[FlutterBridge] Method called: setApplicationName
+[FlutterBridge] Arguments: name="AnyWallpaperDemo"
+
+[FlutterBridge] Method called: enableAutoRecovery
+[FlutterBridge] Arguments: enabled=true
+
+[FlutterBridge] Method called: initializeWallpaperOnMonitor
+[FlutterBridge] Arguments: autoSave=true, enableMouseTransparent=true, monitorIndex=0, url="https://example.com"
+
+[FlutterBridge] Method called: sendMessage
+[FlutterBridge] Arguments: message={"type": "updateCarousel", "data": {...}}
+```
+
+#### 用途
+- 🐛 **调试**：快速定位 API 调用问题
+- 📊 **监控**：追踪应用行为和参数传递
+- 🔍 **排查**：分析崩溃或异常时的调用上下文
+
+---
+
 ### 🐛 修复：日志标签准确性
 
 #### 问题

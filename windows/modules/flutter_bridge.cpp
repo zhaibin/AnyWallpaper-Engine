@@ -25,6 +25,53 @@ FlutterBridge::~FlutterBridge() {
 // Main Dispatcher
 // ========================================
 
+// Helper function to convert EncodableValue to readable string
+static std::string EncodableValueToString(const flutter::EncodableValue& value, int depth = 0) {
+  if (depth > 3) return "...";  // Prevent infinite recursion
+  
+  if (std::holds_alternative<std::monostate>(value)) {
+    return "null";
+  } else if (auto* b = std::get_if<bool>(&value)) {
+    return *b ? "true" : "false";
+  } else if (auto* i = std::get_if<int32_t>(&value)) {
+    return std::to_string(*i);
+  } else if (auto* l = std::get_if<int64_t>(&value)) {
+    return std::to_string(*l);
+  } else if (auto* d = std::get_if<double>(&value)) {
+    return std::to_string(*d);
+  } else if (auto* s = std::get_if<std::string>(&value)) {
+    return "\"" + *s + "\"";
+  } else if (auto* list = std::get_if<flutter::EncodableList>(&value)) {
+    std::string result = "[";
+    for (size_t idx = 0; idx < list->size(); ++idx) {
+      if (idx > 0) result += ", ";
+      if (idx >= 5) {
+        result += "... (" + std::to_string(list->size()) + " items)";
+        break;
+      }
+      result += EncodableValueToString((*list)[idx], depth + 1);
+    }
+    result += "]";
+    return result;
+  } else if (auto* map = std::get_if<flutter::EncodableMap>(&value)) {
+    std::string result = "{";
+    size_t count = 0;
+    for (const auto& pair : *map) {
+      if (count > 0) result += ", ";
+      if (count >= 5) {
+        result += "... (" + std::to_string(map->size()) + " keys)";
+        break;
+      }
+      result += EncodableValueToString(pair.first, depth + 1) + ": " + 
+                EncodableValueToString(pair.second, depth + 1);
+      ++count;
+    }
+    result += "}";
+    return result;
+  }
+  return "<unknown type>";
+}
+
 void FlutterBridge::HandleMethodCall(
     const flutter::MethodCall<flutter::EncodableValue>& method_call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
@@ -38,10 +85,36 @@ void FlutterBridge::HandleMethodCall(
     "getMonitors"
   };
   
-  if (polling_methods.count(method_name) > 0) {
+  bool is_polling = polling_methods.count(method_name) > 0;
+  
+  if (is_polling) {
     Logger::Instance().Debug("FlutterBridge", "Method called: " + method_name);
   } else {
     Logger::Instance().Info("FlutterBridge", "Method called: " + method_name);
+    
+    // v2.4.1+ Log method arguments for non-polling methods
+    const auto* args = std::get_if<flutter::EncodableMap>(method_call.arguments());
+    if (args && !args->empty()) {
+      std::string args_str = "Arguments: ";
+      size_t count = 0;
+      for (const auto& pair : *args) {
+        if (count > 0) args_str += ", ";
+        if (count >= 10) {
+          args_str += "... (" + std::to_string(args->size()) + " parameters total)";
+          break;
+        }
+        const auto* key = std::get_if<std::string>(&pair.first);
+        if (key) {
+          args_str += *key + "=" + EncodableValueToString(pair.second);
+        }
+        ++count;
+      }
+      Logger::Instance().Info("FlutterBridge", args_str);
+    } else if (!args) {
+      Logger::Instance().Debug("FlutterBridge", "No arguments (null)");
+    } else {
+      Logger::Instance().Debug("FlutterBridge", "No arguments (empty map)");
+    }
   }
 
   // Find and invoke handler
