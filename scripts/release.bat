@@ -241,7 +241,7 @@ mkdir "%WEB_SDK_DIR%\examples"
 mkdir "%WEB_SDK_DIR%\docs"
 
 call :PrintStep "Copying Web SDK files..."
-REM Copy Web SDK files from sdk/dist/ directory (v2.2.0+)
+REM Copy Web SDK files from sdk/dist/ directory (v2.4.1+ corrected path)
 REM Note: Web SDK package uses JS SDK version, not Flutter plugin version
 if exist "%PROJECT_ROOT%\sdk\dist\anywp_sdk.min.js" (
     copy "%PROJECT_ROOT%\sdk\dist\anywp_sdk.min.js" "%WEB_SDK_DIR%\sdk\"
