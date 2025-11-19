@@ -101,7 +101,56 @@ std::map<int, AutoRecoveryManager::WallpaperConfig> AutoRecoveryManager::GetAllC
   return saved_configs_;
 }
 
+// v2.5.0+ Thread Safety Fix: 获取需要恢复的配置，由主插件在主线程执行
+std::map<int, AutoRecoveryManager::WallpaperConfig> AutoRecoveryManager::GetConfigsForRecovery() {
+  if (!enabled_.load()) {
+    Logger::Instance().Debug("AutoRecoveryManager", 
+      "Auto recovery is disabled");
+    return {};
+  }
+
+  if (is_recovering_.exchange(true)) {
+    Logger::Instance().Warning("AutoRecoveryManager", 
+      "Auto recovery already in progress, skipping duplicate request");
+    return {};
+  }
+
+  try {
+    recovery_attempt_count_++;
+    
+    std::map<int, WallpaperConfig> configs_copy;
+    {
+      std::lock_guard<std::mutex> lock(config_mutex_);
+      configs_copy = saved_configs_;
+    }
+
+    if (configs_copy.empty()) {
+      Logger::Instance().Debug("AutoRecoveryManager", 
+        "No saved configs to recover");
+      is_recovering_.store(false);
+      return {};
+    }
+
+    Logger::Instance().Info("AutoRecoveryManager", 
+      "Prepared " + std::to_string(configs_copy.size()) + " config(s) for recovery");
+
+    // 返回配置，由调用者在主线程执行恢复
+    // is_recovering_ 标志将在主插件完成恢复后重置
+    return configs_copy;
+    
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("AutoRecoveryManager", 
+      std::string("Exception in GetConfigsForRecovery: ") + e.what());
+    is_recovering_.store(false);
+    return {};
+  }
+}
+
+// @deprecated 旧的直接恢复方法，保留用于向后兼容
 size_t AutoRecoveryManager::ExecuteAutoRecovery() {
+  Logger::Instance().Warning("AutoRecoveryManager", 
+    "ExecuteAutoRecovery() is deprecated, use GetConfigsForRecovery() instead");
+  
   if (!enabled_.load()) {
     Logger::Instance().Warning("AutoRecoveryManager", 
       "Auto recovery is disabled, skipping");
@@ -165,6 +214,11 @@ size_t AutoRecoveryManager::ExecuteAutoRecovery() {
     is_recovering_.store(false);
     return 0;
   }
+}
+
+void AutoRecoveryManager::CompleteRecovery() {
+  is_recovering_.store(false);
+  Logger::Instance().Debug("AutoRecoveryManager", "Recovery completed, flag reset");
 }
 
 void AutoRecoveryManager::SetRecoveryCallback(RecoveryCallback callback) {

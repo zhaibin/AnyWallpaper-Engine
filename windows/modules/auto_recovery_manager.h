@@ -100,10 +100,26 @@ class AutoRecoveryManager {
   std::map<int, WallpaperConfig> GetAllConfigs() const;
 
   /**
-   * @brief 执行自动恢复
+   * @brief 获取需要恢复的配置列表
    * 
-   * 尝试恢复所有已保存的壁纸配置
+   * v2.5.0+ Thread Safety Fix: 返回配置列表，由调用者在主线程执行恢复
+   * 避免在 C++ 后台线程创建 WebView2 导致的异步回调问题
    * 
+   * @return 需要恢复的配置映射（monitor_index -> config），如果不需要恢复则返回空映射
+   */
+  std::map<int, WallpaperConfig> GetConfigsForRecovery();
+
+  /**
+   * @brief 完成恢复（重置恢复标志）
+   * 
+   * 当主插件完成恢复操作后调用此方法，重置 is_recovering_ 标志
+   */
+  void CompleteRecovery();
+
+  /**
+   * @brief 执行自动恢复（已弃用，仅保留用于向后兼容）
+   * 
+   * @deprecated 使用 GetConfigsForRecovery() 替代，由主插件发送消息给 Flutter 主线程
    * @return 成功恢复的配置数量
    */
   size_t ExecuteAutoRecovery();

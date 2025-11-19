@@ -4081,11 +4081,50 @@ bool AnyWPEnginePlugin::SaveWallpaperConfigurationManually(int monitor_index) {
 }
 
 void AnyWPEnginePlugin::HandleAutoRecovery() {
-  // v2.5.0+ Phase 4: Delegate to AutoRecoveryManager
+  // v2.5.0+ Phase 4 Thread Safety Fix: Get configs from AutoRecoveryManager, send to Flutter main thread
   if (auto_recovery_manager_) {
-    Logger::Instance().Info("AutoRecovery", "Executing auto recovery via AutoRecoveryManager");
+    Logger::Instance().Info("AutoRecovery", "Getting recovery configs from AutoRecoveryManager");
     
-    size_t recovered_count = auto_recovery_manager_->ExecuteAutoRecovery();
+    // Get configs to recover (thread-safe)
+    auto configs_to_recover = auto_recovery_manager_->GetConfigsForRecovery();
+    
+    if (configs_to_recover.empty()) {
+      Logger::Instance().Debug("AutoRecovery", "No configs to recover");
+      // Update legacy flag
+      {
+        std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+        is_auto_recovery_running_ = false;
+      }
+      auto_recovery_manager_->CompleteRecovery();
+      return;
+    }
+    
+    Logger::Instance().Info("AutoRecovery", 
+      "Sending " + std::to_string(configs_to_recover.size()) + " config(s) to Flutter main thread for recovery");
+    
+    // Build recovery configurations as JSON (same as Phase 3 logic)
+    std::string configs_json = "[";
+    bool first = true;
+    for (const auto& pair : configs_to_recover) {
+      const auto& config = pair.second;
+      if (!first) {
+        configs_json += ",";
+      }
+      first = false;
+      
+      configs_json += R"({"monitorIndex":)" + std::to_string(config.monitor_index) + 
+                     R"(,"url":")" + config.url + 
+                     R"(","enableMouseTransparent":)" + (config.enable_mouse_transparent ? "true" : "false") + 
+                     "}";
+    }
+    configs_json += "]";
+    
+    // Send to Flutter main thread (Lively-style architecture)
+    std::string recovery_message = R"({"type":"AUTO_RECOVERY_REQUEST","data":)" + configs_json + "}";
+    NotifyFlutterMessage(recovery_message);
+    
+    Logger::Instance().Info("AutoRecovery", 
+      "Recovery request sent to Flutter main thread (will be processed in UI thread)");
     
     // Update legacy flag
     {
@@ -4093,8 +4132,8 @@ void AnyWPEnginePlugin::HandleAutoRecovery() {
       is_auto_recovery_running_ = false;
     }
     
-    Logger::Instance().Info("AutoRecovery", 
-      "Auto recovery completed: " + std::to_string(recovered_count) + " wallpaper(s) recovered");
+    // Complete recovery (reset flag in AutoRecoveryManager)
+    auto_recovery_manager_->CompleteRecovery();
     return;
   }
   
