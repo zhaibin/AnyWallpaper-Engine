@@ -21,6 +21,8 @@
 
 // Forward declarations of modular classes
 #include "utils/url_validator.h"
+#include "utils/state_manager.h"  // v2.5.0+ Phase 7: StateManager utility
+#include "utils/message_queue_manager.h"  // v2.5.0+ Phase 7: MessageQueueManager utility
 #include "modules/power_manager.h"  // v1.4.0+ Refactoring: PowerManager module
 #include "modules/monitor_manager.h"  // v1.4.0+ Refactoring: MonitorManager module
 #include "modules/mouse_hook_manager.h"  // v1.4.0+ Refactoring: MouseHookManager module
@@ -390,6 +392,12 @@ class AnyWPEnginePlugin : public flutter::Plugin {
 
   // CacheManager module for WebView2 cache management (v2.5.0+ Phase 6)
   std::unique_ptr<class CacheManager> cache_manager_;
+
+  // StateManager utility for unified state management (v2.5.0+ Phase 7)
+  std::unique_ptr<StateManager> state_manager_;
+
+  // MessageQueueManager utility for message queue management (v2.5.0+ Phase 7)
+  std::unique_ptr<MessageQueueManager> message_queue_manager_;
   
   // WorkerW recovery methods (called by health monitor)
   void RecoverWorkerW();  // Main recovery entry point (Lively-style: detect and decide)

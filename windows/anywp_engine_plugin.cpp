@@ -321,6 +321,19 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     cache_manager_->Initialize(cleanup_interval_minutes_);  // Use current cleanup interval
     Logger::Instance().Info("Plugin", "CacheManager initialized");
   });
+
+  // Initialize StateManager utility (v2.5.0+ Phase 7: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("StateManager", {
+    state_manager_ = std::make_unique<StateManager>();
+    state_manager_->SetPowerState(StateManager::PowerState::ACTIVE);  // Initial state
+    Logger::Instance().Info("Plugin", "StateManager initialized");
+  });
+
+  // Initialize MessageQueueManager utility (v2.5.0+ Phase 7: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("MessageQueueManager", {
+    message_queue_manager_ = std::make_unique<MessageQueueManager>();
+    Logger::Instance().Info("Plugin", "MessageQueueManager initialized");
+  });
   
   // Initialize MouseHookManager module (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
   TRY_CATCH_INIT_MODULE("MouseHookManager", {
