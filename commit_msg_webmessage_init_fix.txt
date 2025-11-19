@@ -1,0 +1,84 @@
+fix: 修复 SDK 未初始化 WebMessage 监听器导致无法接收键盘事件
+
+根本原因：
+- C++ 成功发送键盘事件到 WebView2（PostWebMessageAsString）
+- 但 JavaScript SDK 没有接收这些消息
+- **setupWebMessageListener() 从未被调用**
+
+症状：
+- 用户报告：键盘事件没有发送到 API 测试页面
+- 日志显示：C++ 成功发送，但页面无反应
+- 问题提示：是不是 API 测试页没有进行双向通信？✅ 正确！
+
+代码分析：
+1. webmessage.ts 中定义了 setupWebMessageListener() 函数
+2. init.ts 中有注释说应该在 index.ts 中 EARLY 调用
+3. 但 index.ts 实际上**没有调用**这个函数 ❌
+
+修复方案：
+
+1. 在 index.ts 中导入 setupWebMessageListener
+```typescript
+import { WebMessage, setupWebMessageListener } from './modules/webmessage';
+```
+
+2. 在 SDK 加载的最早阶段立即调用
+```typescript
+// CRITICAL: Setup WebMessage listener IMMEDIATELY
+// This ensures we catch ALL messages from C++ (including keyboard events)
+setupWebMessageListener();
+```
+
+3. 调用时机：在 AnyWP 对象初始化之前
+   - 确保 SDK 脚本加载后立即设置监听器
+   - 不会错过任何来自 C++ 的早期消息
+
+技术细节：
+
+WebView2 双向通信机制：
+1. C++ → JavaScript：
+   - C++: instance.webview->PostWebMessageAsString(json_message)
+   - JavaScript: window.chrome.webview.addEventListener('message', handler)
+
+2. JavaScript → C++：
+   - JavaScript: window.chrome.webview.postMessage({type: '...', ...})
+   - C++: SetupMessageBridge() 处理
+
+3. setupWebMessageListener() 的作用：
+   - 注册 'message' 事件监听器
+   - 解析 JSON 字符串消息
+   - 根据消息类型分发到对应处理器
+   - handleKeyboardEvent() 处理键盘事件
+   - handleMouseEvent() 处理鼠标事件
+
+影响范围：
+- ✅ 修复键盘事件接收（本次问题）
+- ✅ 修复所有 C++ → JavaScript 消息接收
+- ✅ 鼠标事件应该本来就能工作（因为其他机制）
+- ✅ 任何自定义消息也会正常接收
+
+测试验证：
+- ✅ SDK 重新构建
+- ✅ 编译通过
+- ⏳ 需用户测试：
+  1. 点击 "键盘监听" 按钮
+  2. 按任意键
+  3. 应该能在日志区域看到键盘事件
+
+SDK 更新：
+- 更新 sdk/dist/anywp_sdk.js（开发版）
+- 更新 sdk/dist/anywp_sdk.min.js（生产版）
+- 更新 windows/anywp_sdk.js（插件使用）
+
+相关文件：
+- windows/sdk/index.ts（主修复）
+- windows/sdk/modules/webmessage.ts（已有监听器逻辑）
+- windows/anywp_sdk.js（重新构建）
+
+重要性：
+- 这是一个**关键 bug**：没有这个监听器，所有 C++ 消息都无法接收
+- 之前可能因为其他机制（如鼠标钩子）部分功能仍可用
+- 键盘事件完全依赖 WebMessage，所以首先暴露这个问题
+
+分支：fix/api-test-keyboard-drag
+
