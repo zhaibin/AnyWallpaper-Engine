@@ -25,10 +25,25 @@ bool KeyboardHookManager::Install() {
   try {
     Logger::Instance().Info("KeyboardHook", "Installing low-level keyboard hook...");
     
+    // Get DLL module handle (CRITICAL: must be the DLL containing the hook procedure, not the EXE)
+    HMODULE hModule = nullptr;
+    if (!GetModuleHandleExW(
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        reinterpret_cast<LPCWSTR>(&LowLevelKeyboardProc),
+        &hModule)) {
+      DWORD error = GetLastError();
+      Logger::Instance().Error("KeyboardHook", 
+        "Failed to get DLL module handle: " + std::to_string(error));
+      return false;
+    }
+    
+    Logger::Instance().Debug("KeyboardHook", 
+      "DLL module handle: " + std::to_string(reinterpret_cast<uintptr_t>(hModule)));
+    
     hook_ = SetWindowsHookExW(
       WH_KEYBOARD_LL,
       LowLevelKeyboardProc,
-      GetModuleHandle(nullptr),
+      hModule,  // Use DLL handle, not EXE handle
       0
     );
     
@@ -74,12 +89,31 @@ bool KeyboardHookManager::IsPaused() const {
 }
 
 LRESULT CALLBACK KeyboardHookManager::LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
+  // DEBUG: Log first few calls to verify hook is being triggered
+  static int hook_call_count = 0;
+  hook_call_count++;
+  if (hook_call_count <= 5) {
+    Logger::Instance().Debug("KeyboardHook", 
+      "Hook called #" + std::to_string(hook_call_count) + 
+      " nCode=" + std::to_string(nCode) + 
+      " wParam=" + std::to_string(wParam));
+  }
+  
   if (nCode < 0 || !instance_) {
+    if (hook_call_count <= 5 && nCode < 0) {
+      Logger::Instance().Debug("KeyboardHook", "Skipping: nCode < 0");
+    }
+    if (hook_call_count <= 5 && !instance_) {
+      Logger::Instance().Error("KeyboardHook", "FATAL: instance_ is NULL!");
+    }
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
   }
   
   // Skip if paused (performance optimization)
   if (instance_->paused_) {
+    if (hook_call_count <= 5) {
+      Logger::Instance().Debug("KeyboardHook", "Skipping: paused");
+    }
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
   }
   
@@ -103,6 +137,12 @@ LRESULT CALLBACK KeyboardHookManager::LowLevelKeyboardProc(int nCode, WPARAM wPa
   if (event_type && instance_->keyboard_callback_) {
     bool extended = (info->flags & LLKHF_EXTENDED) != 0;
     
+    if (hook_call_count <= 5) {
+      Logger::Instance().Debug("KeyboardHook", 
+        "Calling callback: " + std::string(event_type) + 
+        " vk=" + std::to_string(info->vkCode));
+    }
+    
     // CRITICAL: Wrap callback in try-catch to prevent application crashes
     // Keyboard hook runs in system thread - unhandled exceptions will crash the app
     try {
@@ -120,6 +160,13 @@ LRESULT CALLBACK KeyboardHookManager::LowLevelKeyboardProc(int nCode, WPARAM wPa
       Logger::Instance().Error("KeyboardHook", std::string("Exception in keyboard callback: ") + e.what());
     } catch (...) {
       Logger::Instance().Error("KeyboardHook", "Unknown exception in keyboard callback");
+    }
+  } else if (hook_call_count <= 5) {
+    if (!event_type) {
+      Logger::Instance().Debug("KeyboardHook", "No event_type (wParam=" + std::to_string(wParam) + ")");
+    }
+    if (!instance_->keyboard_callback_) {
+      Logger::Instance().Error("KeyboardHook", "FATAL: keyboard_callback_ is NULL!");
     }
   }
   

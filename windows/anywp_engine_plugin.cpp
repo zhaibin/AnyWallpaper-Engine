@@ -4166,20 +4166,37 @@ void AnyWPEnginePlugin::SendKeyboardToWebView(const char* event_type, int vk_cod
 
 // v2.4.1+: Enqueue keyboard event (called from system hook - MUST be fast and lock-free)
 void AnyWPEnginePlugin::EnqueueKeyboardEvent(const char* event_type, int vk_code, const std::string& key, const std::string& code, bool alt_down, bool ctrl_down, bool shift_down) {
-  // CRITICAL: NO try-catch, NO logging - any exception here crashes the app
-  // Use short-lived lock only for queue access
-  KeyboardEvent evt;
-  evt.event_type = event_type;
-  evt.vk_code = vk_code;
-  evt.key = key;
-  evt.code = code;
-  evt.alt_down = alt_down;
-  evt.ctrl_down = ctrl_down;
-  evt.shift_down = shift_down;
+  // CRITICAL: Minimal logging for debugging, will remove once stable
+  static int enqueue_count = 0;
+  enqueue_count++;
   
-  {
-    std::lock_guard<std::mutex> lock(keyboard_queue_mutex_);
-    keyboard_event_queue_.push(evt);
+  try {
+    KeyboardEvent evt;
+    evt.event_type = event_type;
+    evt.vk_code = vk_code;
+    evt.key = key;
+    evt.code = code;
+    evt.alt_down = alt_down;
+    evt.ctrl_down = ctrl_down;
+    evt.shift_down = shift_down;
+    
+    {
+      std::lock_guard<std::mutex> lock(keyboard_queue_mutex_);
+      keyboard_event_queue_.push(evt);
+    }
+    
+    // Log every 10th event to verify hook is working
+    if (enqueue_count % 10 == 1) {
+      Logger::Instance().Debug("KeyboardHook", 
+        "Enqueued event #" + std::to_string(enqueue_count) + 
+        ": " + std::string(event_type) + " vk=" + std::to_string(vk_code));
+    }
+  } catch (const std::exception& e) {
+    // Emergency logging - this should never happen but critical to know if it does
+    Logger::Instance().Error("KeyboardHook", 
+      std::string("FATAL: Exception in EnqueueKeyboardEvent: ") + e.what());
+  } catch (...) {
+    Logger::Instance().Error("KeyboardHook", "FATAL: Unknown exception in EnqueueKeyboardEvent");
   }
 }
 
