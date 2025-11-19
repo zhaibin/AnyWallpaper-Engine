@@ -37,6 +37,10 @@
 #include "modules/web_message_handler.h"
 #include "modules/wallpaper_lifecycle_manager.h"
 #include "modules/auto_recovery_manager.h"  // v2.5.0+ Phase 4: AutoRecoveryManager module
+#include "modules/wallpaper_configuration_manager.h"  // v2.5.0+ Phase 6: WallpaperConfigurationManager module
+#include "modules/script_injection_manager.h"  // v2.5.0+ Phase 6: ScriptInjectionManager module
+#include "modules/permission_configurator.h"  // v2.5.0+ Phase 6: PermissionConfigurator module
+#include "modules/cache_manager.h"  // v2.5.0+ Phase 6: CacheManager module
 
 namespace anywp_engine {
 
@@ -374,6 +378,18 @@ class AnyWPEnginePlugin : public flutter::Plugin {
 
   // AutoRecoveryManager module for wallpaper configuration recovery (v2.5.0+ Phase 4)
   std::unique_ptr<class AutoRecoveryManager> auto_recovery_manager_;
+
+  // WallpaperConfigurationManager module for runtime configuration (v2.5.0+ Phase 6)
+  std::unique_ptr<class WallpaperConfigurationManager> configuration_manager_;
+
+  // ScriptInjectionManager module for SDK and script injection (v2.5.0+ Phase 6)
+  std::unique_ptr<class ScriptInjectionManager> script_injection_manager_;
+
+  // PermissionConfigurator module for WebView2 permissions and security (v2.5.0+ Phase 6)
+  std::unique_ptr<class PermissionConfigurator> permission_configurator_;
+
+  // CacheManager module for WebView2 cache management (v2.5.0+ Phase 6)
+  std::unique_ptr<class CacheManager> cache_manager_;
   
   // WorkerW recovery methods (called by health monitor)
   void RecoverWorkerW();  // Main recovery entry point (Lively-style: detect and decide)

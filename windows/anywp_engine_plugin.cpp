@@ -295,6 +295,32 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
       return this->InitializeWallpaperOnMonitor(config.url, config.enable_mouse_transparent, config.monitor_index);
     });
   });
+
+  // Initialize WallpaperConfigurationManager module (v2.5.0+ Phase 6: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("WallpaperConfigurationManager", {
+    configuration_manager_ = std::make_unique<WallpaperConfigurationManager>();
+    Logger::Instance().Info("Plugin", "WallpaperConfigurationManager initialized with default configuration");
+  });
+
+  // Initialize ScriptInjectionManager module (v2.5.0+ Phase 6: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("ScriptInjectionManager", {
+    script_injection_manager_ = std::make_unique<ScriptInjectionManager>();
+    script_injection_manager_->Initialize();  // Use default SDK path
+    Logger::Instance().Info("Plugin", "ScriptInjectionManager initialized");
+  });
+
+  // Initialize PermissionConfigurator module (v2.5.0+ Phase 6: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("PermissionConfigurator", {
+    permission_configurator_ = std::make_unique<PermissionConfigurator>();
+    Logger::Instance().Info("Plugin", "PermissionConfigurator initialized");
+  });
+
+  // Initialize CacheManager module (v2.5.0+ Phase 6: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("CacheManager", {
+    cache_manager_ = std::make_unique<CacheManager>();
+    cache_manager_->Initialize(cleanup_interval_minutes_);  // Use current cleanup interval
+    Logger::Instance().Info("Plugin", "CacheManager initialized");
+  });
   
   // Initialize MouseHookManager module (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
   TRY_CATCH_INIT_MODULE("MouseHookManager", {
