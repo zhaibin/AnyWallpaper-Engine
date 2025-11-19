@@ -457,13 +457,22 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     keyboard_hook_manager_ = std::make_unique<KeyboardHookManager>();
     
     // Configure KeyboardHookManager callback to forward events to WebView
+    // CRITICAL: Lambda captures 'this' pointer - must be careful about lifetime
     keyboard_hook_manager_->SetKeyboardCallback([this](const char* event_type, int vk_code, int scan_code, bool extended, bool alt_down, bool ctrl_down, bool shift_down) {
-      // Convert virtual key code to key name and code
-      std::string key = this->VirtualKeyToString(vk_code);
-      std::string code = this->VirtualKeyToCode(vk_code);
-      
-      // Forward to WebView
-      this->SendKeyboardToWebView(event_type, vk_code, key, code, alt_down, ctrl_down, shift_down);
+      // Additional safety: Wrap entire callback in try-catch as defense-in-depth
+      try {
+        // Convert virtual key code to key name and code
+        std::string key = this->VirtualKeyToString(vk_code);
+        std::string code = this->VirtualKeyToCode(vk_code);
+        
+        // Forward to WebView
+        this->SendKeyboardToWebView(event_type, vk_code, key, code, alt_down, ctrl_down, shift_down);
+      } catch (const std::exception& e) {
+        Logger::Instance().Error("KeyboardCallback", 
+          std::string("Exception in keyboard callback lambda: ") + e.what());
+      } catch (...) {
+        Logger::Instance().Error("KeyboardCallback", "Unknown exception in keyboard callback lambda");
+      }
     });
     
     // Install keyboard hook
@@ -586,6 +595,19 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   // v2.3.2+: Stop all wallpaper instances first (will stop WorkerW monitoring and remove MouseHook)
   Logger::Instance().Info("Plugin", "[Lifecycle] Destructor: Stopping wallpaper instances...");
   StopWallpaper();
+  
+  // v2.4.1+: Remove keyboard hook BEFORE plugin destruction to avoid dangling pointer in callback
+  if (keyboard_hook_manager_) {
+    try {
+      Logger::Instance().Info("Plugin", "[Lifecycle] Destructor: Removing keyboard hook...");
+      RemoveKeyboardHook();
+      keyboard_hook_manager_.reset();
+    } catch (const std::exception& e) {
+      Logger::Instance().Error("Plugin", std::string("Exception removing keyboard hook in destructor: ") + e.what());
+    } catch (...) {
+      Logger::Instance().Error("Plugin", "Unknown exception removing keyboard hook in destructor");
+    }
+  }
   
   // v2.3.2+: Cleanup WorkerWHealthMonitor module (no need to call StopMonitoring, already stopped in StopWallpaper)
   if (workerw_health_monitor_) {
@@ -3923,7 +3945,11 @@ static std::string JsonEscape(const std::string& str) {
           escaped << c;
         } else {
           // Escape non-printable characters as \uXXXX
-          escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(static_cast<unsigned char>(c));
+          // CRITICAL: Save and restore stream format flags to avoid corrupting subsequent output
+          std::ios_base::fmtflags flags = escaped.flags();
+          escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0') 
+                  << static_cast<int>(static_cast<unsigned char>(c));
+          escaped.flags(flags);  // Restore format flags
         }
         break;
     }
@@ -4057,7 +4083,20 @@ std::string AnyWPEnginePlugin::VirtualKeyToCode(int vk_code) {
 // Send keyboard event to all WebView instances
 void AnyWPEnginePlugin::SendKeyboardToWebView(const char* event_type, int vk_code, const std::string& key, const std::string& code, bool alt_down, bool ctrl_down, bool shift_down) {
   try {
-    std::lock_guard<std::mutex> lock(instances_mutex_);
+    // CRITICAL: Use try_lock instead of lock to prevent deadlock
+    // Keyboard hook runs in system thread - if main thread holds instances_mutex_, we'd deadlock
+    // If we can't get the lock, just skip this keyboard event (better than crashing)
+    std::unique_lock<std::mutex> lock(instances_mutex_, std::try_to_lock);
+    if (!lock.owns_lock()) {
+      // Lock is held by another thread, skip this event to avoid deadlock
+      static int skip_count = 0;
+      skip_count++;
+      if (skip_count % 20 == 1) {  // Log occasionally
+        Logger::Instance().Debug("KeyboardHook", 
+          "Skipped keyboard event (lock busy, count=" + std::to_string(skip_count) + ")");
+      }
+      return;
+    }
     
     for (auto& instance : wallpaper_instances_) {
       if (!instance.webview) continue;
@@ -4077,8 +4116,19 @@ void AnyWPEnginePlugin::SendKeyboardToWebView(const char* event_type, int vk_cod
       
       std::wstring json_message = std::wstring(json_stream.str().begin(), json_stream.str().end());
       
-      // Send to WebView
-      instance.webview->PostWebMessageAsString(json_message.c_str());
+      // Send to WebView with COM exception protection
+      try {
+        if (instance.webview) {
+          HRESULT hr = instance.webview->PostWebMessageAsString(json_message.c_str());
+          if (FAILED(hr)) {
+            Logger::Instance().Warning("KeyboardHook", 
+              "PostWebMessageAsString failed with HRESULT: " + std::to_string(hr));
+          }
+        }
+      } catch (...) {
+        // COM exceptions can occur if WebView is being destroyed
+        Logger::Instance().Warning("KeyboardHook", "Exception calling PostWebMessageAsString");
+      }
     }
     
     // Log keyboard event (throttled)
