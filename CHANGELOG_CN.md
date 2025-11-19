@@ -63,6 +63,11 @@
 - 在 `WebViewManager::InitializeEnvironment` 中添加 COM 初始化（`CoInitializeEx`）。
 - 解决 Environment 创建失败（错误码 0x80040110 = CO_E_NOTINITIALIZED）。
 
+**优化9：播放状态恢复**
+- **问题**：恢复后只发送图片配置，未恢复播放状态。倒计时在走但不会自动切换。
+- **修复**：检查 `_carouselStatus`，如果重启前是 'playing' 状态，自动调用 `_carouselPlay()` 恢复播放。
+- **效果**：重启前是什么状态，恢复后就是什么状态（playing 继续播放，stopped 保持暂停）。
+
 #### 代码变更
 
 **核心文件**：

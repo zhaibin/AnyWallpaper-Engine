@@ -297,6 +297,14 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
           await _sendCarouselUpdate();
           print('[APP] ✅ Initial data sent to recovered WebView');
           
+          // v2.4.1+ FIX: Restore playing state if it was playing before restart
+          if (_carouselStatus == 'playing') {
+            print('[APP] 🔄 Restoring playing state (was playing before restart)...');
+            await Future.delayed(Duration(milliseconds: 500)); // Wait for data to be processed
+            await _carouselPlay();
+            print('[APP] ✅ Playing state restored');
+          }
+          
           return;
         }
         
