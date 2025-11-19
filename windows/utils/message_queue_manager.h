@@ -52,10 +52,10 @@ class MessageQueueManager {
 
  private:
   std::queue<std::string> message_queue_;
-  std::mutex message_mutex_;
+  mutable std::mutex message_mutex_;
 
   std::queue<PowerStateChange> power_state_queue_;
-  std::mutex power_state_mutex_;
+  mutable std::mutex power_state_mutex_;
 };
 
 }  // namespace anywp_engine

@@ -1,7 +1,8 @@
 #include "wallpaper_lifecycle_manager.h"
 #include "../utils/logger.h"
 #include "../modules/memory_optimizer.h"
-#include "anywp_engine_plugin.h"
+#include <windows.h>
+#include <sstream>
 
 namespace anywp_engine {
 
@@ -46,9 +47,10 @@ bool WallpaperLifecycleManager::PauseWallpaper(const std::string& reason) {
     is_paused_.store(true);
 
     // 触发内存优化
-    if (memory_optimizer_) {
-      memory_optimizer_->OptimizeMemoryUsage();
-    }
+    // TODO: 实现内存优化调用（Phase 3+）
+    // if (memory_optimizer_) {
+    //   memory_optimizer_->OptimizeMemoryUsage();
+    // }
 
     Logger::Instance().Info("WallpaperLifecycleManager", "Wallpaper paused successfully");
     return true;
@@ -161,15 +163,16 @@ void WallpaperLifecycleManager::NotifyWebContentVisibility(bool visible) {
   Logger::Instance().Debug("WallpaperLifecycleManager", 
     "Notifying web content visibility: " + std::string(visible ? "visible" : "hidden"));
 
-  std::wstring visibility_script = 
-    L"(function() {"
-    L"  if (typeof window.AnyWP !== 'undefined' && window.AnyWP.onVisibilityChange) {"
-    L"    window.AnyWP.onVisibilityChange(" + (visible ? L"true" : L"false") + L");"
-    L"  }"
-    L"  document.dispatchEvent(new CustomEvent('anywp:visibility', { detail: { visible: " + 
-      (visible ? L"true" : L"false") + L" } }));"
-    L"})();";
-
+  std::wostringstream wss;
+  wss << L"(function() {"
+      << L"  if (typeof window.AnyWP !== 'undefined' && window.AnyWP.onVisibilityChange) {"
+      << L"    window.AnyWP.onVisibilityChange(" << (visible ? L"true" : L"false") << L");"
+      << L"  }"
+      << L"  document.dispatchEvent(new CustomEvent('anywp:visibility', { detail: { visible: " 
+      << (visible ? L"true" : L"false") << L" } }));"
+      << L"})();";
+  
+  std::wstring visibility_script = wss.str();
   ExecuteScriptToAllInstances(visibility_script);
 }
 

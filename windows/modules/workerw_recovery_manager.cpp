@@ -1,7 +1,7 @@
 #include "workerw_recovery_manager.h"
 #include "../utils/logger.h"
 #include "../utils/desktop_wallpaper_helper.h"
-#include "anywp_engine_plugin.h"
+#include <windows.h>
 
 namespace anywp_engine {
 
@@ -215,30 +215,34 @@ bool WorkerWRecoveryManager::ReparentSingleInstance(WallpaperInstance* instance)
 }
 
 HWND WorkerWRecoveryManager::FindOrCreateWorkerW() {
-  // 使用 DesktopWallpaperHelper 查找或创建 WorkerW
+  // 使用 DesktopWallpaperHelper 查找 WorkerW
   HWND progman = FindWindow(L"Progman", nullptr);
   if (!progman) {
     Logger::Instance().Error("WorkerWRecoveryManager", "Cannot find Progman window");
     return nullptr;
   }
 
-  HWND worker_w = DesktopWallpaperHelper::FindWorkerW();
-  if (worker_w && IsWindow(worker_w)) {
-    Logger::Instance().Info("WorkerWRecoveryManager", "Found existing WorkerW");
-    return worker_w;
+  DesktopWallpaperHelper& helper = DesktopWallpaperHelper::Instance();
+  if (helper.FindWorkerW()) {
+    HWND worker_w = helper.GetWallpaperParent();
+    if (worker_w && IsWindow(worker_w)) {
+      Logger::Instance().Info("WorkerWRecoveryManager", "Found existing WorkerW");
+      return worker_w;
+    }
   }
 
-  // 尝试创建新的 WorkerW
-  Logger::Instance().Info("WorkerWRecoveryManager", "Creating new WorkerW");
-  worker_w = DesktopWallpaperHelper::CreateWorkerW();
-  
-  if (!worker_w || !IsWindow(worker_w)) {
-    Logger::Instance().Error("WorkerWRecoveryManager", "Failed to create WorkerW");
-    return nullptr;
+  // 尝试触发 WorkerW 创建
+  Logger::Instance().Info("WorkerWRecoveryManager", "Triggering WorkerW creation");
+  if (helper.TriggerWorkerWCreation()) {
+    HWND worker_w = helper.GetWallpaperParent();
+    if (worker_w && IsWindow(worker_w)) {
+      Logger::Instance().Info("WorkerWRecoveryManager", "WorkerW created successfully");
+      return worker_w;
+    }
   }
 
-  Logger::Instance().Info("WorkerWRecoveryManager", "Created new WorkerW successfully");
-  return worker_w;
+  Logger::Instance().Error("WorkerWRecoveryManager", "Failed to find/create WorkerW");
+  return nullptr;
 }
 
 bool WorkerWRecoveryManager::VerifyProgmanHierarchy(HWND worker_w) {

@@ -1,6 +1,7 @@
 #ifndef FLUTTER_PLUGIN_WALLPAPER_CONFIGURATION_MANAGER_H_
 #define FLUTTER_PLUGIN_WALLPAPER_CONFIGURATION_MANAGER_H_
 
+#include <windows.h>
 #include <string>
 #include <mutex>
 

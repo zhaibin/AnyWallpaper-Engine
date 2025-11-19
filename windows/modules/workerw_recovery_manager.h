@@ -5,11 +5,20 @@
 #include <functional>
 #include <string>
 #include <atomic>
+#include <WebView2.h>
+#include <wrl.h>
 
 namespace anywp_engine {
 
 // Forward declarations
-struct WallpaperInstance;
+struct WallpaperInstance {
+  int monitor_index;
+  bool enable_mouse_transparent;
+  HWND webview_host_hwnd;
+  HWND worker_w_hwnd;
+  Microsoft::WRL::ComPtr<ICoreWebView2Controller> webview_controller;
+  Microsoft::WRL::ComPtr<ICoreWebView2> webview;
+};
 
 /**
  * @brief WorkerW 窗口恢复管理器
