@@ -243,6 +243,10 @@ bool WindowManager::SetWallpaperZOrder(HWND hwnd, HWND worker_w) {
     return false;
   }
   
+  // v2.4.1+ CRITICAL: Ensure WorkerW itself is at the bottom of Z-order
+  // This is essential for Windows 11 Raised Desktop mode to ensure WorkerW doesn't cover icons
+  EnsureWorkerWZOrder(worker_w);
+
   // v2.1.10+ CRITICAL: Set Z-order: WebView behind SHELLDLL_DefView (desktop icons)
   // This ensures desktop icons are always visible on top of the wallpaper
   Logger::Instance().Info("WindowManager", 
@@ -817,6 +821,33 @@ bool WindowManager::DiagnoseWindowVisibility(HWND hwnd, HWND worker_w) {
   }
   
   return should_be_visible;
+}
+
+void WindowManager::EnsureWorkerWZOrder(HWND worker_w) {
+  if (!worker_w || !IsWindow(worker_w)) return;
+
+  // Check if we are in Windows 11 Raised Desktop mode
+  HWND progman = FindWindowW(L"Progman", nullptr);
+  if (!progman) return;
+
+  // Only proceed if worker_w is a child of Progman (Win11 Raised Desktop)
+  if (GetParent(worker_w) != progman) return;
+
+  // Check if WorkerW is already at the bottom of Progman's child list
+  HWND last_child = GetWindow(progman, GW_CHILD);
+  if (last_child) {
+    last_child = GetWindow(last_child, GW_HWNDLAST);
+  }
+
+  if (last_child != worker_w) {
+    Logger::Instance().Info("WindowManager", "WorkerW is not at the bottom, fixing Z-order...");
+    
+    // Move WorkerW to bottom (behind everything else in Progman, including SHELLDLL_DefView)
+    SetWindowPos(worker_w, HWND_BOTTOM, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                 
+    Logger::Instance().Info("WindowManager", "WorkerW moved to HWND_BOTTOM");
+  }
 }
 
 }  // namespace anywp_engine

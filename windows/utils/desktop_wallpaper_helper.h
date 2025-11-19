@@ -102,6 +102,9 @@ private:
   
   // v2.3.1+ Enhanced: Get Explorer process ID for restart detection
   DWORD GetExplorerProcessId();
+  
+  // v2.4.1+ Internal: FindWorkerW with retry capability (Lively-inspired)
+  bool FindWorkerWWithRetry(int timeout_ms, bool is_retry);
 };
 
 }  // namespace anywp_engine

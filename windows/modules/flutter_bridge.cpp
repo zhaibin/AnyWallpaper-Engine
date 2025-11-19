@@ -797,8 +797,25 @@ void FlutterBridge::HandleSendMessage(
   bool all_success = true;
   int sent_count = 0;
 
+  Logger::Instance().Info("FlutterBridge", 
+    "Target instances count: " + std::to_string(target_instances.size()));
+
   for (auto* instance : target_instances) {
-    if (!instance || !instance->webview) {
+    Logger::Instance().Info("FlutterBridge", 
+      "Checking instance: " + std::to_string((long long)instance));
+    
+    if (!instance) {
+      Logger::Instance().Error("FlutterBridge", "Instance is null!");
+      all_success = false;
+      continue;
+    }
+    
+    Logger::Instance().Info("FlutterBridge", 
+      "Instance webview pointer: " + std::to_string((long long)instance->webview.Get()));
+    
+    if (!instance->webview) {
+      Logger::Instance().Error("FlutterBridge", 
+        "Instance webview is null! Monitor: " + std::to_string(instance->monitor_index));
       all_success = false;
       continue;
     }

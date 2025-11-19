@@ -64,28 +64,57 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
     }
   }
 
-  // v2.3.1+ Enhanced: Aggressive WorkerW creation strategy (Lively-style)
-  // Send 0x052C message multiple times with short intervals for better compatibility
+  // v2.4.1+ CRITICAL FIX: Following Lively's exact approach
+  // Lively only sends 0x052C message ONCE to avoid confusing Progman
+  // Multiple sends can cause WorkerW creation to fail on some systems
+  // Ref: Lively's WinDesktopCore.cs:SetupDesktopLayer()
   Logger::Instance().Info("DesktopWallpaperHelper", "Triggering WorkerW creation (Lively-compatible mode)");
   
-  // CRITICAL FIX v2.3.1+: Use Lively's exact parameters!
+  // v2.4.1+ FIX: Use local variable to avoid race condition with Reset()
+  // If Reset() is called during this operation, info_.progman may become nullptr
+  HWND progman_handle = info_.progman;
+  
+  // Verify handle is still valid before sending message
+  if (!progman_handle || !IsWindow(progman_handle)) {
+    Logger::Instance().Error("DesktopWallpaperHelper", 
+      "Progman handle became invalid, re-finding...");
+    if (!FindProgman()) {
+      return false;
+    }
+    progman_handle = info_.progman;
+  }
+  
+  // Send 0x052C message ONCE (Lively's exact approach)
   // wParam = 0xD (13), lParam = 0x1 (1)
   // This is the CORRECT way to trigger WorkerW creation on Windows 10/11
-  // Source: Lively Wallpaper's WinDesktopCore.cs
-  for (int i = 0; i < 3; i++) {
-    DWORD_PTR result = 0;
-    LRESULT ret = SendMessageTimeoutW(info_.progman, 0x052C, 0xD, 0x1, 
-                                       SMTO_NORMAL, 1000, &result);
-    if (ret == 0) {
-      DWORD error = GetLastError();
-      Logger::Instance().Warning("DesktopWallpaperHelper", 
-        "SendMessageTimeout failed or timed out (attempt " + std::to_string(i + 1) + 
-        "), error: " + std::to_string(error));
-    } else {
+  DWORD_PTR result = 0;
+  LRESULT ret = SendMessageTimeoutW(progman_handle, 0x052C, 0xD, 0x1, 
+                                     SMTO_NORMAL, 1000, &result);
+  if (ret == 0) {
+    DWORD error = GetLastError();
+    Logger::Instance().Warning("DesktopWallpaperHelper", 
+      "SendMessageTimeout failed, error: " + std::to_string(error));
+    
+    // v2.4.1+ FIX: Handle ERROR_INVALID_WINDOW_HANDLE (1400)
+    // This happens when Explorer restarts and old Progman handle is stale
+    if (error == 1400) {  // ERROR_INVALID_WINDOW_HANDLE
       Logger::Instance().Info("DesktopWallpaperHelper", 
-        "Sent 0x052C to Progman successfully (attempt " + std::to_string(i + 1) + "/3), result: " + std::to_string(result));
+        "Progman handle is stale (Explorer may have restarted), re-finding...");
+      if (!FindProgman()) {
+        return false;
+      }
+      // Retry once with new handle
+      progman_handle = info_.progman;
+      ret = SendMessageTimeoutW(progman_handle, 0x052C, 0xD, 0x1, 
+                                SMTO_NORMAL, 1000, &result);
+      if (ret != 0) {
+        Logger::Instance().Info("DesktopWallpaperHelper", 
+          "Retry successful after re-finding Progman");
+      }
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+  } else {
+    Logger::Instance().Info("DesktopWallpaperHelper", 
+      "Sent 0x052C to Progman successfully, result: " + std::to_string(result));
   }
   
   // Additional trick: Create and immediately destroy a temporary window
@@ -103,8 +132,26 @@ bool DesktopWallpaperHelper::TriggerWorkerWCreation() {
     Logger::Instance().Info("DesktopWallpaperHelper", "Created and destroyed temporary trigger window (safe)");
   }
   
-  // Wait longer for system to process (v2.3.1+: increased from 200ms to 500ms)
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  // v2.4.1+ Wait for Progman to process the message and create WorkerW
+  // Lively waits implicitly through async/await, we use polling to avoid blocking UI
+  // Poll every 10ms for up to 1000ms
+  auto start_wait = std::chrono::steady_clock::now();
+  while (true) {
+    // Check if WorkerW is created (quick check)
+    HWND workerw = FindWindowExW(nullptr, nullptr, L"WorkerW", nullptr);
+    if (workerw) {
+      // Found at least one WorkerW, stop waiting
+      break;
+    }
+    
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - start_wait);
+    if (elapsed.count() >= 1000) {
+      break;
+    }
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
   
   return true;
 }
@@ -244,55 +291,66 @@ bool DesktopWallpaperHelper::EnumerateWorkerW() {
 }
 
 bool DesktopWallpaperHelper::FindWorkerW(int timeout_ms) {
-  Logger::Instance().Info("DesktopWallpaperHelper", "Starting WorkerW search...");
+  return FindWorkerWWithRetry(timeout_ms, false);
+}
+
+// v2.4.1+ Internal method with retry capability (Lively-inspired)
+bool DesktopWallpaperHelper::FindWorkerWWithRetry(int timeout_ms, bool is_retry) {
+  if (!is_retry) {
+    Logger::Instance().Info("DesktopWallpaperHelper", "Starting WorkerW search...");
+  } else {
+    Logger::Instance().Info("DesktopWallpaperHelper", "Retrying WorkerW search after delay...");
+  }
   
   // Step 1: Find Progman
   if (!FindProgman()) {
     return false;
   }
 
-  // Step 2: Trigger WorkerW creation (v2.3.1+ CRITICAL FIX: Only trigger ONCE!)
-  // Triggering multiple times can confuse Progman and prevent WorkerW creation
-  // Lively only triggers once and it works reliably
+  // Step 2: Trigger WorkerW creation (v2.4.1+ Only trigger ONCE per attempt!)
+  // Note: TriggerWorkerWCreation now uses polling instead of fixed sleep
+  // This significantly reduces latency when WorkerW is created quickly
   if (!TriggerWorkerWCreation()) {
     return false;
   }
   
-  // Wait for Progman to process and create WorkerW structure
-  // This is critical! Don't immediately check, give system time to reorganize desktop layers
-  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  // v2.4.1+ Optimization: Removed fixed 1000ms sleep here
+  // TriggerWorkerWCreation already waits for WorkerW creation via polling
+  // We can proceed directly to enumeration
 
   // Step 3: Enumerate WorkerW windows with retry
   auto start_time = std::chrono::steady_clock::now();
   int retry_count = 0;
   
-  while (retry_count < 15) {  // v2.1.10+ Increased retries for Windows 11 (was 10)
+  while (retry_count < 10) {  // v2.4.1+ Reduced from 15 to 10 (Lively uses less retries)
     if (EnumerateWorkerW()) {
-      // v2.1.10+ Fix: Priority - Check if we found a proper WorkerW (not Progman)
-      if (info_.wallpaper_layer && info_.wallpaper_layer != info_.progman) {
+      // v2.4.1+ FIX: Check if SHELLDLL_DefView was found (most reliable indicator)
+      if (info_.found_shelldll) {
         Logger::Instance().Info("DesktopWallpaperHelper",
-          "WorkerW found successfully on attempt " + std::to_string(retry_count + 1) + " (ideal case)");
+          "WorkerW found successfully on attempt " + std::to_string(retry_count + 1) + " (SHELLDLL_DefView found)");
         return true;
       }
-      // v2.1.10+ Fix: Check if any WorkerW exists at all (even if we use Progman as parent)
-      else if (info_.workerw_count > 0 && info_.wallpaper_layer == info_.progman) {
-        // v2.1.10+ Lively Integration: If WorkerW exists but we use Progman,
-        // this might be because Lively has already set up the correct structure
-        Logger::Instance().Info("DesktopWallpaperHelper",
-          "WorkerW exists but using Progman parent (possible Lively integration) on attempt " + std::to_string(retry_count + 1));
-        Logger::Instance().Info("DesktopWallpaperHelper",
-          "Found " + std::to_string(info_.workerw_count) + " WorkerW windows, but SHELLDLL_DefView in Progman");
+      
+      // Fallback: Accept if we have a wallpaper layer (even without SHELLDLL_DefView)
+      // This handles edge cases where structure is different
+      if (info_.wallpaper_layer) {
+        Logger::Instance().Warning("DesktopWallpaperHelper",
+          "WorkerW found on attempt " + std::to_string(retry_count + 1) + " but SHELLDLL_DefView not found (fallback mode)");
         return true;
       }
-      else if (info_.wallpaper_layer == info_.progman) {
-        // v2.1.10+ Windows 11 Fix: When SHELLDLL_DefView is in Progman, this is NORMAL
-        // In Windows 11, SHELLDLL_DefView is often inside Progman, not WorkerW
-        // Using Progman as parent is the correct approach for Windows 11
-        Logger::Instance().Info("DesktopWallpaperHelper",
-          "Windows 11 detected: SHELLDLL_DefView in Progman, using Progman as wallpaper parent (this is normal)");
-        Logger::Instance().Info("DesktopWallpaperHelper",
-          "WorkerW search completed on attempt " + std::to_string(retry_count + 1) + " (Progman mode)");
-        return true;
+    }
+    
+    // v2.4.1+ CRITICAL: Check if SHELLDLL_DefView is missing
+    // This indicates Explorer/desktop structure is not ready yet
+    if (info_.workerw_count > 0 && !info_.found_shelldll) {
+      Logger::Instance().Warning("DesktopWallpaperHelper", 
+        "Found " + std::to_string(info_.workerw_count) + " WorkerW windows but no SHELLDLL_DefView (desktop not ready)");
+      
+      // If this is the first attempt and not a retry yet, trigger delayed retry
+      if (!is_retry && retry_count >= 5) {
+        Logger::Instance().Info("DesktopWallpaperHelper", 
+          "SHELLDLL_DefView not found after multiple attempts, will retry after delay");
+        break;  // Exit loop to trigger delayed retry below
       }
     }
     
@@ -306,23 +364,25 @@ bool DesktopWallpaperHelper::FindWorkerW(int timeout_ms) {
       break;
     }
     
-    // Wait before retry (longer wait for Windows 11)
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    // Wait before retry
+    // v2.4.1+ Optimization: Reduced retry interval from 300ms to 100ms for faster response
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     retry_count++;
+  }
+
+  // v2.4.1+ NEW: Delayed retry mechanism (Lively-inspired)
+  // Ref: Lively's ResetWallpaperAsync() - retries after 500ms if first attempt fails
+  if (!is_retry) {
+    Logger::Instance().Info("DesktopWallpaperHelper", 
+      "First attempt failed, retrying WorkerW creation after 500ms delay...");
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     
-    // v2.3.1+ CRITICAL FIX: Don't re-trigger on every retry!
-    // Only re-trigger after multiple failed attempts (e.g., every 5 retries)
-    // Over-triggering can confuse Progman
-    if (retry_count % 5 == 0) {
-      Logger::Instance().Info("DesktopWallpaperHelper", 
-        "Re-triggering WorkerW creation after " + std::to_string(retry_count) + " failed attempts");
-      TriggerWorkerWCreation();
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    }
+    // Recursive retry (only once)
+    return FindWorkerWWithRetry(timeout_ms, true);
   }
 
   Logger::Instance().Error("DesktopWallpaperHelper", 
-    "Failed to find WorkerW after " + std::to_string(retry_count) + " attempts");
+    "Failed to find WorkerW after all retry attempts");
   return false;
 }
 

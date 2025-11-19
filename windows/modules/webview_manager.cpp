@@ -24,18 +24,32 @@ void WebViewManager::InitializeEnvironment(const std::wstring& user_data_folder)
     return;
   }
 
+  // v2.4.1+ CRITICAL: Initialize COM for this thread (Explorer restart recovery)
+  HRESULT hr_com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  bool com_initialized_here = SUCCEEDED(hr_com);
+  if (FAILED(hr_com) && hr_com != RPC_E_CHANGED_MODE) {
+    Logger::Instance().Warning("WebViewManager", 
+      "COM initialization failed: HRESULT=0x" + std::to_string(hr_com) + " (may already be initialized)");
+  }
+
   Logger::Instance().Info("WebViewManager", "Initializing WebView2 environment...");
 
   auto callback = Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-      [](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+      [com_initialized_here](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
         if (FAILED(result)) {
           Logger::Instance().Error("WebViewManager", 
             "Failed to create environment: HRESULT=0x" + std::to_string(result));
+          if (com_initialized_here) {
+            CoUninitialize();
+          }
           return result;
         }
 
         shared_environment_ = env;
         Logger::Instance().Info("WebViewManager", "Environment initialized successfully");
+        
+        // Note: Don't uninitialize COM here as Environment may still need it
+        // COM will be uninitialized when the thread exits
         return S_OK;
       });
 
@@ -47,7 +61,18 @@ void WebViewManager::InitializeEnvironment(const std::wstring& user_data_folder)
       "CreateCoreWebView2EnvironmentWithOptions failed: HRESULT=0x" + std::to_string(hr));
     Logger::Instance().Error("WebViewManager", 
       "Please install Microsoft Edge WebView2 Runtime: https://go.microsoft.com/fwlink/?linkid=2124701");
+    
+    if (com_initialized_here) {
+      CoUninitialize();
+    }
   }
+}
+
+// v2.4.1+ Reset environment (for Explorer restart recovery)
+void WebViewManager::ResetEnvironment() {
+  Logger::Instance().Info("WebViewManager", "Resetting WebView2 environment (Explorer restart recovery)");
+  shared_environment_ = nullptr;
+  Logger::Instance().Info("WebViewManager", "Environment reset complete, will reinitialize on next CreateWebView");
 }
 
 Microsoft::WRL::ComPtr<ICoreWebView2Environment> WebViewManager::GetEnvironment() {
@@ -90,15 +115,18 @@ void WebViewManager::CreateWebView(
         if (FAILED(result)) {
           Logger::Instance().Error("WebViewManager", 
             "Failed to create controller: HRESULT=0x" + std::to_string(result));
+          Logger::Instance().Error("WebViewManager",
+            "This may be caused by invalid window handle or environment failure after Explorer restart");
           return result;
         }
 
         if (!controller) {
-          Logger::Instance().Error("WebViewManager", "Controller is null");
+          Logger::Instance().Error("WebViewManager", "Controller is null despite SUCCESS HRESULT");
           return E_FAIL;
         }
 
-        Logger::Instance().Info("WebViewManager", "Controller created successfully");
+        Logger::Instance().Info("WebViewManager", 
+          "Controller created successfully for window: " + std::to_string((long long)parent_hwnd));
 
         // Get CoreWebView2
         Microsoft::WRL::ComPtr<ICoreWebView2Controller> ctrl = controller;
@@ -148,7 +176,27 @@ void WebViewManager::CreateWebView(
         return S_OK;
       });
 
-  shared_environment_->CreateCoreWebView2Controller(parent_hwnd, controller_callback.Get());
+  // v2.4.1+ Verify window handle before creating controller
+  if (!IsWindow(parent_hwnd)) {
+    Logger::Instance().Error("WebViewManager", 
+      "CreateWebView called with invalid window handle: " + std::to_string((long long)parent_hwnd));
+    return;
+  }
+
+  Logger::Instance().Info("WebViewManager", 
+    "Calling CreateCoreWebView2Controller for window: " + std::to_string((long long)parent_hwnd));
+  
+  HRESULT hr = shared_environment_->CreateCoreWebView2Controller(parent_hwnd, controller_callback.Get());
+  
+  if (FAILED(hr)) {
+    Logger::Instance().Error("WebViewManager", 
+      "CreateCoreWebView2Controller failed immediately: HRESULT=0x" + std::to_string(hr));
+    Logger::Instance().Error("WebViewManager",
+      "This indicates the async creation could not be started");
+  } else {
+    Logger::Instance().Info("WebViewManager", 
+      "CreateCoreWebView2Controller call succeeded, waiting for async callback...");
+  }
 }
 
 bool WebViewManager::Navigate(ICoreWebView2* webview, const std::string& url) {

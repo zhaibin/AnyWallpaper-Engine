@@ -35,6 +35,10 @@ public:
 
   // Z-order management
   bool SetWallpaperZOrder(HWND hwnd, HWND worker_w);
+  
+  // v2.4.1+ Ensure WorkerW is at the bottom of Z-order (Lively-style)
+  // Critical for Windows 11 Raised Desktop mode
+  void EnsureWorkerWZOrder(HWND worker_w);
 
   // WorkerW helper
   HWND FindSHELLDLL_DefView(HWND worker_w);

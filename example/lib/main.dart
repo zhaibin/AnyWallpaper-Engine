@@ -43,7 +43,8 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> with WindowListener {
+class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProviderStateMixin {
+  TabController? _tabController;
   // Multi-monitor support
   List<MonitorInfo> _monitors = [];
   Map<int, bool> _monitorWallpapers = {};  // Track which monitors have wallpapers
@@ -69,22 +70,35 @@ class _MyAppState extends State<MyApp> with WindowListener {
   int _messagesSent = 0;
   int _messagesReceived = 0;
   
-  // Quick test pages
+  // Quick test pages - 只保留核心测试
   final List<Map<String, String>> _testPages = [
-    {'name': 'Fullscreen Pause', 'file': 'test_fullscreen_pause.html', 'icon': '🎯'},
-    {'name': 'API Test', 'file': 'test_api.html', 'icon': '⚙️'},
-    {'name': 'Simple', 'file': 'test_simple.html', 'icon': '🎨'},
-    {'name': 'Click Test', 'file': 'test_basic_click.html', 'icon': '👆'},
     {'name': 'Visibility', 'file': 'test_visibility.html', 'icon': '👁️'},
-    {'name': 'React', 'file': 'test_react.html', 'icon': '⚛️'},
-    {'name': 'Vue', 'file': 'test_vue.html', 'icon': '💚'},
-    {'name': 'iFrame Ads', 'file': 'test_iframe_ads.html', 'icon': '📺'},
-    {'name': 'Bidirectional', 'file': 'test_bidirectional.html', 'icon': '🔄'},
+    {'name': 'API Test', 'file': 'test_api.html', 'icon': '⚙️'},
+    {'name': 'Click Test', 'file': 'test_basic_click.html', 'icon': '👆'},
   ];
+  
+  // 轮播控制状态
+  List<String> _carouselImages = [
+    'https://picsum.photos/1920/1080?random=1',
+    'https://picsum.photos/1920/1080?random=2',
+    'https://picsum.photos/1920/1080?random=3',
+    'https://picsum.photos/1920/1080?random=4',
+    'https://picsum.photos/1920/1080?random=5',
+  ];
+  int _carouselCurrentIndex = 0;
+  int _carouselInterval = 5000; // 默认5秒
+  String _carouselStatus = 'stopped';
+  int _carouselCountdown = 0; // 倒计时（秒）
+  Timer? _carouselCountdownTimer;
+  TextEditingController _intervalController = TextEditingController(text: '5');
 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize tab controller
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController!.addListener(_onTabChanged);
     
     // Register window listener to save/restore position
     windowManager.addListener(this);
@@ -113,14 +127,19 @@ class _MyAppState extends State<MyApp> with WindowListener {
     // Setup bidirectional communication callback
     AnyWPEngine.setOnMessageCallback((message) async {
       try {
-        print('[APP] Received message from JavaScript:');
-        print('[APP]   Type: ${message['type']}');
+        print('[APP] ═══════════════════════════════════════════');
+        print('[APP] 📩 Received message from JavaScript');
+        print('[APP]   Message type (runtime): ${message.runtimeType}');
+        print('[APP]   Type field: ${message['type']}');
+        print('[APP]   Data field: ${message['data']}');
         print('[APP]   Raw message: $message');
+        print('[APP] ═══════════════════════════════════════════');
         
         // Safe data extraction with defaults
         final messageType = message['type']?.toString() ?? 'unknown';
-        final messageData = message['data'] is Map ? message['data'] as Map<String, dynamic> : 
-                           (message is Map ? Map<String, dynamic>.from(message) : <String, dynamic>{});
+        final messageData = message['data'] is Map 
+            ? message['data'] as Map<String, dynamic> 
+            : <String, dynamic>{};
         
         // Parse timestamp safely
         DateTime messageTimestamp;
@@ -153,7 +172,135 @@ class _MyAppState extends State<MyApp> with WindowListener {
           }
         });
         
-        // v2.3.1+ Handle wallpaper recreation request from C++ side
+        // Handle carousel state changes from HTML
+        if (messageType == 'carouselStateChanged') {
+          print('[APP] Carousel state changed');
+          final status = messageData['status']?.toString();
+          final currentIndex = messageData['currentIndex'];
+          
+          if (status != null) {
+            setState(() {
+              _carouselStatus = status;
+            });
+            
+            // 更新倒计时状态
+            if (status == 'playing' && _carouselCountdownTimer == null) {
+              _startCountdownTimer();
+            } else if (status == 'paused' || status == 'stopped') {
+              _stopCountdownTimer();
+            }
+          }
+          
+          if (currentIndex != null && currentIndex is int) {
+            setState(() {
+              _carouselCurrentIndex = currentIndex;
+            });
+          }
+        }
+        
+        // Handle play success message from HTML
+        if (messageType == 'playSuccess') {
+          print('[APP] ✅ Play success confirmed by HTML');
+          print('[APP]   Status: ${messageData['status']}');
+          print('[APP]   Interval: ${messageData['interval']}ms');
+          print('[APP]   Total Images: ${messageData['totalImages']}');
+          
+          final status = messageData['status']?.toString();
+          if (status == 'playing') {
+            setState(() {
+              _carouselStatus = 'playing';
+            });
+            if (_carouselCountdownTimer == null) {
+              _startCountdownTimer();
+            }
+          }
+        }
+        
+        // Handle image displayed message from HTML
+        if (messageType == 'imageDisplayed') {
+          print('[APP] 🖼️ Image displayed');
+          final index = messageData['index'];
+          final url = messageData['url'];
+          print('[APP]   Index: ${index}');
+          print('[APP]   URL: ${url}');
+          
+          if (index != null && index is int) {
+            setState(() {
+              _carouselCurrentIndex = index;
+            });
+            // 重置倒计时（如果正在播放）
+            if (_carouselStatus == 'playing') {
+              _resetCountdown();
+            }
+          }
+        }
+        
+        // v2.4.1+ Handle auto recovery request from C++ (Lively-style architecture)
+        if (messageType == 'AUTO_RECOVERY_REQUEST') {
+          print('[APP] 🔄 Auto recovery request received from C++ (Explorer restart)');
+          print('[APP]   Reason: ${messageData['reason']}');
+          
+          // Extract recovery configurations
+          final configs = messageData['configs'] as List<dynamic>?;
+          if (configs == null || configs.isEmpty) {
+            print('[APP] ⚠️  No configurations to recover');
+            return;
+          }
+          
+          print('[APP] 📋 Recovery configurations:');
+          for (var config in configs) {
+            print('[APP]   - Monitor ${config['monitorIndex']}: ${config['url']} (transparent: ${config['transparent']})');
+          }
+          
+          // Stop existing wallpapers first
+          print('[APP] 🛑 Stopping existing wallpapers...');
+          await AnyWPEngine.stopWallpaper();
+          await Future.delayed(Duration(milliseconds: 500));
+          
+          // Recreate wallpapers in Flutter main thread (ensures WebView async works)
+          print('[APP] 🔄 Recreating wallpapers in main thread...');
+          int successCount = 0;
+          for (var config in configs) {
+            final monitorIndex = config['monitorIndex'] as int;
+            final url = config['url'] as String;
+            final transparent = config['transparent'] as bool;
+            
+            try {
+              final result = await AnyWPEngine.initializeWallpaperOnMonitor(
+                url: url,
+                monitorIndex: monitorIndex,
+                autoSave: true, // v2.4.0+ Auto-save configuration for next recovery
+              );
+              
+              if (result == true) {
+                successCount++;
+                print('[APP] ✅ Monitor $monitorIndex recovered successfully');
+                
+                // Update UI state
+                setState(() {
+                  _monitorWallpapers[monitorIndex] = true;
+                });
+              } else {
+                print('[APP] ❌ Monitor $monitorIndex recovery failed');
+              }
+            } catch (e) {
+              print('[APP] ❌ Monitor $monitorIndex recovery exception: $e');
+            }
+          }
+          
+          print('[APP] 🎉 Auto recovery completed: $successCount/${configs.length} monitors recovered');
+          
+          // v2.4.1+ CRITICAL: Send initial data to recovered WebView
+          // The recovered page needs the carousel configuration
+          print('[APP] 📤 Sending initial carousel data to recovered WebView...');
+          await Future.delayed(Duration(seconds: 2)); // Wait for WebView to fully load
+          await _sendCarouselUpdate();
+          print('[APP] ✅ Initial data sent to recovered WebView');
+          
+          return;
+        }
+        
+        // v2.3.1+ Handle wallpaper recreation request from C++ side (legacy manual mode)
         // v2.4.1+ Skip manual recreation when Auto Recovery is enabled (plugin handles it automatically)
         if (messageType == 'WALLPAPER_RECREATE_REQUIRED') {
           print('[APP] 🔄 Wallpaper recreation required!');
@@ -266,16 +413,22 @@ class _MyAppState extends State<MyApp> with WindowListener {
     
     print('[APP] Bidirectional communication callback set');
     
-    // Auto-start wallpaper for SDK injection testing
-    // Wait for monitors to load, then auto-start
-    Future.delayed(Duration(seconds: 2), () {
+    // Auto-start carousel wallpaper
+    // Wait for monitors to load, then auto-start carousel
+    Future.delayed(Duration(seconds: 2), () async {
       if (mounted && _monitors.isNotEmpty) {
-        final testUrl = 'https://hkcw-web.pages.dev/wallpapers/theme1';
-        print('[APP] Auto-starting wallpaper for SDK injection test: $testUrl');
+        final carouselUrl = 'file:///E:/Projects/AnyWallpaper/AnyWP-Test/examples/test_carousel_control.html';
+        print('[APP] Auto-starting carousel wallpaper: $carouselUrl');
         final monitorIndex = _monitors.first.index;
         if (_monitorUrlControllers.containsKey(monitorIndex)) {
-          _monitorUrlControllers[monitorIndex]!.text = testUrl;
-          _startWallpaperOnMonitor(monitorIndex);
+          _monitorUrlControllers[monitorIndex]!.text = carouselUrl;
+          await _startWallpaperOnMonitor(monitorIndex);
+          
+          // Wait for wallpaper to load, then send initial carousel data
+          await Future.delayed(Duration(seconds: 3));
+          print('[APP] Sending initial carousel data...');
+          await _sendCarouselUpdate();
+          print('[APP] Initial carousel data sent');
         }
       }
     });
@@ -472,11 +625,70 @@ class _MyAppState extends State<MyApp> with WindowListener {
   @override
   void dispose() {
     _monitorCheckTimer?.cancel();
+    _carouselCountdownTimer?.cancel();
+    _tabController?.dispose();
     windowManager.removeListener(this);
     for (final controller in _monitorUrlControllers.values) {
       controller.dispose();
     }
+    _intervalController.dispose();
     super.dispose();
+  }
+  
+  // 标签切换监听
+  void _onTabChanged() {
+    if (_tabController == null || !mounted) return;
+    
+    final currentTab = _tabController!.index;
+    print('[APP] Tab changed to index: $currentTab');
+    
+    // 如果切换到 Carousel Control 标签（index = 2）
+    if (currentTab == 2) {
+      _checkAndLoadCarouselPage();
+    }
+  }
+  
+  // 检查并加载轮播页面
+  Future<void> _checkAndLoadCarouselPage() async {
+    if (_monitors.isEmpty) return;
+    
+    final monitorIndex = _monitors.first.index;
+    final controller = _monitorUrlControllers[monitorIndex];
+    
+    if (controller == null) return;
+    
+    final currentUrl = controller.text.trim();
+    final carouselUrl = 'file:///E:/Projects/AnyWallpaper/AnyWP-Test/examples/test_carousel_control.html';
+    
+    // 如果当前不是轮播页面，则切换到轮播页面
+    if (currentUrl != carouselUrl) {
+      print('[APP] Switching to carousel page...');
+      controller.text = carouselUrl;
+      
+      // 检查壁纸是否正在运行
+      final isRunning = _monitorWallpapers[monitorIndex] == true;
+      
+      if (isRunning) {
+        // 如果正在运行，直接导航
+        print('[APP] Navigating to carousel page...');
+        final success = await AnyWPEngine.navigateToUrlOnMonitor(carouselUrl, monitorIndex);
+        if (success) {
+          _showMessage('已切换到轮播页面');
+          // 等待页面加载，然后发送初始数据
+          await Future.delayed(Duration(seconds: 2));
+          await _sendCarouselUpdate();
+        }
+      } else {
+        // 如果没有运行，启动壁纸
+        print('[APP] Starting carousel wallpaper...');
+        await _startWallpaperOnMonitor(monitorIndex);
+        // 等待壁纸加载，然后发送初始数据
+        await Future.delayed(Duration(seconds: 3));
+        await _sendCarouselUpdate();
+      }
+    } else {
+      print('[APP] Already on carousel page');
+    }
   }
   
   // WindowListener callbacks - save window position before monitor change
@@ -583,7 +795,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
           _monitorWallpapers[monitor.index] = false;
           _monitorLoading[monitor.index] = false;
           _monitorUrlControllers[monitor.index] = TextEditingController(
-            text: 'https://hkcw-web.pages.dev/wallpapers/theme1',
+            text: 'file:///E:/Projects/AnyWallpaper/AnyWP-Test/examples/test_carousel_control.html',
           );
         }
       }
@@ -818,7 +1030,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
     final controller = _monitorUrlControllers[monitorIndex];
     if (controller == null) return;
     
-    final url = 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/$filename';
+    final url = 'file:///E:/Projects/AnyWallpaper/AnyWP-Test/examples/$filename';
     controller.text = url;
     
     // Smart switching: use navigate if already running, otherwise start fresh
@@ -1426,16 +1638,13 @@ class _MyAppState extends State<MyApp> with WindowListener {
                   '4. Use "Start All" to apply to all monitors at once\n'
                   '5. Each monitor displays its own independent content!\n\n'
                   '💡 Quick Test Pages:\n'
-                  '  ⚙️ Complete API - Full API testing (integrated)\n'
-                  '  🎨 Simple - Basic wallpaper test\n'
-                  '  👆 Click Test - Click detection test\n'
-                  '  👁️ Visibility - Power saving test\n'
-                  '  ⚛️ React / 💚 Vue - SPA framework tests\n'
-                  '  📺 iFrame Ads - Ad detection test\n\n'
+                  '  👁️ Visibility - 可见性与省电测试\n'
+                  '  ⚙️ API Test - 完整API功能测试\n'
+                  '  👆 Click Test - 鼠标点击检测测试\n\n'
                   '✨ Tips:\n'
-                  '  • Click test page buttons to load URL, then click "Start"\n'
-                  '  • Simple mode: Desktop icons remain clickable\n'
-                  '  • Try different pages on different monitors',
+                  '  • 默认启动轮播壁纸HTML\n'
+                  '  • 点击测试页按钮快速切换\n'
+                  '  • 使用 Communication 标签控制轮播',
                   style: TextStyle(color: Colors.grey[800], fontSize: 13),
                 ),
               ],
@@ -1447,28 +1656,8 @@ class _MyAppState extends State<MyApp> with WindowListener {
   }
 
   // ========================================
-  // Bidirectional Communication Methods
+  // 轮播控制方法
   // ========================================
-
-  Future<void> _sendTestMessage() async {
-    final success = await AnyWPEngine.sendMessage(
-      message: {
-        'type': 'ping',
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-        'data': {
-          'requestId': 'flutter-${DateTime.now().millisecondsSinceEpoch}',
-          'message': 'Hello from Flutter!',
-        },
-      },
-    );
-
-    if (success) {
-      setState(() => _messagesSent++);
-      print('[APP] ✅ Test message sent successfully');
-    } else {
-      print('[APP] ❌ Failed to send test message');
-    }
-  }
 
   Future<void> _sendCarouselUpdate() async {
     final success = await AnyWPEngine.sendMessage(
@@ -1476,36 +1665,245 @@ class _MyAppState extends State<MyApp> with WindowListener {
         'type': 'updateCarousel',
         'timestamp': DateTime.now().millisecondsSinceEpoch,
         'data': {
-          'images': [
-            'https://example.com/image1.jpg',
-            'https://example.com/image2.jpg',
-            'https://example.com/image3.jpg',
-          ],
-          'interval': 30000,
-          'transition': 'fade',
-          'autoPlay': true,
+          'images': _carouselImages,
+          'interval': _carouselInterval,
+          'currentIndex': _carouselCurrentIndex,
         },
       },
     );
 
     if (success) {
       setState(() => _messagesSent++);
-      print('[APP] ✅ Carousel update sent');
+      print('[APP] ✅ Carousel data updated');
+      _showMessage('轮播数据已更新');
+    } else {
+      print('[APP] ❌ Failed to update carousel');
+      _showMessage('更新失败');
     }
   }
 
-  Future<void> _sendPlaybackControl(String action) async {
+  Future<void> _carouselPlay() async {
+    // 确保有图片数据
+    if (_carouselImages.isEmpty) {
+      _showMessage('没有可播放的图片');
+      return;
+    }
+
+    // 发送当前播放信息给HTML
     final success = await AnyWPEngine.sendMessage(
       message: {
-        'type': action,
+        'type': 'play',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'data': {
+          'currentIndex': _carouselCurrentIndex,
+          'currentImage': _carouselImages[_carouselCurrentIndex],
+          'totalImages': _carouselImages.length,
+          'interval': _carouselInterval,
+        },
+      },
+    );
+
+    if (success) {
+      setState(() {
+        _messagesSent++;
+        _carouselStatus = 'playing';
+      });
+      _startCountdownTimer();
+      print('[APP] ✅ Carousel play command sent with current image data');
+      print('[APP]   Current index: $_carouselCurrentIndex');
+      print('[APP]   Current image: ${_carouselImages[_carouselCurrentIndex]}');
+    }
+  }
+
+  Future<void> _carouselPause() async {
+    final success = await AnyWPEngine.sendMessage(
+      message: {
+        'type': 'pause',
         'timestamp': DateTime.now().millisecondsSinceEpoch,
         'data': {},
       },
     );
 
     if (success) {
-      setState(() => _messagesSent++);
-      print('[APP] ✅ Playback control sent: $action');
+      setState(() {
+        _messagesSent++;
+        _carouselStatus = 'paused';
+      });
+      _stopCountdownTimer();
+      print('[APP] ✅ Carousel pause command sent');
+    }
+  }
+
+  Future<void> _carouselNext() async {
+    if (_carouselImages.isEmpty) return;
+    
+    // 计算下一张索引
+    final nextIndex = (_carouselCurrentIndex + 1) % _carouselImages.length;
+    
+    // 发送下一张图片信息
+    final success = await AnyWPEngine.sendMessage(
+      message: {
+        'type': 'next',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'data': {
+          'currentIndex': nextIndex,
+          'currentImage': _carouselImages[nextIndex],
+          'totalImages': _carouselImages.length,
+        },
+      },
+    );
+
+    if (success) {
+      setState(() {
+        _messagesSent++;
+        _carouselCurrentIndex = nextIndex;
+      });
+      // 重置倒计时
+      if (_carouselStatus == 'playing') {
+        _resetCountdown();
+      }
+      print('[APP] ✅ Carousel next command sent');
+      print('[APP]   Next index: $nextIndex');
+      print('[APP]   Next image: ${_carouselImages[nextIndex]}');
+    }
+  }
+
+  Future<void> _carouselPrevious() async {
+    if (_carouselImages.isEmpty) return;
+    
+    // 计算上一张索引
+    final prevIndex = (_carouselCurrentIndex - 1 + _carouselImages.length) % _carouselImages.length;
+    
+    // 发送上一张图片信息
+    final success = await AnyWPEngine.sendMessage(
+      message: {
+        'type': 'previous',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'data': {
+          'currentIndex': prevIndex,
+          'currentImage': _carouselImages[prevIndex],
+          'totalImages': _carouselImages.length,
+        },
+      },
+    );
+
+    if (success) {
+      setState(() {
+        _messagesSent++;
+        _carouselCurrentIndex = prevIndex;
+      });
+      // 重置倒计时
+      if (_carouselStatus == 'playing') {
+        _resetCountdown();
+      }
+      print('[APP] ✅ Carousel previous command sent');
+      print('[APP]   Previous index: $prevIndex');
+      print('[APP]   Previous image: ${_carouselImages[prevIndex]}');
+    }
+  }
+
+  Future<void> _carouselSetInterval() async {
+    final seconds = int.tryParse(_intervalController.text) ?? 5;
+    final interval = seconds * 1000;
+    
+    final success = await AnyWPEngine.sendMessage(
+      message: {
+        'type': 'setInterval',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'data': {
+          'interval': interval,
+        },
+      },
+    );
+
+    if (success) {
+      setState(() {
+        _messagesSent++;
+        _carouselInterval = interval;
+      });
+      print('[APP] ✅ Carousel interval set to ${seconds}s');
+      _showMessage('轮播间隔已设置为 ${seconds}秒');
+    }
+  }
+
+  void _addCarouselImage() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('添加图片'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: '输入图片 URL',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                setState(() {
+                  _carouselImages.add(controller.text.trim());
+                });
+                Navigator.pop(context);
+                _sendCarouselUpdate();
+              }
+            },
+            child: Text('添加'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _removeCarouselImage(int index) {
+    setState(() {
+      _carouselImages.removeAt(index);
+      if (_carouselCurrentIndex >= _carouselImages.length && _carouselImages.isNotEmpty) {
+        _carouselCurrentIndex = _carouselImages.length - 1;
+      }
+    });
+    _sendCarouselUpdate();
+  }
+
+  // 倒计时相关方法
+  void _startCountdownTimer() {
+    _stopCountdownTimer();
+    _resetCountdown();
+    
+    _carouselCountdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_carouselCountdown > 0) {
+            _carouselCountdown--;
+          } else {
+            _resetCountdown();
+          }
+        });
+      }
+    });
+  }
+
+  void _stopCountdownTimer() {
+    _carouselCountdownTimer?.cancel();
+    _carouselCountdownTimer = null;
+    if (mounted) {
+      setState(() {
+        _carouselCountdown = 0;
+      });
+    }
+  }
+
+  void _resetCountdown() {
+    if (mounted) {
+      setState(() {
+        _carouselCountdown = (_carouselInterval / 1000).round();
+      });
     }
   }
 
@@ -1515,7 +1913,275 @@ class _MyAppState extends State<MyApp> with WindowListener {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Statistics Card
+          // 轮播控制面板
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.view_carousel, color: Colors.blue, size: 28),
+                      SizedBox(width: 12),
+                      Text(
+                        '🎠 轮播壁纸控制中心',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  Divider(height: 32),
+                  
+                  // 播放控制按钮
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '▶️ 播放控制',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                      ),
+                      // 状态和倒计时显示
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(_carouselStatus).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: _getStatusColor(_carouselStatus)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(_getStatusIcon(_carouselStatus), size: 18, color: _getStatusColor(_carouselStatus)),
+                            SizedBox(width: 8),
+                            Text(
+                              _getStatusText(_carouselStatus),
+                              style: TextStyle(
+                                color: _getStatusColor(_carouselStatus),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            if (_carouselStatus == 'playing' && _carouselCountdown > 0) ...[
+                              SizedBox(width: 8),
+                              Text(
+                                '⏱️ ${_carouselCountdown}s',
+                                style: TextStyle(
+                                  color: _getStatusColor(_carouselStatus),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _carouselPlay,
+                          icon: Icon(Icons.play_arrow, size: 24),
+                          label: Text('播放', style: TextStyle(fontSize: 16)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _carouselPause,
+                          icon: Icon(Icons.pause, size: 24),
+                          label: Text('暂停', style: TextStyle(fontSize: 16)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _carouselPrevious,
+                          icon: Icon(Icons.skip_previous, size: 24),
+                          label: Text('上一张', style: TextStyle(fontSize: 16)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _carouselNext,
+                          icon: Icon(Icons.skip_next, size: 24),
+                          label: Text('下一张', style: TextStyle(fontSize: 16)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  SizedBox(height: 24),
+                  
+                  // 轮播间隔设置
+                  Text(
+                    '⏱️ 轮播间隔',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _intervalController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: '间隔时间（秒）',
+                            border: OutlineInputBorder(),
+                            suffixText: '秒',
+                            prefixIcon: Icon(Icons.timer),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: _carouselSetInterval,
+                        icon: Icon(Icons.check),
+                        label: Text('应用'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          SizedBox(height: 16),
+          
+          // 图片列表管理
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.photo_library, color: Colors.green, size: 24),
+                          SizedBox(width: 8),
+                          Text(
+                            '🖼️ 图片列表 (${_carouselImages.length}张)',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _addCarouselImage,
+                        icon: Icon(Icons.add, size: 18),
+                        label: Text('添加'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16),
+                  Container(
+                    constraints: BoxConstraints(maxHeight: 300),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: _carouselImages.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(32),
+                              child: Text(
+                                '暂无图片\n点击"添加"按钮添加图片',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _carouselImages.length,
+                            itemBuilder: (context, index) {
+                              return Card(
+                                margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.blue,
+                                    child: Text(
+                                      '${index + 1}',
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    _carouselImages[index],
+                                    style: TextStyle(fontSize: 13),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _removeCarouselImage(index),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _sendCarouselUpdate,
+                      icon: Icon(Icons.sync),
+                      label: Text('同步到壁纸', style: TextStyle(fontSize: 16)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          SizedBox(height: 16),
+          
+          // 通信统计
           Card(
             child: Padding(
               padding: EdgeInsets.all(16),
@@ -1539,70 +2205,10 @@ class _MyAppState extends State<MyApp> with WindowListener {
               ),
             ),
           ),
+          
           SizedBox(height: 16),
 
-          // Send Message Buttons
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '📤 发送消息到 JavaScript',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: _sendTestMessage,
-                        icon: Icon(Icons.send),
-                        label: Text('发送测试消息'),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: _sendCarouselUpdate,
-                        icon: Icon(Icons.view_carousel),
-                        label: Text('更新轮播'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () => _sendPlaybackControl('play'),
-                        icon: Icon(Icons.play_arrow),
-                        label: Text('播放'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () => _sendPlaybackControl('pause'),
-                        icon: Icon(Icons.pause),
-                        label: Text('暂停'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                        ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () => _sendPlaybackControl('stop'),
-                        icon: Icon(Icons.stop),
-                        label: Text('停止'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
-
-          // Received Messages
+          // 接收到的消息
           Card(
             child: Padding(
               padding: EdgeInsets.all(16),
@@ -1630,7 +2236,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
                   ),
                   SizedBox(height: 12),
                   Container(
-                    height: 400,
+                    height: 300,
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(8),
@@ -1639,7 +2245,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
                     child: _receivedMessages.isEmpty
                         ? Center(
                             child: Text(
-                              '暂无消息\n\n请在 JavaScript 页面中发送消息',
+                              '暂无消息\n\n轮播壁纸会自动发送状态消息',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.grey[600]),
                             ),
@@ -1660,25 +2266,26 @@ class _MyAppState extends State<MyApp> with WindowListener {
                                   ),
                                   title: Text(
                                     '${msg['type']}',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                   ),
                                   subtitle: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '时间: ${(msg['receivedAt'] as DateTime).toString().substring(11, 19)}',
-                                        style: TextStyle(fontSize: 12),
+                                        style: TextStyle(fontSize: 11),
                                       ),
                                       if (msg['data'].toString().isNotEmpty)
                                         Text(
                                           '数据: ${msg['data']}',
-                                          style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                                          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                     ],
                                   ),
                                   isThreeLine: true,
+                                  dense: true,
                                 ),
                               );
                             },
@@ -1691,7 +2298,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
 
           SizedBox(height: 16),
 
-          // Help text
+          // 使用提示
           Card(
             color: Colors.blue[50],
             child: Padding(
@@ -1699,17 +2306,33 @@ class _MyAppState extends State<MyApp> with WindowListener {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '💡 使用提示',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Row(
+                    children: [
+                      Icon(Icons.lightbulb_outline, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text(
+                        '💡 使用说明',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 8),
+                  SizedBox(height: 12),
                   Text(
-                    '1. 在"Wallpaper"标签中启动"Bidirectional"测试页面\n'
-                    '2. 使用上方按钮发送消息到 JavaScript\n'
-                    '3. 在浏览器页面中点击按钮发送消息到 Flutter\n'
-                    '4. 查看下方接收到的消息列表',
-                    style: TextStyle(fontSize: 13),
+                    '✨ 功能特点:\n'
+                    '• 轮播壁纸通过 WebMessage 接收控制命令\n'
+                    '• 支持播放、暂停、上一张、下一张、调整间隔\n'
+                    '• 壁纸会实时反馈状态变化\n'
+                    '• 测试 Auto Recovery 自动恢复功能\n\n'
+                    '🎯 操作步骤:\n'
+                    '1. 程序启动时自动加载轮播壁纸HTML\n'
+                    '2. 使用播放控制按钮控制轮播\n'
+                    '3. 添加/删除图片，点击"同步到壁纸"更新\n'
+                    '4. 调整间隔时间，点击"应用"生效\n'
+                    '5. 查看下方消息日志观察双向通信\n\n'
+                    '🔄 Auto Recovery 测试:\n'
+                    '• 尝试拔插显示器，壁纸会自动恢复\n'
+                    '• 查看日志中的 heartbeat 消息',
+                    style: TextStyle(fontSize: 13, height: 1.5),
                   ),
                 ],
               ),
@@ -1756,8 +2379,12 @@ class _MyAppState extends State<MyApp> with WindowListener {
     switch (type) {
       case 'carouselStateChanged':
         return Colors.blue;
-      case 'testMessage':
+      case 'carouselReady':
         return Colors.green;
+      case 'playSuccess':
+        return Colors.teal;
+      case 'imageDisplayed':
+        return Colors.indigo;
       case 'heartbeat':
       case 'pong':
         return Colors.orange;
@@ -1765,6 +2392,45 @@ class _MyAppState extends State<MyApp> with WindowListener {
         return Colors.red;
       default:
         return Colors.purple;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'playing':
+        return Colors.green;
+      case 'paused':
+        return Colors.orange;
+      case 'stopped':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'playing':
+        return Icons.play_circle_filled;
+      case 'paused':
+        return Icons.pause_circle_filled;
+      case 'stopped':
+        return Icons.stop_circle;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'playing':
+        return '播放中';
+      case 'paused':
+        return '已暂停';
+      case 'stopped':
+        return '已停止';
+      default:
+        return '未知';
     }
   }
 
@@ -1776,27 +2442,26 @@ class _MyAppState extends State<MyApp> with WindowListener {
         primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      home: DefaultTabController(
-        length: 3,
-        child: Scaffold(
-          appBar: AppBar(
-            title: const Text('AnyWallpaper Engine'),
-            backgroundColor: Colors.blue,
-            bottom: TabBar(
-              tabs: [
-                Tab(icon: Icon(Icons.monitor), text: 'Wallpaper'),
-                Tab(icon: Icon(Icons.tune), text: 'Optimization'),
-                Tab(icon: Icon(Icons.swap_horiz), text: 'Communication'),
-              ],
-            ),
-          ),
-          body: TabBarView(
-            children: [
-              _buildMultiMonitorTab(),
-              _buildOptimizationTab(),
-              _buildCommunicationTab(),
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('AnyWallpaper Engine'),
+          backgroundColor: Colors.blue,
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: [
+              Tab(icon: Icon(Icons.monitor), text: 'Wallpaper'),
+              Tab(icon: Icon(Icons.tune), text: 'Optimization'),
+              Tab(icon: Icon(Icons.view_carousel), text: 'Carousel Control'),
             ],
           ),
+        ),
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildMultiMonitorTab(),
+            _buildOptimizationTab(),
+            _buildCommunicationTab(),
+          ],
         ),
       ),
     );

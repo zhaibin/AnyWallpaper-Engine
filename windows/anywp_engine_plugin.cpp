@@ -660,8 +660,17 @@ void AnyWPEnginePlugin::SetupWebView2WithManager(HWND hwnd, const std::string& u
             ErrorHandler::ErrorLevel::ERROR);
           return;
         }
+        
+        // v2.4.1+ Diagnostic: Log webview assignment
+        Logger::Instance().Info("Plugin", 
+          "Assigning webview to instance - Monitor: " + std::to_string(monitor_index) + 
+          ", WebView pointer: " + std::to_string((long long)webview.Get()));
+        
         instance->webview_controller = controller;
         instance->webview = webview;
+        
+        Logger::Instance().Info("Plugin", 
+          "WebView assigned successfully - Verify pointer: " + std::to_string((long long)instance->webview.Get()));
       }
       
       // v2.0+ Refactoring: Configure WebView using WebViewConfigurator
@@ -3520,6 +3529,12 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     DesktopWallpaperHelper::Instance().Reset();
     Logger::Instance().Info("WorkerW Recovery", "DesktopWallpaperHelper cache cleared");
     
+    // Step 3.5: v2.4.1+ CRITICAL: Reset WebView2 Environment (Explorer restart invalidates it)
+    if (webview_manager_) {
+      WebViewManager::ResetEnvironment();
+      Logger::Instance().Info("WorkerW Recovery", "WebView2 Environment reset (will reinitialize on recovery)");
+    }
+    
     // Step 4: Clear all destroyed window handles
     Logger::Instance().Info("WorkerW Recovery", "Clearing destroyed window handles...");
     webview_host_hwnd_ = nullptr;
@@ -3574,21 +3589,26 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
       wallpaper_recreate_reason_ = "Explorer restart detected, windows were destroyed";
     }
     
-    // v2.4.1+ Improved: Only send Flutter message if Auto Recovery is disabled
-    // This prevents double recovery (C++ auto recovery + Flutter manual recovery)
+    // v2.4.1+ CRITICAL FIX: Always use Flutter main thread for recovery (Lively-style)
+    // Creating WebView in detached C++ thread causes async callback issues
+    // Solution: Send message to Flutter, let main thread handle recovery
+    
     if (IsAutoRecoveryEnabled()) {
       Logger::Instance().Info("WorkerW Recovery", 
-        "Auto recovery enabled, triggering automatic wallpaper recovery (no Flutter message sent)");
+        "Auto recovery enabled, triggering recovery in Flutter main thread (Lively-style)");
+      
+      // Trigger auto recovery, but in Flutter main thread via Platform Channel
       HandleAutoRecovery();
     } else {
+      Logger::Instance().Info("WorkerW Recovery", 
+        "Auto recovery disabled, sending manual recovery message to Flutter");
+      
       // v2.3.1+ Send JSON message to Flutter to trigger manual recreation
       // Using existing message queue mechanism (thread-safe)
       std::string recreate_message = R"({"type":"WALLPAPER_RECREATE_REQUIRED","data":{"reason":")" + 
                                      wallpaper_recreate_reason_ + R"("}})";
       NotifyFlutterMessage(recreate_message);
       
-      Logger::Instance().Warning("WorkerW Recovery", 
-        "Auto recovery disabled, sent recreation message to Flutter: " + recreate_message);
       Logger::Instance().Info("WorkerW Recovery", 
         "Recovery message sent to Flutter, waiting for manual recreation");
     }
@@ -4007,85 +4027,47 @@ void AnyWPEnginePlugin::HandleAutoRecovery() {
     }
   }
   
-  // Schedule recovery with delay (1 second) to let system stabilize
-  std::thread([this, configs_to_recover]() {
-    // v2.4.0+ Enhancement: Ensure flag is always reset, even if recovery fails
-    try {
-      Logger::Instance().Info("AutoRecovery", "Waiting 1 second for system to stabilize...");
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-      
-      // Stop existing wallpapers first
-      if (instance_manager_) {
-        Logger::Instance().Info("AutoRecovery", "Stopping existing wallpapers before recovery");
-        
-        std::vector<int> monitor_indices;
-        {
-          std::lock_guard<std::mutex> inst_lock(instances_mutex_);
-          for (const auto& instance : wallpaper_instances_) {
-            monitor_indices.push_back(instance.monitor_index);
-          }
-        }
-        
-        Logger::Instance().Info("AutoRecovery", 
-          "Found " + std::to_string(monitor_indices.size()) + " existing wallpaper(s) to stop");
-        
-        for (int monitor_index : monitor_indices) {
-          Logger::Instance().Info("AutoRecovery", 
-            "Stopping wallpaper on monitor " + std::to_string(monitor_index));
-          StopWallpaperOnMonitor(monitor_index);
-        }
-      }
-      
-      // Wait for cleanup
-      Logger::Instance().Info("AutoRecovery", "Waiting 500ms for cleanup to complete...");
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      
-      // Recover each wallpaper (using copied configs, no lock needed)
-      Logger::Instance().Info("AutoRecovery", "Starting wallpaper recovery...");
-      int success_count = 0;
-      int fail_count = 0;
-      
-      for (const auto& pair : configs_to_recover) {
-        const auto& config = pair.second;
-        
-        Logger::Instance().Info("AutoRecovery", 
-          "Recovering wallpaper on monitor " + std::to_string(config.monitor_index) + 
-          " - URL: " + config.url);
-        
-        bool success = InitializeWallpaperOnMonitor(
-          config.url,
-          config.enable_mouse_transparent,
-          config.monitor_index
-        );
-        
-        if (success) {
-          success_count++;
-          Logger::Instance().Info("AutoRecovery", 
-            "Successfully recovered wallpaper on monitor " + std::to_string(config.monitor_index));
-        } else {
-          fail_count++;
-          Logger::Instance().Error("AutoRecovery", 
-            "Failed to recover wallpaper on monitor " + std::to_string(config.monitor_index));
-        }
-      }
-      
-      Logger::Instance().Info("AutoRecovery", 
-        "Auto recovery completed - Success: " + std::to_string(success_count) + 
-        ", Failed: " + std::to_string(fail_count));
-      
-    } catch (const std::exception& e) {
-      Logger::Instance().Error("AutoRecovery", 
-        std::string("Exception during auto recovery: ") + e.what());
-    } catch (...) {
-      Logger::Instance().Error("AutoRecovery", 
-        "Unknown exception during auto recovery");
-    }
+  // v2.4.1+ CRITICAL FIX: Send recovery request to Flutter main thread (Lively-style)
+  // Creating WebView in C++ detached thread causes async callback issues
+  // Solution: Let Flutter main thread handle the entire recovery process
+  
+  Logger::Instance().Info("AutoRecovery", 
+    "Sending auto recovery request to Flutter main thread (Lively-style architecture)");
+  
+  // Build recovery configurations as JSON
+  std::string configs_json = "[";
+  bool first = true;
+  for (const auto& pair : configs_to_recover) {
+    const auto& config = pair.second;
+    if (!first) configs_json += ",";
+    first = false;
     
-    // v2.4.0+ Enhancement: Always reset running flag (even if recovery failed)
+    configs_json += "{";
+    configs_json += "\"monitorIndex\":" + std::to_string(config.monitor_index) + ",";
+    configs_json += "\"url\":\"" + config.url + "\",";
+    configs_json += "\"transparent\":" + std::string(config.enable_mouse_transparent ? "true" : "false");
+    configs_json += "}";
+  }
+  configs_json += "]";
+  
+  // Send auto recovery message to Flutter
+  std::string recovery_message = R"({"type":"AUTO_RECOVERY_REQUEST","data":{"configs":)" + 
+                                configs_json + R"(,"reason":"Explorer restart detected"}})";
+  
+  NotifyFlutterMessage(recovery_message);
+  
+  Logger::Instance().Info("AutoRecovery", 
+    "Auto recovery request sent to Flutter: " + configs_json);
+  Logger::Instance().Info("AutoRecovery", 
+    "Flutter will handle recovery in main thread (ensures WebView async callbacks work)");
+  
+  // Schedule flag reset after a delay (Flutter will handle the actual recovery)
+  std::thread([this]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     {
       std::lock_guard<std::mutex> lock(this->auto_recovery_mutex_);
       this->is_auto_recovery_running_ = false;
-      Logger::Instance().Info("AutoRecovery", "Recovery thread finished, ready for next recovery if needed");
+      Logger::Instance().Info("AutoRecovery", "Auto recovery flag reset, ready for next request");
     }
   }).detach();
 }
