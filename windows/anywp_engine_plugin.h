@@ -407,6 +407,8 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void RecoverWorkerW();  // Main recovery entry point (Lively-style: detect and decide)
   void RecoverWorkerW_Reparent();  // Re-parent existing windows (when not destroyed)
   bool ReparentAllWallpaperInstances();  // Helper: Reparent all active wallpaper instances (for WorkerWRecoveryManager)
+  bool CheckExplorerRestart();  // Helper: Check if Explorer was restarted (windows destroyed)
+  void HandleExplorerRestart();  // Helper: Handle Explorer restart (reset and trigger auto-recovery)
   
   // Wallpaper recreation state (v2.3.1+ Lively-style recovery)
   bool need_wallpaper_recreate_ = false;
