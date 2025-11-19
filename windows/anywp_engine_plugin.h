@@ -284,7 +284,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void ResumeWallpaper(const std::string& reason, bool force_reinit = false);
   // v1.4.1+ Phase G: Helper methods for ResumeWallpaper
   bool ValidateWallpaperWindows();
-  bool RestoreWallpaperConfiguration(const std::string& url);
+  bool RestoreWallpaperConfiguration(const std::string& url, const std::string& log_tag = "PowerSaving");
   void NotifyPowerStateChange(PowerState newState);
   std::string PowerStateToString(PowerState state);
   // v2.1.1+ Fix: Convert PowerManager::PowerState to AnyWPEnginePlugin::PowerState

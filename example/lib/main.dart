@@ -111,7 +111,7 @@ class _MyAppState extends State<MyApp> with WindowListener {
     print('[APP] Power state change callback registered');
     
     // Setup bidirectional communication callback
-    AnyWPEngine.setOnMessageCallback((message) {
+    AnyWPEngine.setOnMessageCallback((message) async {
       try {
         print('[APP] Received message from JavaScript:');
         print('[APP]   Type: ${message['type']}');
@@ -154,10 +154,21 @@ class _MyAppState extends State<MyApp> with WindowListener {
         });
         
         // v2.3.1+ Handle wallpaper recreation request from C++ side
+        // v2.4.1+ Skip manual recreation when Auto Recovery is enabled (plugin handles it automatically)
         if (messageType == 'WALLPAPER_RECREATE_REQUIRED') {
           print('[APP] 🔄 Wallpaper recreation required!');
           print('[APP]   Reason: ${messageData['reason']}');
           
+          // v2.4.1+ Check if auto recovery is enabled
+          final autoRecoveryEnabled = await AnyWPEngine.isAutoRecoveryEnabled();
+          if (autoRecoveryEnabled) {
+            print('[APP] ✅ Auto Recovery is enabled, plugin will handle recreation automatically');
+            print('[APP] ℹ️  No manual action needed from Flutter side');
+            return; // Skip manual recreation
+          }
+          
+          // v2.4.0- Legacy: Manual recreation (only when Auto Recovery is disabled)
+          print('[APP] ⚠️  Auto Recovery disabled, performing manual recreation...');
           // Auto-recreate wallpaper after a short delay
           Future.delayed(Duration(seconds: 1), () async {
             print('[APP] 🔄 Starting automatic wallpaper recreation...');

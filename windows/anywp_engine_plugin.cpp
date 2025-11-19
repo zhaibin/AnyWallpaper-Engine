@@ -3025,7 +3025,8 @@ bool AnyWPEnginePlugin::ValidateWallpaperWindows() {
 }
 
 // v1.4.1+ Phase G: Restore wallpaper configuration after window loss
-bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
+// v2.4.1+ Enhancement: Added log_tag parameter to distinguish between different recovery scenarios
+bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url, const std::string& log_tag) {
   if (url.empty()) {
     LOG_AND_REPORT_ERROR("PowerManager", "RestoreWallpaperConfiguration", 
       "No saved URL to restore wallpaper",
@@ -3165,7 +3166,7 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url) {
     InitializeWallpaperOnMonitor(url, use_transparent, 0);
   }
   
-  Logger::Instance().Info("PowerSaving", "Wallpaper restoration complete");
+  Logger::Instance().Info(log_tag, "Wallpaper restoration complete");
   
   // Set power state to active
   power_state_ = PowerState::ACTIVE;
@@ -3573,22 +3574,23 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
       wallpaper_recreate_reason_ = "Explorer restart detected, windows were destroyed";
     }
     
-    // v2.3.1+ CRITICAL: Send JSON message to Flutter to trigger recreation
-    // Using existing message queue mechanism (thread-safe)
-    std::string recreate_message = R"({"type":"WALLPAPER_RECREATE_REQUIRED","data":{"reason":")" + 
-                                   wallpaper_recreate_reason_ + R"("}})";
-    NotifyFlutterMessage(recreate_message);
-    
-    Logger::Instance().Warning("WorkerW Recovery", 
-      "Wallpaper recreation message sent to Flutter: " + recreate_message);
-    Logger::Instance().Info("WorkerW Recovery", "Recovery completed, message sent to Flutter");
-    
-    // v2.3.2+ Auto Recovery: Handle automatic wallpaper recovery if enabled
+    // v2.4.1+ Improved: Only send Flutter message if Auto Recovery is disabled
+    // This prevents double recovery (C++ auto recovery + Flutter manual recovery)
     if (IsAutoRecoveryEnabled()) {
-      Logger::Instance().Info("WorkerW Recovery", "Auto recovery enabled, triggering automatic wallpaper recovery");
+      Logger::Instance().Info("WorkerW Recovery", 
+        "Auto recovery enabled, triggering automatic wallpaper recovery (no Flutter message sent)");
       HandleAutoRecovery();
     } else {
-      Logger::Instance().Info("WorkerW Recovery", "Auto recovery disabled, waiting for manual Flutter-side recovery");
+      // v2.3.1+ Send JSON message to Flutter to trigger manual recreation
+      // Using existing message queue mechanism (thread-safe)
+      std::string recreate_message = R"({"type":"WALLPAPER_RECREATE_REQUIRED","data":{"reason":")" + 
+                                     wallpaper_recreate_reason_ + R"("}})";
+      NotifyFlutterMessage(recreate_message);
+      
+      Logger::Instance().Warning("WorkerW Recovery", 
+        "Auto recovery disabled, sent recreation message to Flutter: " + recreate_message);
+      Logger::Instance().Info("WorkerW Recovery", 
+        "Recovery message sent to Flutter, waiting for manual recreation");
     }
     
   } catch (const std::exception& e) {

@@ -4,6 +4,18 @@
 
 ## [2.4.1] - 2025-11-19
 
+### 🐛 修复：日志标签准确性
+
+#### 问题
+`RestoreWallpaperConfiguration` 函数被两个场景共用（PowerSaving 恢复和 Flutter 应用手动恢复），但所有日志都标记为 `[PowerSaving]`，导致混淆。
+
+#### 修复
+- **C++ 层**：为 `RestoreWallpaperConfiguration` 添加 `log_tag` 参数（默认 "PowerSaving"），区分不同调用场景
+- **Example 应用**：当启用 Auto Recovery 时，自动跳过手动恢复逻辑，避免重复恢复
+- **结果**：日志现在能准确反映恢复来源（PowerSaving / FlutterApp / AutoRecovery）
+
+---
+
 ### ✅ 测试验证结果
 
 **测试时间**: 2025-11-19 10:25  
