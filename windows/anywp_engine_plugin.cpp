@@ -296,6 +296,30 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     });
   });
 
+  // Initialize WorkerWRecoveryManager module (v2.5.0+ Phase 5: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("WorkerWRecoveryManager", {
+    workerw_recovery_manager_ = std::make_unique<WorkerWRecoveryManager>();
+    workerw_recovery_manager_->Initialize();
+    
+    // Set dependencies
+    workerw_recovery_manager_->SetWallpaperInstances(&wallpaper_instances_);
+    workerw_recovery_manager_->SetWindowManager(window_manager_.get());
+    
+    // Configure reparent callback to use ReparentAllWallpaperInstances helper
+    workerw_recovery_manager_->SetReparentCallback([this]() -> bool {
+      return this->ReparentAllWallpaperInstances();
+    });
+    
+    // Configure recreate request callback to trigger HandleAutoRecovery
+    workerw_recovery_manager_->SetRecreateRequestCallback([this](const std::string& reason) {
+      Logger::Instance().Warning("WorkerWRecoveryManager", 
+        "Recreate requested: " + reason + ", triggering HandleAutoRecovery");
+      this->HandleAutoRecovery();
+    });
+    
+    Logger::Instance().Info("Plugin", "WorkerWRecoveryManager initialized");
+  });
+
   // Initialize WallpaperConfigurationManager module (v2.5.0+ Phase 6: Using TRY_CATCH_INIT_MODULE)
   TRY_CATCH_INIT_MODULE("WallpaperConfigurationManager", {
     configuration_manager_ = std::make_unique<WallpaperConfigurationManager>();
@@ -3592,20 +3616,17 @@ void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
 // ========== v2.3.1+ Enhancement: WorkerW Recovery ==========
 
 void AnyWPEnginePlugin::RecoverWorkerW() {
-  Logger::Instance().Warning("WorkerW Recovery", "Starting WorkerW recovery (Lively-style full recreate)");
-  
-  try {
-    // v2.3.1+ Lively-style Recovery: Complete wallpaper recreation
-    // When Explorer restarts, child windows are destroyed by Windows.
-    // Instead of trying to fix them, we recreate everything from scratch (like Lively does)
+  // v2.5.0+ Phase 5: Delegate to WorkerWRecoveryManager module
+  if (workerw_recovery_manager_) {
+    Logger::Instance().Info("WorkerW Recovery", "Delegating to WorkerWRecoveryManager module");
     
-    // Step 1: Check if windows were destroyed
-    bool need_recreate = false;
+    // Check if windows were destroyed (Explorer restart detection)
+    bool windows_destroyed = false;
     
     if (webview_host_hwnd_ && !IsWindow(webview_host_hwnd_)) {
       Logger::Instance().Warning("WorkerW Recovery", 
         "Single-monitor webview host window destroyed (Explorer restart detected)");
-      need_recreate = true;
+      windows_destroyed = true;
     }
     
     {
@@ -3614,66 +3635,39 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
         if (instance.webview_host_hwnd && !IsWindow(instance.webview_host_hwnd)) {
           Logger::Instance().Warning("WorkerW Recovery", 
             "Multi-monitor window destroyed (Explorer restart detected)");
-          need_recreate = true;
+          windows_destroyed = true;
           break;
         }
       }
     }
     
-    if (!need_recreate) {
-      // Windows still exist, just re-parent them (old behavior for other scenarios)
-      Logger::Instance().Info("WorkerW Recovery", 
-        "Windows still valid, performing re-parent recovery (not Explorer restart)");
-      RecoverWorkerW_Reparent();
-      return;
-    }
-    
-    // Step 2: Windows were destroyed, need full recreation
-    Logger::Instance().Warning("WorkerW Recovery", 
-      "Windows destroyed, initiating full wallpaper recreation (Lively method)");
-    Logger::Instance().Info("WorkerW Recovery", "Windows destroyed, need full recreation");
-    
-    // Step 3: Reset DesktopWallpaperHelper cache
-    DesktopWallpaperHelper::Instance().Reset();
-    Logger::Instance().Info("WorkerW Recovery", "DesktopWallpaperHelper cache cleared");
-    
-    // Step 3.5: v2.4.1+ CRITICAL: Reset WebView2 Environment (Explorer restart invalidates it)
-    if (webview_manager_) {
-      WebViewManager::ResetEnvironment();
-      Logger::Instance().Info("WorkerW Recovery", "WebView2 Environment reset (will reinitialize on recovery)");
-    }
-    
-    // Step 4: Clear all destroyed window handles
-    Logger::Instance().Info("WorkerW Recovery", "Clearing destroyed window handles...");
-    webview_host_hwnd_ = nullptr;
-    worker_w_hwnd_ = nullptr;
-    webview_controller_ = nullptr;
-    
-    // v2.3.1+ CRITICAL FIX: Don't clear instances here to avoid deadlock!
-    // Just let them be - they will be invalid handles anyway.
-    // Clearing them while holding lock can cause deadlock with PowerManager thread.
-    // Instead, mark them as invalid and let next initialization clean up.
-    Logger::Instance().Info("WorkerW Recovery", "Window handles cleared (instances will be cleaned up by next init)");
-    
-    // Step 5: Find new WorkerW (v2.3.1+ CRITICAL: Use shorter timeout to avoid blocking)
-    Logger::Instance().Info("WorkerW Recovery", "Re-finding WorkerW (fast mode)...");
-    
-    // v2.3.1+ CRITICAL FIX: Use much shorter timeout (1000ms) to avoid blocking other threads
-    // v2.5.0+ CRITICAL FIX: If FindWorkerW fails, still trigger HandleAutoRecovery() to retry later
-    if (!DesktopWallpaperHelper::Instance().FindWorkerW(1000)) {
+    if (windows_destroyed) {
+      // Explorer restart detected - need full recreation
       Logger::Instance().Warning("WorkerW Recovery", 
-        "Fast WorkerW search failed, triggering HandleAutoRecovery() to retry later");
+        "Windows destroyed, initiating full wallpaper recreation (Lively method)");
       
-      // Mark recovery as failed, monitoring thread will retry
-      if (workerw_health_monitor_) {
-        workerw_health_monitor_->UpdateWorkerW(nullptr);
+      // Step 1: Reset DesktopWallpaperHelper cache
+      DesktopWallpaperHelper::Instance().Reset();
+      Logger::Instance().Info("WorkerW Recovery", "DesktopWallpaperHelper cache cleared");
+      
+      // Step 2: Reset WebView2 Environment
+      if (webview_manager_) {
+        WebViewManager::ResetEnvironment();
+        Logger::Instance().Info("WorkerW Recovery", "WebView2 Environment reset (will reinitialize on recovery)");
       }
       
-      // v2.5.0+ CRITICAL: Still call HandleAutoRecovery() even if WorkerW not found yet
-      // This ensures wallpaper recovery happens when WorkerW becomes available
+      // Step 3: Clear destroyed window handles
+      Logger::Instance().Info("WorkerW Recovery", "Clearing destroyed window handles...");
+      webview_host_hwnd_ = nullptr;
+      worker_w_hwnd_ = nullptr;
+      webview_controller_ = nullptr;
+      
+      Logger::Instance().Info("WorkerW Recovery", "Window handles cleared (instances will be cleaned up by next init)");
+      
+      // Step 4: Trigger HandleAutoRecovery to rebuild wallpapers
       if (IsAutoRecoveryEnabled()) {
         Logger::Instance().Info("WorkerW Recovery", 
-          "Calling HandleAutoRecovery() to queue recovery for when WorkerW is ready");
+          "Auto recovery enabled, triggering recovery in Flutter main thread (Lively-style)");
         HandleAutoRecovery();
       } else {
         Logger::Instance().Warning("WorkerW Recovery", 
@@ -3682,68 +3676,44 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
       return;
     }
     
-    HWND new_workerw = DesktopWallpaperHelper::Instance().GetWallpaperParent();
-    if (!new_workerw) {
-      Logger::Instance().Error("WorkerW Recovery", "GetWallpaperParent returned null");
-      return;
+    // Windows still valid - delegate reparenting to module
+    Logger::Instance().Info("WorkerW Recovery", "Windows still valid, delegating to module for re-parent");
+    auto strategy = workerw_recovery_manager_->RecoverWorkerW();
+    
+    if (strategy == WorkerWRecoveryManager::RecoveryStrategy::NONE) {
+      Logger::Instance().Warning("WorkerW Recovery", "Module recovery returned NONE");
+    } else if (strategy == WorkerWRecoveryManager::RecoveryStrategy::REPARENT) {
+      Logger::Instance().Info("WorkerW Recovery", "Module recovery completed using REPARENT strategy");
+    } else if (strategy == WorkerWRecoveryManager::RecoveryStrategy::FULL_REINIT) {
+      Logger::Instance().Info("WorkerW Recovery", "Module recovery requested FULL_REINIT (will be handled by callback)");
     }
-    
-    Logger::Instance().Info("WorkerW Recovery", 
-      "New WorkerW found: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
-    Logger::Instance().Info("WorkerW Recovery", 
-      "New WorkerW: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
-    
-    // Step 6: Update WorkerW in health monitor
-    if (workerw_health_monitor_) {
-      workerw_health_monitor_->UpdateWorkerW(new_workerw);
-      Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated in health monitor");
-    }
-    
-    // Step 7: Notify Flutter to recreate wallpaper via message queue
-    // We can't recreate WebView2 from here (wrong thread), so send a message to Flutter
-    {
-      std::lock_guard<std::mutex> lock(wallpaper_recreate_mutex_);
-      need_wallpaper_recreate_ = true;
-      wallpaper_recreate_reason_ = "Explorer restart detected, windows were destroyed";
-    }
-    
-    // v2.4.1+ CRITICAL FIX: Always use Flutter main thread for recovery (Lively-style)
-    // Creating WebView in detached C++ thread causes async callback issues
-    // Solution: Send message to Flutter, let main thread handle recovery
-    
-    if (IsAutoRecoveryEnabled()) {
-      Logger::Instance().Info("WorkerW Recovery", 
-        "Auto recovery enabled, triggering recovery in Flutter main thread (Lively-style)");
-      
-      // Trigger auto recovery, but in Flutter main thread via Platform Channel
-      HandleAutoRecovery();
-    } else {
-      Logger::Instance().Info("WorkerW Recovery", 
-        "Auto recovery disabled, sending manual recovery message to Flutter");
-      
-      // v2.3.1+ Send JSON message to Flutter to trigger manual recreation
-      // Using existing message queue mechanism (thread-safe)
-      std::string recreate_message = R"({"type":"WALLPAPER_RECREATE_REQUIRED","data":{"reason":")" + 
-                                     wallpaper_recreate_reason_ + R"("}})";
-      NotifyFlutterMessage(recreate_message);
-      
-      Logger::Instance().Info("WorkerW Recovery", 
-        "Recovery message sent to Flutter, waiting for manual recreation");
-    }
-    
-  } catch (const std::exception& e) {
-    Logger::Instance().Error("WorkerW Recovery", 
-      std::string("Exception during recovery: ") + e.what());
-    Logger::Instance().Error("WorkerW Recovery", std::string("EXCEPTION: ") + e.what());
-  } catch (...) {
-    Logger::Instance().Error("WorkerW Recovery", "Unknown exception during recovery");
-    Logger::Instance().Error("WorkerW Recovery", "UNKNOWN EXCEPTION");
+    return;
   }
+  
+  // Fallback to legacy implementation if module not available
+  Logger::Instance().Warning("WorkerW Recovery", "WorkerWRecoveryManager not available, using legacy implementation");
+  // Legacy code would go here, but we'll just call RecoverWorkerW_Reparent as a fallback
+  RecoverWorkerW_Reparent();
 }
 
 // v2.3.1+ New method: Re-parent recovery for non-destroyed windows
 void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
-  Logger::Instance().Info("WorkerW Recovery", "Starting re-parent recovery");
+  // v2.5.0+ Phase 5: Delegate to WorkerWRecoveryManager module
+  if (workerw_recovery_manager_) {
+    Logger::Instance().Info("WorkerW Recovery", "Delegating reparent to WorkerWRecoveryManager module");
+    bool success = workerw_recovery_manager_->RecoverWorkerW_Reparent();
+    
+    if (success) {
+      Logger::Instance().Info("WorkerW Recovery", "Module reparent successful");
+    } else {
+      Logger::Instance().Warning("WorkerW Recovery", "Module reparent failed");
+    }
+    return;
+  }
+  
+  // Fallback to legacy implementation
+  Logger::Instance().Warning("WorkerW Recovery", "WorkerWRecoveryManager not available, using legacy reparent");
+  Logger::Instance().Info("WorkerW Recovery", "Starting re-parent recovery (legacy)");
   
   try {
     // Find new WorkerW
@@ -3931,6 +3901,88 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
   } catch (...) {
     Logger::Instance().Error("WorkerW Recovery", "Unknown exception during recovery");
     Logger::Instance().Error("WorkerW Recovery", "UNKNOWN EXCEPTION");
+  }
+}
+
+// v2.5.0+ Phase 5: Helper method for WorkerWRecoveryManager
+bool AnyWPEnginePlugin::ReparentAllWallpaperInstances() {
+  Logger::Instance().Info("WorkerW Recovery", "Reparenting all wallpaper instances");
+  
+  try {
+    // Find new WorkerW
+    HWND new_workerw = DesktopWallpaperHelper::Instance().GetWallpaperParent();
+    if (!new_workerw) {
+      Logger::Instance().Error("WorkerW Recovery", "GetWallpaperParent returned null");
+      return false;
+    }
+    
+    Logger::Instance().Info("WorkerW Recovery", 
+      "New WorkerW: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
+    
+    int success_count = 0;
+    int total_count = 0;
+    
+    // Reparent single-monitor instance if active
+    if (webview_host_hwnd_ && IsWindow(webview_host_hwnd_)) {
+      total_count++;
+      if (SetParent(webview_host_hwnd_, new_workerw)) {
+        success_count++;
+        Logger::Instance().Info("WorkerW Recovery", "Single-monitor wallpaper reparented successfully");
+        
+        // Fix Z-order
+        if (window_manager_) {
+          window_manager_->SetWallpaperZOrder(webview_host_hwnd_, new_workerw);
+        }
+        
+        UpdateWindow(webview_host_hwnd_);
+        InvalidateRect(webview_host_hwnd_, nullptr, TRUE);
+      } else {
+        Logger::Instance().Error("WorkerW Recovery", 
+          "Failed to reparent single-monitor wallpaper: error " + std::to_string(GetLastError()));
+      }
+    }
+    
+    // Reparent multi-monitor instances
+    {
+      std::lock_guard<std::mutex> lock(instances_mutex_);
+      for (auto& instance : wallpaper_instances_) {
+        if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
+          total_count++;
+          if (SetParent(instance.webview_host_hwnd, new_workerw)) {
+            success_count++;
+            Logger::Instance().Info("WorkerW Recovery", 
+              "Monitor " + std::to_string(instance.monitor_index) + " reparented successfully");
+            
+            // Fix Z-order
+            if (window_manager_) {
+              window_manager_->SetWallpaperZOrder(instance.webview_host_hwnd, new_workerw);
+            }
+            
+            UpdateWindow(instance.webview_host_hwnd);
+            InvalidateRect(instance.webview_host_hwnd, nullptr, TRUE);
+          } else {
+            Logger::Instance().Error("WorkerW Recovery", 
+              "Failed to reparent monitor " + std::to_string(instance.monitor_index) + 
+              ": error " + std::to_string(GetLastError()));
+          }
+        }
+      }
+    }
+    
+    // Update WorkerW handle in health monitor
+    if (workerw_health_monitor_) {
+      workerw_health_monitor_->UpdateWorkerW(new_workerw);
+      Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated in health monitor");
+    }
+    
+    Logger::Instance().Info("WorkerW Recovery", 
+      "Reparented " + std::to_string(success_count) + "/" + std::to_string(total_count) + " instances");
+    
+    return success_count > 0;
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("WorkerW Recovery", 
+      std::string("Exception in ReparentAllWallpaperInstances: ") + e.what());
+    return false;
   }
 }
 

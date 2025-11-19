@@ -39,6 +39,7 @@
 #include "modules/web_message_handler.h"
 #include "modules/wallpaper_lifecycle_manager.h"
 #include "modules/auto_recovery_manager.h"  // v2.5.0+ Phase 4: AutoRecoveryManager module
+#include "modules/workerw_recovery_manager.h"  // v2.5.0+ Phase 5: WorkerWRecoveryManager module
 #include "modules/wallpaper_configuration_manager.h"  // v2.5.0+ Phase 6: WallpaperConfigurationManager module
 #include "modules/script_injection_manager.h"  // v2.5.0+ Phase 6: ScriptInjectionManager module
 #include "modules/permission_configurator.h"  // v2.5.0+ Phase 6: PermissionConfigurator module
@@ -381,6 +382,9 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // AutoRecoveryManager module for wallpaper configuration recovery (v2.5.0+ Phase 4)
   std::unique_ptr<class AutoRecoveryManager> auto_recovery_manager_;
 
+  // WorkerWRecoveryManager module for WorkerW recovery strategies (v2.5.0+ Phase 5)
+  std::unique_ptr<class WorkerWRecoveryManager> workerw_recovery_manager_;
+
   // WallpaperConfigurationManager module for runtime configuration (v2.5.0+ Phase 6)
   std::unique_ptr<class WallpaperConfigurationManager> configuration_manager_;
 
@@ -402,6 +406,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // WorkerW recovery methods (called by health monitor)
   void RecoverWorkerW();  // Main recovery entry point (Lively-style: detect and decide)
   void RecoverWorkerW_Reparent();  // Re-parent existing windows (when not destroyed)
+  bool ReparentAllWallpaperInstances();  // Helper: Reparent all active wallpaper instances (for WorkerWRecoveryManager)
   
   // Wallpaper recreation state (v2.3.1+ Lively-style recovery)
   bool need_wallpaper_recreate_ = false;
