@@ -1,4 +1,5 @@
 #include "workerw_recovery_manager.h"
+#include "../anywp_engine_plugin.h"
 #include "../utils/logger.h"
 #include "../utils/desktop_wallpaper_helper.h"
 #include <windows.h>
@@ -172,6 +173,16 @@ void WorkerWRecoveryManager::SetReparentCallback(ReparentCallback callback) {
 void WorkerWRecoveryManager::SetRecreateRequestCallback(RecreateRequestCallback callback) {
   recreate_request_callback_ = callback;
   Logger::Instance().Info("WorkerWRecoveryManager", "Recreate request callback registered");
+}
+
+void WorkerWRecoveryManager::SetWallpaperInstances(std::map<HWND, WallpaperInstance>* instances) {
+  // 可选：保存实例指针用于高级验证（当前实现中未使用）
+  Logger::Instance().Debug("WorkerWRecoveryManager", "Wallpaper instances reference set");
+}
+
+void WorkerWRecoveryManager::SetWindowManager(class WindowManager* window_manager) {
+  // 可选：保存窗口管理器指针用于高级诊断（当前实现中未使用）
+  Logger::Instance().Debug("WorkerWRecoveryManager", "Window manager reference set");
 }
 
 size_t WorkerWRecoveryManager::GetReparentAttemptCount() const {

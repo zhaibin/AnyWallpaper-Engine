@@ -5,20 +5,14 @@
 #include <functional>
 #include <string>
 #include <atomic>
+#include <map>
 #include <WebView2.h>
 #include <wrl.h>
 
 namespace anywp_engine {
 
 // Forward declarations
-struct WallpaperInstance {
-  int monitor_index;
-  bool enable_mouse_transparent;
-  HWND webview_host_hwnd;
-  HWND worker_w_hwnd;
-  Microsoft::WRL::ComPtr<ICoreWebView2Controller> webview_controller;
-  Microsoft::WRL::ComPtr<ICoreWebView2> webview;
-};
+struct WallpaperInstance;
 
 /**
  * @brief WorkerW 窗口恢复管理器
@@ -117,6 +111,16 @@ class WorkerWRecoveryManager {
   void SetRecreateRequestCallback(RecreateRequestCallback callback);
 
   /**
+   * @brief 设置壁纸实例列表（可选，用于高级验证）
+   */
+  void SetWallpaperInstances(std::map<HWND, WallpaperInstance>* instances);
+
+  /**
+   * @brief 设置窗口管理器（可选，用于高级诊断）
+   */
+  void SetWindowManager(class WindowManager* window_manager);
+
+  /**
    * @brief 获取统计信息
    */
   size_t GetReparentAttemptCount() const;
@@ -135,6 +139,10 @@ class WorkerWRecoveryManager {
   std::atomic<size_t> reparent_attempt_count_{0};
   std::atomic<size_t> successful_reparent_count_{0};
   std::atomic<size_t> recreate_request_count_{0};
+
+  // 可选依赖（用于高级功能）
+  std::map<HWND, WallpaperInstance>* wallpaper_instances_ = nullptr;
+  class WindowManager* window_manager_ = nullptr;
 
   // 辅助方法
   bool ReparentSingleInstance(WallpaperInstance* instance);

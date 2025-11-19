@@ -302,11 +302,10 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     workerw_recovery_manager_->Initialize();
     
     // Set dependencies
-    workerw_recovery_manager_->SetWallpaperInstances(&wallpaper_instances_);
-    workerw_recovery_manager_->SetWindowManager(window_manager_.get());
-    
     // Configure reparent callback to use ReparentAllWallpaperInstances helper
-    workerw_recovery_manager_->SetReparentCallback([this]() -> bool {
+    // Note: callback receives a WallpaperInstance* parameter (nullptr means all instances)
+    workerw_recovery_manager_->SetReparentCallback([this](WallpaperInstance* instance) -> bool {
+      // For now, we always reparent all instances (instance parameter is ignored/nullptr)
       return this->ReparentAllWallpaperInstances();
     });
     
