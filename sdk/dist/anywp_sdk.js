@@ -2174,6 +2174,9 @@ var AnyWPBundle = (function (exports) {
 
     // AnyWP Engine SDK - Main Entry Point
     // Modular architecture with TypeScript support
+    // CRITICAL: Setup WebMessage listener IMMEDIATELY (before any other initialization)
+    // This ensures we catch ALL messages from C++ (including keyboard events)
+    setupWebMessageListener();
     // Implement initialization
     AnyWP._init = function () {
         initializeAnyWP(this);

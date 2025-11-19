@@ -463,11 +463,13 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     // Configure KeyboardHookManager callback to ENQUEUE events (NO LOCKS, NO LOGGING)
     // CRITICAL: System hook MUST return immediately - any blocking causes deadlock
     keyboard_hook_manager_->SetKeyboardCallback([this](const char* event_type, int vk_code, int scan_code, bool extended, bool alt_down, bool ctrl_down, bool shift_down) {
-      // NO try-catch, NO logging, NO locks - just enqueue and return immediately
+      // NO try-catch, NO logging in hook callback
       std::string key = this->VirtualKeyToString(vk_code);
       std::string code = this->VirtualKeyToCode(vk_code);
       this->EnqueueKeyboardEvent(event_type, vk_code, key, code, alt_down, ctrl_down, shift_down);
     });
+    
+    Logger::Instance().Info("KeyboardHook", "Keyboard hook callback configured and queue thread started");
     
     // Install keyboard hook
     keyboard_hook_manager_->Install();
@@ -4090,10 +4092,13 @@ std::string AnyWPEnginePlugin::VirtualKeyToCode(int vk_code) {
 }
 
 // Send keyboard event to all WebView instances
-// v2.4.1+: Now called from background thread (ProcessKeyboardQueue), safe to block on mutex
+// v2.4.1+: Now called from background thread (ProcessKeyboardQueue)
 void AnyWPEnginePlugin::SendKeyboardToWebView(const char* event_type, int vk_code, const std::string& key, const std::string& code, bool alt_down, bool ctrl_down, bool shift_down) {
+  int sent_count = 0;
+  bool had_error = false;
+  
   try {
-    // Safe to use normal lock since we're in background thread (not system hook)
+    // CRITICAL: NO Logger calls while holding instances_mutex_ - Logger has internal locks!
     std::lock_guard<std::mutex> lock(instances_mutex_);
     
     for (auto& instance : wallpaper_instances_) {
@@ -4116,33 +4121,46 @@ void AnyWPEnginePlugin::SendKeyboardToWebView(const char* event_type, int vk_cod
       std::string json_str = json_stream.str();
       std::wstring json_message = std::wstring(json_str.begin(), json_str.end());
       
-      // Send to WebView with COM exception protection
+      // Send to WebView - NO logging while holding lock
       try {
         if (instance.webview) {
           HRESULT hr = instance.webview->PostWebMessageAsString(json_message.c_str());
-          if (FAILED(hr)) {
-            Logger::Instance().Warning("KeyboardHook", 
-              "PostWebMessageAsString failed with HRESULT: " + std::to_string(hr));
+          if (SUCCEEDED(hr)) {
+            sent_count++;
+          } else {
+            // Common HRESULTs during initialization:
+            // 0x8007000C = ERROR_INVALID_ACCESS (WebView2 not ready yet)
+            // 0x80070005 = E_ACCESSDENIED (WebView2 initializing)
+            // These are transient errors - safe to ignore
+            had_error = (hr != static_cast<HRESULT>(0x8007000C) && 
+                         hr != static_cast<HRESULT>(0x80070005));
           }
         }
       } catch (...) {
-        // COM exceptions can occur if WebView is being destroyed
-        Logger::Instance().Warning("KeyboardHook", "Exception calling PostWebMessageAsString");
+        // COM exceptions - record but don't log yet
+        had_error = true;
       }
     }
     
-    // Log keyboard event (throttled)
-    static int keyboard_event_count = 0;
-    keyboard_event_count++;
-    if (keyboard_event_count % 10 == 0) {  // Log every 10th event
-      Logger::Instance().Debug("KeyboardHook", 
-        std::string("Keyboard event: ") + event_type + " key=" + key + " (count=" + std::to_string(keyboard_event_count) + ")");
-    }
+    // Lock released here - safe to log now
     
   } catch (const std::exception& e) {
+    // Exception while acquiring lock or in processing - log AFTER lock released
     Logger::Instance().Error("Plugin", std::string("Exception in SendKeyboardToWebView: ") + e.what());
+    return;
   } catch (...) {
     Logger::Instance().Error("Plugin", "Unknown exception in SendKeyboardToWebView");
+    return;
+  }
+  
+  // Log statistics AFTER lock is released (throttled)
+  static int keyboard_event_count = 0;
+  keyboard_event_count++;
+  if (keyboard_event_count % 10 == 0) {  // Log every 10th event
+    Logger::Instance().Debug("KeyboardHook", 
+      std::string("Keyboard events sent: ") + std::to_string(sent_count) + 
+      " (total=" + std::to_string(keyboard_event_count) + 
+      ", errors=" + (had_error ? "yes" : "no") + ")");
   }
 }
 

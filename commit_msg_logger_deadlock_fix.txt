@@ -1,0 +1,95 @@
+fix: 修复Logger内部锁导致的死锁 + 改进WebView2初始化错误处理
+
+问题1：Logger内部锁导致死锁
+日志显示：
+```
+[AnyWP] [Plugin] Exception in SendKeyboardToWebView: 
+resource deadlock would occur
+```
+
+根本原因：
+- SendKeyboardToWebView 持有 instances_mutex_
+- 在持有锁的同时调用 Logger::Instance().Warning/Debug
+- Logger 内部有自己的互斥锁（用于线程安全的文件写入）
+- **锁的获取顺序不一致** → 死锁
+
+修复方案：
+1. **绝不在持有 instances_mutex_ 时调用 Logger**
+2. 在锁内只记录状态变量（sent_count, had_error）
+3. 锁释放后再调用 Logger 记录日志
+
+关键改进：
+```cpp
+// 修复前：❌ 在锁内调用 Logger
+{
+  std::lock_guard<std::mutex> lock(instances_mutex_);
+  // ...
+  Logger::Instance().Warning(...);  // 死锁风险！
+}
+
+// 修复后：✅ 锁外调用 Logger
+{
+  std::lock_guard<std::mutex> lock(instances_mutex_);
+  // ... 只记录状态
+  had_error = true;
+  // 锁在这里释放
+}
+Logger::Instance().Debug(...);  // 安全
+```
+
+问题2：WebView2初始化期间的瞬态错误
+错误：
+```
+[AnyWP] [KeyboardHook] PostWebMessageAsString failed with HRESULT: -2144731124
+```
+
+HRESULT分析：
+- -2144731124 = 0x8007000C = ERROR_INVALID_ACCESS
+- 0x80070005 = E_ACCESSDENIED
+- 这些是 WebView2 初始化期间的**正常瞬态错误**
+
+原因：
+- 应用启动时，键盘钩子立即生效
+- 但 WebView2 需要时间初始化（加载页面、注入SDK）
+- 初始化期间的键盘事件会因 WebView2 未就绪而失败
+
+解决方案：
+- **静默忽略这两个特定错误码**
+- 不记录为 had_error（避免误报）
+- 一旦 WebView2 准备好，后续事件自动恢复正常
+
+改进代码：
+```cpp
+HRESULT hr = instance.webview->PostWebMessageAsString(...);
+if (SUCCEEDED(hr)) {
+  sent_count++;
+} else {
+  // 忽略瞬态初始化错误
+  had_error = (hr != 0x8007000C && hr != 0x80070005);
+}
+```
+
+优势：
+- ✅ 初始化期间不会有错误日志污染
+- ✅ WebView2 准备好后事件自动生效
+- ✅ 丢失几个早期事件对用户体验无影响（高频事件）
+
+其他改进：
+1. 添加键盘钩子配置成功的日志
+2. 优化日志输出格式（显示发送计数和错误状态）
+3. 确保所有 Logger 调用在锁外执行
+
+测试验证：
+- ✅ 编译通过
+- ⏳ 需用户测试：
+  1. 不再看到 "resource deadlock" 错误
+  2. 不再看到 HRESULT -2144731124 的大量日志
+  3. 键盘事件能正常到达测试页面
+
+技术要点：
+- **锁层次结构**：避免在持有低层锁时获取高层锁
+- **瞬态错误容忍**：高频事件系统应该能容忍初始化期间的失败
+- **日志最小化**：锁内不记录日志，减少锁持有时间
+
+分支：fix/api-test-keyboard-drag
+

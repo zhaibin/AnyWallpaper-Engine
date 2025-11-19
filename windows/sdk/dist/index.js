@@ -8,8 +8,11 @@ import { ClickHandler } from './modules/click';
 import { DragHandler } from './modules/drag';
 import { Storage } from './modules/storage';
 import { SPA } from './modules/spa';
-import { WebMessage } from './modules/webmessage';
+import { WebMessage, setupWebMessageListener } from './modules/webmessage';
 import { File } from './modules/file';
+// CRITICAL: Setup WebMessage listener IMMEDIATELY (before any other initialization)
+// This ensures we catch ALL messages from C++ (including keyboard events)
+setupWebMessageListener();
 // Implement initialization
 AnyWP._init = function () {
     initializeAnyWP(this);
