@@ -4,6 +4,69 @@
 
 Auto Recovery 是 AnyWP Engine v2.4.0+ 引入的自动恢复功能，可以在 Windows Explorer 重启后自动恢复壁纸，无需开发者手动处理。
 
+## ⚠️ 前置条件（必读）
+
+**Auto Recovery 功能依赖以下 AnyWP Engine 标准 API，请确保正确集成：**
+
+### 1. 必须使用 `initializeWallpaperOnMonitor` 初始化壁纸
+
+❌ **错误做法**（不会触发 Auto Recovery）：
+```dart
+// 这些方式无法被 Auto Recovery 识别
+await AnyWPEngine.initializeWallpaper(url: 'file:///path');  // 已废弃
+// 或其他自定义初始化方式
+```
+
+✅ **正确做法**：
+```dart
+// 必须使用 initializeWallpaperOnMonitor API
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file:///C:/wallpaper.html',
+  monitorIndex: 0,  // 必须指定显示器索引
+  autoSave: true,   // 默认值，自动保存配置
+);
+```
+
+### 2. 启用 Auto Recovery
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Step 1: 启用 Auto Recovery
+  await AnyWPEngine.enableAutoRecovery(true);
+  
+  // Step 2: 初始化壁纸（会自动保存配置）
+  await AnyWPEngine.initializeWallpaperOnMonitor(
+    url: 'file:///C:/wallpaper.html',
+    monitorIndex: 0,
+  );
+  
+  runApp(MyApp());
+}
+```
+
+### 3. 验证集成是否正确
+
+**测试步骤：**
+1. 启动应用并初始化壁纸
+2. 打开任务管理器，结束 `explorer.exe` 进程
+3. 等待 Windows 自动重启 Explorer（约 2-5 秒）
+4. ✅ **预期结果**：壁纸自动恢复显示
+5. ❌ **如果壁纸未恢复**：检查日志，确认是否使用了 `initializeWallpaperOnMonitor`
+
+**检查日志（C++ Plugin 层）：**
+```log
+[Plugin] Initializing Wallpaper on Monitor 0 - URL: file:///...
+[AutoRecovery] Saving wallpaper configuration...
+[AutoRecovery] Configuration saved: Monitor=0, URL=file:///...
+[Plugin] Initialization Complete (Monitor 0)
+```
+
+如果日志中没有这些信息，说明**未使用标准 API**，Auto Recovery 无法工作。
+
+---
+
 ## 🎯 核心问题
 
 ### 问题背景

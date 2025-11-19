@@ -11,7 +11,7 @@ A Flutter Windows plugin that embeds WebView2 as a desktop wallpaper, displaying
 - 🖱️ **Simple Mode** - Clicks pass through to desktop icons (default behavior)
 - 📺 **Multi-Monitor Support** - Different content on each display
 - 🔥 **Smart Hot-Plug** (v1.3.1 ✨) - Auto-detects monitors, restores configurations, handles failures
-- 🔄 **Explorer Restart Recovery** (v2.3.1 ✨) - Automatically recreates wallpapers after Windows Explorer restarts
+- 🔄 **Auto Recovery** (v2.4.1 ✨) - Zero-maintenance automatic wallpaper restoration after Explorer restarts (just 2 lines of code!)
 - 🪟 **Windows 10/11 Support** - Optimized for modern Windows
 
 ### Architecture (v2.0 ✨)
@@ -122,6 +122,9 @@ void main() async {
   // Set application name for isolated storage (v1.2.0+)
   await AnyWPEngine.setApplicationName('MyAwesomeApp');
   
+  // Enable Auto Recovery (v2.4.1+) - Just 1 line!
+  await AnyWPEngine.enableAutoRecovery(true);
+  
   runApp(MyApp());
 }
 
@@ -169,6 +172,58 @@ if (!compatible) {
   debugPrint('⚠️ AnyWP Engine version mismatch: $version');
 }
 ```
+
+### 🔄 Auto Recovery (v2.4.1+)
+
+**Zero-maintenance automatic wallpaper restoration** after Windows Explorer restarts. Just 2 simple steps!
+
+#### Step 1: Enable Auto Recovery (in main)
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await AnyWPEngine.enableAutoRecovery(true);  // ⭐ Just this one line!
+  
+  runApp(MyApp());
+}
+```
+
+#### Step 2: Use Standard API
+
+```dart
+// ✅ Use initializeWallpaperOnMonitor (auto-saves configuration)
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'https://your-wallpaper.com',
+  monitorIndex: 0,
+  // autoSave: true is default - configuration saved automatically!
+);
+```
+
+**That's it! 🎉** Your wallpapers will automatically recover after Explorer restarts.
+
+#### Advanced: Manual Save for Dynamic Content
+
+For carousel or interactive wallpapers that need to save state after initial setup:
+
+```dart
+// Step 1: Initialize without auto-save
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file:///carousel.html',
+  monitorIndex: 0,
+  autoSave: false,  // Don't save yet
+);
+
+// Step 2: Send dynamic data
+await AnyWPEngine.sendMessage(
+  message: {'type': 'updateCarousel', 'data': carouselData},
+);
+
+// Step 3: Save after data is ready
+await AnyWPEngine.saveCurrentWallpaperConfiguration();
+```
+
+👉 See **[Auto Recovery Simple Guide](docs/AUTO_RECOVERY_SIMPLE_GUIDE.md)** for complete documentation and troubleshooting.
 
 ### JavaScript SDK Usage (NEW ✨)
 
