@@ -992,9 +992,6 @@ void AnyWPEnginePlugin::SetupWebView2WithManager(HWND hwnd, const std::string& u
     });
 }
 
-// v1.4.1+ Phase F: SetupWebView2 method deleted (392 lines)
-// The method was replaced by SetupWebView2WithManager which delegates to WebViewManager module
-
 // P0-2: Initialize with retry mechanism
 bool AnyWPEnginePlugin::InitializeWithRetry(const std::string& url, bool enable_mouse_transparent, int max_retries) {
   Logger::Instance().Info("Plugin", 
@@ -1322,12 +1319,6 @@ void AnyWPEnginePlugin::HandleClearStateWebMessage(const std::string& message) {
     web_message_handler_->HandleMessage(message, target_instance);
   }
 }
-
-// ========== State Persistence Helper Functions ==========
-
-// Get application data directory path with app-specific subdirectory
-// v1.4.1+ Phase F: State persistence helper functions deleted (198 lines)
-// These functions were moved to utils/state_persistence.cpp
 
 // ========== State Persistence Functions ==========
 
