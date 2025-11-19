@@ -15,9 +15,31 @@ AutoRecoveryManager::~AutoRecoveryManager() {
 }
 
 void AutoRecoveryManager::SetEnabled(bool enabled) {
+  std::lock_guard<std::mutex> lock(config_mutex_);
+  
+  bool was_enabled = enabled_.load();
   enabled_.store(enabled);
+  
   Logger::Instance().Info("AutoRecoveryManager", 
-    "Auto recovery " + std::string(enabled ? "enabled" : "disabled"));
+    std::string("Auto recovery ") + (enabled ? "ENABLED" : "DISABLED"));
+  
+  // If disabling, clear saved configurations and reset state
+  if (!enabled && was_enabled) {
+    size_t config_count = saved_configs_.size();
+    saved_configs_.clear();
+    is_recovering_.store(false);
+    
+    Logger::Instance().Info("AutoRecoveryManager", 
+      "Cleared " + std::to_string(config_count) + " saved wallpaper configuration(s)");
+  }
+  
+  // If enabling, reset recovery state for clean start
+  if (enabled && !was_enabled) {
+    is_recovering_.store(false);
+    
+    Logger::Instance().Info("AutoRecoveryManager", 
+      "Reset recovery state. Configurations will be saved when wallpapers are initialized.");
+  }
 }
 
 bool AutoRecoveryManager::IsEnabled() const {

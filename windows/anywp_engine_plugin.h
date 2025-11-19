@@ -35,7 +35,8 @@
 #include "modules/webview_configurator.h"  // v2.0+ Refactoring: WebViewConfigurator module
 #include "modules/workerw_health_monitor.h"  // v2.3.1+ Enhancement: WorkerW health monitoring
 #include "modules/web_message_handler.h"
-#include "modules/wallpaper_lifecycle_manager.h"  // v2.5.0+ Phase 2: WebMessageHandler module
+#include "modules/wallpaper_lifecycle_manager.h"
+#include "modules/auto_recovery_manager.h"  // v2.5.0+ Phase 4: AutoRecoveryManager module
 
 namespace anywp_engine {
 
@@ -370,6 +371,9 @@ class AnyWPEnginePlugin : public flutter::Plugin {
 
   // WallpaperLifecycleManager module for pause/resume management (v2.5.0+ Phase 3)
   std::unique_ptr<class WallpaperLifecycleManager> lifecycle_manager_;
+
+  // AutoRecoveryManager module for wallpaper configuration recovery (v2.5.0+ Phase 4)
+  std::unique_ptr<class AutoRecoveryManager> auto_recovery_manager_;
   
   // WorkerW recovery methods (called by health monitor)
   void RecoverWorkerW();  // Main recovery entry point (Lively-style: detect and decide)
