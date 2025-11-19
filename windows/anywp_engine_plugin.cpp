@@ -226,6 +226,138 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     monitor_manager_->StartMonitoring();
   });
   
+  // Initialize WebMessageHandler module (v2.5.0+ Phase 2: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("WebMessageHandler", {
+    web_message_handler_ = std::make_unique<WebMessageHandler>();
+    
+    // Initialize with StatePersistence
+    web_message_handler_->Initialize(state_persistence_.get());
+    
+    // Configure callbacks
+    web_message_handler_->SetIframeDataCallback([this](const std::string& message, WallpaperInstance* instance) {
+      this->HandleIframeDataMessage(message, instance);
+    });
+    
+    web_message_handler_->SetScriptExecutionCallback([this](const std::wstring& script) {
+      this->ExecuteScriptToAllInstances(script);
+    });
+  });
+
+  // Initialize WallpaperLifecycleManager module (v2.5.0+ Phase 3: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("WallpaperLifecycleManager", {
+    lifecycle_manager_ = std::make_unique<WallpaperLifecycleManager>();
+    
+    // Configure dependencies
+    lifecycle_manager_->SetWallpaperInstances(&wallpaper_instances_);
+    lifecycle_manager_->SetMemoryOptimizer(memory_optimizer_.get());
+    
+    // Configure callbacks
+    lifecycle_manager_->SetStateChangeCallback([this](
+      WallpaperLifecycleManager::WallpaperState old_state, 
+      WallpaperLifecycleManager::WallpaperState new_state, 
+      const std::string& reason) {
+      Logger::Instance().Info("LifecycleManager", 
+        "State changed: " + std::to_string(static_cast<int>(old_state)) + 
+        " -> " + std::to_string(static_cast<int>(new_state)) + 
+        ", reason: " + reason);
+      // Update plugin state
+      if (new_state == WallpaperLifecycleManager::WallpaperState::PAUSED) {
+        power_state_ = PowerState::PAUSED;
+        NotifyPowerStateChange(PowerState::PAUSED);
+      } else if (new_state == WallpaperLifecycleManager::WallpaperState::ACTIVE) {
+        power_state_ = PowerState::ACTIVE;
+        NotifyPowerStateChange(PowerState::ACTIVE);
+      }
+    });
+    
+    lifecycle_manager_->SetWindowValidationCallback([this]() -> bool {
+      // Delegate to plugin's ValidateWallpaperWindows
+      return this->ValidateWallpaperWindows();
+    });
+    
+    lifecycle_manager_->SetConfigurationRestoreCallback([this](const std::string& url, const std::string& log_tag) -> bool {
+      // Delegate to plugin's RestoreWallpaperConfiguration
+      std::string restore_url = url.empty() ? this->default_wallpaper_url_ : url;
+      return this->RestoreWallpaperConfiguration(restore_url, log_tag);
+    });
+  });
+
+  // Initialize AutoRecoveryManager module (v2.5.0+ Phase 4: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("AutoRecoveryManager", {
+    auto_recovery_manager_ = std::make_unique<AutoRecoveryManager>();
+    
+    // Configure recovery callback
+    auto_recovery_manager_->SetRecoveryCallback([this](const AutoRecoveryManager::WallpaperConfig& config) -> bool {
+      Logger::Instance().Info("AutoRecoveryManager", 
+        "Recovery callback: Initializing wallpaper on monitor " + std::to_string(config.monitor_index));
+      
+      // Delegate to plugin's InitializeWallpaperOnMonitor
+      return this->InitializeWallpaperOnMonitor(config.url, config.enable_mouse_transparent, config.monitor_index);
+    });
+  });
+
+  // Initialize WorkerWRecoveryManager module (v2.5.0+ Phase 5: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("WorkerWRecoveryManager", {
+    workerw_recovery_manager_ = std::make_unique<WorkerWRecoveryManager>();
+    workerw_recovery_manager_->Initialize();
+    
+    // Set dependencies
+    // Configure reparent callback to use ReparentAllWallpaperInstances helper
+    // Note: callback receives a WallpaperInstance* parameter (nullptr means all instances)
+    workerw_recovery_manager_->SetReparentCallback([this](WallpaperInstance* instance) -> bool {
+      // For now, we always reparent all instances (instance parameter is ignored/nullptr)
+      return this->ReparentAllWallpaperInstances();
+    });
+    
+    // Configure recreate request callback to trigger HandleAutoRecovery
+    workerw_recovery_manager_->SetRecreateRequestCallback([this](const std::string& reason) {
+      Logger::Instance().Warning("WorkerWRecoveryManager", 
+        "Recreate requested: " + reason + ", triggering HandleAutoRecovery");
+      this->HandleAutoRecovery();
+    });
+    
+    Logger::Instance().Info("Plugin", "WorkerWRecoveryManager initialized");
+  });
+
+  // Initialize WallpaperConfigurationManager module (v2.5.0+ Phase 6: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("WallpaperConfigurationManager", {
+    configuration_manager_ = std::make_unique<WallpaperConfigurationManager>();
+    Logger::Instance().Info("Plugin", "WallpaperConfigurationManager initialized with default configuration");
+  });
+
+  // Initialize ScriptInjectionManager module (v2.5.0+ Phase 6: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("ScriptInjectionManager", {
+    script_injection_manager_ = std::make_unique<ScriptInjectionManager>();
+    script_injection_manager_->Initialize();  // Use default SDK path
+    Logger::Instance().Info("Plugin", "ScriptInjectionManager initialized");
+  });
+
+  // Initialize PermissionConfigurator module (v2.5.0+ Phase 6: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("PermissionConfigurator", {
+    permission_configurator_ = std::make_unique<PermissionConfigurator>();
+    Logger::Instance().Info("Plugin", "PermissionConfigurator initialized");
+  });
+
+  // Initialize CacheManager module (v2.5.0+ Phase 6: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("CacheManager", {
+    cache_manager_ = std::make_unique<CacheManager>();
+    cache_manager_->Initialize(cleanup_interval_minutes_);  // Use current cleanup interval
+    Logger::Instance().Info("Plugin", "CacheManager initialized");
+  });
+
+  // Initialize StateManager utility (v2.5.0+ Phase 7: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("StateManager", {
+    state_manager_ = std::make_unique<StateManager>();
+    state_manager_->SetPowerState(StateManager::PowerState::ACTIVE);  // Initial state
+    Logger::Instance().Info("Plugin", "StateManager initialized");
+  });
+
+  // Initialize MessageQueueManager utility (v2.5.0+ Phase 7: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("MessageQueueManager", {
+    message_queue_manager_ = std::make_unique<MessageQueueManager>();
+    Logger::Instance().Info("Plugin", "MessageQueueManager initialized");
+  });
+  
   // Initialize MouseHookManager module (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
   TRY_CATCH_INIT_MODULE("MouseHookManager", {
     mouse_hook_manager_ = std::make_unique<MouseHookManager>();
@@ -860,9 +992,6 @@ void AnyWPEnginePlugin::SetupWebView2WithManager(HWND hwnd, const std::string& u
     });
 }
 
-// v1.4.1+ Phase F: SetupWebView2 method deleted (392 lines)
-// The method was replaced by SetupWebView2WithManager which delegates to WebViewManager module
-
 // P0-2: Initialize with retry mechanism
 bool AnyWPEnginePlugin::InitializeWithRetry(const std::string& url, bool enable_mouse_transparent, int max_retries) {
   Logger::Instance().Info("Plugin", 
@@ -1100,205 +1229,96 @@ void AnyWPEnginePlugin::SetupMessageBridge(ICoreWebView2* webview) {
 void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
   Logger::Instance().Debug("API", "Received message: " + message);
   
-  if (sdk_bridge_) {
+  // v2.5.0+ Phase 2: Use WebMessageHandler for unified message handling
+  if (web_message_handler_) {
+    // Determine which instance this message is for (use first instance for now)
+    WallpaperInstance* target_instance = nullptr;
+    if (!wallpaper_instances_.empty()) {
+      target_instance = &wallpaper_instances_[0];
+    }
+    
+    if (!web_message_handler_->HandleMessage(message, target_instance)) {
+      Logger::Instance().Warning("API", "WebMessageHandler failed to handle message");
+      
+      // Fallback to SDKBridge for backward compatibility
+      if (sdk_bridge_) {
+        sdk_bridge_->HandleMessage(message);
+      }
+    }
+  } else if (sdk_bridge_) {
+    // Fallback: Use SDKBridge directly
     sdk_bridge_->HandleMessage(message);
   } else {
-    LOG_AND_REPORT_ERROR("SDKBridge", "HandleWebMessage", 
-      "SDKBridge not initialized, cannot handle message",
+    LOG_AND_REPORT_ERROR("API", "HandleWebMessage", 
+      "Neither WebMessageHandler nor SDKBridge initialized",
       ErrorHandler::ErrorCategory::INITIALIZATION, 
       ErrorHandler::ErrorLevel::ERROR);
   }
 }
 
-// Phase B: Handle IFRAME_DATA messages
+// Phase B: Handle IFRAME_DATA messages (Delegate to WebMessageHandler)
 void AnyWPEnginePlugin::HandleIframeDataWebMessage(const std::string& message) {
-  // Find the correct instance for this message
-  WallpaperInstance* target_instance = nullptr;
-  
-  // Use first instance for now (TODO: improve for multi-monitor)
-  if (!wallpaper_instances_.empty()) {
-    target_instance = &wallpaper_instances_[0];
-    Logger::Instance().Debug("API", "Using wallpaper instance for iframe data");
+  if (web_message_handler_) {
+    WallpaperInstance* target_instance = !wallpaper_instances_.empty() ? &wallpaper_instances_[0] : nullptr;
+    web_message_handler_->HandleMessage(message, target_instance);
   }
-  
-  HandleIframeDataMessage(message, target_instance);
 }
 
-// Phase B: Handle OPEN_URL messages
+// Phase B: Handle OPEN_URL messages (Delegate to WebMessageHandler)
 void AnyWPEnginePlugin::HandleOpenUrlWebMessage(const std::string& message) {
-  // Extract URL from JSON
-  size_t url_start = message.find("\"url\":\"") + 7;
-  size_t url_end = message.find("\"", url_start);
-  if (url_start != std::string::npos && url_end != std::string::npos) {
-    std::string url = message.substr(url_start, url_end - url_start);
-    Logger::Instance().Info("API", "Opening URL: " + url);
-    
-    // Open URL using ShellExecute
-    std::wstring wurl(url.begin(), url.end());
-    ShellExecuteW(nullptr, L"open", wurl.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+  if (web_message_handler_) {
+    WallpaperInstance* target_instance = !wallpaper_instances_.empty() ? &wallpaper_instances_[0] : nullptr;
+    web_message_handler_->HandleMessage(message, target_instance);
   }
 }
 
-// Phase B: Handle READY messages
+// Phase B: Handle READY messages (Delegate to WebMessageHandler)
 void AnyWPEnginePlugin::HandleReadyWebMessage(const std::string& message) {
-  // Extract name
-  size_t name_start = message.find("\"name\":\"") + 8;
-  size_t name_end = message.find("\"", name_start);
-  if (name_start != std::string::npos && name_end != std::string::npos) {
-    std::string name = message.substr(name_start, name_end - name_start);
-    Logger::Instance().Info("API", "Wallpaper ready: " + name);
+  if (web_message_handler_) {
+    WallpaperInstance* target_instance = !wallpaper_instances_.empty() ? &wallpaper_instances_[0] : nullptr;
+    web_message_handler_->HandleMessage(message, target_instance);
   }
 }
 
-// Phase B: Handle LOG messages
+// Phase B: Handle LOG messages (Delegate to WebMessageHandler)
 void AnyWPEnginePlugin::HandleLogWebMessage(const std::string& message) {
-  // Extract log message
-  size_t msg_start = message.find("\"message\":\"") + 11;
-  size_t msg_end = message.find("\"", msg_start);
-  if (msg_start != std::string::npos && msg_end != std::string::npos) {
-    std::string log_msg = message.substr(msg_start, msg_end - msg_start);
-    Logger::Instance().Info("WebLog", log_msg);
+  if (web_message_handler_) {
+    WallpaperInstance* target_instance = !wallpaper_instances_.empty() ? &wallpaper_instances_[0] : nullptr;
+    web_message_handler_->HandleMessage(message, target_instance);
   }
 }
 
-// Phase B: Handle console_log messages
+// Phase B: Handle console_log messages (Delegate to WebMessageHandler)
 void AnyWPEnginePlugin::HandleConsoleLogWebMessage(const std::string& message) {
-  // Enhanced console.log forwarding with level support
-  size_t msg_start = message.find("\"message\":\"") + 11;
-  size_t msg_end = message.rfind("\"");
-  
-  if (msg_start != std::string::npos && msg_end != std::string::npos && msg_end > msg_start) {
-    std::string log_msg = message.substr(msg_start, msg_end - msg_start);
-    bool is_error = message.find("\"level\":\"error\"") != std::string::npos;
-    bool is_warn = message.find("\"level\":\"warn\"") != std::string::npos;
-    
-    if (is_error) {
-      Logger::Instance().Error("JavaScript", log_msg);
-    } else if (is_warn) {
-      Logger::Instance().Warning("JavaScript", log_msg);
-    } else {
-      Logger::Instance().Debug("JavaScript", log_msg);
-    }
+  if (web_message_handler_) {
+    WallpaperInstance* target_instance = !wallpaper_instances_.empty() ? &wallpaper_instances_[0] : nullptr;
+    web_message_handler_->HandleMessage(message, target_instance);
   }
 }
 
-// Phase B: Handle saveState messages
+// Phase B: Handle saveState messages (Delegate to WebMessageHandler)
 void AnyWPEnginePlugin::HandleSaveStateWebMessage(const std::string& message) {
-  // Extract key and value from JSON
-  size_t key_start = message.find("\"key\":\"") + 7;
-  size_t key_end = message.find("\"", key_start);
-  size_t value_start = message.find("\"value\":\"") + 9;
-  // Find the closing brace, then work backwards to find last quote
-  size_t end_brace = message.rfind("}");
-  size_t value_end = message.rfind("\"", end_brace);
-  
-  if (key_start != std::string::npos && key_end != std::string::npos &&
-      value_start != std::string::npos && value_end != std::string::npos && value_end > value_start) {
-    std::string key = message.substr(key_start, key_end - key_start);
-    std::string value = message.substr(value_start, value_end - value_start);
-    
-    bool success = SaveState(key, value);
-    Logger::Instance().Info("State", "[State] Saved via WebMessage: " + key + " = " + value);
-    
-    // Send success notification back to ALL webviews
-    std::ostringstream js;
-    js << "window.dispatchEvent(new CustomEvent('AnyWP:stateSaved', {"
-       << "detail: {type: 'stateSaved', key: '" << key << "', success: " << (success ? "true" : "false") << "}"
-       << "}));";
-    
-    std::string js_code = js.str();
-    std::wstring wjs_code(js_code.begin(), js_code.end());
-    
-    // Send to legacy webview if exists
-    if (webview_) {
-      webview_->ExecuteScript(wjs_code.c_str(), nullptr);
-    }
-    
-    // Send to all multi-monitor instances
-    for (auto& instance : wallpaper_instances_) {
-      if (instance.webview) {
-        instance.webview->ExecuteScript(wjs_code.c_str(), nullptr);
-      }
-    }
-    Logger::Instance().Info("State", "[State] Sent stateSaved event to all instances");
-  } else {
-    LOG_AND_REPORT_ERROR("StatePersistence", "HandleSaveStateWebMessage", 
-      "Failed to parse saveState message",
-      ErrorHandler::ErrorCategory::INVALID_STATE, 
-      ErrorHandler::ErrorLevel::ERROR);
+  if (web_message_handler_) {
+    WallpaperInstance* target_instance = !wallpaper_instances_.empty() ? &wallpaper_instances_[0] : nullptr;
+    web_message_handler_->HandleMessage(message, target_instance);
   }
 }
 
-// Phase B: Handle loadState messages
+// Phase B: Handle loadState messages (Delegate to WebMessageHandler)
 void AnyWPEnginePlugin::HandleLoadStateWebMessage(const std::string& message) {
-  // Extract key
-  size_t key_start = message.find("\"key\":\"") + 7;
-  size_t key_end = message.find("\"", key_start);
-  
-  if (key_start != std::string::npos && key_end != std::string::npos) {
-    std::string key = message.substr(key_start, key_end - key_start);
-    std::string value = LoadState(key);
-    
-    Logger::Instance().Info("State", "[State] Loaded via WebMessage: " + key + " = " + value);
-    
-    // Send result back to ALL webviews (to ensure it reaches the right one)
-    std::ostringstream js;
-    js << "window.dispatchEvent(new CustomEvent('AnyWP:stateLoaded', {"
-       << "detail: {type: 'stateLoaded', key: '" << key << "', value: '" << value << "'}"
-       << "}));";
-    
-    std::string js_code = js.str();
-    std::wstring wjs_code(js_code.begin(), js_code.end());
-    
-    // Send to legacy webview if exists
-    if (webview_) {
-      webview_->ExecuteScript(wjs_code.c_str(), nullptr);
-      Logger::Instance().Info("State", "[State] Sent stateLoaded event to legacy webview");
-    }
-    
-    // Send to all multi-monitor instances
-    for (auto& instance : wallpaper_instances_) {
-      if (instance.webview) {
-        instance.webview->ExecuteScript(wjs_code.c_str(), nullptr);
-      }
-    }
-    Logger::Instance().Info("State", "[State] Sent stateLoaded event to all instances");
+  if (web_message_handler_) {
+    WallpaperInstance* target_instance = !wallpaper_instances_.empty() ? &wallpaper_instances_[0] : nullptr;
+    web_message_handler_->HandleMessage(message, target_instance);
   }
 }
 
-// Phase B: Handle clearState messages
+// Phase B: Handle clearState messages (Delegate to WebMessageHandler)
 void AnyWPEnginePlugin::HandleClearStateWebMessage(const std::string& message) {
-  bool success = ClearState();
-  Logger::Instance().Info("State", "[State] Cleared all state via WebMessage");
-  
-  // Send success notification back to ALL webviews
-  std::ostringstream js;
-  js << "window.dispatchEvent(new CustomEvent('AnyWP:stateCleared', {"
-     << "detail: {type: 'stateCleared', success: " << (success ? "true" : "false") << "}"
-     << "}));";
-  
-  std::string js_code = js.str();
-  std::wstring wjs_code(js_code.begin(), js_code.end());
-  
-  // Send to legacy webview if exists
-  if (webview_) {
-    webview_->ExecuteScript(wjs_code.c_str(), nullptr);
+  if (web_message_handler_) {
+    WallpaperInstance* target_instance = !wallpaper_instances_.empty() ? &wallpaper_instances_[0] : nullptr;
+    web_message_handler_->HandleMessage(message, target_instance);
   }
-  
-  // Send to all multi-monitor instances
-  for (auto& instance : wallpaper_instances_) {
-    if (instance.webview) {
-      instance.webview->ExecuteScript(wjs_code.c_str(), nullptr);
-    }
-  }
-  Logger::Instance().Info("State", "[State] Sent stateCleared event to all instances");
 }
-
-// ========== State Persistence Helper Functions ==========
-
-// Get application data directory path with app-specific subdirectory
-// v1.4.1+ Phase F: State persistence helper functions deleted (198 lines)
-// These functions were moved to utils/state_persistence.cpp
 
 // ========== State Persistence Functions ==========
 
@@ -2929,42 +2949,17 @@ void AnyWPEnginePlugin::StopFullscreenDetection() {
 }
 
 // Pause wallpaper - GOAL: Reduce CPU/GPU usage while keeping wallpaper visible
-// v1.4.1+ Phase E: Simplified - delegates to PowerManager
+// v2.5.0+ Phase 3: Delegates to WallpaperLifecycleManager (backward compatible)
 void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
-  // Guard: Avoid duplicate pause
-  if (is_paused_.exchange(true)) {
-    return;  // Already paused
+  // v2.5.0+ Delegate to WallpaperLifecycleManager
+  if (lifecycle_manager_) {
+    lifecycle_manager_->PauseWallpaper(reason);
+  } else {
+    LOG_AND_REPORT_ERROR("Lifecycle", "PauseWallpaper",
+      "WallpaperLifecycleManager not initialized",
+      ErrorHandler::ErrorCategory::INITIALIZATION,
+      ErrorHandler::ErrorLevel::WARNING);
   }
-
-  // Log current power state
-  std::string power_state_str = "UNKNOWN";
-  
-  if (power_manager_) {
-    auto state = power_manager_->GetCurrentState();
-    switch (state) {
-      case PowerManager::PowerState::ACTIVE: power_state_str = "ACTIVE"; break;
-      case PowerManager::PowerState::IDLE: power_state_str = "IDLE"; break;
-      case PowerManager::PowerState::SCREEN_OFF: power_state_str = "SCREEN_OFF"; break;
-      case PowerManager::PowerState::LOCKED: power_state_str = "LOCKED"; break;
-      case PowerManager::PowerState::FULLSCREEN_APP: power_state_str = "FULLSCREEN_APP"; break;
-      case PowerManager::PowerState::PAUSED: power_state_str = "PAUSED"; break;
-    }
-  }
-
-  Logger::Instance().Info("PowerSaving", "Pausing wallpaper, state: " + power_state_str);
-  Logger::Instance().Info("PowerSaving", "Reason: " + reason);
-  
-  // Execute pause scripts for all scenarios (fullscreen, lock screen, etc.)
-  if (power_manager_) {
-    power_manager_->ExecutePauseScripts([this](const std::wstring& script) {
-      ExecuteScriptToAllInstances(script);
-    });
-  }
-  
-  // Light memory trim
-  SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
-  
-  Logger::Instance().Info("PowerSaving", "Wallpaper paused - last frame frozen");
 }
 
 // v1.4.1+ Phase G: Validate wallpaper windows state
@@ -3185,58 +3180,17 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url, co
 }
 
 // Resume wallpaper - Restore animations and rendering
-// v1.4.1+ Phase G: Simplified using helper methods
+// v2.5.0+ Phase 3: Delegates to WallpaperLifecycleManager (backward compatible)
 void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_reinit) {
-  // Guard: Avoid duplicate resume
-  if (!is_paused_.exchange(false)) {
-    return;  // Already resumed
+  // v2.5.0+ Delegate to WallpaperLifecycleManager
+  if (lifecycle_manager_) {
+    lifecycle_manager_->ResumeWallpaper(reason, force_reinit);
+  } else {
+    LOG_AND_REPORT_ERROR("Lifecycle", "ResumeWallpaper",
+      "WallpaperLifecycleManager not initialized",
+      ErrorHandler::ErrorCategory::INITIALIZATION,
+      ErrorHandler::ErrorLevel::WARNING);
   }
-
-  // Log current power state
-  std::string power_state_str = "UNKNOWN";
-  
-  if (power_manager_) {
-    auto state = power_manager_->GetCurrentState();
-    switch (state) {
-      case PowerManager::PowerState::ACTIVE: power_state_str = "ACTIVE"; break;
-      case PowerManager::PowerState::IDLE: power_state_str = "IDLE"; break;
-      case PowerManager::PowerState::SCREEN_OFF: power_state_str = "SCREEN_OFF"; break;
-      case PowerManager::PowerState::LOCKED: power_state_str = "LOCKED"; break;
-      case PowerManager::PowerState::FULLSCREEN_APP: power_state_str = "FULLSCREEN_APP"; break;
-      case PowerManager::PowerState::PAUSED: power_state_str = "PAUSED"; break;
-    }
-  }
-
-  Logger::Instance().Info("PowerSaving", "Resuming wallpaper, state: " + power_state_str);
-  Logger::Instance().Info("PowerSaving", "Reason: " + reason);
-  if (force_reinit) {
-    Logger::Instance().Info("PowerSaving", "Force reinitialize: YES (session switch)");
-  }
-  
-  // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
-  bool need_reinitialize = force_reinit;  // Force if requested
-  
-  // Skip validation if force reinit requested
-  if (!force_reinit) {
-    need_reinitialize = !ValidateWallpaperWindows();
-  }
-  
-  // If window is lost, try to restore it
-  if (need_reinitialize) {
-    if (RestoreWallpaperConfiguration(default_wallpaper_url_)) {
-      return;  // Skip normal resume (already restored and showing)
-    }
-    return;  // Failed to restore, cannot continue
-  }
-  
-  // Execute resume scripts for all scenarios (fullscreen, lock screen, etc.)
-  if (power_manager_) {
-    power_manager_->ExecuteResumeScripts([this](const std::wstring& script) {
-      ExecuteScriptToAllInstances(script);
-    });
-  }
-  
-  Logger::Instance().Info("PowerSaving", "Wallpaper resumed - animations restarted");
 }
 
 // Optimize memory usage (delegated to PowerManager)
@@ -3483,336 +3437,187 @@ void AnyWPEnginePlugin::NotifyPowerStateChange(PowerState newState) {
 
 // ========== v2.3.1+ Enhancement: WorkerW Recovery ==========
 
-void AnyWPEnginePlugin::RecoverWorkerW() {
-  Logger::Instance().Warning("WorkerW Recovery", "Starting WorkerW recovery (Lively-style full recreate)");
-  
-  try {
-    // v2.3.1+ Lively-style Recovery: Complete wallpaper recreation
-    // When Explorer restarts, child windows are destroyed by Windows.
-    // Instead of trying to fix them, we recreate everything from scratch (like Lively does)
-    
-    // Step 1: Check if windows were destroyed
-    bool need_recreate = false;
-    
-    if (webview_host_hwnd_ && !IsWindow(webview_host_hwnd_)) {
-      Logger::Instance().Warning("WorkerW Recovery", 
-        "Single-monitor webview host window destroyed (Explorer restart detected)");
-      need_recreate = true;
-    }
-    
-    {
-      std::lock_guard<std::mutex> lock(instances_mutex_);
-      for (const auto& instance : wallpaper_instances_) {
-        if (instance.webview_host_hwnd && !IsWindow(instance.webview_host_hwnd)) {
-          Logger::Instance().Warning("WorkerW Recovery", 
-            "Multi-monitor window destroyed (Explorer restart detected)");
-          need_recreate = true;
-          break;
-        }
-      }
-    }
-    
-    if (!need_recreate) {
-      // Windows still exist, just re-parent them (old behavior for other scenarios)
-      Logger::Instance().Info("WorkerW Recovery", 
-        "Windows still valid, performing re-parent recovery (not Explorer restart)");
-      RecoverWorkerW_Reparent();
-      return;
-    }
-    
-    // Step 2: Windows were destroyed, need full recreation
+// Helper: Check if Explorer was restarted (windows destroyed)
+bool AnyWPEnginePlugin::CheckExplorerRestart() {
+  // Check single-monitor mode
+  if (webview_host_hwnd_ && !IsWindow(webview_host_hwnd_)) {
     Logger::Instance().Warning("WorkerW Recovery", 
-      "Windows destroyed, initiating full wallpaper recreation (Lively method)");
-    Logger::Instance().Info("WorkerW Recovery", "Windows destroyed, need full recreation");
-    
-    // Step 3: Reset DesktopWallpaperHelper cache
-    DesktopWallpaperHelper::Instance().Reset();
-    Logger::Instance().Info("WorkerW Recovery", "DesktopWallpaperHelper cache cleared");
-    
-    // Step 3.5: v2.4.1+ CRITICAL: Reset WebView2 Environment (Explorer restart invalidates it)
-    if (webview_manager_) {
-      WebViewManager::ResetEnvironment();
-      Logger::Instance().Info("WorkerW Recovery", "WebView2 Environment reset (will reinitialize on recovery)");
-    }
-    
-    // Step 4: Clear all destroyed window handles
-    Logger::Instance().Info("WorkerW Recovery", "Clearing destroyed window handles...");
-    webview_host_hwnd_ = nullptr;
-    worker_w_hwnd_ = nullptr;
-    webview_controller_ = nullptr;
-    
-    // v2.3.1+ CRITICAL FIX: Don't clear instances here to avoid deadlock!
-    // Just let them be - they will be invalid handles anyway.
-    // Clearing them while holding lock can cause deadlock with PowerManager thread.
-    // Instead, mark them as invalid and let next initialization clean up.
-    Logger::Instance().Info("WorkerW Recovery", "Window handles cleared (instances will be cleaned up by next init)");
-    
-    // Step 5: Find new WorkerW (v2.3.1+ CRITICAL: Use shorter timeout to avoid blocking)
-    Logger::Instance().Info("WorkerW Recovery", "Re-finding WorkerW (fast mode)...");
-    
-    // v2.3.1+ CRITICAL FIX: Use much shorter timeout (1000ms) to avoid blocking other threads
-    // If it fails, monitoring thread will retry automatically later
-    if (!DesktopWallpaperHelper::Instance().FindWorkerW(1000)) {
-      Logger::Instance().Warning("WorkerW Recovery", 
-        "Fast WorkerW search failed, will retry in next monitoring cycle");
-      Logger::Instance().Warning("WorkerW Recovery", "WorkerW not found yet, will retry later");
-      
-      // Mark recovery as failed, monitoring thread will retry
-      if (workerw_health_monitor_) {
-        workerw_health_monitor_->UpdateWorkerW(nullptr);
-      }
-      return;
-    }
-    
-    HWND new_workerw = DesktopWallpaperHelper::Instance().GetWallpaperParent();
-    if (!new_workerw) {
-      Logger::Instance().Error("WorkerW Recovery", "GetWallpaperParent returned null");
-      return;
-    }
-    
-    Logger::Instance().Info("WorkerW Recovery", 
-      "New WorkerW found: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
-    Logger::Instance().Info("WorkerW Recovery", 
-      "New WorkerW: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
-    
-    // Step 6: Update WorkerW in health monitor
-    if (workerw_health_monitor_) {
-      workerw_health_monitor_->UpdateWorkerW(new_workerw);
-      Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated in health monitor");
-    }
-    
-    // Step 7: Notify Flutter to recreate wallpaper via message queue
-    // We can't recreate WebView2 from here (wrong thread), so send a message to Flutter
-    {
-      std::lock_guard<std::mutex> lock(wallpaper_recreate_mutex_);
-      need_wallpaper_recreate_ = true;
-      wallpaper_recreate_reason_ = "Explorer restart detected, windows were destroyed";
-    }
-    
-    // v2.4.1+ CRITICAL FIX: Always use Flutter main thread for recovery (Lively-style)
-    // Creating WebView in detached C++ thread causes async callback issues
-    // Solution: Send message to Flutter, let main thread handle recovery
-    
-    if (IsAutoRecoveryEnabled()) {
-      Logger::Instance().Info("WorkerW Recovery", 
-        "Auto recovery enabled, triggering recovery in Flutter main thread (Lively-style)");
-      
-      // Trigger auto recovery, but in Flutter main thread via Platform Channel
-      HandleAutoRecovery();
-    } else {
-      Logger::Instance().Info("WorkerW Recovery", 
-        "Auto recovery disabled, sending manual recovery message to Flutter");
-      
-      // v2.3.1+ Send JSON message to Flutter to trigger manual recreation
-      // Using existing message queue mechanism (thread-safe)
-      std::string recreate_message = R"({"type":"WALLPAPER_RECREATE_REQUIRED","data":{"reason":")" + 
-                                     wallpaper_recreate_reason_ + R"("}})";
-      NotifyFlutterMessage(recreate_message);
-      
-      Logger::Instance().Info("WorkerW Recovery", 
-        "Recovery message sent to Flutter, waiting for manual recreation");
-    }
-    
-  } catch (const std::exception& e) {
-    Logger::Instance().Error("WorkerW Recovery", 
-      std::string("Exception during recovery: ") + e.what());
-    Logger::Instance().Error("WorkerW Recovery", std::string("EXCEPTION: ") + e.what());
-  } catch (...) {
-    Logger::Instance().Error("WorkerW Recovery", "Unknown exception during recovery");
-    Logger::Instance().Error("WorkerW Recovery", "UNKNOWN EXCEPTION");
+      "Single-monitor webview host window destroyed (Explorer restart detected)");
+    return true;
   }
+  
+  // Check multi-monitor mode
+  std::lock_guard<std::mutex> lock(instances_mutex_);
+  for (const auto& instance : wallpaper_instances_) {
+    if (instance.webview_host_hwnd && !IsWindow(instance.webview_host_hwnd)) {
+      Logger::Instance().Warning("WorkerW Recovery", 
+        "Multi-monitor window destroyed (Explorer restart detected)");
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Helper: Handle Explorer restart (reset and trigger auto-recovery)
+void AnyWPEnginePlugin::HandleExplorerRestart() {
+  Logger::Instance().Warning("WorkerW Recovery", 
+    "Windows destroyed, initiating full wallpaper recreation (Lively method)");
+  
+  // Reset DesktopWallpaperHelper cache
+  DesktopWallpaperHelper::Instance().Reset();
+  Logger::Instance().Info("WorkerW Recovery", "DesktopWallpaperHelper cache cleared");
+  
+  // Reset WebView2 Environment
+  if (webview_manager_) {
+    WebViewManager::ResetEnvironment();
+    Logger::Instance().Info("WorkerW Recovery", "WebView2 Environment reset (will reinitialize on recovery)");
+  }
+  
+  // Clear destroyed window handles
+  Logger::Instance().Info("WorkerW Recovery", "Clearing destroyed window handles...");
+  webview_host_hwnd_ = nullptr;
+  worker_w_hwnd_ = nullptr;
+  webview_controller_ = nullptr;
+  
+  Logger::Instance().Info("WorkerW Recovery", "Window handles cleared (instances will be cleaned up by next init)");
+  
+  // Trigger HandleAutoRecovery to rebuild wallpapers
+  if (IsAutoRecoveryEnabled()) {
+    Logger::Instance().Info("WorkerW Recovery", 
+      "Auto recovery enabled, triggering recovery in Flutter main thread (Lively-style)");
+    HandleAutoRecovery();
+  } else {
+    Logger::Instance().Warning("WorkerW Recovery", 
+      "Auto recovery disabled, wallpaper will NOT be recovered automatically");
+  }
+}
+
+void AnyWPEnginePlugin::RecoverWorkerW() {
+  // v2.5.0+ Phase 5: Delegate to WorkerWRecoveryManager module
+  if (workerw_recovery_manager_) {
+    Logger::Instance().Info("WorkerW Recovery", "Delegating to WorkerWRecoveryManager module");
+    
+    // Check if Explorer was restarted (windows destroyed)
+    if (CheckExplorerRestart()) {
+      HandleExplorerRestart();
+      return;
+    }
+    
+    // Windows still valid - delegate reparenting to module
+    Logger::Instance().Info("WorkerW Recovery", "Windows still valid, delegating to module for re-parent");
+    workerw_recovery_manager_->RecoverWorkerW();
+    return;
+  }
+  
+  // WorkerWRecoveryManager not available
+  LOG_AND_REPORT_ERROR("WorkerW Recovery", "RecoverWorkerW",
+    "WorkerWRecoveryManager not initialized",
+    ErrorHandler::ErrorCategory::INITIALIZATION,
+    ErrorHandler::ErrorLevel::WARNING);
 }
 
 // v2.3.1+ New method: Re-parent recovery for non-destroyed windows
 void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
-  Logger::Instance().Info("WorkerW Recovery", "Starting re-parent recovery");
+  // v2.5.0+ Phase 5: Delegate to WorkerWRecoveryManager module
+  if (workerw_recovery_manager_) {
+    Logger::Instance().Info("WorkerW Recovery", "Delegating reparent to WorkerWRecoveryManager module");
+    bool success = workerw_recovery_manager_->RecoverWorkerW_Reparent();
+    
+    if (success) {
+      Logger::Instance().Info("WorkerW Recovery", "Module reparent successful");
+    } else {
+      Logger::Instance().Warning("WorkerW Recovery", "Module reparent failed");
+    }
+    return;
+  }
+  
+  // WorkerWRecoveryManager not available
+  LOG_AND_REPORT_ERROR("WorkerW Recovery", "RecoverWorkerW_Reparent",
+    "WorkerWRecoveryManager not initialized",
+    ErrorHandler::ErrorCategory::INITIALIZATION,
+    ErrorHandler::ErrorLevel::WARNING);
+}
+
+// v2.5.0+ Phase 5: Helper method for WorkerWRecoveryManager
+bool AnyWPEnginePlugin::ReparentAllWallpaperInstances() {
+  Logger::Instance().Info("WorkerW Recovery", "Reparenting all wallpaper instances");
   
   try {
     // Find new WorkerW
-    for (int attempt = 0; attempt < 3; attempt++) {
-      if (DesktopWallpaperHelper::Instance().FindWorkerW(5000)) {
-        break;
-      }
-      Logger::Instance().Warning("WorkerW Recovery", 
-        "FindWorkerW attempt " + std::to_string(attempt + 1) + " failed");
-      DesktopWallpaperHelper::Instance().TriggerWorkerWCreation();
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
-    
     HWND new_workerw = DesktopWallpaperHelper::Instance().GetWallpaperParent();
     if (!new_workerw) {
       Logger::Instance().Error("WorkerW Recovery", "GetWallpaperParent returned null");
-      return;
+      return false;
     }
     
     Logger::Instance().Info("WorkerW Recovery", 
-      "New WorkerW found: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
+      "New WorkerW: " + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)));
     
-    // Step 4: Update single-monitor mode (if active)
-    if (webview_host_hwnd_) {
-      Logger::Instance().Info("WorkerW Recovery", "Re-parenting single-monitor wallpaper...");
-      
-      // v2.3.1+ CRITICAL: Validate all window handles before SetParent
-      bool webview_valid = IsWindow(webview_host_hwnd_);
-      bool workerw_valid = IsWindow(new_workerw);
-      HWND current_parent = GetParent(webview_host_hwnd_);
-      
-      Logger::Instance().Info("WorkerW Recovery", 
-        "Window validation: webview_host=" + std::to_string((long long)webview_host_hwnd_) + 
-        " (valid=" + std::to_string(webview_valid) + 
-        "), new_workerw=" + std::to_string((long long)new_workerw) + 
-        " (valid=" + std::to_string(workerw_valid) + 
-        "), current_parent=" + std::to_string((long long)current_parent) + ")");
-      
-      Logger::Instance().Debug("WorkerW Recovery", 
-        "Validation: webview=" + std::to_string(reinterpret_cast<uintptr_t>(webview_host_hwnd_)) + 
-        " (valid=" + std::to_string(webview_valid) + "), workerw=" + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)) + 
-        " (valid=" + std::to_string(workerw_valid) + "), parent=" + std::to_string(reinterpret_cast<uintptr_t>(current_parent)));
-      
-      if (!webview_valid) {
-        Logger::Instance().Error("WorkerW Recovery", 
-          "WebView host window handle is invalid (window destroyed)");
-        Logger::Instance().Error("WorkerW Recovery", "ERROR: WebView window invalid!");
-        webview_host_hwnd_ = nullptr;
-        worker_w_hwnd_ = nullptr;
-        return;
-      }
-      
-      if (!workerw_valid) {
-        Logger::Instance().Error("WorkerW Recovery", 
-          "New WorkerW handle is invalid (WorkerW not created properly)");
-        Logger::Instance().Error("WorkerW Recovery", "ERROR: WorkerW invalid!");
-        return;
-      }
-      
-      // Re-parent the WebView host window to new WorkerW
-      HWND old_parent = SetParent(webview_host_hwnd_, new_workerw);
-      if (old_parent || GetLastError() == 0) {
-        worker_w_hwnd_ = new_workerw;
-        Logger::Instance().Info("WorkerW Recovery", "Single-monitor wallpaper re-parented successfully");
-        Logger::Instance().Info("WorkerW Recovery", "Single-monitor wallpaper re-parented");
+    int success_count = 0;
+    int total_count = 0;
+    
+    // Reparent single-monitor instance if active
+    if (webview_host_hwnd_ && IsWindow(webview_host_hwnd_)) {
+      total_count++;
+      if (SetParent(webview_host_hwnd_, new_workerw)) {
+        success_count++;
+        Logger::Instance().Info("WorkerW Recovery", "Single-monitor wallpaper reparented successfully");
         
         // Fix Z-order
         if (window_manager_) {
           window_manager_->SetWallpaperZOrder(webview_host_hwnd_, new_workerw);
         }
         
-        // v2.3.1+ Important: Force UI refresh for WebView2 thread synchronization
-        // SetParent may not immediately update if WebView2 is on different thread
         UpdateWindow(webview_host_hwnd_);
         InvalidateRect(webview_host_hwnd_, nullptr, TRUE);
-        
-        Logger::Instance().Debug("WorkerW Recovery", "Forced UI refresh for WebView2 sync");
       } else {
-        DWORD error = GetLastError();
         Logger::Instance().Error("WorkerW Recovery", 
-          "Failed to re-parent single-monitor wallpaper: error " + std::to_string(error));
-        Logger::Instance().Error("WorkerW Recovery", "ERROR: Failed to re-parent, error: " + std::to_string(error));
-        
-        // v2.3.1+ Check if it's a permission issue
-        if (error == ERROR_ACCESS_DENIED) {
-          Logger::Instance().Warning("WorkerW Recovery", 
-            "Access denied - may require administrator privileges or Explorer policy blocking");
-        }
+          "Failed to reparent single-monitor wallpaper: error " + std::to_string(GetLastError()));
       }
     }
     
-    // Step 5: Update multi-monitor mode (if active)
+    // Reparent multi-monitor instances
     {
       std::lock_guard<std::mutex> lock(instances_mutex_);
-      if (!wallpaper_instances_.empty()) {
-        Logger::Instance().Info("WorkerW Recovery", 
-          "Re-parenting " + std::to_string(wallpaper_instances_.size()) + " multi-monitor wallpapers...");
-        
-        int success_count = 0;
-        for (auto& instance : wallpaper_instances_) {
-          if (instance.webview_host_hwnd) {
-            // v2.3.1+ CRITICAL: Validate all window handles before SetParent
-            bool webview_valid = IsWindow(instance.webview_host_hwnd);
-            bool workerw_valid = IsWindow(new_workerw);
-            HWND current_parent = GetParent(instance.webview_host_hwnd);
+      for (auto& instance : wallpaper_instances_) {
+        if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
+          total_count++;
+          if (SetParent(instance.webview_host_hwnd, new_workerw)) {
+            success_count++;
+            Logger::Instance().Info("WorkerW Recovery", 
+              "Monitor " + std::to_string(instance.monitor_index) + " reparented successfully");
             
-            Logger::Instance().Debug("WorkerW Recovery", 
-              "Monitor " + std::to_string(instance.monitor_index) + 
-              " validation: webview=" + std::to_string(reinterpret_cast<uintptr_t>(instance.webview_host_hwnd)) + 
-              " (valid=" + std::to_string(webview_valid) + "), workerw=" + std::to_string(reinterpret_cast<uintptr_t>(new_workerw)) + 
-              " (valid=" + std::to_string(workerw_valid) + "), parent=" + std::to_string(reinterpret_cast<uintptr_t>(current_parent)));
-            
-            if (!webview_valid) {
-              Logger::Instance().Error("WorkerW Recovery", 
-                "Monitor " + std::to_string(instance.monitor_index) + 
-                " webview window handle is invalid (window destroyed)");
-              Logger::Instance().Error("WorkerW Recovery", 
-                "ERROR: Monitor " + std::to_string(instance.monitor_index) + " webview window invalid!");
-              continue;
+            // Fix Z-order
+            if (window_manager_) {
+              window_manager_->SetWallpaperZOrder(instance.webview_host_hwnd, new_workerw);
             }
             
-            if (!workerw_valid) {
-              Logger::Instance().Error("WorkerW Recovery", 
-                "Monitor " + std::to_string(instance.monitor_index) + 
-                " WorkerW handle is invalid");
-              Logger::Instance().Error("WorkerW Recovery", 
-                "ERROR: Monitor " + std::to_string(instance.monitor_index) + " WorkerW invalid!");
-              continue;
-            }
-            
-            HWND old_parent = SetParent(instance.webview_host_hwnd, new_workerw);
-            if (old_parent || GetLastError() == 0) {
-              instance.worker_w_hwnd = new_workerw;
-              success_count++;
-              
-              // Fix Z-order
-              if (window_manager_) {
-                window_manager_->SetWallpaperZOrder(instance.webview_host_hwnd, new_workerw);
-              }
-              
-              // v2.3.1+ Important: Force UI refresh for WebView2 thread synchronization
-              UpdateWindow(instance.webview_host_hwnd);
-              InvalidateRect(instance.webview_host_hwnd, nullptr, TRUE);
-              
-            } else {
-              DWORD error = GetLastError();
-              Logger::Instance().Error("WorkerW Recovery", 
-                "Failed to re-parent monitor " + std::to_string(instance.monitor_index) + 
-                ": error " + std::to_string(error));
-              
-              // v2.3.1+ Check if it's a permission issue
-              if (error == ERROR_ACCESS_DENIED) {
-                Logger::Instance().Warning("WorkerW Recovery", 
-                  "Access denied on monitor " + std::to_string(instance.monitor_index) + 
-                  " - may require administrator privileges");
-              }
-            }
+            UpdateWindow(instance.webview_host_hwnd);
+            InvalidateRect(instance.webview_host_hwnd, nullptr, TRUE);
+          } else {
+            Logger::Instance().Error("WorkerW Recovery", 
+              "Failed to reparent monitor " + std::to_string(instance.monitor_index) + 
+              ": error " + std::to_string(GetLastError()));
           }
         }
-        
-        Logger::Instance().Info("WorkerW Recovery", 
-          "Re-parented " + std::to_string(success_count) + "/" + 
-          std::to_string(wallpaper_instances_.size()) + " wallpapers");
-        Logger::Instance().Info("WorkerW Recovery", 
-          "Re-parented " + std::to_string(success_count) + "/" + 
-          std::to_string(wallpaper_instances_.size()) + " wallpapers");
       }
     }
     
-    // Step 6: Update WorkerW handle in health monitor (DO NOT restart monitoring thread)
-    // v2.3.1+ The monitoring thread is still running (this function is called from it)
-    // Just update the WorkerW handle, the thread will automatically detect health improvement
+    // Update WorkerW handle in health monitor
     if (workerw_health_monitor_) {
       workerw_health_monitor_->UpdateWorkerW(new_workerw);
       Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated in health monitor");
-      Logger::Instance().Info("WorkerW Recovery", "WorkerW handle updated");
     }
     
-    Logger::Instance().Info("WorkerW Recovery", "Recovery completed successfully");
+    Logger::Instance().Info("WorkerW Recovery", 
+      "Reparented " + std::to_string(success_count) + "/" + std::to_string(total_count) + " instances");
     
+    return success_count > 0;
   } catch (const std::exception& e) {
     Logger::Instance().Error("WorkerW Recovery", 
-      std::string("Exception during recovery: ") + e.what());
-    Logger::Instance().Error("WorkerW Recovery", std::string("EXCEPTION: ") + e.what());
-  } catch (...) {
-    Logger::Instance().Error("WorkerW Recovery", "Unknown exception during recovery");
-    Logger::Instance().Error("WorkerW Recovery", "UNKNOWN EXCEPTION");
+      std::string("Exception in ReparentAllWallpaperInstances: ") + e.what());
+    return false;
   }
 }
 
@@ -3821,48 +3626,47 @@ void AnyWPEnginePlugin::RecoverWorkerW_Reparent() {
 // ========================================
 
 void AnyWPEnginePlugin::SetAutoRecoveryEnabled(bool enabled) {
-  std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
-  
-  bool was_enabled = auto_recovery_enabled_;
-  auto_recovery_enabled_ = enabled;
-  
-  if (enabled == was_enabled) {
-    Logger::Instance().Debug("AutoRecovery", 
-      std::string("Auto recovery already ") + (enabled ? "enabled" : "disabled"));
-    return;
-  }
-  
-  Logger::Instance().Info("AutoRecovery", 
-    std::string("Auto recovery ") + (enabled ? "ENABLED" : "DISABLED"));
-  
-  // If enabling auto recovery, check for existing wallpapers
-  if (enabled && instance_manager_) {
-    // v2.4.0+ Enhancement: Reset running flag when enabling to ensure clean state
-    is_auto_recovery_running_ = false;
+  // v2.5.0+ Phase 4: Delegate to AutoRecoveryManager
+  if (auto_recovery_manager_) {
+    auto_recovery_manager_->SetEnabled(enabled);
     
-    std::lock_guard<std::mutex> inst_lock(instances_mutex_);
-    int active_count = static_cast<int>(wallpaper_instances_.size());
-    if (active_count > 0) {
-      Logger::Instance().Info("AutoRecovery", 
-        "Found " + std::to_string(active_count) + " active wallpaper(s). " +
-        "These will be saved on next initialization or you can re-initialize them to save immediately.");
+    // Update legacy flags for backward compatibility
+    std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+    auto_recovery_enabled_ = enabled;
+    
+    if (!enabled) {
+      saved_wallpaper_configs_.clear();
+      is_auto_recovery_running_ = false;
     } else {
-      Logger::Instance().Info("AutoRecovery", 
-        "No active wallpapers. Configurations will be saved when wallpapers are initialized.");
+      is_auto_recovery_running_ = false;
+      
+      // Check for existing wallpapers
+      if (instance_manager_) {
+        std::lock_guard<std::mutex> inst_lock(instances_mutex_);
+        int active_count = static_cast<int>(wallpaper_instances_.size());
+        if (active_count > 0) {
+          Logger::Instance().Info("AutoRecovery", 
+            "Found " + std::to_string(active_count) + " active wallpaper(s). " +
+            "These will be saved on next initialization or you can re-initialize them to save immediately.");
+        }
+      }
     }
-  }
-  
-  // If disabling, clear saved configurations and reset running flag
-  if (!enabled) {
-    int config_count = static_cast<int>(saved_wallpaper_configs_.size());
-    saved_wallpaper_configs_.clear();
+  } else {
+    // Fallback: Legacy implementation
+    Logger::Instance().Warning("AutoRecovery", "AutoRecoveryManager not available, using legacy implementation");
     
-    // v2.4.0+ Enhancement: Reset running flag when disabling
-    // (note: any running recovery thread will still complete, but won't affect next enable)
-    is_auto_recovery_running_ = false;
+    std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+    auto_recovery_enabled_ = enabled;
     
     Logger::Instance().Info("AutoRecovery", 
-      "Cleared " + std::to_string(config_count) + " saved wallpaper configuration(s)");
+      std::string("Auto recovery (legacy) ") + (enabled ? "ENABLED" : "DISABLED"));
+    
+    if (!enabled) {
+      saved_wallpaper_configs_.clear();
+      is_auto_recovery_running_ = false;
+    } else {
+      is_auto_recovery_running_ = false;
+    }
   }
 }
 
@@ -3872,36 +3676,63 @@ bool AnyWPEnginePlugin::IsAutoRecoveryEnabled() const {
 }
 
 void AnyWPEnginePlugin::SaveWallpaperConfig(int monitor_index, const std::string& url, bool enable_mouse_transparent) {
-  std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
-  
-  if (!auto_recovery_enabled_) {
-    Logger::Instance().Debug("AutoRecovery", 
-      "Auto recovery disabled, not saving configuration for monitor " + std::to_string(monitor_index));
-    return;  // Don't save if auto recovery is disabled
+  // v2.5.0+ Phase 4: Delegate to AutoRecoveryManager
+  if (auto_recovery_manager_) {
+    auto_recovery_manager_->SaveWallpaperConfig(monitor_index, url, enable_mouse_transparent);
+    
+    // Update legacy map for backward compatibility
+    std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+    if (auto_recovery_enabled_) {
+      WallpaperConfig config;
+      config.url = url;
+      config.monitor_index = monitor_index;
+      config.enable_mouse_transparent = enable_mouse_transparent;
+      saved_wallpaper_configs_[monitor_index] = config;
+    }
+  } else {
+    // Fallback: Legacy implementation
+    Logger::Instance().Warning("AutoRecovery", "AutoRecoveryManager not available, using legacy save");
+    
+    std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+    
+    if (!auto_recovery_enabled_) {
+      Logger::Instance().Debug("AutoRecovery", "Auto recovery disabled, skipping config save");
+      return;
+    }
+    
+    WallpaperConfig config;
+    config.url = url;
+    config.monitor_index = monitor_index;
+    config.enable_mouse_transparent = enable_mouse_transparent;
+    saved_wallpaper_configs_[monitor_index] = config;
+    
+    Logger::Instance().Info("AutoRecovery", 
+      "Saved configuration (legacy) for monitor " + std::to_string(monitor_index));
   }
-  
-  WallpaperConfig config;
-  config.url = url;
-  config.monitor_index = monitor_index;
-  config.enable_mouse_transparent = enable_mouse_transparent;
-  
-  saved_wallpaper_configs_[monitor_index] = config;
-  
-  Logger::Instance().Info("AutoRecovery", 
-    "Saved configuration for monitor " + std::to_string(monitor_index) + 
-    " - URL: " + url + 
-    ", Transparent: " + (enable_mouse_transparent ? "true" : "false") + 
-    " (Total saved: " + std::to_string(saved_wallpaper_configs_.size()) + ")");
 }
 
 void AnyWPEnginePlugin::RemoveWallpaperConfig(int monitor_index) {
-  std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
-  
-  auto it = saved_wallpaper_configs_.find(monitor_index);
-  if (it != saved_wallpaper_configs_.end()) {
-    saved_wallpaper_configs_.erase(it);
-    Logger::Instance().Info("AutoRecovery", 
-      "Removed configuration for monitor " + std::to_string(monitor_index));
+  // v2.5.0+ Phase 4: Delegate to AutoRecoveryManager
+  if (auto_recovery_manager_) {
+    auto_recovery_manager_->RemoveWallpaperConfig(monitor_index);
+    
+    // Update legacy map for backward compatibility
+    std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+    auto it = saved_wallpaper_configs_.find(monitor_index);
+    if (it != saved_wallpaper_configs_.end()) {
+      saved_wallpaper_configs_.erase(it);
+    }
+  } else {
+    // Fallback: Legacy implementation
+    Logger::Instance().Warning("AutoRecovery", "AutoRecoveryManager not available, using legacy remove");
+    
+    std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+    auto it = saved_wallpaper_configs_.find(monitor_index);
+    if (it != saved_wallpaper_configs_.end()) {
+      saved_wallpaper_configs_.erase(it);
+      Logger::Instance().Info("AutoRecovery", 
+        "Removed configuration (legacy) for monitor " + std::to_string(monitor_index));
+    }
   }
 }
 
@@ -3986,90 +3817,70 @@ bool AnyWPEnginePlugin::SaveWallpaperConfigurationManually(int monitor_index) {
 }
 
 void AnyWPEnginePlugin::HandleAutoRecovery() {
-  // v2.4.0+ Fix: Copy configurations before starting thread to avoid race conditions
-  std::map<int, WallpaperConfig> configs_to_recover;
-  {
-    std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+  // v2.5.0+ Phase 4 Thread Safety Fix: Get configs from AutoRecoveryManager, send to Flutter main thread
+  if (auto_recovery_manager_) {
+    Logger::Instance().Info("AutoRecovery", "Getting recovery configs from AutoRecoveryManager");
     
-    if (!auto_recovery_enabled_) {
-      Logger::Instance().Debug("AutoRecovery", "Auto recovery disabled, skipping");
+    // Get configs to recover (thread-safe)
+    auto configs_to_recover = auto_recovery_manager_->GetConfigsForRecovery();
+    
+    if (configs_to_recover.empty()) {
+      Logger::Instance().Debug("AutoRecovery", "No configs to recover");
+      // Update legacy flag
+      {
+        std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+        is_auto_recovery_running_ = false;
+      }
+      auto_recovery_manager_->CompleteRecovery();
       return;
     }
-    
-    // v2.4.0+ Enhancement: Prevent concurrent recovery operations
-    if (is_auto_recovery_running_) {
-      Logger::Instance().Warning("AutoRecovery", 
-        "Auto recovery already running, skipping duplicate request (prevents Explorer restart race condition)");
-      return;
-    }
-    
-    if (saved_wallpaper_configs_.empty()) {
-      Logger::Instance().Warn("AutoRecovery", "No saved configurations to recover");
-      return;
-    }
-    
-    // Mark recovery as running
-    is_auto_recovery_running_ = true;
-    
-    // Copy configurations to avoid holding lock during async recovery
-    configs_to_recover = saved_wallpaper_configs_;
     
     Logger::Instance().Info("AutoRecovery", 
-      "Starting auto recovery for " + std::to_string(configs_to_recover.size()) + " wallpaper(s)");
+      "Sending " + std::to_string(configs_to_recover.size()) + " config(s) to Flutter main thread for recovery");
     
-    // Log all configurations to be recovered
+    // Build recovery configurations as JSON (Phase 4 fix: match Flutter message format)
+    std::ostringstream configs_stream;
+    configs_stream << "[";
+    bool first = true;
     for (const auto& pair : configs_to_recover) {
       const auto& config = pair.second;
-      Logger::Instance().Info("AutoRecovery", 
-        "Will recover: Monitor " + std::to_string(config.monitor_index) + 
-        ", URL: " + config.url + 
-        ", Transparent: " + (config.enable_mouse_transparent ? "true" : "false"));
+      if (!first) {
+        configs_stream << ",";
+      }
+      first = false;
+      
+      configs_stream << "{\"monitorIndex\":" << config.monitor_index 
+                    << ",\"url\":\"" << config.url << "\""
+                    << ",\"enableMouseTransparent\":" << (config.enable_mouse_transparent ? "true" : "false")
+                    << "}";
     }
-  }
-  
-  // v2.4.1+ CRITICAL FIX: Send recovery request to Flutter main thread (Lively-style)
-  // Creating WebView in C++ detached thread causes async callback issues
-  // Solution: Let Flutter main thread handle the entire recovery process
-  
-  Logger::Instance().Info("AutoRecovery", 
-    "Sending auto recovery request to Flutter main thread (Lively-style architecture)");
-  
-  // Build recovery configurations as JSON
-  std::string configs_json = "[";
-  bool first = true;
-  for (const auto& pair : configs_to_recover) {
-    const auto& config = pair.second;
-    if (!first) configs_json += ",";
-    first = false;
+    configs_stream << "]";
+    std::string configs_json = configs_stream.str();
     
-    configs_json += "{";
-    configs_json += "\"monitorIndex\":" + std::to_string(config.monitor_index) + ",";
-    configs_json += "\"url\":\"" + config.url + "\",";
-    configs_json += "\"transparent\":" + std::string(config.enable_mouse_transparent ? "true" : "false");
-    configs_json += "}";
-  }
-  configs_json += "]";
-  
-  // Send auto recovery message to Flutter
-  std::string recovery_message = R"({"type":"AUTO_RECOVERY_REQUEST","data":{"configs":)" + 
-                                configs_json + R"(,"reason":"Explorer restart detected"}})";
-  
-  NotifyFlutterMessage(recovery_message);
-  
-  Logger::Instance().Info("AutoRecovery", 
-    "Auto recovery request sent to Flutter: " + configs_json);
-  Logger::Instance().Info("AutoRecovery", 
-    "Flutter will handle recovery in main thread (ensures WebView async callbacks work)");
-  
-  // Schedule flag reset after a delay (Flutter will handle the actual recovery)
-  std::thread([this]() {
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    // Send to Flutter main thread (Lively-style architecture)
+    // Flutter expects: {"type":"AUTO_RECOVERY_REQUEST","data":{"configs":[...]}}
+    std::string recovery_message = "{\"type\":\"AUTO_RECOVERY_REQUEST\",\"data\":{\"configs\":" + configs_json + "}}";
+    NotifyFlutterMessage(recovery_message);
+    
+    Logger::Instance().Info("AutoRecovery", 
+      "Recovery request sent to Flutter main thread (will be processed in UI thread)");
+    
+    // Update legacy flag
     {
-      std::lock_guard<std::mutex> lock(this->auto_recovery_mutex_);
-      this->is_auto_recovery_running_ = false;
-      Logger::Instance().Info("AutoRecovery", "Auto recovery flag reset, ready for next request");
+      std::lock_guard<std::mutex> lock(auto_recovery_mutex_);
+      is_auto_recovery_running_ = false;
     }
-  }).detach();
+    
+    // Complete recovery (reset flag in AutoRecoveryManager)
+    auto_recovery_manager_->CompleteRecovery();
+    return;
+  }
+  
+  // AutoRecoveryManager not available
+  LOG_AND_REPORT_ERROR("AutoRecovery", "HandleAutoRecovery",
+    "AutoRecoveryManager not initialized",
+    ErrorHandler::ErrorCategory::INITIALIZATION,
+    ErrorHandler::ErrorLevel::WARNING);
 }
 
 }  // namespace anywp_engine

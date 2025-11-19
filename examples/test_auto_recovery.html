@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Recovery Test Wallpaper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        
+        .container {
+            text-align: center;
+            animation: fadeIn 1s ease-in;
+        }
+        
+        .title {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 24px;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        
+        .status {
+            font-size: 18px;
+            padding: 15px 30px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 25px;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+        }
+        
+        .time {
+            margin-top: 30px;
+            font-size: 36px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title pulse">✅ Auto Recovery Test</div>
+        <div class="subtitle">AnyWP Engine v2.4.1</div>
+        <div class="status">
+            🟢 Wallpaper Active
+        </div>
+        <div class="time" id="time"></div>
+    </div>
+    
+    <script>
+        // 显示当前时间
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('zh-CN', { 
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('time').textContent = timeStr;
+        }
+        
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // 记录启动时间
+        console.log('Auto Recovery Test Wallpaper loaded at:', new Date().toISOString());
+        
+        // 如果 AnyWP SDK 可用，记录一些信息
+        if (window.AnyWP) {
+            console.log('AnyWP SDK version:', window.AnyWP.version);
+            console.log('AnyWP SDK ready:', window.AnyWP.isReady);
+        } else {
+            console.log('AnyWP SDK not found (this is OK for basic test)');
+        }
+    </script>
+</body>
+</html>
+
+
+

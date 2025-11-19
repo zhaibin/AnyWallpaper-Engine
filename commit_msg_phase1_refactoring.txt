@@ -1,0 +1,37 @@
+refactor: Phase 1 - 创建模块化重构框架
+
+新增 10 个模块和工具类以提升代码模块化率：
+
+**新增模块（8个）**：
+- WebMessageHandler: 统一 WebView2 消息处理（预计减少 300 行）
+- WallpaperLifecycleManager: 壁纸生命周期管理（预计减少 400 行）
+- AutoRecoveryManager: 自动恢复功能管理（预计减少 200 行）
+- WorkerWRecoveryManager: WorkerW 恢复策略（预计减少 250 行）
+- WallpaperConfigurationManager: 配置参数管理（预计减少 150 行）
+- ScriptInjectionManager: SDK 注入管理（预计减少 100 行）
+- PermissionConfigurator: 权限配置管理（预计减少 150 行）
+- CacheManager: 缓存清理管理（预计减少 100 行）
+
+**新增工具类（2个）**：
+- StateManager: 统一状态管理（预计减少 100 行）
+- MessageQueueManager: 消息队列管理（预计减少 80 行）
+
+**预期成果**：
+- 模块数量：33 → 43（+30%）
+- 主插件文件：3932 → 2102 行（-47%）
+- 模块化率：60% → 85%
+
+**设计特点**：
+- 单一职责原则
+- 回调解耦设计
+- 完整错误处理
+- 详细文档注释
+- 统计信息记录
+
+**文件变更**：
+- 新增：20 个文件（10个.h + 10个.cpp）
+- 修改：windows/CMakeLists.txt
+- 文档：REFACTORING_PLAN.md, REFACTORING_PHASE1_SUMMARY.md
+
+下一步：Phase 2 将实现 WebMessageHandler 模块并迁移相关代码
+

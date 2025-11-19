@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>轮播壁纸测试 - WebMessage 控制</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* 图片容器 */
+        .carousel-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .carousel-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 状态信息面板 */
+        .info-panel {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            min-width: 320px;
+            z-index: 100;
+        }
+
+        .info-panel h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #333;
+            font-weight: 600;
+            text-align: right;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-playing {
+            background: #4ade80;
+            color: white;
+        }
+
+        .status-paused {
+            background: #fbbf24;
+            color: white;
+        }
+
+        .status-stopped {
+            background: #ef4444;
+            color: white;
+        }
+
+        /* 图片信息显示 */
+        .image-info {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 14px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .image-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #4ade80;
+        }
+
+        .image-url {
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* 播控消息显示 */
+        .control-message {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            width: 400px;
+            background: rgba(74, 222, 128, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 10px 40px rgba(74, 222, 128, 0.4);
+            z-index: 100;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .control-message h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .control-message .message-type {
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .control-message .message-time {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 4px;
+        }
+
+        /* 消息日志 */
+        .message-log {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 350px;
+            max-height: 250px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        .message-log h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .message-item {
+            padding: 8px;
+            margin-bottom: 6px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            font-size: 11px;
+            word-break: break-all;
+        }
+
+        .message-time {
+            color: #999;
+            font-size: 10px;
+        }
+
+        .message-type {
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        /* Auto Recovery 指示器 */
+        .recovery-indicator {
+            position: fixed;
+            top: 30px;
+            left: 450px;
+            background: rgba(74, 222, 128, 0.95);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
+            z-index: 100;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        /* 加载中状态 */
+        .loading {
+            font-size: 48px;
+            color: white;
+            text-align: center;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Auto Recovery 指示器 -->
+    <div class="recovery-indicator">
+        <div class="pulse"></div>
+        Auto Recovery Enabled
+    </div>
+
+    <!-- 轮播容器 -->
+    <div class="carousel-container" id="carouselContainer">
+        <div class="loading">等待轮播数据</div>
+    </div>
+
+    <!-- 状态信息面板 -->
+    <div class="info-panel">
+        <h2>🎠 轮播状态</h2>
+        <div class="info-item">
+            <span class="info-label">状态:</span>
+            <span class="info-value"><span class="status-badge status-stopped" id="statusBadge">STOPPED</span></span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">当前索引:</span>
+            <span class="info-value" id="currentIndex">-</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">总数:</span>
+            <span class="info-value" id="totalImages">0</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">间隔:</span>
+            <span class="info-value" id="intervalValue">-</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">已收消息:</span>
+            <span class="info-value" id="messageCount">0</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">已发消息:</span>
+            <span class="info-value" id="sentCount">0</span>
+        </div>
+    </div>
+
+    <!-- 图片信息 -->
+    <div class="image-info" id="imageInfo" style="display: none;">
+        <span class="image-number" id="imageNumber">1/5</span>
+        <span class="image-url" id="imageUrl">-</span>
+    </div>
+
+    <!-- 播控消息显示 -->
+    <div class="control-message" id="controlMessage" style="display: none;">
+        <h3>🎮 播控消息</h3>
+        <div class="message-type" id="controlType">-</div>
+        <pre id="controlData" style="margin: 8px 0; padding: 8px; background: #2c3e50; color: #ecf0f1; border-radius: 4px; font-size: 11px; overflow-x: auto;">-</pre>
+        <div class="message-time" id="controlTime">-</div>
+    </div>
+
+    <!-- 消息日志 -->
+    <div class="message-log">
+        <h3>📨 消息日志 (最新10条)</h3>
+        <div id="messageLog"></div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 轮播状态管理
+        // ==========================================
+        let carouselData = {
+            images: [],
+            currentIndex: 0,
+            interval: 5000,
+            status: 'stopped', // stopped, playing, paused
+            autoPlay: false
+        };
+
+        let messageCount = 0;
+        let sentCount = 0;
+        let startTime = Date.now();
+        let autoPlayTimer = null;
+
+        // ==========================================
+        // UI 更新函数
+        // ==========================================
+        function updateUI() {
+            // 更新状态徽章
+            const badge = document.getElementById('statusBadge');
+            badge.textContent = carouselData.status.toUpperCase();
+            badge.className = 'status-badge status-' + carouselData.status;
+
+            // 更新信息面板
+            document.getElementById('currentIndex').textContent = 
+                carouselData.images.length > 0 ? carouselData.currentIndex + 1 : '-';
+            document.getElementById('totalImages').textContent = carouselData.images.length;
+            document.getElementById('intervalValue').textContent = 
+                carouselData.interval > 0 ? (carouselData.interval / 1000) + 's' : '-';
+            document.getElementById('messageCount').textContent = messageCount;
+            document.getElementById('sentCount').textContent = sentCount;
+        }
+
+        function showImage(index) {
+            if (!carouselData.images || carouselData.images.length === 0) {
+                return;
+            }
+
+            const container = document.getElementById('carouselContainer');
+            const imageInfo = document.getElementById('imageInfo');
+            const imageUrl = carouselData.images[index];
+
+            // 淡出效果
+            container.style.opacity = '0';
+
+            setTimeout(() => {
+                container.innerHTML = `<img src="${imageUrl}" class="carousel-image" alt="Image ${index + 1}">`;
+                container.style.opacity = '1';
+
+                // 更新图片信息
+                document.getElementById('imageNumber').textContent = `${index + 1}/${carouselData.images.length}`;
+                document.getElementById('imageUrl').textContent = imageUrl;
+                imageInfo.style.display = 'flex';
+
+                updateUI();
+                
+                // 图片显示成功，发送确认消息
+                const imageDisplayedMsg = {
+                    type: 'imageDisplayed',
+                    timestamp: Date.now(),
+                    data: {
+                        index: index,
+                        url: imageUrl,
+                        totalImages: carouselData.images.length
+                    }
+                };
+                
+                console.log('[Carousel] 🖼️ Sending imageDisplayed:', JSON.stringify(imageDisplayedMsg, null, 2));
+                sendMessage(imageDisplayedMsg);
+                console.log('[Carousel] 🖼️ imageDisplayed sent to Flutter');
+            }, 500);
+        }
+
+        // ==========================================
+        // WebMessage 消息处理
+        // ==========================================
+        
+        // 显示播控消息（仅轮播控制相关）
+        function showControlMessage(message) {
+            const controlMessage = document.getElementById('controlMessage');
+            const controlType = document.getElementById('controlType');
+            const controlData = document.getElementById('controlData');
+            const controlTime = document.getElementById('controlTime');
+            
+            if (!controlMessage) return;
+            
+            // 只显示轮播控制相关的消息
+            const carouselControlTypes = ['play', 'pause', 'next', 'previous', 'updateCarousel', 'setInterval'];
+            if (!carouselControlTypes.includes(message.type)) {
+                console.log('[Carousel] Ignoring non-control message:', message.type);
+                return; // 忽略其他消息（如鼠标消息）
+            }
+            
+            // 显示消息类型
+            controlType.textContent = '📡 ' + (message.type || 'unknown').toUpperCase();
+            
+            // 显示JSON数据（格式化）
+            controlData.textContent = JSON.stringify(message, null, 2);
+            
+            // 显示时间
+            const now = new Date();
+            controlTime.textContent = '⏰ ' + now.toLocaleTimeString();
+            
+            // 显示面板
+            controlMessage.style.display = 'block';
+            controlMessage.style.opacity = '1';
+            
+            // 根据消息类型设置颜色
+            const typeColors = {
+                'play': 'rgba(74, 222, 128, 0.95)',
+                'pause': 'rgba(251, 191, 36, 0.95)',
+                'next': 'rgba(59, 130, 246, 0.95)',
+                'previous': 'rgba(147, 51, 234, 0.95)',
+                'updateCarousel': 'rgba(236, 72, 153, 0.95)',
+                'setInterval': 'rgba(168, 85, 247, 0.95)'
+            };
+            controlMessage.style.background = typeColors[message.type] || 'rgba(100, 100, 100, 0.95)';
+        }
+        
+        function handleMessage(event) {
+            try {
+                const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                const type = message.type || 'unknown';
+
+                // 显示播控消息
+                showControlMessage(message);
+
+                messageCount++;
+                addLog(`收到: ${type}`, message);
+
+                console.log('[Carousel] Received message:', message);
+
+                switch (type) {
+                    case 'updateCarousel':
+                        // 更新轮播数据
+                        if (message.data) {
+                            if (message.data.images) {
+                                carouselData.images = message.data.images;
+                            }
+                            if (message.data.interval !== undefined) {
+                                carouselData.interval = message.data.interval;
+                            }
+                            if (message.data.currentIndex !== undefined) {
+                                carouselData.currentIndex = message.data.currentIndex;
+                            }
+                            
+                            console.log('[Carousel] Data updated:', carouselData);
+                            
+                            // 如果有图片，显示当前图片
+                            if (carouselData.images.length > 0) {
+                                showImage(carouselData.currentIndex);
+                            }
+                            
+                            sendStateUpdate();
+                        }
+                        break;
+
+                    case 'play':
+                        // 播放轮播 - 接收当前播放数据
+                        console.log('[Carousel] Received play command with data:', message.data);
+                        console.log('[Carousel] Full message:', JSON.stringify(message, null, 2));
+                        
+                        // 更新轮播数据
+                        if (message.data) {
+                            if (message.data.currentIndex !== undefined) {
+                                carouselData.currentIndex = message.data.currentIndex;
+                            }
+                            if (message.data.currentImage) {
+                                // 如果提供了当前图片，立即显示
+                                console.log('[Carousel] Playing image:', message.data.currentImage);
+                            }
+                            if (message.data.interval !== undefined) {
+                                carouselData.interval = message.data.interval;
+                            }
+                            if (message.data.totalImages !== undefined) {
+                                console.log('[Carousel] Total images:', message.data.totalImages);
+                            }
+                        }
+                        
+                        // 更新状态为播放中
+                        carouselData.status = 'playing';
+                        
+                        // 显示当前图片
+                        if (carouselData.images.length > 0) {
+                            showImage(carouselData.currentIndex);
+                        }
+                        
+                        // 启动自动播放
+                        const playSuccess = startAutoPlay();
+                        updateUI();
+                        
+                        // 播放成功后立即发送确认消息
+                        if (playSuccess) {
+                            const playSuccessMsg = {
+                                type: 'playSuccess',
+                                timestamp: Date.now(),
+                                data: {
+                                    status: 'playing',
+                                    currentIndex: carouselData.currentIndex,
+                                    currentImage: carouselData.images[carouselData.currentIndex],
+                                    interval: carouselData.interval,
+                                    totalImages: carouselData.images.length
+                                }
+                            };
+                            
+                            console.log('[Carousel] ✅ Sending playSuccess:', JSON.stringify(playSuccessMsg, null, 2));
+                            sendMessage(playSuccessMsg);
+                            console.log('[Carousel] ✅ playSuccess sent to Flutter');
+                        }
+                        
+                        sendStateUpdate();
+                        break;
+
+                    case 'pause':
+                        // 暂停轮播
+                        carouselData.status = 'paused';
+                        stopAutoPlay();
+                        updateUI();
+                        sendStateUpdate();
+                        break;
+
+                    case 'stop':
+                        // 停止轮播
+                        carouselData.status = 'stopped';
+                        carouselData.currentIndex = 0;
+                        stopAutoPlay();
+                        updateUI();
+                        sendStateUpdate();
+                        break;
+
+                    case 'next':
+                        // 下一张 - 接收下一张图片数据
+                        console.log('[Carousel] Received next command with data:', message.data);
+                        
+                        if (message.data) {
+                            if (message.data.currentIndex !== undefined) {
+                                carouselData.currentIndex = message.data.currentIndex;
+                            }
+                            if (message.data.currentImage) {
+                                console.log('[Carousel] Next image:', message.data.currentImage);
+                            }
+                        }
+                        
+                        // 显示图片
+                        if (carouselData.images.length > 0) {
+                            showImage(carouselData.currentIndex);
+                            sendStateUpdate();
+                        }
+                        break;
+
+                    case 'previous':
+                        // 上一张 - 接收上一张图片数据
+                        console.log('[Carousel] Received previous command with data:', message.data);
+                        
+                        if (message.data) {
+                            if (message.data.currentIndex !== undefined) {
+                                carouselData.currentIndex = message.data.currentIndex;
+                            }
+                            if (message.data.currentImage) {
+                                console.log('[Carousel] Previous image:', message.data.currentImage);
+                            }
+                        }
+                        
+                        // 显示图片
+                        if (carouselData.images.length > 0) {
+                            showImage(carouselData.currentIndex);
+                            sendStateUpdate();
+                        }
+                        break;
+
+                    case 'setInterval':
+                        // 设置轮播间隔
+                        if (message.data && message.data.interval !== undefined) {
+                            carouselData.interval = message.data.interval;
+                            updateUI();
+                            
+                            // 如果正在播放，重启自动播放以应用新间隔
+                            if (carouselData.status === 'playing') {
+                                startAutoPlay();
+                            }
+                            
+                            sendStateUpdate();
+                        }
+                        break;
+
+                    case 'ping':
+                        // 响应心跳
+                        sendMessage({
+                            type: 'pong',
+                            data: {
+                                requestId: message.data?.requestId,
+                                timestamp: Date.now()
+                            }
+                        });
+                        break;
+
+                    default:
+                        console.log('[Carousel] Unknown message type:', type);
+                }
+            } catch (error) {
+                console.error('[Carousel] Error handling message:', error);
+                addLog('错误', { error: error.message });
+            }
+        }
+
+        // ==========================================
+        // 自动播放控制
+        // ==========================================
+        function startAutoPlay() {
+            stopAutoPlay(); // 先停止已有的定时器
+            
+            if (carouselData.images.length === 0 || carouselData.interval <= 0) {
+                console.warn('[Carousel] Cannot start auto-play: no images or invalid interval');
+                return false;
+            }
+
+            autoPlayTimer = setInterval(() => {
+                carouselData.currentIndex = (carouselData.currentIndex + 1) % carouselData.images.length;
+                showImage(carouselData.currentIndex);
+                sendStateUpdate();
+            }, carouselData.interval);
+
+            console.log('[Carousel] Auto-play started, interval:', carouselData.interval);
+            return true;
+        }
+
+        function stopAutoPlay() {
+            if (autoPlayTimer) {
+                clearInterval(autoPlayTimer);
+                autoPlayTimer = null;
+                console.log('[Carousel] Auto-play stopped');
+            }
+        }
+
+        // ==========================================
+        // 发送消息到 Flutter
+        // ==========================================
+        function sendMessage(message) {
+            try {
+                console.log('[Carousel] 📤 Attempting to send message to Flutter');
+                console.log('[Carousel]    Message type:', message.type);
+                console.log('[Carousel]    Message object:', message);
+                
+                // 检查WebView2是否可用
+                if (!window.chrome) {
+                    console.error('[Carousel] ❌ window.chrome is undefined!');
+                    return;
+                }
+                
+                if (!window.chrome.webview) {
+                    console.error('[Carousel] ❌ window.chrome.webview is undefined!');
+                    return;
+                }
+                
+                // 直接发送对象，让WebView2自动处理JSON序列化
+                console.log('[Carousel] 🚀 Calling chrome.webview.postMessage...');
+                window.chrome.webview.postMessage(message);
+                
+                sentCount++;
+                updateUI();
+                addLog(`发送: ${message.type}`, message);
+                
+                console.log('[Carousel] ✅ Message sent successfully!');
+                console.log('[Carousel]    sentCount:', sentCount);
+                console.log('[Carousel]    Message was:', JSON.stringify(message, null, 2));
+                
+            } catch (error) {
+                console.error('[Carousel] ❌ Error sending message:', error);
+                console.error('[Carousel]    Error name:', error.name);
+                console.error('[Carousel]    Error message:', error.message);
+                console.error('[Carousel]    Error stack:', error.stack);
+            }
+        }
+
+        function sendStateUpdate() {
+            sendMessage({
+                type: 'carouselStateChanged',
+                timestamp: Date.now(),
+                data: {
+                    status: carouselData.status,
+                    currentIndex: carouselData.currentIndex,
+                    totalImages: carouselData.images.length,
+                    interval: carouselData.interval
+                }
+            });
+        }
+
+        // ==========================================
+        // 消息日志
+        // ==========================================
+        function addLog(type, data) {
+            const log = document.getElementById('messageLog');
+            const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            
+            const item = document.createElement('div');
+            item.className = 'message-item';
+            item.innerHTML = `
+                <div class="message-time">${time}</div>
+                <div class="message-type">${type}</div>
+                <div>${JSON.stringify(data, null, 2).substring(0, 100)}${JSON.stringify(data).length > 100 ? '...' : ''}</div>
+            `;
+            
+            log.insertBefore(item, log.firstChild);
+            
+            // 只保留最新10条
+            while (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // ==========================================
+        // 初始化
+        // ==========================================
+        function init() {
+            console.log('[Carousel] Initializing...');
+            
+            // 监听 WebView2 消息（HTML -> Flutter 的响应）
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.addEventListener('message', handleMessage);
+                console.log('[Carousel] WebView2 message listener registered');
+            } else {
+                console.error('[Carousel] WebView2 not available!');
+                addLog('错误', { message: 'WebView2 not available' });
+            }
+            
+            // 监听 Flutter -> HTML 的消息（通过 CustomEvent）
+            window.addEventListener('AnyWP:message', function(event) {
+                console.log('[Carousel] Received CustomEvent from Flutter:', event.detail);
+                // event.detail 包含消息对象
+                handleMessage({ data: event.detail });
+            });
+            console.log('[Carousel] CustomEvent listener registered for AnyWP:message');
+            
+            // 延迟1秒后发送初始化消息，确保WebView2完全准备好
+            setTimeout(() => {
+                console.log('[Carousel] Sending initialization message...');
+                sendMessage({
+                    type: 'carouselReady',
+                    timestamp: Date.now(),
+                    data: {
+                        version: '1.0.0',
+                        features: ['carousel', 'bidirectional', 'autoRecovery'],
+                        webviewReady: true
+                    }
+                });
+                
+                // 再延迟1秒发送测试消息
+                setTimeout(() => {
+                    console.log('[Carousel] Sending test message...');
+                    sendMessage({
+                        type: 'test',
+                        timestamp: Date.now(),
+                        data: {
+                            message: 'This is a test message from HTML',
+                            testNumber: 12345
+                        }
+                    });
+                }, 1000);
+            }, 1000);
+
+            updateUI();
+            addLog('初始化', { status: 'ready' });
+        }
+
+        // 页面加载完成后初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        // 测试 Auto Recovery：定期发送心跳
+        setInterval(() => {
+            sendMessage({
+                type: 'heartbeat',
+                timestamp: Date.now(),
+                data: {
+                    status: carouselData.status,
+                    currentIndex: carouselData.currentIndex
+                }
+            });
+        }, 10000); // 每10秒发送一次心跳
+    </script>
+</body>
+</html>
+

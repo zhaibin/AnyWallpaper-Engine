@@ -1,0 +1,42 @@
+refactor: Phase 2 - 实现 WebMessageHandler 模块
+
+完整实现 WebMessageHandler 并迁移消息处理逻辑：
+
+**核心功能**：
+- ✅ 统一消息路由（9 种消息类型）
+- ✅ iframe 数据处理
+- ✅ URL 打开处理（ShellExecute）
+- ✅ 日志消息处理（多级别支持）
+- ✅ 状态持久化（save/load/clear）
+- ✅ WebView 响应（CustomEvent 分发）
+
+**技术特点**：
+- 简单 JSON 解析（避免依赖 nlohmann::json）
+- 回调解耦设计（std::function）
+- 完整错误处理（try-catch）
+- 消息统计功能
+- 双向通信支持
+
+**主插件集成**：
+- 构造函数中初始化 WebMessageHandler
+- 配置 iframe 数据回调和脚本执行回调
+- HandleWebMessage 优先使用新模块
+- 保持向后兼容（SDKBridge 回退）
+
+**代码减少**：
+- WebMessageHandler 实现：~380 行
+- 主插件修改：~40 行
+- 为后续移除重复代码做准备
+
+**文件变更**：
+- 修改：web_message_handler.{h,cpp}
+- 修改：anywp_engine_plugin.{h,cpp}
+- 新增：REFACTORING_PHASE2_SUMMARY.md
+
+**向后兼容**：
+- ✅ 保留所有 HandleXxxWebMessage 方法
+- ✅ SDKBridge 作为回退机制
+- ✅ 现有 Web 壁纸无需修改
+
+下一步：Phase 3 将实现 WallpaperLifecycleManager 模块
+

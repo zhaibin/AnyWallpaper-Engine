@@ -21,6 +21,8 @@
 
 // Forward declarations of modular classes
 #include "utils/url_validator.h"
+#include "utils/state_manager.h"  // v2.5.0+ Phase 7: StateManager utility
+#include "utils/message_queue_manager.h"  // v2.5.0+ Phase 7: MessageQueueManager utility
 #include "modules/power_manager.h"  // v1.4.0+ Refactoring: PowerManager module
 #include "modules/monitor_manager.h"  // v1.4.0+ Refactoring: MonitorManager module
 #include "modules/mouse_hook_manager.h"  // v1.4.0+ Refactoring: MouseHookManager module
@@ -34,6 +36,14 @@
 #include "modules/initialization_coordinator.h"  // v2.0+ Refactoring: InitializationCoordinator module
 #include "modules/webview_configurator.h"  // v2.0+ Refactoring: WebViewConfigurator module
 #include "modules/workerw_health_monitor.h"  // v2.3.1+ Enhancement: WorkerW health monitoring
+#include "modules/web_message_handler.h"
+#include "modules/wallpaper_lifecycle_manager.h"
+#include "modules/auto_recovery_manager.h"  // v2.5.0+ Phase 4: AutoRecoveryManager module
+#include "modules/workerw_recovery_manager.h"  // v2.5.0+ Phase 5: WorkerWRecoveryManager module
+#include "modules/wallpaper_configuration_manager.h"  // v2.5.0+ Phase 6: WallpaperConfigurationManager module
+#include "modules/script_injection_manager.h"  // v2.5.0+ Phase 6: ScriptInjectionManager module
+#include "modules/permission_configurator.h"  // v2.5.0+ Phase 6: PermissionConfigurator module
+#include "modules/cache_manager.h"  // v2.5.0+ Phase 6: CacheManager module
 
 namespace anywp_engine {
 
@@ -363,9 +373,42 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // WorkerWHealthMonitor module for WorkerW health monitoring (v2.3.1+ Enhancement)
   std::unique_ptr<class WorkerWHealthMonitor> workerw_health_monitor_;
   
+  // WebMessageHandler module for unified message handling (v2.5.0+ Phase 2)
+  std::unique_ptr<class WebMessageHandler> web_message_handler_;
+
+  // WallpaperLifecycleManager module for pause/resume management (v2.5.0+ Phase 3)
+  std::unique_ptr<class WallpaperLifecycleManager> lifecycle_manager_;
+
+  // AutoRecoveryManager module for wallpaper configuration recovery (v2.5.0+ Phase 4)
+  std::unique_ptr<class AutoRecoveryManager> auto_recovery_manager_;
+
+  // WorkerWRecoveryManager module for WorkerW recovery strategies (v2.5.0+ Phase 5)
+  std::unique_ptr<class WorkerWRecoveryManager> workerw_recovery_manager_;
+
+  // WallpaperConfigurationManager module for runtime configuration (v2.5.0+ Phase 6)
+  std::unique_ptr<class WallpaperConfigurationManager> configuration_manager_;
+
+  // ScriptInjectionManager module for SDK and script injection (v2.5.0+ Phase 6)
+  std::unique_ptr<class ScriptInjectionManager> script_injection_manager_;
+
+  // PermissionConfigurator module for WebView2 permissions and security (v2.5.0+ Phase 6)
+  std::unique_ptr<class PermissionConfigurator> permission_configurator_;
+
+  // CacheManager module for WebView2 cache management (v2.5.0+ Phase 6)
+  std::unique_ptr<class CacheManager> cache_manager_;
+
+  // StateManager utility for unified state management (v2.5.0+ Phase 7)
+  std::unique_ptr<StateManager> state_manager_;
+
+  // MessageQueueManager utility for message queue management (v2.5.0+ Phase 7)
+  std::unique_ptr<MessageQueueManager> message_queue_manager_;
+  
   // WorkerW recovery methods (called by health monitor)
   void RecoverWorkerW();  // Main recovery entry point (Lively-style: detect and decide)
   void RecoverWorkerW_Reparent();  // Re-parent existing windows (when not destroyed)
+  bool ReparentAllWallpaperInstances();  // Helper: Reparent all active wallpaper instances (for WorkerWRecoveryManager)
+  bool CheckExplorerRestart();  // Helper: Check if Explorer was restarted (windows destroyed)
+  void HandleExplorerRestart();  // Helper: Handle Explorer restart (reset and trigger auto-recovery)
   
   // Wallpaper recreation state (v2.3.1+ Lively-style recovery)
   bool need_wallpaper_recreate_ = false;

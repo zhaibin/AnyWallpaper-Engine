@@ -79,6 +79,18 @@ add_library(${PLUGIN_NAME} SHARED
   "modules/memory_optimizer.cpp"
   "modules/custom_scheme_handler.cpp"
   "modules/workerw_health_monitor.cpp"
+  # v2.5.0+ Phase 1: New modularization modules
+  "modules/web_message_handler.cpp"
+  "modules/wallpaper_lifecycle_manager.cpp"
+  "modules/auto_recovery_manager.cpp"
+  "modules/workerw_recovery_manager.cpp"
+  "modules/wallpaper_configuration_manager.cpp"
+  "modules/script_injection_manager.cpp"
+  "modules/permission_configurator.cpp"
+  "modules/cache_manager.cpp"
+  # v2.5.0+ Phase 1: New utility classes
+  "utils/state_manager.cpp"
+  "utils/message_queue_manager.cpp"
 )
 
 apply_standard_settings(${PLUGIN_NAME})
