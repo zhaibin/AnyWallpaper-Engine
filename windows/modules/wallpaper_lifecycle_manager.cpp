@@ -48,8 +48,13 @@ bool WallpaperLifecycleManager::PauseWallpaper(const std::string& reason) {
     // Note: This will freeze the last frame without completely hiding the wallpaper
     std::wostringstream pause_script;
     pause_script << L"(function() {"
-                 << L"  if (typeof window.AnyWP !== 'undefined' && window.AnyWP.onPause) {"
-                 << L"    window.AnyWP.onPause();"
+                 << L"  if (typeof window.AnyWP !== 'undefined') {"
+                 << L"    if (window.AnyWP.onPause) {"
+                 << L"      window.AnyWP.onPause();"
+                 << L"    }"
+                 << L"    if (typeof window.AnyWP._notifyVisibilityChange === 'function') {"
+                 << L"      window.AnyWP._notifyVisibilityChange(false);"
+                 << L"    }"
                  << L"  }"
                  << L"  document.dispatchEvent(new CustomEvent('anywp:pause'));"
                  << L"  if (typeof requestAnimationFrame === 'function') {"
@@ -132,8 +137,13 @@ bool WallpaperLifecycleManager::ResumeWallpaper(const std::string& reason, bool 
     // Execute resume scripts to restart animations
     std::wostringstream resume_script;
     resume_script << L"(function() {"
-                  << L"  if (typeof window.AnyWP !== 'undefined' && window.AnyWP.onResume) {"
-                  << L"    window.AnyWP.onResume();"
+                  << L"  if (typeof window.AnyWP !== 'undefined') {"
+                  << L"    if (window.AnyWP.onResume) {"
+                  << L"      window.AnyWP.onResume();"
+                  << L"    }"
+                  << L"    if (typeof window.AnyWP._notifyVisibilityChange === 'function') {"
+                  << L"      window.AnyWP._notifyVisibilityChange(true);"
+                  << L"    }"
                   << L"  }"
                   << L"  document.dispatchEvent(new CustomEvent('anywp:resume'));"
                   << L"  if (typeof requestAnimationFrame === 'function') {"
