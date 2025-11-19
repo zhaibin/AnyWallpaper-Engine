@@ -3620,15 +3620,25 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
     Logger::Instance().Info("WorkerW Recovery", "Re-finding WorkerW (fast mode)...");
     
     // v2.3.1+ CRITICAL FIX: Use much shorter timeout (1000ms) to avoid blocking other threads
-    // If it fails, monitoring thread will retry automatically later
+    // v2.5.0+ CRITICAL FIX: If FindWorkerW fails, still trigger HandleAutoRecovery() to retry later
     if (!DesktopWallpaperHelper::Instance().FindWorkerW(1000)) {
       Logger::Instance().Warning("WorkerW Recovery", 
-        "Fast WorkerW search failed, will retry in next monitoring cycle");
-      Logger::Instance().Warning("WorkerW Recovery", "WorkerW not found yet, will retry later");
+        "Fast WorkerW search failed, triggering HandleAutoRecovery() to retry later");
       
       // Mark recovery as failed, monitoring thread will retry
       if (workerw_health_monitor_) {
         workerw_health_monitor_->UpdateWorkerW(nullptr);
+      }
+      
+      // v2.5.0+ CRITICAL: Still call HandleAutoRecovery() even if WorkerW not found yet
+      // This ensures wallpaper recovery happens when WorkerW becomes available
+      if (IsAutoRecoveryEnabled()) {
+        Logger::Instance().Info("WorkerW Recovery", 
+          "Calling HandleAutoRecovery() to queue recovery for when WorkerW is ready");
+        HandleAutoRecovery();
+      } else {
+        Logger::Instance().Warning("WorkerW Recovery", 
+          "Auto recovery disabled, wallpaper will NOT be recovered automatically");
       }
       return;
     }
