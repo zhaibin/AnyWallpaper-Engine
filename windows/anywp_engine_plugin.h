@@ -346,6 +346,24 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   // MouseHookManager module for mouse event handling
   std::unique_ptr<MouseHookManager> mouse_hook_manager_;
   std::unique_ptr<KeyboardHookManager> keyboard_hook_manager_;  // v2.4.1+ Keyboard event handling
+  
+  // v2.4.1+: Keyboard event queue for async processing (avoid deadlock in system hook)
+  struct KeyboardEvent {
+    std::string event_type;
+    int vk_code;
+    std::string key;
+    std::string code;
+    bool alt_down;
+    bool ctrl_down;
+    bool shift_down;
+  };
+  std::queue<KeyboardEvent> keyboard_event_queue_;
+  std::mutex keyboard_queue_mutex_;
+  std::atomic<bool> keyboard_queue_running_;
+  std::thread keyboard_queue_thread_;
+  void ProcessKeyboardQueue();  // Background thread function
+  void EnqueueKeyboardEvent(const char* event_type, int vk_code, const std::string& key, const std::string& code, bool alt_down, bool ctrl_down, bool shift_down);
+  
   std::unique_ptr<anywp_engine::IframeDetector> iframe_detector_;  // v1.4.0+
   std::unique_ptr<anywp_engine::SDKBridge> sdk_bridge_;  // v1.4.0+
   

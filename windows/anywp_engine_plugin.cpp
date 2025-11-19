@@ -456,23 +456,17 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
   TRY_CATCH_INIT_MODULE("KeyboardHookManager", {
     keyboard_hook_manager_ = std::make_unique<KeyboardHookManager>();
     
-    // Configure KeyboardHookManager callback to forward events to WebView
-    // CRITICAL: Lambda captures 'this' pointer - must be careful about lifetime
+    // v2.4.1+: Start keyboard event processing thread BEFORE setting callback
+    keyboard_queue_running_ = true;
+    keyboard_queue_thread_ = std::thread(&AnyWPEnginePlugin::ProcessKeyboardQueue, this);
+    
+    // Configure KeyboardHookManager callback to ENQUEUE events (NO LOCKS, NO LOGGING)
+    // CRITICAL: System hook MUST return immediately - any blocking causes deadlock
     keyboard_hook_manager_->SetKeyboardCallback([this](const char* event_type, int vk_code, int scan_code, bool extended, bool alt_down, bool ctrl_down, bool shift_down) {
-      // Additional safety: Wrap entire callback in try-catch as defense-in-depth
-      try {
-        // Convert virtual key code to key name and code
-        std::string key = this->VirtualKeyToString(vk_code);
-        std::string code = this->VirtualKeyToCode(vk_code);
-        
-        // Forward to WebView
-        this->SendKeyboardToWebView(event_type, vk_code, key, code, alt_down, ctrl_down, shift_down);
-      } catch (const std::exception& e) {
-        Logger::Instance().Error("KeyboardCallback", 
-          std::string("Exception in keyboard callback lambda: ") + e.what());
-      } catch (...) {
-        Logger::Instance().Error("KeyboardCallback", "Unknown exception in keyboard callback lambda");
-      }
+      // NO try-catch, NO logging, NO locks - just enqueue and return immediately
+      std::string key = this->VirtualKeyToString(vk_code);
+      std::string code = this->VirtualKeyToCode(vk_code);
+      this->EnqueueKeyboardEvent(event_type, vk_code, key, code, alt_down, ctrl_down, shift_down);
     });
     
     // Install keyboard hook
@@ -596,7 +590,22 @@ AnyWPEnginePlugin::~AnyWPEnginePlugin() {
   Logger::Instance().Info("Plugin", "[Lifecycle] Destructor: Stopping wallpaper instances...");
   StopWallpaper();
   
-  // v2.4.1+: Remove keyboard hook BEFORE plugin destruction to avoid dangling pointer in callback
+  // v2.4.1+: Stop keyboard queue thread FIRST (before removing hook)
+  if (keyboard_queue_running_) {
+    try {
+      Logger::Instance().Info("Plugin", "[Lifecycle] Destructor: Stopping keyboard queue thread...");
+      keyboard_queue_running_ = false;
+      if (keyboard_queue_thread_.joinable()) {
+        keyboard_queue_thread_.join();
+      }
+    } catch (const std::exception& e) {
+      Logger::Instance().Error("Plugin", std::string("Exception stopping keyboard queue thread: ") + e.what());
+    } catch (...) {
+      Logger::Instance().Error("Plugin", "Unknown exception stopping keyboard queue thread");
+    }
+  }
+  
+  // v2.4.1+: Remove keyboard hook AFTER queue thread stopped
   if (keyboard_hook_manager_) {
     try {
       Logger::Instance().Info("Plugin", "[Lifecycle] Destructor: Removing keyboard hook...");
@@ -4081,22 +4090,11 @@ std::string AnyWPEnginePlugin::VirtualKeyToCode(int vk_code) {
 }
 
 // Send keyboard event to all WebView instances
+// v2.4.1+: Now called from background thread (ProcessKeyboardQueue), safe to block on mutex
 void AnyWPEnginePlugin::SendKeyboardToWebView(const char* event_type, int vk_code, const std::string& key, const std::string& code, bool alt_down, bool ctrl_down, bool shift_down) {
   try {
-    // CRITICAL: Use try_lock instead of lock to prevent deadlock
-    // Keyboard hook runs in system thread - if main thread holds instances_mutex_, we'd deadlock
-    // If we can't get the lock, just skip this keyboard event (better than crashing)
-    std::unique_lock<std::mutex> lock(instances_mutex_, std::try_to_lock);
-    if (!lock.owns_lock()) {
-      // Lock is held by another thread, skip this event to avoid deadlock
-      static int skip_count = 0;
-      skip_count++;
-      if (skip_count % 20 == 1) {  // Log occasionally
-        Logger::Instance().Debug("KeyboardHook", 
-          "Skipped keyboard event (lock busy, count=" + std::to_string(skip_count) + ")");
-      }
-      return;
-    }
+    // Safe to use normal lock since we're in background thread (not system hook)
+    std::lock_guard<std::mutex> lock(instances_mutex_);
     
     for (auto& instance : wallpaper_instances_) {
       if (!instance.webview) continue;
@@ -4144,6 +4142,62 @@ void AnyWPEnginePlugin::SendKeyboardToWebView(const char* event_type, int vk_cod
   } catch (...) {
     Logger::Instance().Error("Plugin", "Unknown exception in SendKeyboardToWebView");
   }
+}
+
+// v2.4.1+: Enqueue keyboard event (called from system hook - MUST be fast and lock-free)
+void AnyWPEnginePlugin::EnqueueKeyboardEvent(const char* event_type, int vk_code, const std::string& key, const std::string& code, bool alt_down, bool ctrl_down, bool shift_down) {
+  // CRITICAL: NO try-catch, NO logging - any exception here crashes the app
+  // Use short-lived lock only for queue access
+  KeyboardEvent evt;
+  evt.event_type = event_type;
+  evt.vk_code = vk_code;
+  evt.key = key;
+  evt.code = code;
+  evt.alt_down = alt_down;
+  evt.ctrl_down = ctrl_down;
+  evt.shift_down = shift_down;
+  
+  {
+    std::lock_guard<std::mutex> lock(keyboard_queue_mutex_);
+    keyboard_event_queue_.push(evt);
+  }
+}
+
+// v2.4.1+: Background thread to process keyboard events from queue
+void AnyWPEnginePlugin::ProcessKeyboardQueue() {
+  Logger::Instance().Info("KeyboardQueue", "Keyboard queue processing thread started");
+  
+  while (keyboard_queue_running_) {
+    try {
+      KeyboardEvent evt;
+      bool has_event = false;
+      
+      // Try to get next event from queue
+      {
+        std::lock_guard<std::mutex> lock(keyboard_queue_mutex_);
+        if (!keyboard_event_queue_.empty()) {
+          evt = keyboard_event_queue_.front();
+          keyboard_event_queue_.pop();
+          has_event = true;
+        }
+      }
+      
+      // Process event outside the lock
+      if (has_event) {
+        SendKeyboardToWebView(evt.event_type.c_str(), evt.vk_code, evt.key, evt.code, evt.alt_down, evt.ctrl_down, evt.shift_down);
+      } else {
+        // No events, sleep briefly to avoid busy-waiting
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      
+    } catch (const std::exception& e) {
+      Logger::Instance().Error("KeyboardQueue", std::string("Exception processing keyboard event: ") + e.what());
+    } catch (...) {
+      Logger::Instance().Error("KeyboardQueue", "Unknown exception processing keyboard event");
+    }
+  }
+  
+  Logger::Instance().Info("KeyboardQueue", "Keyboard queue processing thread stopped");
 }
 
 // Setup keyboard hook
