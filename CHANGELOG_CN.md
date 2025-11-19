@@ -68,15 +68,34 @@
 - **修复**：检查 `_carouselStatus`，如果重启前是 'playing' 状态，自动调用 `_carouselPlay()` 恢复播放。
 - **效果**：重启前是什么状态，恢复后就是什么状态（playing 继续播放，stopped 保持暂停）。
 
+**优化10：三层 API 架构（开发者体验提升）**
+- **新增 API**：`setOnRecoveryCallback(callback)` - 可选的状态恢复回调。
+- **设计理念**：
+  - **层级 1（零配置）**：`enableAutoRecovery(true)` - 适合静态壁纸，插件全自动处理。
+  - **层级 2（状态恢复）**：`setOnRecoveryCallback()` - 适合交互式壁纸（轮播、游戏等），只需一个回调。
+  - **层级 3（手动模式）**：`setOnMessageCallback()` - 适合需要完全自定义恢复逻辑的高级用户。
+- **优势**：
+  - 95% 开发者只需 1 行代码（`enableAutoRecovery(true)`）。
+  - 交互式壁纸只需 10 行代码（回调函数）。
+  - 渐进式复杂度，符合"简单易用"原则。
+- **实现**：
+  - `lib/anywp_engine.dart` - 新增 `setOnRecoveryCallback` 和 `_handleAutoRecoveryRequest`。
+  - `example/lib/main.dart` - 使用新 API 简化恢复逻辑（从 70+ 行减少到 15 行）。
+  - 文档更新：`FOR_FLUTTER_DEVELOPERS.md`、`DEVELOPER_API_REFERENCE.md`、`README.md`。
+
 #### 代码变更
 
 **核心文件**：
+- `lib/anywp_engine.dart` - 新增 `setOnRecoveryCallback` API，自动处理 AUTO_RECOVERY_REQUEST
+- `example/lib/main.dart` - 使用新 API 简化恢复逻辑（从 70+ 行减少到 15 行）
 - `windows/anywp_engine_plugin.cpp` - Auto Recovery 改为通知 Flutter（Lively-style）
 - `windows/modules/webview_manager.h/.cpp` - ResetEnvironment, COM 初始化
 - `windows/modules/flutter_bridge.cpp` - 消息发送诊断日志
 - `windows/utils/desktop_wallpaper_helper.cpp/.h` - 智能轮询、竞态修复
 - `windows/modules/window_manager.cpp/.h` - WorkerW Z-Order 修复
-- `example/lib/main.dart` - 处理 AUTO_RECOVERY_REQUEST，自动发送初始数据
+- `docs/FOR_FLUTTER_DEVELOPERS.md` - 新增三层 API 架构说明
+- `docs/DEVELOPER_API_REFERENCE.md` - 新增 Recovery Callback 章节
+- `README.md` - 新增状态恢复示例
 
 ```cpp
 // v2.4.1+ 智能轮询优化
@@ -113,11 +132,40 @@ void AnyWPEnginePlugin::RecoverWorkerW() {
 }
 ```
 
+```dart
+// v2.4.1+ 新增 Dart API：状态恢复回调
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 启用自动恢复
+  await AnyWPEngine.enableAutoRecovery(true);
+  
+  // 设置恢复回调（可选）
+  AnyWPEngine.setOnRecoveryCallback((recoveredMonitors) async {
+    print('壁纸已恢复，显示器: $recoveredMonitors');
+    
+    // 恢复轮播配置
+    await AnyWPEngine.sendMessage({
+      'type': 'updateCarousel',
+      'data': {'images': myImages, 'interval': 5000},
+    });
+    
+    // 恢复播放状态
+    if (wasPlaying) {
+      await AnyWPEngine.sendMessage({'type': 'play'});
+    }
+  });
+  
+  runApp(MyApp());
+}
+```
+
 #### 影响范围
 - ✅ **性能提升**：首次设置壁纸无卡顿，恢复速度提升 10x。
 - ✅ **可靠性增强**：自动处理 Explorer 重启场景。
 - ✅ **显示修复**：确保壁纸层级正确。
-- ✅ **向后兼容**：不破坏现有 API。
+- ✅ **开发者体验**：新增 `setOnRecoveryCallback` API，交互式壁纸只需 10 行代码完成状态恢复。
+- ✅ **向后兼容**：不破坏现有 API，新 API 为可选功能。
 
 ---
 

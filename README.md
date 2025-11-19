@@ -202,6 +202,45 @@ await AnyWPEngine.initializeWallpaperOnMonitor(
 
 **That's it! 🎉** Your wallpapers will automatically recover after Explorer restarts.
 
+#### Optional: Restore Application State (v2.4.1+)
+
+For interactive wallpapers (carousel, games, etc.) that need to restore their state:
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Enable auto recovery
+  await AnyWPEngine.enableAutoRecovery(true);
+  
+  // ⭐ Optional: Restore application state after recovery
+  AnyWPEngine.setOnRecoveryCallback((recoveredMonitors) async {
+    print('Wallpaper recovered on monitors: $recoveredMonitors');
+    
+    // Restore carousel configuration
+    await AnyWPEngine.sendMessage({
+      'type': 'updateCarousel',
+      'data': {'images': myImages, 'interval': 5000},
+    });
+    
+    // Restore playback state
+    if (wasPlaying) {
+      await AnyWPEngine.sendMessage({'type': 'play'});
+    }
+  });
+  
+  runApp(MyApp());
+}
+```
+
+**When to use:**
+- ✅ Carousel wallpapers (restore images & playback state)
+- ✅ Interactive wallpapers (restore settings)
+- ✅ Games (restore game state)
+
+**When NOT needed:**
+- ❌ Static image/video wallpapers (auto-recovery is enough)
+
 #### Advanced: Manual Save for Dynamic Content
 
 For carousel or interactive wallpapers that need to save state after initial setup:

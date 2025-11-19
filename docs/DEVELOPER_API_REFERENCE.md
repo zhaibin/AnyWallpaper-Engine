@@ -740,6 +740,72 @@ AnyWPEngine.setOnPowerStateChangeCallback((oldState, newState) {
 - `oldState`: Previous power state
 - `newState`: New power state
 
+### Recovery Callback (v2.4.1+)
+
+```dart
+// Called when wallpaper is automatically recovered after Explorer restart
+AnyWPEngine.setOnRecoveryCallback((recoveredMonitors) async {
+  print('Wallpaper recovered on monitors: $recoveredMonitors');
+  
+  // Restore carousel configuration
+  await AnyWPEngine.sendMessage({
+    'type': 'updateCarousel',
+    'data': {'images': myImages, 'interval': 5000},
+  });
+  
+  // Restore playback state
+  if (wasPlaying) {
+    await AnyWPEngine.sendMessage({'type': 'play'});
+  }
+});
+```
+
+**Parameters:**
+- `recoveredMonitors`: `List<int>` - List of monitor indices that were recovered
+
+**When it triggers:**
+- Explorer restarts (TaskManager kill, crash, etc.)
+- WorkerW window destroyed or invalidated
+- After wallpaper display is fully restored (~2-3 seconds delay)
+
+**Use cases:**
+- ✅ Restore carousel configuration
+- ✅ Restore play/pause state
+- ✅ Re-send configuration data to HTML
+- ✅ Update UI state after recovery
+
+**Notes:**
+- Callback is **optional** - if not set, wallpaper still auto-recovers (just without app state)
+- Requires `enableAutoRecovery(true)` to be called first
+- Callback fires after WebView is fully loaded (safe to send messages)
+- Async callback supported (use `async`/`await`)
+
+**Example (Full Recovery Flow):**
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Step 1: Enable auto recovery
+  await AnyWPEngine.enableAutoRecovery(true);
+  
+  // Step 2: Setup recovery callback
+  AnyWPEngine.setOnRecoveryCallback((monitors) async {
+    print('🔄 Wallpaper recovered on: $monitors');
+    
+    // Restore carousel data
+    await _sendCarouselUpdate();
+    
+    // Restore playing state
+    if (_carouselStatus == 'playing') {
+      await Future.delayed(Duration(milliseconds: 500));
+      await _carouselPlay();
+    }
+  });
+  
+  runApp(MyApp());
+}
+```
+
 ---
 
 ## Data Types

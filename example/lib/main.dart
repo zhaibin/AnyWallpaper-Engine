@@ -124,6 +124,34 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     });
     print('[APP] Power state change callback registered');
     
+    // v2.4.1+ Setup auto recovery callback (optional - for stateful wallpapers)
+    AnyWPEngine.setOnRecoveryCallback((recoveredMonitors) async {
+      print('[APP] ═══════════════════════════════════════════');
+      print('[APP] 🔄 Wallpaper recovered on monitors: $recoveredMonitors');
+      print('[APP] ═══════════════════════════════════════════');
+      
+      // Update UI state
+      for (var monitorIndex in recoveredMonitors) {
+        setState(() {
+          _monitorWallpapers[monitorIndex] = true;
+        });
+      }
+      
+      // Restore carousel configuration
+      print('[APP] 📤 Sending carousel data to recovered WebView...');
+      await _sendCarouselUpdate();
+      print('[APP] ✅ Carousel data sent');
+      
+      // Restore playback state if it was playing
+      if (_carouselStatus == 'playing') {
+        print('[APP] 🔄 Restoring playing state...');
+        await Future.delayed(Duration(milliseconds: 500));
+        await _carouselPlay();
+        print('[APP] ✅ Playing state restored');
+      }
+    });
+    print('[APP] Recovery callback registered');
+    
     // Setup bidirectional communication callback
     AnyWPEngine.setOnMessageCallback((message) async {
       try {
@@ -233,79 +261,6 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
               _resetCountdown();
             }
           }
-        }
-        
-        // v2.4.1+ Handle auto recovery request from C++ (Lively-style architecture)
-        if (messageType == 'AUTO_RECOVERY_REQUEST') {
-          print('[APP] 🔄 Auto recovery request received from C++ (Explorer restart)');
-          print('[APP]   Reason: ${messageData['reason']}');
-          
-          // Extract recovery configurations
-          final configs = messageData['configs'] as List<dynamic>?;
-          if (configs == null || configs.isEmpty) {
-            print('[APP] ⚠️  No configurations to recover');
-            return;
-          }
-          
-          print('[APP] 📋 Recovery configurations:');
-          for (var config in configs) {
-            print('[APP]   - Monitor ${config['monitorIndex']}: ${config['url']} (transparent: ${config['transparent']})');
-          }
-          
-          // Stop existing wallpapers first
-          print('[APP] 🛑 Stopping existing wallpapers...');
-          await AnyWPEngine.stopWallpaper();
-          await Future.delayed(Duration(milliseconds: 500));
-          
-          // Recreate wallpapers in Flutter main thread (ensures WebView async works)
-          print('[APP] 🔄 Recreating wallpapers in main thread...');
-          int successCount = 0;
-          for (var config in configs) {
-            final monitorIndex = config['monitorIndex'] as int;
-            final url = config['url'] as String;
-            final transparent = config['transparent'] as bool;
-            
-            try {
-              final result = await AnyWPEngine.initializeWallpaperOnMonitor(
-                url: url,
-                monitorIndex: monitorIndex,
-                autoSave: true, // v2.4.0+ Auto-save configuration for next recovery
-              );
-              
-              if (result == true) {
-                successCount++;
-                print('[APP] ✅ Monitor $monitorIndex recovered successfully');
-                
-                // Update UI state
-                setState(() {
-                  _monitorWallpapers[monitorIndex] = true;
-                });
-              } else {
-                print('[APP] ❌ Monitor $monitorIndex recovery failed');
-              }
-            } catch (e) {
-              print('[APP] ❌ Monitor $monitorIndex recovery exception: $e');
-            }
-          }
-          
-          print('[APP] 🎉 Auto recovery completed: $successCount/${configs.length} monitors recovered');
-          
-          // v2.4.1+ CRITICAL: Send initial data to recovered WebView
-          // The recovered page needs the carousel configuration
-          print('[APP] 📤 Sending initial carousel data to recovered WebView...');
-          await Future.delayed(Duration(seconds: 2)); // Wait for WebView to fully load
-          await _sendCarouselUpdate();
-          print('[APP] ✅ Initial data sent to recovered WebView');
-          
-          // v2.4.1+ FIX: Restore playing state if it was playing before restart
-          if (_carouselStatus == 'playing') {
-            print('[APP] 🔄 Restoring playing state (was playing before restart)...');
-            await Future.delayed(Duration(milliseconds: 500)); // Wait for data to be processed
-            await _carouselPlay();
-            print('[APP] ✅ Playing state restored');
-          }
-          
-          return;
         }
         
         // v2.3.1+ Handle wallpaper recreation request from C++ side (legacy manual mode)

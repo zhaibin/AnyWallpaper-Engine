@@ -411,7 +411,56 @@ await AnyWPEngine.initializeWallpaperOnMonitor(
 
 ---
 
-**🔧 方案 B：手动控制模式（高级用户）**
+**⚡ 方案 A+：自动恢复 + 状态恢复（交互式壁纸推荐）**
+
+如果你的壁纸有动态状态需要恢复（例如：轮播配置、播放状态、用户设置等），可以使用 `setOnRecoveryCallback`：
+
+```dart
+import 'package:anywp_engine/anywp_engine.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 1️⃣ 启用自动恢复
+  await AnyWPEngine.enableAutoRecovery(true);
+  
+  // 2️⃣ 设置恢复回调（可选）
+  AnyWPEngine.setOnRecoveryCallback((recoveredMonitors) async {
+    print('壁纸已恢复，显示器: $recoveredMonitors');
+    
+    // 恢复轮播配置
+    await AnyWPEngine.sendMessage({
+      'type': 'updateCarousel',
+      'data': {'images': myImages, 'interval': 5000},
+    });
+    
+    // 恢复播放状态
+    if (wasPlaying) {
+      await AnyWPEngine.sendMessage({'type': 'play'});
+    }
+  });
+  
+  runApp(MyApp());
+}
+```
+
+**✨ 优势**：
+- ✅ **简单易用** - 只需一个回调函数
+- ✅ **完全自动** - 插件自动恢复壁纸显示，你只需恢复应用状态
+- ✅ **智能时机** - 回调在 WebView 完全加载后触发（约 2-3 秒）
+- ✅ **可选功能** - 如果不需要恢复状态，可以不设置回调
+
+**🎯 使用场景**：
+- ✅ 需要恢复轮播图配置
+- ✅ 需要恢复播放/暂停状态
+- ✅ 需要重新发送配置数据给 HTML
+- ✅ 需要更新 UI 状态
+
+**完整示例**：参考 `example/lib/main.dart` 中的实现
+
+---
+
+**🔧 方案 B：手动控制模式（高级用户 - 不推荐）**
 
 如果需要自定义恢复逻辑（例如：根据时间或条件选择不同 URL），可使用手动模式：
 
@@ -461,18 +510,26 @@ void setupWallpaperRecovery() {
 
 #### ⚠️ 重要说明
 
-**方案 A（自动恢复）**：
-- ✅ **推荐 99% 的用户使用**
+**方案 A（零配置自动恢复）**：
+- ✅ **推荐静态壁纸使用**（图片、视频等）
 - ✅ 插件自动保存所有壁纸配置（URL、显示器索引、鼠标模式）
 - ✅ 插件自动处理延迟和清理逻辑
 - ✅ 支持单显示器和多显示器
-- ⚠️ 如果未启用，Explorer 重启后壁纸会消失（需手动重启应用）
+- ⚠️ 只恢复壁纸显示，不恢复应用状态
+
+**方案 A+（状态恢复回调）**：
+- ✅ **推荐交互式壁纸使用**（轮播、游戏、动画等）
+- ✅ 在方案 A 基础上增加一个回调函数
+- ✅ 插件自动恢复壁纸，开发者恢复应用状态
+- ✅ 代码简洁（约 10 行）
+- ✅ 完全满足大部分应用需求
 
 **方案 B（手动控制）**：
-- ⚠️ **仅适合需要自定义恢复逻辑的高级用户**
+- ⚠️ **仅适合需要完全自定义恢复逻辑的高级用户**
 - ⚠️ 需要开发者自己保存配置（URL、monitorIndex）
 - ⚠️ 需要手动处理延迟和清理
-- ⚠️ 代码量较大（约 20 行）
+- ⚠️ 代码量较大（约 30 行）
+- ⚠️ 需要理解底层恢复机制
 
 **推荐配置**：
 ```dart

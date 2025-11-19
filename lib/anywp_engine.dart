@@ -54,6 +54,9 @@ class AnyWPEngine {
   static void Function(Map<String, dynamic> message)? _onMessageCallback;
   static Timer? _messagePollingTimer;
   
+  // Callback for auto recovery completion (v2.4.1+)
+  static Future<void> Function(List<int> recoveredMonitors)? _onRecoveryCallback;
+  
   /// Set callback for monitor change events
   static void setOnMonitorChangeCallback(void Function() callback) {
     print('[AnyWPEngine] Setting up monitor change callback');
@@ -175,6 +178,92 @@ class AnyWPEngine {
     print('[AnyWPEngine] Message callback and polling setup complete');
   }
   
+  /// Set callback for wallpaper recovery completion (v2.4.1+)
+  /// 
+  /// When Explorer restarts and the wallpaper is automatically recovered,
+  /// this callback is invoked after the wallpaper display is restored.
+  /// Use it to restore your application state (e.g., carousel config, playback state).
+  /// 
+  /// **Use Cases:**
+  /// - Restore interactive wallpaper state
+  /// - Re-send configuration data to HTML
+  /// - Restore play/pause state
+  /// - Update UI to reflect recovery
+  /// 
+  /// **Parameters:**
+  /// - [callback]: Function receiving list of recovered monitor indices
+  /// 
+  /// **Example (Basic):**
+  /// ```dart
+  /// void main() async {
+  ///   await AnyWPEngine.enableAutoRecovery(true);
+  ///   
+  ///   // Set recovery callback
+  ///   AnyWPEngine.setOnRecoveryCallback((monitors) async {
+  ///     print('Wallpaper recovered on monitors: $monitors');
+  ///     
+  ///     // Re-send carousel configuration
+  ///     await AnyWPEngine.sendMessage({
+  ///       'type': 'updateCarousel',
+  ///       'data': {'images': myImages, 'interval': 5000},
+  ///     });
+  ///   });
+  ///   
+  ///   runApp(MyApp());
+  /// }
+  /// ```
+  /// 
+  /// **Example (Advanced - Restore Playback State):**
+  /// ```dart
+  /// class CarouselManager {
+  ///   String _playState = 'stopped';
+  ///   
+  ///   void setupRecovery() {
+  ///     AnyWPEngine.setOnRecoveryCallback((monitors) async {
+  ///       print('Restoring wallpaper state...');
+  ///       
+  ///       // Step 1: Send carousel data
+  ///       await AnyWPEngine.sendMessage({
+  ///         'type': 'updateCarousel',
+  ///         'data': {'images': _images, 'interval': _interval},
+  ///       });
+  ///       
+  ///       // Step 2: Restore playback state
+  ///       if (_playState == 'playing') {
+  ///         await Future.delayed(Duration(milliseconds: 500));
+  ///         await AnyWPEngine.sendMessage({'type': 'play'});
+  ///         print('✅ Playback state restored');
+  ///       }
+  ///     });
+  ///   }
+  /// }
+  /// ```
+  /// 
+  /// **Notes:**
+  /// - Callback fires ~2-3 seconds after Explorer restart (after WebView loads)
+  /// - If not set, wallpaper still auto-recovers (just without app state)
+  /// - Requires [enableAutoRecovery] to be `true`
+  /// - Callback is optional - only needed for stateful wallpapers
+  /// 
+  /// **See also:**
+  /// - [enableAutoRecovery] - Enable auto-recovery feature
+  /// - [setOnMessageCallback] - Receive messages from JavaScript
+  static void setOnRecoveryCallback(
+    Future<void> Function(List<int> recoveredMonitors)? callback
+  ) {
+    print('[AnyWPEngine] Setting recovery callback');
+    _onRecoveryCallback = callback;
+    
+    // Ensure message polling is active to receive AUTO_RECOVERY_REQUEST
+    if (callback != null && _messagePollingTimer == null) {
+      _setupMethodCallHandler();
+      _startMessagePolling();
+      print('[AnyWPEngine] Message polling started for recovery handling');
+    }
+    
+    print('[AnyWPEngine] Recovery callback setup complete');
+  }
+  
   /// Start polling for messages from JavaScript (avoids InvokeMethod deadlock)
   static void _startMessagePolling() {
     // Cancel existing timer if any
@@ -207,14 +296,103 @@ class AnyWPEngine {
   
   /// Process a single message
   static void _processMessage(String messageJson) {
-    if (_onMessageCallback == null) return;
-    
     try {
       final message = jsonDecode(messageJson) as Map<String, dynamic>;
-      print('[AnyWPEngine] Processing message: ${message['type']}');
-      _onMessageCallback!(message);
+      final messageType = message['type'] as String?;
+      
+      print('[AnyWPEngine] Processing message: $messageType');
+      
+      // v2.4.1+ Auto-handle recovery requests
+      if (messageType == 'AUTO_RECOVERY_REQUEST') {
+        print('[AnyWPEngine] 🔄 Auto recovery request received from C++');
+        _handleAutoRecoveryRequest(message);
+        return; // Don't forward to user callback
+      }
+      
+      // Forward other messages to user callback
+      if (_onMessageCallback != null) {
+        _onMessageCallback!(message);
+      }
     } catch (e) {
       print('[AnyWPEngine] ERROR: Failed to process message: $e');
+    }
+  }
+  
+  /// Handle AUTO_RECOVERY_REQUEST message from C++ (v2.4.1+)
+  static Future<void> _handleAutoRecoveryRequest(Map<String, dynamic> message) async {
+    try {
+      final messageData = message['data'] as Map<String, dynamic>?;
+      if (messageData == null) {
+        print('[AnyWPEngine] ⚠️  No data in recovery request');
+        return;
+      }
+      
+      final configs = messageData['configs'] as List<dynamic>?;
+      if (configs == null || configs.isEmpty) {
+        print('[AnyWPEngine] ⚠️  No configurations to recover');
+        return;
+      }
+      
+      print('[AnyWPEngine] 📋 Recovery configurations: ${configs.length} monitor(s)');
+      for (var config in configs) {
+        print('[AnyWPEngine]   - Monitor ${config['monitorIndex']}: ${config['url']}');
+      }
+      
+      // Step 1: Stop existing wallpapers
+      print('[AnyWPEngine] 🛑 Stopping existing wallpapers...');
+      await stopWallpaper();
+      await Future.delayed(Duration(milliseconds: 500));
+      
+      // Step 2: Recreate wallpapers
+      print('[AnyWPEngine] 🔄 Recreating wallpapers...');
+      int successCount = 0;
+      List<int> recoveredMonitors = [];
+      
+      for (var config in configs) {
+        final monitorIndex = config['monitorIndex'] as int;
+        final url = config['url'] as String;
+        
+        try {
+          final result = await initializeWallpaperOnMonitor(
+            url: url,
+            monitorIndex: monitorIndex,
+            autoSave: true,
+          );
+          
+          if (result == true) {
+            successCount++;
+            recoveredMonitors.add(monitorIndex);
+            print('[AnyWPEngine] ✅ Monitor $monitorIndex recovered successfully');
+          } else {
+            print('[AnyWPEngine] ❌ Monitor $monitorIndex recovery failed');
+          }
+        } catch (e) {
+          print('[AnyWPEngine] ❌ Monitor $monitorIndex recovery exception: $e');
+        }
+      }
+      
+      print('[AnyWPEngine] 🎉 Auto recovery completed: $successCount/${configs.length} monitors');
+      
+      // Step 3: Wait for WebView to fully load
+      if (recoveredMonitors.isNotEmpty) {
+        print('[AnyWPEngine] ⏳ Waiting for WebView to load (2 seconds)...');
+        await Future.delayed(Duration(seconds: 2));
+        
+        // Step 4: Call user's recovery callback if set
+        if (_onRecoveryCallback != null) {
+          print('[AnyWPEngine] 📞 Calling user recovery callback...');
+          try {
+            await _onRecoveryCallback!(recoveredMonitors);
+            print('[AnyWPEngine] ✅ User recovery callback completed');
+          } catch (e) {
+            print('[AnyWPEngine] ❌ User recovery callback error: $e');
+          }
+        } else {
+          print('[AnyWPEngine] ℹ️  No recovery callback set (basic recovery only)');
+        }
+      }
+    } catch (e) {
+      print('[AnyWPEngine] ❌ Auto recovery error: $e');
     }
   }
   
