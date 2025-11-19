@@ -26,6 +26,7 @@
 #include "modules/power_manager.h"  // v1.4.0+ Refactoring: PowerManager module
 #include "modules/monitor_manager.h"  // v1.4.0+ Refactoring: MonitorManager module
 #include "modules/mouse_hook_manager.h"  // v1.4.0+ Refactoring: MouseHookManager module
+#include "modules/keyboard_hook_manager.h"  // v2.4.1+ Enhancement: KeyboardHookManager module
 #include "modules/iframe_detector.h"  // v1.4.0+ Refactoring: IframeDetector module
 #include "modules/sdk_bridge.h"  // v1.4.0+ Refactoring: SDKBridge module
 #include "modules/webview_manager.h"  // v1.4.1+ Refactoring: WebViewManager module
@@ -192,6 +193,13 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
   void SendClickToWebView(int x, int y, const char* event_type = "mouseup");
   
+  // Keyboard Hook: Capture keyboard events and forward to WebView (v2.4.1+)
+  void SetupKeyboardHook();
+  void RemoveKeyboardHook();
+  void SendKeyboardToWebView(const char* event_type, int vk_code, const std::string& key, const std::string& code, bool alt_down, bool ctrl_down, bool shift_down);
+  std::string VirtualKeyToString(int vk_code);
+  std::string VirtualKeyToCode(int vk_code);
+  
   // iframe Ad Detection: Handle iframe click regions
   void HandleIframeDataMessage(const std::string& json_data, WallpaperInstance* instance);
   IframeInfo* GetIframeAtPoint(int x, int y, WallpaperInstance* instance);
@@ -337,6 +345,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // MouseHookManager module for mouse event handling
   std::unique_ptr<MouseHookManager> mouse_hook_manager_;
+  std::unique_ptr<KeyboardHookManager> keyboard_hook_manager_;  // v2.4.1+ Keyboard event handling
   std::unique_ptr<anywp_engine::IframeDetector> iframe_detector_;  // v1.4.0+
   std::unique_ptr<anywp_engine::SDKBridge> sdk_bridge_;  // v1.4.0+
   

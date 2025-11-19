@@ -66,6 +66,7 @@ add_library(${PLUGIN_NAME} SHARED
   "modules/iframe_detector.cpp"
   "modules/sdk_bridge.cpp"
   "modules/mouse_hook_manager.cpp"
+  "modules/keyboard_hook_manager.cpp"
   "modules/monitor_manager.cpp"
   "modules/power_manager.cpp"
   "modules/webview_manager.cpp"

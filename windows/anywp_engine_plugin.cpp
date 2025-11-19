@@ -451,6 +451,24 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     mouse_hook_manager_->Install();
   });
   
+  // Initialize KeyboardHookManager module (v2.4.1+ Enhancement: Keyboard event support)
+  TRY_CATCH_INIT_MODULE("KeyboardHookManager", {
+    keyboard_hook_manager_ = std::make_unique<KeyboardHookManager>();
+    
+    // Configure KeyboardHookManager callback to forward events to WebView
+    keyboard_hook_manager_->SetKeyboardCallback([this](const char* event_type, int vk_code, int scan_code, bool extended, bool alt_down, bool ctrl_down, bool shift_down) {
+      // Convert virtual key code to key name and code
+      std::string key = this->VirtualKeyToString(vk_code);
+      std::string code = this->VirtualKeyToCode(vk_code);
+      
+      // Forward to WebView
+      this->SendKeyboardToWebView(event_type, vk_code, key, code, alt_down, ctrl_down, shift_down);
+    });
+    
+    // Install keyboard hook
+    keyboard_hook_manager_->Install();
+  });
+  
   // Initialize IframeDetector module (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
   TRY_CATCH_INIT_MODULE("IframeDetector", {
     iframe_detector_ = std::make_unique<anywp_engine::IframeDetector>();
@@ -3881,6 +3899,235 @@ void AnyWPEnginePlugin::HandleAutoRecovery() {
     "AutoRecoveryManager not initialized",
     ErrorHandler::ErrorCategory::INITIALIZATION,
     ErrorHandler::ErrorLevel::WARNING);
+}
+
+// ========================================
+// Keyboard Event Handling Helpers (v2.4.1+)
+// ========================================
+
+// Helper: Convert virtual key code to key name
+std::string AnyWPEnginePlugin::VirtualKeyToString(int vk_code) {
+  switch (vk_code) {
+    case VK_BACK: return "Backspace";
+    case VK_TAB: return "Tab";
+    case VK_RETURN: return "Enter";
+    case VK_SHIFT: return "Shift";
+    case VK_CONTROL: return "Control";
+    case VK_MENU: return "Alt";
+    case VK_PAUSE: return "Pause";
+    case VK_CAPITAL: return "CapsLock";
+    case VK_ESCAPE: return "Escape";
+    case VK_SPACE: return " ";
+    case VK_PRIOR: return "PageUp";
+    case VK_NEXT: return "PageDown";
+    case VK_END: return "End";
+    case VK_HOME: return "Home";
+    case VK_LEFT: return "ArrowLeft";
+    case VK_UP: return "ArrowUp";
+    case VK_RIGHT: return "ArrowRight";
+    case VK_DOWN: return "ArrowDown";
+    case VK_INSERT: return "Insert";
+    case VK_DELETE: return "Delete";
+    case 0x30: case 0x31: case 0x32: case 0x33: case 0x34:
+    case 0x35: case 0x36: case 0x37: case 0x38: case 0x39:
+      return std::string(1, static_cast<char>(vk_code));  // 0-9
+    case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46:
+    case 0x47: case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C:
+    case 0x4D: case 0x4E: case 0x4F: case 0x50: case 0x51: case 0x52:
+    case 0x53: case 0x54: case 0x55: case 0x56: case 0x57: case 0x58:
+    case 0x59: case 0x5A:
+      return std::string(1, static_cast<char>(tolower(vk_code)));  // a-z
+    case VK_F1: return "F1";
+    case VK_F2: return "F2";
+    case VK_F3: return "F3";
+    case VK_F4: return "F4";
+    case VK_F5: return "F5";
+    case VK_F6: return "F6";
+    case VK_F7: return "F7";
+    case VK_F8: return "F8";
+    case VK_F9: return "F9";
+    case VK_F10: return "F10";
+    case VK_F11: return "F11";
+    case VK_F12: return "F12";
+    default: return "Unidentified";
+  }
+}
+
+// Helper: Convert virtual key code to code string
+std::string AnyWPEnginePlugin::VirtualKeyToCode(int vk_code) {
+  switch (vk_code) {
+    case VK_BACK: return "Backspace";
+    case VK_TAB: return "Tab";
+    case VK_RETURN: return "Enter";
+    case VK_SHIFT: return "ShiftLeft";  // Simplified
+    case VK_CONTROL: return "ControlLeft";  // Simplified
+    case VK_MENU: return "AltLeft";  // Simplified
+    case VK_PAUSE: return "Pause";
+    case VK_CAPITAL: return "CapsLock";
+    case VK_ESCAPE: return "Escape";
+    case VK_SPACE: return "Space";
+    case VK_PRIOR: return "PageUp";
+    case VK_NEXT: return "PageDown";
+    case VK_END: return "End";
+    case VK_HOME: return "Home";
+    case VK_LEFT: return "ArrowLeft";
+    case VK_UP: return "ArrowUp";
+    case VK_RIGHT: return "ArrowRight";
+    case VK_DOWN: return "ArrowDown";
+    case VK_INSERT: return "Insert";
+    case VK_DELETE: return "Delete";
+    case 0x30: return "Digit0";
+    case 0x31: return "Digit1";
+    case 0x32: return "Digit2";
+    case 0x33: return "Digit3";
+    case 0x34: return "Digit4";
+    case 0x35: return "Digit5";
+    case 0x36: return "Digit6";
+    case 0x37: return "Digit7";
+    case 0x38: return "Digit8";
+    case 0x39: return "Digit9";
+    case 0x41: return "KeyA";
+    case 0x42: return "KeyB";
+    case 0x43: return "KeyC";
+    case 0x44: return "KeyD";
+    case 0x45: return "KeyE";
+    case 0x46: return "KeyF";
+    case 0x47: return "KeyG";
+    case 0x48: return "KeyH";
+    case 0x49: return "KeyI";
+    case 0x4A: return "KeyJ";
+    case 0x4B: return "KeyK";
+    case 0x4C: return "KeyL";
+    case 0x4D: return "KeyM";
+    case 0x4E: return "KeyN";
+    case 0x4F: return "KeyO";
+    case 0x50: return "KeyP";
+    case 0x51: return "KeyQ";
+    case 0x52: return "KeyR";
+    case 0x53: return "KeyS";
+    case 0x54: return "KeyT";
+    case 0x55: return "KeyU";
+    case 0x56: return "KeyV";
+    case 0x57: return "KeyW";
+    case 0x58: return "KeyX";
+    case 0x59: return "KeyY";
+    case 0x5A: return "KeyZ";
+    case VK_F1: return "F1";
+    case VK_F2: return "F2";
+    case VK_F3: return "F3";
+    case VK_F4: return "F4";
+    case VK_F5: return "F5";
+    case VK_F6: return "F6";
+    case VK_F7: return "F7";
+    case VK_F8: return "F8";
+    case VK_F9: return "F9";
+    case VK_F10: return "F10";
+    case VK_F11: return "F11";
+    case VK_F12: return "F12";
+    default: return "Unidentified";
+  }
+}
+
+// Send keyboard event to all WebView instances
+void AnyWPEnginePlugin::SendKeyboardToWebView(const char* event_type, int vk_code, const std::string& key, const std::string& code, bool alt_down, bool ctrl_down, bool shift_down) {
+  try {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    
+    for (auto& instance : wallpaper_instances_) {
+      if (!instance.webview) continue;
+      
+      // Build JSON message
+      std::ostringstream json_stream;
+      json_stream << "{"
+                  << "\"type\":\"keyboardEvent\","
+                  << "\"eventType\":\"" << event_type << "\","
+                  << "\"key\":\"" << key << "\","
+                  << "\"code\":\"" << code << "\","
+                  << "\"keyCode\":" << vk_code << ","
+                  << "\"altKey\":" << (alt_down ? "true" : "false") << ","
+                  << "\"ctrlKey\":" << (ctrl_down ? "true" : "false") << ","
+                  << "\"shiftKey\":" << (shift_down ? "true" : "false")
+                  << "}";
+      
+      std::wstring json_message = std::wstring(json_stream.str().begin(), json_stream.str().end());
+      
+      // Send to WebView
+      instance.webview->PostWebMessageAsString(json_message.c_str());
+    }
+    
+    // Log keyboard event (throttled)
+    static int keyboard_event_count = 0;
+    keyboard_event_count++;
+    if (keyboard_event_count % 10 == 0) {  // Log every 10th event
+      Logger::Instance().Debug("KeyboardHook", 
+        std::string("Keyboard event: ") + event_type + " key=" + key + " (count=" + std::to_string(keyboard_event_count) + ")");
+    }
+    
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("Plugin", std::string("Exception in SendKeyboardToWebView: ") + e.what());
+  } catch (...) {
+    Logger::Instance().Error("Plugin", "Unknown exception in SendKeyboardToWebView");
+  }
+}
+
+// Setup keyboard hook
+void AnyWPEnginePlugin::SetupKeyboardHook() {
+  if (!keyboard_hook_manager_) {
+    LOG_AND_REPORT_ERROR("KeyboardHookManager", "Setup", 
+      "KeyboardHookManager not initialized",
+      ErrorHandler::ErrorCategory::INITIALIZATION, 
+      ErrorHandler::ErrorLevel::ERROR);
+    return;
+  }
+  
+  if (keyboard_hook_manager_->IsInstalled()) {
+    Logger::Instance().Info("Plugin", "[Lifecycle] KeyboardHook already installed, skipping");
+    return;
+  }
+  
+  try {
+    bool success = keyboard_hook_manager_->Install();
+    if (success) {
+      Logger::Instance().Info("Plugin", "KeyboardHookManager hook installed successfully");
+    } else {
+      LOG_AND_REPORT_ERROR("KeyboardHookManager", "Install", 
+        "KeyboardHookManager::Install() returned false",
+        ErrorHandler::ErrorCategory::EXTERNAL_API, 
+        ErrorHandler::ErrorLevel::ERROR);
+    }
+  } catch (const std::exception& e) {
+    LOG_AND_REPORT_ERROR_EX("KeyboardHookManager", "Install", 
+      "KeyboardHookManager::Install() failed",
+      ErrorHandler::ErrorCategory::EXTERNAL_API, 
+      ErrorHandler::ErrorLevel::ERROR, &e);
+  } catch (...) {
+    LOG_AND_REPORT_ERROR("KeyboardHookManager", "Install",
+      "Unknown exception in KeyboardHookManager::Install()",
+      ErrorHandler::ErrorCategory::EXTERNAL_API, 
+      ErrorHandler::ErrorLevel::ERROR);
+  }
+}
+
+// Remove keyboard hook
+void AnyWPEnginePlugin::RemoveKeyboardHook() {
+  if (!keyboard_hook_manager_) {
+    Logger::Instance().Info("Plugin", "[Lifecycle] KeyboardHookManager not initialized, skipping removal");
+    return;
+  }
+  
+  if (!keyboard_hook_manager_->IsInstalled()) {
+    Logger::Instance().Info("Plugin", "[Lifecycle] KeyboardHook not installed, skipping removal");
+    return;
+  }
+  
+  try {
+    keyboard_hook_manager_->Uninstall();
+    Logger::Instance().Info("Plugin", "KeyboardHookManager hook removed successfully");
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("Plugin", std::string("Exception removing KeyboardHookManager: ") + e.what());
+  } catch (...) {
+    Logger::Instance().Error("Plugin", "Unknown exception removing KeyboardHookManager");
+  }
 }
 
 }  // namespace anywp_engine
