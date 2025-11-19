@@ -4112,25 +4112,28 @@ void AnyWPEnginePlugin::HandleAutoRecovery() {
     Logger::Instance().Info("AutoRecovery", 
       "Sending " + std::to_string(configs_to_recover.size()) + " config(s) to Flutter main thread for recovery");
     
-    // Build recovery configurations as JSON (same as Phase 3 logic)
-    std::string configs_json = "[";
+    // Build recovery configurations as JSON (Phase 4 fix: match Flutter message format)
+    std::ostringstream configs_stream;
+    configs_stream << "[";
     bool first = true;
     for (const auto& pair : configs_to_recover) {
       const auto& config = pair.second;
       if (!first) {
-        configs_json += ",";
+        configs_stream << ",";
       }
       first = false;
       
-      configs_json += R"({"monitorIndex":)" + std::to_string(config.monitor_index) + 
-                     R"(,"url":")" + config.url + 
-                     R"(","enableMouseTransparent":)" + (config.enable_mouse_transparent ? "true" : "false") + 
-                     "}";
+      configs_stream << "{\"monitorIndex\":" << config.monitor_index 
+                    << ",\"url\":\"" << config.url << "\""
+                    << ",\"enableMouseTransparent\":" << (config.enable_mouse_transparent ? "true" : "false")
+                    << "}";
     }
-    configs_json += "]";
+    configs_stream << "]";
+    std::string configs_json = configs_stream.str();
     
     // Send to Flutter main thread (Lively-style architecture)
-    std::string recovery_message = R"({"type":"AUTO_RECOVERY_REQUEST","data":)" + configs_json + "}";
+    // Flutter expects: {"type":"AUTO_RECOVERY_REQUEST","data":{"configs":[...]}}
+    std::string recovery_message = "{\"type\":\"AUTO_RECOVERY_REQUEST\",\"data\":{\"configs\":" + configs_json + "}}";
     NotifyFlutterMessage(recovery_message);
     
     Logger::Instance().Info("AutoRecovery", 
