@@ -57,6 +57,14 @@ class WebMessageHandler {
    */
   using LogCallback = std::function<void(const std::string& level, const std::string& message)>;
 
+  /**
+   * @brief 脚本执行回调类型
+   * 
+   * 参数：
+   * - script: 要执行的脚本（宽字符）
+   */
+  using ScriptExecutionCallback = std::function<void(const std::wstring& script)>;
+
   WebMessageHandler();
   ~WebMessageHandler();
 
@@ -102,6 +110,13 @@ class WebMessageHandler {
    */
   void SetLogCallback(LogCallback callback);
 
+  /**
+   * @brief 设置脚本执行回调
+   * 
+   * 用于将响应发送回所有 WebView 实例
+   */
+  void SetScriptExecutionCallback(ScriptExecutionCallback callback);
+
  private:
   // 消息类型处理器
   bool HandleIframeDataMessage(const std::string& message, WallpaperInstance* instance);
@@ -122,12 +137,16 @@ class WebMessageHandler {
   UrlOpenCallback url_open_callback_;
   ReadyCallback ready_callback_;
   LogCallback log_callback_;
+  ScriptExecutionCallback script_execution_callback_;
 
   // 状态持久化模块（不拥有所有权）
   StatePersistence* state_persistence_ = nullptr;
 
   // 统计信息
   std::map<std::string, size_t> message_counters_;  // 每种消息类型的处理计数
+
+  // 辅助方法：将响应发送回 WebView
+  void SendResponseToWebView(const std::string& event_name, const std::string& detail_json);
 };
 
 }  // namespace anywp_engine

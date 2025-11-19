@@ -1,8 +1,9 @@
 #include "web_message_handler.h"
 #include "../utils/logger.h"
 #include "../utils/state_persistence.h"
-#include "anywp_engine_plugin.h"
-#include <nlohmann/json.hpp>
+#include <windows.h>
+#include <shellapi.h>
+#include <sstream>
 
 namespace anywp_engine {
 
@@ -83,6 +84,11 @@ void WebMessageHandler::SetLogCallback(LogCallback callback) {
   log_callback_ = callback;
 }
 
+void WebMessageHandler::SetScriptExecutionCallback(ScriptExecutionCallback callback) {
+  script_execution_callback_ = callback;
+  Logger::Instance().Info("WebMessageHandler", "Script execution callback registered");
+}
+
 // ========== Private Methods ==========
 
 bool WebMessageHandler::HandleIframeDataMessage(const std::string& message, WallpaperInstance* instance) {
@@ -107,18 +113,25 @@ bool WebMessageHandler::HandleOpenUrlMessage(const std::string& message) {
   Logger::Instance().Debug("WebMessageHandler", "Handling open URL message");
   
   try {
-    auto json_obj = nlohmann::json::parse(message);
-    if (!json_obj.contains("url")) {
+    // Extract URL from JSON (简单解析，避免依赖 nlohmann::json)
+    size_t url_start = message.find("\"url\":\"") + 7;
+    size_t url_end = message.find("\"", url_start);
+    
+    if (url_start != std::string::npos && url_end != std::string::npos) {
+      std::string url = message.substr(url_start, url_end - url_start);
+      Logger::Instance().Info("WebMessageHandler", "Opening URL: " + url);
+
+      if (url_open_callback_) {
+        url_open_callback_(url);
+        return true;
+      } else {
+        // 默认行为：使用 ShellExecute 打开
+        std::wstring wurl(url.begin(), url.end());
+        ShellExecuteW(nullptr, L"open", wurl.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        return true;
+      }
+    } else {
       Logger::Instance().Error("WebMessageHandler", "openUrl message missing 'url' field");
-      return false;
-    }
-
-    std::string url = json_obj["url"].get<std::string>();
-    Logger::Instance().Info("WebMessageHandler", "Opening URL: " + url);
-
-    if (url_open_callback_) {
-      url_open_callback_(url);
-      return true;
     }
   } catch (const std::exception& e) {
     Logger::Instance().Error("WebMessageHandler", 
@@ -129,7 +142,16 @@ bool WebMessageHandler::HandleOpenUrlMessage(const std::string& message) {
 }
 
 bool WebMessageHandler::HandleReadyMessage(const std::string& message) {
-  Logger::Instance().Info("WebMessageHandler", "WebView content is ready");
+  // Extract name
+  size_t name_start = message.find("\"name\":\"") + 8;
+  size_t name_end = message.find("\"", name_start);
+  
+  if (name_start != std::string::npos && name_end != std::string::npos) {
+    std::string name = message.substr(name_start, name_end - name_start);
+    Logger::Instance().Info("WebMessageHandler", "Wallpaper ready: " + name);
+  } else {
+    Logger::Instance().Info("WebMessageHandler", "WebView content is ready");
+  }
   
   if (ready_callback_) {
     try {
@@ -147,37 +169,57 @@ bool WebMessageHandler::HandleReadyMessage(const std::string& message) {
 
 bool WebMessageHandler::HandleLogMessage(const std::string& message) {
   try {
-    auto json_obj = nlohmann::json::parse(message);
-    std::string log_level = json_obj.value("level", "info");
-    std::string log_message = json_obj.value("message", "");
-
-    if (log_callback_) {
-      log_callback_(log_level, log_message);
-    } else {
-      // 默认行为：输出到 Logger
-      Logger::Instance().Info("WebContent", "[" + log_level + "] " + log_message);
-    }
+    // Extract log message
+    size_t msg_start = message.find("\"message\":\"") + 11;
+    size_t msg_end = message.find("\"", msg_start);
     
-    return true;
+    if (msg_start != std::string::npos && msg_end != std::string::npos) {
+      std::string log_msg = message.substr(msg_start, msg_end - msg_start);
+      
+      if (log_callback_) {
+        log_callback_("info", log_msg);
+      } else {
+        // 默认行为：输出到 Logger
+        Logger::Instance().Info("WebLog", log_msg);
+      }
+      
+      return true;
+    }
   } catch (const std::exception& e) {
     Logger::Instance().Error("WebMessageHandler", 
       std::string("Exception in HandleLogMessage: ") + e.what());
-    return false;
   }
+  
+  return false;
 }
 
 bool WebMessageHandler::HandleConsoleLogMessage(const std::string& message) {
   try {
-    auto json_obj = nlohmann::json::parse(message);
-    std::string console_message = json_obj.value("message", "");
+    // Enhanced console.log forwarding with level support
+    size_t msg_start = message.find("\"message\":\"") + 11;
+    size_t msg_end = message.rfind("\"");
     
-    Logger::Instance().Info("WebConsole", console_message);
-    return true;
+    if (msg_start != std::string::npos && msg_end != std::string::npos && msg_end > msg_start) {
+      std::string log_msg = message.substr(msg_start, msg_end - msg_start);
+      bool is_error = message.find("\"level\":\"error\"") != std::string::npos;
+      bool is_warn = message.find("\"level\":\"warn\"") != std::string::npos;
+      
+      if (is_error) {
+        Logger::Instance().Error("JavaScript", log_msg);
+      } else if (is_warn) {
+        Logger::Instance().Warning("JavaScript", log_msg);
+      } else {
+        Logger::Instance().Debug("JavaScript", log_msg);
+      }
+      
+      return true;
+    }
   } catch (const std::exception& e) {
     Logger::Instance().Error("WebMessageHandler", 
       std::string("Exception in HandleConsoleLogMessage: ") + e.what());
-    return false;
   }
+  
+  return false;
 }
 
 bool WebMessageHandler::HandleSaveStateMessage(const std::string& message) {
@@ -187,28 +229,39 @@ bool WebMessageHandler::HandleSaveStateMessage(const std::string& message) {
   }
 
   try {
-    auto json_obj = nlohmann::json::parse(message);
-    std::string key = json_obj.value("key", "");
-    std::string value = json_obj.value("value", "");
-
-    if (key.empty()) {
-      Logger::Instance().Error("WebMessageHandler", "saveState message missing 'key' field");
-      return false;
-    }
-
-    bool success = state_persistence_->SaveState(key, value);
-    if (success) {
-      Logger::Instance().Debug("WebMessageHandler", "State saved: " + key);
-    } else {
-      Logger::Instance().Error("WebMessageHandler", "Failed to save state: " + key);
-    }
+    // Extract key and value from JSON
+    size_t key_start = message.find("\"key\":\"") + 7;
+    size_t key_end = message.find("\"", key_start);
+    size_t value_start = message.find("\"value\":\"") + 9;
+    // Find the closing brace, then work backwards to find last quote
+    size_t end_brace = message.rfind("}");
+    size_t value_end = message.rfind("\"", end_brace);
     
-    return success;
+    if (key_start != std::string::npos && key_end != std::string::npos &&
+        value_start != std::string::npos && value_end != std::string::npos && value_end > value_start) {
+      std::string key = message.substr(key_start, key_end - key_start);
+      std::string value = message.substr(value_start, value_end - value_start);
+      
+      bool success = state_persistence_->SaveState(key, value);
+      Logger::Instance().Info("WebMessageHandler", 
+        "[State] Saved via WebMessage: " + key + " = " + value);
+      
+      // Send success notification back to WebView
+      std::ostringstream detail_json;
+      detail_json << "{\"type\": \"stateSaved\", \"key\": \"" << key 
+                  << "\", \"success\": " << (success ? "true" : "false") << "}";
+      SendResponseToWebView("AnyWP:stateSaved", detail_json.str());
+      
+      return success;
+    } else {
+      Logger::Instance().Error("WebMessageHandler", "Failed to parse saveState message");
+    }
   } catch (const std::exception& e) {
     Logger::Instance().Error("WebMessageHandler", 
       std::string("Exception in HandleSaveStateMessage: ") + e.what());
-    return false;
   }
+  
+  return false;
 }
 
 bool WebMessageHandler::HandleLoadStateMessage(const std::string& message) {
@@ -218,27 +271,31 @@ bool WebMessageHandler::HandleLoadStateMessage(const std::string& message) {
   }
 
   try {
-    auto json_obj = nlohmann::json::parse(message);
-    std::string key = json_obj.value("key", "");
-
-    if (key.empty()) {
-      Logger::Instance().Error("WebMessageHandler", "loadState message missing 'key' field");
-      return false;
+    // Extract key
+    size_t key_start = message.find("\"key\":\"") + 7;
+    size_t key_end = message.find("\"", key_start);
+    
+    if (key_start != std::string::npos && key_end != std::string::npos) {
+      std::string key = message.substr(key_start, key_end - key_start);
+      std::string value = state_persistence_->LoadState(key);
+      
+      Logger::Instance().Info("WebMessageHandler", 
+        "[State] Loaded via WebMessage: " + key + " = " + value);
+      
+      // Send result back to WebView
+      std::ostringstream detail_json;
+      detail_json << "{\"type\": \"stateLoaded\", \"key\": \"" << key 
+                  << "\", \"value\": \"" << value << "\"}";
+      SendResponseToWebView("AnyWP:stateLoaded", detail_json.str());
+      
+      return true;
     }
-
-    std::string value = state_persistence_->LoadState(key);
-    Logger::Instance().Debug("WebMessageHandler", 
-      "State loaded: " + key + " (length: " + std::to_string(value.length()) + ")");
-    
-    // TODO: 需要将结果返回给 WebView2
-    // 可能需要添加回调或通过 ExecuteScript 返回
-    
-    return true;
   } catch (const std::exception& e) {
     Logger::Instance().Error("WebMessageHandler", 
       std::string("Exception in HandleLoadStateMessage: ") + e.what());
-    return false;
   }
+  
+  return false;
 }
 
 bool WebMessageHandler::HandleClearStateMessage(const std::string& message) {
@@ -249,11 +306,13 @@ bool WebMessageHandler::HandleClearStateMessage(const std::string& message) {
 
   try {
     bool success = state_persistence_->ClearState();
-    if (success) {
-      Logger::Instance().Info("WebMessageHandler", "All state cleared");
-    } else {
-      Logger::Instance().Error("WebMessageHandler", "Failed to clear state");
-    }
+    Logger::Instance().Info("WebMessageHandler", "[State] Cleared all state via WebMessage");
+    
+    // Send success notification back to WebView
+    std::ostringstream detail_json;
+    detail_json << "{\"type\": \"stateCleared\", \"success\": " 
+                << (success ? "true" : "false") << "}";
+    SendResponseToWebView("AnyWP:stateCleared", detail_json.str());
     
     return success;
   } catch (const std::exception& e) {
@@ -265,9 +324,12 @@ bool WebMessageHandler::HandleClearStateMessage(const std::string& message) {
 
 std::string WebMessageHandler::ExtractMessageType(const std::string& message) {
   try {
-    auto json_obj = nlohmann::json::parse(message);
-    if (json_obj.contains("type")) {
-      return json_obj["type"].get<std::string>();
+    // Extract type field from JSON (简单解析)
+    size_t type_start = message.find("\"type\":\"") + 8;
+    size_t type_end = message.find("\"", type_start);
+    
+    if (type_start != std::string::npos && type_end != std::string::npos) {
+      return message.substr(type_start, type_end - type_start);
     }
   } catch (const std::exception& e) {
     Logger::Instance().Error("WebMessageHandler", 
@@ -279,9 +341,9 @@ std::string WebMessageHandler::ExtractMessageType(const std::string& message) {
 
 std::string WebMessageHandler::ExtractMessageData(const std::string& message) {
   try {
-    auto json_obj = nlohmann::json::parse(message);
-    if (json_obj.contains("data")) {
-      return json_obj["data"].dump();
+    size_t data_start = message.find("\"data\":");
+    if (data_start != std::string::npos) {
+      return message.substr(data_start + 7);  // Skip '"data":'
     }
   } catch (const std::exception& e) {
     Logger::Instance().Error("WebMessageHandler", 
@@ -289,6 +351,35 @@ std::string WebMessageHandler::ExtractMessageData(const std::string& message) {
   }
   
   return "";
+}
+
+void WebMessageHandler::SendResponseToWebView(
+    const std::string& event_name, 
+    const std::string& detail_json) {
+  
+  if (!script_execution_callback_) {
+    Logger::Instance().Warning("WebMessageHandler", 
+      "No script execution callback registered, cannot send response");
+    return;
+  }
+
+  try {
+    // Build JavaScript to dispatch custom event
+    std::ostringstream js;
+    js << "window.dispatchEvent(new CustomEvent('" << event_name << "', {"
+       << "detail: " << detail_json
+       << "}));";
+    
+    std::string js_code = js.str();
+    std::wstring wjs_code(js_code.begin(), js_code.end());
+    
+    script_execution_callback_(wjs_code);
+    Logger::Instance().Debug("WebMessageHandler", 
+      "Sent response event: " + event_name);
+  } catch (const std::exception& e) {
+    Logger::Instance().Error("WebMessageHandler", 
+      std::string("Exception in SendResponseToWebView: ") + e.what());
+  }
 }
 
 }  // namespace anywp_engine

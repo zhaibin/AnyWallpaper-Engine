@@ -34,6 +34,7 @@
 #include "modules/initialization_coordinator.h"  // v2.0+ Refactoring: InitializationCoordinator module
 #include "modules/webview_configurator.h"  // v2.0+ Refactoring: WebViewConfigurator module
 #include "modules/workerw_health_monitor.h"  // v2.3.1+ Enhancement: WorkerW health monitoring
+#include "modules/web_message_handler.h"  // v2.5.0+ Phase 2: WebMessageHandler module
 
 namespace anywp_engine {
 
@@ -362,6 +363,9 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // WorkerWHealthMonitor module for WorkerW health monitoring (v2.3.1+ Enhancement)
   std::unique_ptr<class WorkerWHealthMonitor> workerw_health_monitor_;
+  
+  // WebMessageHandler module for unified message handling (v2.5.0+ Phase 2)
+  std::unique_ptr<class WebMessageHandler> web_message_handler_;
   
   // WorkerW recovery methods (called by health monitor)
   void RecoverWorkerW();  // Main recovery entry point (Lively-style: detect and decide)

@@ -226,6 +226,23 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
     monitor_manager_->StartMonitoring();
   });
   
+  // Initialize WebMessageHandler module (v2.5.0+ Phase 2: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("WebMessageHandler", {
+    web_message_handler_ = std::make_unique<WebMessageHandler>();
+    
+    // Initialize with StatePersistence
+    web_message_handler_->Initialize(state_persistence_.get());
+    
+    // Configure callbacks
+    web_message_handler_->SetIframeDataCallback([this](const std::string& message, WallpaperInstance* instance) {
+      this->HandleIframeDataMessage(message, instance);
+    });
+    
+    web_message_handler_->SetScriptExecutionCallback([this](const std::wstring& script) {
+      this->ExecuteScriptToAllInstances(script);
+    });
+  });
+  
   // Initialize MouseHookManager module (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
   TRY_CATCH_INIT_MODULE("MouseHookManager", {
     mouse_hook_manager_ = std::make_unique<MouseHookManager>();
@@ -1100,11 +1117,28 @@ void AnyWPEnginePlugin::SetupMessageBridge(ICoreWebView2* webview) {
 void AnyWPEnginePlugin::HandleWebMessage(const std::string& message) {
   Logger::Instance().Debug("API", "Received message: " + message);
   
-  if (sdk_bridge_) {
+  // v2.5.0+ Phase 2: Use WebMessageHandler for unified message handling
+  if (web_message_handler_) {
+    // Determine which instance this message is for (use first instance for now)
+    WallpaperInstance* target_instance = nullptr;
+    if (!wallpaper_instances_.empty()) {
+      target_instance = &wallpaper_instances_[0];
+    }
+    
+    if (!web_message_handler_->HandleMessage(message, target_instance)) {
+      Logger::Instance().Warning("API", "WebMessageHandler failed to handle message");
+      
+      // Fallback to SDKBridge for backward compatibility
+      if (sdk_bridge_) {
+        sdk_bridge_->HandleMessage(message);
+      }
+    }
+  } else if (sdk_bridge_) {
+    // Fallback: Use SDKBridge directly
     sdk_bridge_->HandleMessage(message);
   } else {
-    LOG_AND_REPORT_ERROR("SDKBridge", "HandleWebMessage", 
-      "SDKBridge not initialized, cannot handle message",
+    LOG_AND_REPORT_ERROR("API", "HandleWebMessage", 
+      "Neither WebMessageHandler nor SDKBridge initialized",
       ErrorHandler::ErrorCategory::INITIALIZATION, 
       ErrorHandler::ErrorLevel::ERROR);
   }
