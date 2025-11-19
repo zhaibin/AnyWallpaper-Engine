@@ -12,6 +12,7 @@
 #include <memory>
 #include <iostream>
 #include <sstream>
+#include <iomanip>
 #include <fstream>
 #include <algorithm>
 #include <cctype>
@@ -3905,6 +3906,31 @@ void AnyWPEnginePlugin::HandleAutoRecovery() {
 // Keyboard Event Handling Helpers (v2.4.1+)
 // ========================================
 
+// Helper: Escape string for JSON
+static std::string JsonEscape(const std::string& str) {
+  std::ostringstream escaped;
+  for (char c : str) {
+    switch (c) {
+      case '"':  escaped << "\\\""; break;
+      case '\\': escaped << "\\\\"; break;
+      case '\b': escaped << "\\b"; break;
+      case '\f': escaped << "\\f"; break;
+      case '\n': escaped << "\\n"; break;
+      case '\r': escaped << "\\r"; break;
+      case '\t': escaped << "\\t"; break;
+      default:
+        if (c >= 0x20 && c <= 0x7E) {  // Printable ASCII
+          escaped << c;
+        } else {
+          // Escape non-printable characters as \uXXXX
+          escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(static_cast<unsigned char>(c));
+        }
+        break;
+    }
+  }
+  return escaped.str();
+}
+
 // Helper: Convert virtual key code to key name
 std::string AnyWPEnginePlugin::VirtualKeyToString(int vk_code) {
   switch (vk_code) {
@@ -3936,7 +3962,7 @@ std::string AnyWPEnginePlugin::VirtualKeyToString(int vk_code) {
     case 0x4D: case 0x4E: case 0x4F: case 0x50: case 0x51: case 0x52:
     case 0x53: case 0x54: case 0x55: case 0x56: case 0x57: case 0x58:
     case 0x59: case 0x5A:
-      return std::string(1, static_cast<char>(tolower(vk_code)));  // a-z
+      return std::string(1, static_cast<char>(vk_code + 32));  // Convert A-Z to a-z (safer than tolower)
     case VK_F1: return "F1";
     case VK_F2: return "F2";
     case VK_F3: return "F3";
@@ -4036,13 +4062,13 @@ void AnyWPEnginePlugin::SendKeyboardToWebView(const char* event_type, int vk_cod
     for (auto& instance : wallpaper_instances_) {
       if (!instance.webview) continue;
       
-      // Build JSON message
+      // Build JSON message with proper escaping
       std::ostringstream json_stream;
       json_stream << "{"
                   << "\"type\":\"keyboardEvent\","
                   << "\"eventType\":\"" << event_type << "\","
-                  << "\"key\":\"" << key << "\","
-                  << "\"code\":\"" << code << "\","
+                  << "\"key\":\"" << JsonEscape(key) << "\","
+                  << "\"code\":\"" << JsonEscape(code) << "\","
                   << "\"keyCode\":" << vk_code << ","
                   << "\"altKey\":" << (alt_down ? "true" : "false") << ","
                   << "\"ctrlKey\":" << (ctrl_down ? "true" : "false") << ","

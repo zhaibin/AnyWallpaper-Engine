@@ -102,15 +102,25 @@ LRESULT CALLBACK KeyboardHookManager::LowLevelKeyboardProc(int nCode, WPARAM wPa
   // Forward to callback if registered
   if (event_type && instance_->keyboard_callback_) {
     bool extended = (info->flags & LLKHF_EXTENDED) != 0;
-    instance_->keyboard_callback_(
-      event_type,
-      info->vkCode,
-      info->scanCode,
-      extended,
-      alt_down,
-      ctrl_down,
-      shift_down
-    );
+    
+    // CRITICAL: Wrap callback in try-catch to prevent application crashes
+    // Keyboard hook runs in system thread - unhandled exceptions will crash the app
+    try {
+      instance_->keyboard_callback_(
+        event_type,
+        info->vkCode,
+        info->scanCode,
+        extended,
+        alt_down,
+        ctrl_down,
+        shift_down
+      );
+    } catch (const std::exception& e) {
+      // Log error but continue - don't let callback exceptions crash the hook
+      Logger::Instance().Error("KeyboardHook", std::string("Exception in keyboard callback: ") + e.what());
+    } catch (...) {
+      Logger::Instance().Error("KeyboardHook", "Unknown exception in keyboard callback");
+    }
   }
   
   return CallNextHookEx(nullptr, nCode, wParam, lParam);
