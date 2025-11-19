@@ -12,15 +12,7 @@
 namespace anywp_engine {
 
 // Forward declarations
-struct WallpaperInstance {
-  int monitor_index;
-  bool enable_mouse_transparent;
-  HWND webview_host_hwnd;
-  HWND worker_w_hwnd;
-  Microsoft::WRL::ComPtr<ICoreWebView2Controller> webview_controller;
-  Microsoft::WRL::ComPtr<ICoreWebView2> webview;
-};
-
+struct WallpaperInstance;
 class MemoryOptimizer;
 
 /**
@@ -175,6 +167,13 @@ class WallpaperLifecycleManager {
    * @param instances 壁纸实例列表指针
    */
   void SetWallpaperInstances(std::vector<WallpaperInstance>* instances);
+
+  /**
+   * @brief 设置内存优化器引用
+   * 
+   * @param optimizer 内存优化器指针
+   */
+  void SetMemoryOptimizer(MemoryOptimizer* optimizer);
 
  private:
   // 状态管理

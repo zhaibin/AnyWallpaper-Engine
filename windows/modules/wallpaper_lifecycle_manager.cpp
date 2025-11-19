@@ -1,4 +1,5 @@
 #include "wallpaper_lifecycle_manager.h"
+#include "../anywp_engine_plugin.h"
 #include "../utils/logger.h"
 #include "../modules/memory_optimizer.h"
 #include <windows.h>
@@ -26,7 +27,8 @@ void WallpaperLifecycleManager::Initialize(MemoryOptimizer* memory_optimizer) {
 }
 
 bool WallpaperLifecycleManager::PauseWallpaper(const std::string& reason) {
-  if (is_paused_.load()) {
+  // Guard: Avoid duplicate pause
+  if (is_paused_.exchange(true)) {
     Logger::Instance().Warning("WallpaperLifecycleManager", 
       "Already paused, ignoring duplicate pause request (" + reason + ")");
     return true;
@@ -39,32 +41,47 @@ bool WallpaperLifecycleManager::PauseWallpaper(const std::string& reason) {
     last_pause_reason_ = reason;
     pause_count_++;
 
-    // 暂停 WebView 内容
-    PauseWebViewContent();
-
     // 更新状态
     ChangeState(WallpaperState::PAUSED, reason);
-    is_paused_.store(true);
 
-    // 触发内存优化
-    // TODO: 实现内存优化调用（Phase 3+）
+    // Execute pause scripts to freeze animations
+    // Note: This will freeze the last frame without completely hiding the wallpaper
+    std::wostringstream pause_script;
+    pause_script << L"(function() {"
+                 << L"  if (typeof window.AnyWP !== 'undefined' && window.AnyWP.onPause) {"
+                 << L"    window.AnyWP.onPause();"
+                 << L"  }"
+                 << L"  document.dispatchEvent(new CustomEvent('anywp:pause'));"
+                 << L"  if (typeof requestAnimationFrame === 'function') {"
+                 << L"    window.__anywp_cancelAllAnimations = true;"
+                 << L"  }"
+                 << L"})();";
+    
+    ExecuteScriptToAllInstances(pause_script.str());
+
+    // Light memory trim (Windows API)
+    SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
+
+    // TODO: 触发内存优化 (Phase 4+)
     // if (memory_optimizer_) {
     //   memory_optimizer_->OptimizeMemoryUsage();
     // }
 
-    Logger::Instance().Info("WallpaperLifecycleManager", "Wallpaper paused successfully");
+    Logger::Instance().Info("WallpaperLifecycleManager", "Wallpaper paused successfully - last frame frozen");
     return true;
   } catch (const std::exception& e) {
     Logger::Instance().Error("WallpaperLifecycleManager", 
       std::string("Exception in PauseWallpaper: ") + e.what());
+    is_paused_.store(false);  // 回滚状态
     return false;
   }
 }
 
 bool WallpaperLifecycleManager::ResumeWallpaper(const std::string& reason, bool force_reinit) {
-  if (!is_paused_.load() && !force_reinit) {
+  // Guard: Avoid duplicate resume
+  if (!is_paused_.exchange(false) && !force_reinit) {
     Logger::Instance().Warning("WallpaperLifecycleManager", 
-      "Not paused, ignoring resume request (" + reason + ")");
+      "Already resumed, ignoring duplicate resume request (" + reason + ")");
     return true;
   }
 
@@ -79,28 +96,58 @@ bool WallpaperLifecycleManager::ResumeWallpaper(const std::string& reason, bool 
     // 更新状态
     ChangeState(WallpaperState::RESUMING, reason);
 
-    // 验证窗口状态
-    if (!ValidateWallpaperWindows()) {
+    // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
+    bool need_reinitialize = force_reinit;  // Force if requested
+    
+    // Skip validation if force reinit requested
+    if (!force_reinit) {
+      need_reinitialize = !ValidateWallpaperWindows();
+    }
+    
+    // If window is lost, try to restore it
+    if (need_reinitialize) {
       Logger::Instance().Warning("WallpaperLifecycleManager", 
-        "Window validation failed, may need reinitialization");
+        "Window validation failed or force reinit requested, need reinitialization");
       validation_failure_count_++;
       
       // 如果有配置恢复回调，尝试恢复
       if (config_restore_callback_) {
         Logger::Instance().Info("WallpaperLifecycleManager", 
-          "Attempting configuration restore...");
-        // TODO: 需要从外部获取 URL
+          "Attempting configuration restore via callback...");
+        // Pass empty URL to use default URL in the callback implementation
+        if (config_restore_callback_("", "WallpaperLifecycleManager")) {
+          is_paused_.store(false);
+          ChangeState(WallpaperState::ACTIVE, "Configuration restored");
+          return true;  // Restoration successful
+        }
+        // Restoration failed, continue to error return
+      } else {
+        Logger::Instance().Error("WallpaperLifecycleManager", 
+          "No configuration restore callback available");
+        is_paused_.store(false);
+        return false;  // Cannot recover
       }
     }
 
-    // 恢复 WebView 内容
-    ResumeWebViewContent();
+    // Execute resume scripts to restart animations
+    std::wostringstream resume_script;
+    resume_script << L"(function() {"
+                  << L"  if (typeof window.AnyWP !== 'undefined' && window.AnyWP.onResume) {"
+                  << L"    window.AnyWP.onResume();"
+                  << L"  }"
+                  << L"  document.dispatchEvent(new CustomEvent('anywp:resume'));"
+                  << L"  if (typeof requestAnimationFrame === 'function') {"
+                  << L"    window.__anywp_cancelAllAnimations = false;"
+                  << L"  }"
+                  << L"})();";
+    
+    ExecuteScriptToAllInstances(resume_script.str());
 
     // 更新状态
     ChangeState(WallpaperState::ACTIVE, reason);
     is_paused_.store(false);
 
-    Logger::Instance().Info("WallpaperLifecycleManager", "Wallpaper resumed successfully");
+    Logger::Instance().Info("WallpaperLifecycleManager", "Wallpaper resumed successfully - animations restarted");
     return true;
   } catch (const std::exception& e) {
     Logger::Instance().Error("WallpaperLifecycleManager", 
@@ -121,11 +168,29 @@ bool WallpaperLifecycleManager::ValidateWallpaperWindows() {
     return window_validation_callback_();
   }
 
-  // 默认验证逻辑
+  Logger::Instance().Info("WallpaperLifecycleManager", "Verifying wallpaper window state...");
+
+  // 默认验证逻辑 - Check multi-monitor mode
+  if (wallpaper_instances_->empty()) {
+    Logger::Instance().Warning("WallpaperLifecycleManager", "No wallpaper instances found");
+    return false;
+  }
+
+  Logger::Instance().Info("WallpaperLifecycleManager", 
+    "Multi-monitor mode detected (" + std::to_string(wallpaper_instances_->size()) + " instances)");
+
   bool all_valid = true;
   for (const auto& instance : *wallpaper_instances_) {
+    Logger::Instance().Debug("WallpaperLifecycleManager", 
+      "Checking monitor " + std::to_string(instance.monitor_index));
+    
     if (!ValidateSingleInstance(instance)) {
       all_valid = false;
+      Logger::Instance().Warning("WallpaperLifecycleManager", 
+        "Monitor " + std::to_string(instance.monitor_index) + " validation failed");
+    } else {
+      Logger::Instance().Info("WallpaperLifecycleManager", 
+        "[OK] Monitor " + std::to_string(instance.monitor_index) + " window valid");
     }
   }
 
@@ -246,44 +311,25 @@ void WallpaperLifecycleManager::ChangeState(WallpaperState new_state, const std:
 }
 
 void WallpaperLifecycleManager::PauseWebViewContent() {
-  if (!wallpaper_instances_) {
-    return;
-  }
-
-  for (const auto& instance : *wallpaper_instances_) {
-    if (instance.webview) {
-      try {
-        // 暂停渲染和 JavaScript 执行
-        // Note: WebView2 没有直接的暂停 API，使用隐藏窗口的方式
-        if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
-          ShowWindow(instance.webview_host_hwnd, SW_HIDE);
-        }
-      } catch (const std::exception& e) {
-        Logger::Instance().Error("WallpaperLifecycleManager", 
-          std::string("Exception pausing instance: ") + e.what());
-      }
-    }
-  }
+  // Note: This method is deprecated
+  // Pause is now handled via JavaScript scripts in PauseWallpaper()
+  // Kept for backward compatibility
+  Logger::Instance().Debug("WallpaperLifecycleManager", 
+    "PauseWebViewContent called (deprecated, using script-based pause instead)");
 }
 
 void WallpaperLifecycleManager::ResumeWebViewContent() {
-  if (!wallpaper_instances_) {
-    return;
-  }
+  // Note: This method is deprecated
+  // Resume is now handled via JavaScript scripts in ResumeWallpaper()
+  // Kept for backward compatibility
+  Logger::Instance().Debug("WallpaperLifecycleManager", 
+    "ResumeWebViewContent called (deprecated, using script-based resume instead)");
+}
 
-  for (const auto& instance : *wallpaper_instances_) {
-    if (instance.webview) {
-      try {
-        // 恢复显示
-        if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
-          ShowWindow(instance.webview_host_hwnd, SW_SHOW);
-        }
-      } catch (const std::exception& e) {
-        Logger::Instance().Error("WallpaperLifecycleManager", 
-          std::string("Exception resuming instance: ") + e.what());
-      }
-    }
-  }
+void WallpaperLifecycleManager::SetMemoryOptimizer(MemoryOptimizer* optimizer) {
+  memory_optimizer_ = optimizer;
+  Logger::Instance().Info("WallpaperLifecycleManager", 
+    "Memory optimizer set");
 }
 
 bool WallpaperLifecycleManager::ValidateSingleInstance(const WallpaperInstance& instance) {
@@ -294,10 +340,28 @@ bool WallpaperLifecycleManager::ValidateSingleInstance(const WallpaperInstance& 
     return false;
   }
 
+  // 检查窗口可见性
+  if (!IsWindowVisible(instance.webview_host_hwnd)) {
+    Logger::Instance().Warning("WallpaperLifecycleManager", 
+      "WebView window not visible for monitor " + std::to_string(instance.monitor_index));
+    return false;
+  }
+
   // 检查 WorkerW
   if (!instance.worker_w_hwnd || !IsWindow(instance.worker_w_hwnd)) {
     Logger::Instance().Warning("WallpaperLifecycleManager", 
       "Invalid worker_w_hwnd for monitor " + std::to_string(instance.monitor_index));
+    return false;
+  }
+
+  // 验证父子关系
+  HWND parent = GetParent(instance.webview_host_hwnd);
+  if (parent != instance.worker_w_hwnd) {
+    Logger::Instance().Warning("WallpaperLifecycleManager", 
+      "Parent window relationship broken for monitor " + std::to_string(instance.monitor_index));
+    Logger::Instance().Debug("WallpaperLifecycleManager", 
+      "Expected parent: " + std::to_string(reinterpret_cast<uintptr_t>(instance.worker_w_hwnd)) + 
+      ", Actual parent: " + std::to_string(reinterpret_cast<uintptr_t>(parent)));
     return false;
   }
 

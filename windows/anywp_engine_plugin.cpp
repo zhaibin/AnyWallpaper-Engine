@@ -242,6 +242,45 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
       this->ExecuteScriptToAllInstances(script);
     });
   });
+
+  // Initialize WallpaperLifecycleManager module (v2.5.0+ Phase 3: Using TRY_CATCH_INIT_MODULE)
+  TRY_CATCH_INIT_MODULE("WallpaperLifecycleManager", {
+    lifecycle_manager_ = std::make_unique<WallpaperLifecycleManager>();
+    
+    // Configure dependencies
+    lifecycle_manager_->SetWallpaperInstances(&wallpaper_instances_);
+    lifecycle_manager_->SetMemoryOptimizer(memory_optimizer_.get());
+    
+    // Configure callbacks
+    lifecycle_manager_->SetStateChangeCallback([this](
+      WallpaperLifecycleManager::WallpaperState old_state, 
+      WallpaperLifecycleManager::WallpaperState new_state, 
+      const std::string& reason) {
+      Logger::Instance().Info("LifecycleManager", 
+        "State changed: " + std::to_string(static_cast<int>(old_state)) + 
+        " -> " + std::to_string(static_cast<int>(new_state)) + 
+        ", reason: " + reason);
+      // Update plugin state
+      if (new_state == WallpaperLifecycleManager::WallpaperState::PAUSED) {
+        power_state_ = PowerState::PAUSED;
+        NotifyPowerStateChange(PowerState::PAUSED);
+      } else if (new_state == WallpaperLifecycleManager::WallpaperState::ACTIVE) {
+        power_state_ = PowerState::ACTIVE;
+        NotifyPowerStateChange(PowerState::ACTIVE);
+      }
+    });
+    
+    lifecycle_manager_->SetWindowValidationCallback([this]() -> bool {
+      // Delegate to plugin's ValidateWallpaperWindows
+      return this->ValidateWallpaperWindows();
+    });
+    
+    lifecycle_manager_->SetConfigurationRestoreCallback([this](const std::string& url, const std::string& log_tag) -> bool {
+      // Delegate to plugin's RestoreWallpaperConfiguration
+      std::string restore_url = url.empty() ? this->default_wallpaper_url_ : url;
+      return this->RestoreWallpaperConfiguration(restore_url, log_tag);
+    });
+  });
   
   // Initialize MouseHookManager module (v2.0+ Phase 5.3: Using TRY_CATCH_INIT_MODULE)
   TRY_CATCH_INIT_MODULE("MouseHookManager", {
@@ -2963,42 +3002,34 @@ void AnyWPEnginePlugin::StopFullscreenDetection() {
 }
 
 // Pause wallpaper - GOAL: Reduce CPU/GPU usage while keeping wallpaper visible
-// v1.4.1+ Phase E: Simplified - delegates to PowerManager
+// v2.5.0+ Phase 3: Delegates to WallpaperLifecycleManager (backward compatible)
 void AnyWPEnginePlugin::PauseWallpaper(const std::string& reason) {
-  // Guard: Avoid duplicate pause
-  if (is_paused_.exchange(true)) {
-    return;  // Already paused
-  }
-
-  // Log current power state
-  std::string power_state_str = "UNKNOWN";
-  
-  if (power_manager_) {
-    auto state = power_manager_->GetCurrentState();
-    switch (state) {
-      case PowerManager::PowerState::ACTIVE: power_state_str = "ACTIVE"; break;
-      case PowerManager::PowerState::IDLE: power_state_str = "IDLE"; break;
-      case PowerManager::PowerState::SCREEN_OFF: power_state_str = "SCREEN_OFF"; break;
-      case PowerManager::PowerState::LOCKED: power_state_str = "LOCKED"; break;
-      case PowerManager::PowerState::FULLSCREEN_APP: power_state_str = "FULLSCREEN_APP"; break;
-      case PowerManager::PowerState::PAUSED: power_state_str = "PAUSED"; break;
+  // v2.5.0+ Delegate to WallpaperLifecycleManager
+  if (lifecycle_manager_) {
+    lifecycle_manager_->PauseWallpaper(reason);
+  } else {
+    // Fallback: Legacy implementation (should not reach here in normal operation)
+    Logger::Instance().Warning("PowerSaving", "WallpaperLifecycleManager not available, using legacy pause");
+    
+    // Guard: Avoid duplicate pause
+    if (is_paused_.exchange(true)) {
+      return;  // Already paused
     }
-  }
 
-  Logger::Instance().Info("PowerSaving", "Pausing wallpaper, state: " + power_state_str);
-  Logger::Instance().Info("PowerSaving", "Reason: " + reason);
-  
-  // Execute pause scripts for all scenarios (fullscreen, lock screen, etc.)
-  if (power_manager_) {
-    power_manager_->ExecutePauseScripts([this](const std::wstring& script) {
-      ExecuteScriptToAllInstances(script);
-    });
+    Logger::Instance().Info("PowerSaving", "Pausing wallpaper (legacy), reason: " + reason);
+    
+    // Execute pause scripts for all scenarios
+    if (power_manager_) {
+      power_manager_->ExecutePauseScripts([this](const std::wstring& script) {
+        ExecuteScriptToAllInstances(script);
+      });
+    }
+    
+    // Light memory trim
+    SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
+    
+    Logger::Instance().Info("PowerSaving", "Wallpaper paused (legacy) - last frame frozen");
   }
-  
-  // Light memory trim
-  SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
-  
-  Logger::Instance().Info("PowerSaving", "Wallpaper paused - last frame frozen");
 }
 
 // v1.4.1+ Phase G: Validate wallpaper windows state
@@ -3219,58 +3250,48 @@ bool AnyWPEnginePlugin::RestoreWallpaperConfiguration(const std::string& url, co
 }
 
 // Resume wallpaper - Restore animations and rendering
-// v1.4.1+ Phase G: Simplified using helper methods
+// v2.5.0+ Phase 3: Delegates to WallpaperLifecycleManager (backward compatible)
 void AnyWPEnginePlugin::ResumeWallpaper(const std::string& reason, bool force_reinit) {
-  // Guard: Avoid duplicate resume
-  if (!is_paused_.exchange(false)) {
-    return;  // Already resumed
-  }
-
-  // Log current power state
-  std::string power_state_str = "UNKNOWN";
-  
-  if (power_manager_) {
-    auto state = power_manager_->GetCurrentState();
-    switch (state) {
-      case PowerManager::PowerState::ACTIVE: power_state_str = "ACTIVE"; break;
-      case PowerManager::PowerState::IDLE: power_state_str = "IDLE"; break;
-      case PowerManager::PowerState::SCREEN_OFF: power_state_str = "SCREEN_OFF"; break;
-      case PowerManager::PowerState::LOCKED: power_state_str = "LOCKED"; break;
-      case PowerManager::PowerState::FULLSCREEN_APP: power_state_str = "FULLSCREEN_APP"; break;
-      case PowerManager::PowerState::PAUSED: power_state_str = "PAUSED"; break;
+  // v2.5.0+ Delegate to WallpaperLifecycleManager
+  if (lifecycle_manager_) {
+    lifecycle_manager_->ResumeWallpaper(reason, force_reinit);
+  } else {
+    // Fallback: Legacy implementation (should not reach here in normal operation)
+    Logger::Instance().Warning("PowerSaving", "WallpaperLifecycleManager not available, using legacy resume");
+    
+    // Guard: Avoid duplicate resume
+    if (!is_paused_.exchange(false)) {
+      return;  // Already resumed
     }
-  }
 
-  Logger::Instance().Info("PowerSaving", "Resuming wallpaper, state: " + power_state_str);
-  Logger::Instance().Info("PowerSaving", "Reason: " + reason);
-  if (force_reinit) {
-    Logger::Instance().Info("PowerSaving", "Force reinitialize: YES (session switch)");
-  }
-  
-  // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
-  bool need_reinitialize = force_reinit;  // Force if requested
-  
-  // Skip validation if force reinit requested
-  if (!force_reinit) {
-    need_reinitialize = !ValidateWallpaperWindows();
-  }
-  
-  // If window is lost, try to restore it
-  if (need_reinitialize) {
-    if (RestoreWallpaperConfiguration(default_wallpaper_url_)) {
-      return;  // Skip normal resume (already restored and showing)
+    Logger::Instance().Info("PowerSaving", "Resuming wallpaper (legacy), reason: " + reason);
+    if (force_reinit) {
+      Logger::Instance().Info("PowerSaving", "Force reinitialize: YES (session switch)");
     }
-    return;  // Failed to restore, cannot continue
+    
+    // CRITICAL FIX: Verify and restore window if necessary
+    bool need_reinitialize = force_reinit;
+    
+    if (!force_reinit) {
+      need_reinitialize = !ValidateWallpaperWindows();
+    }
+    
+    if (need_reinitialize) {
+      if (RestoreWallpaperConfiguration(default_wallpaper_url_)) {
+        return;
+      }
+      return;
+    }
+    
+    // Execute resume scripts
+    if (power_manager_) {
+      power_manager_->ExecuteResumeScripts([this](const std::wstring& script) {
+        ExecuteScriptToAllInstances(script);
+      });
+    }
+    
+    Logger::Instance().Info("PowerSaving", "Wallpaper resumed (legacy) - animations restarted");
   }
-  
-  // Execute resume scripts for all scenarios (fullscreen, lock screen, etc.)
-  if (power_manager_) {
-    power_manager_->ExecuteResumeScripts([this](const std::wstring& script) {
-      ExecuteScriptToAllInstances(script);
-    });
-  }
-  
-  Logger::Instance().Info("PowerSaving", "Wallpaper resumed - animations restarted");
 }
 
 // Optimize memory usage (delegated to PowerManager)
