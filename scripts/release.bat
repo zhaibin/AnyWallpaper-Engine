@@ -207,7 +207,8 @@ xcopy /E /I /Y "%PROJECT_ROOT%\windows\utils" "%SOURCE_DIR%\windows\utils"
 xcopy /E /I /Y "%PROJECT_ROOT%\windows\test" "%SOURCE_DIR%\windows\test"
 
 call :PrintStep "Copying headers to source package..."
-copy "%PROJECT_ROOT%\windows\include\anywp_engine\any_w_p_engine_plugin.h" "%SOURCE_DIR%\include\anywp_engine\"
+REM Copy the wrapper header from precompiled package (generated during precompiled build)
+copy "%PRECOMPILED_DIR%\include\anywp_engine\any_w_p_engine_plugin.h" "%SOURCE_DIR%\include\anywp_engine\"
 
 call :PrintStep "Copying SDK to source package..."
 REM Copy SDK source tree (v2.2.0+: top-level sdk/ directory)
