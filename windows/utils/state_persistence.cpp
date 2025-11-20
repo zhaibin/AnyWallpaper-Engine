@@ -80,7 +80,7 @@ bool StatePersistence::SaveState(const std::string& key, const std::string& valu
     bool success = SaveStateFile(state_cache_);
     
     if (success) {
-      Logger::Instance().Info("StatePersistence", "Saved to file (" + application_name_ + "): " + key + " = " + value);
+      Logger::Instance().Debug("StatePersistence", "Saved to file (" + application_name_ + "): " + key + " = " + value);
     } else {
       Logger::Instance().Error("StatePersistence", "Failed to save state to file");
     }
@@ -98,7 +98,7 @@ std::string StatePersistence::LoadState(const std::string& key) {
   // Check cache first
   auto it = state_cache_.find(key);
   if (it != state_cache_.end()) {
-    Logger::Instance().Info("StatePersistence", "Loaded from cache (" + application_name_ + "): " + key + " = " + it->second);
+    Logger::Instance().Debug("StatePersistence", "Loaded from cache (" + application_name_ + "): " + key + " = " + it->second);
     return it->second;
   }
   
@@ -114,11 +114,11 @@ std::string StatePersistence::LoadState(const std::string& key) {
   // Check cache again after loading
   it = state_cache_.find(key);
   if (it != state_cache_.end()) {
-    Logger::Instance().Info("StatePersistence", "Loaded from file (" + application_name_ + "): " + key + " = " + it->second);
+    Logger::Instance().Debug("StatePersistence", "Loaded from file (" + application_name_ + "): " + key + " = " + it->second);
     return it->second;
   }
   
-  Logger::Instance().Info("StatePersistence", "Key not found (" + application_name_ + "): " + key);
+  Logger::Instance().Debug("StatePersistence", "Key not found (" + application_name_ + "): " + key);
   return "";
 }
 
@@ -338,7 +338,7 @@ std::map<std::string, std::string> StatePersistence::LoadStateFile() {
     pos = value_end + 1;
   }
   
-  Logger::Instance().Info("StatePersistence", "Loaded " + std::to_string(state.size()) + " entries from file");
+  Logger::Instance().Debug("StatePersistence", "Loaded " + std::to_string(state.size()) + " entries from file");
   return state;
 }
 
@@ -376,7 +376,7 @@ bool StatePersistence::SaveStateFile(const std::map<std::string, std::string>& s
   file << "\n}\n";
   file.close();
   
-  Logger::Instance().Info("StatePersistence", "Saved " + std::to_string(state.size()) + " entries to file: " + state_file);
+  Logger::Instance().Debug("StatePersistence", "Saved " + std::to_string(state.size()) + " entries to file: " + state_file);
   return true;
 }
 
@@ -541,7 +541,7 @@ std::map<std::string, std::string> LoadStateFileForApp(const std::string& app_na
     pos = value_end + 1;
   }
   
-  Logger::Instance().Info("StatePersistence", "Loaded " + std::to_string(state.size()) + " entries from file");
+  Logger::Instance().Debug("StatePersistence", "Loaded " + std::to_string(state.size()) + " entries from file");
   return state;
 }
 
@@ -579,7 +579,7 @@ bool SaveStateFileForApp(const std::map<std::string, std::string>& state, const 
   file << "\n}\n";
   file.close();
   
-  Logger::Instance().Info("StatePersistence", "Saved " + std::to_string(state.size()) + " entries to file: " + state_file);
+  Logger::Instance().Debug("StatePersistence", "Saved " + std::to_string(state.size()) + " entries to file: " + state_file);
   return true;
 }
 
