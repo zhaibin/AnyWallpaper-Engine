@@ -17,6 +17,20 @@ if (-not $Version -or $Version.Trim().Length -eq 0) {
 
 $errors = @()
 
+# Check Web SDK package.json exists and is valid (version can be independent)
+$sdkPackagePath = Join-Path $ProjectRoot 'windows\sdk\package.json'
+if (Test-Path -Path $sdkPackagePath) {
+    try {
+        $sdkPkg = Get-Content -Path $sdkPackagePath -Raw | ConvertFrom-Json
+        $sdkVersion = $sdkPkg.version
+        Write-Host "  [INFO] Web SDK version: $sdkVersion (independent from plugin version)"
+    } catch {
+        $errors += "Failed to parse windows/sdk/package.json: $($_.Exception.Message)"
+    }
+} else {
+    $errors += "windows/sdk/package.json file is missing"
+}
+
 # Check CHANGELOG
 $changelogPath = Join-Path $ProjectRoot 'CHANGELOG_CN.md'
 try {

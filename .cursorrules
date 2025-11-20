@@ -111,33 +111,85 @@ release/                # 发布包
 ## 发版流程
 
 ### Step 1: 版本号更新
-**⚠️ 版本号统一管理（v2.3.0+）**：
-- 版本号**仅需在** `pubspec.yaml` 中更新
-- C++ 代码中的版本号由 CMake 自动从 `pubspec.yaml` 生成到 `windows/version.h`
-- **不要手动修改** `windows/anywp_engine_plugin.cpp` 中的版本常量
 
-**必须更新的文件**：
-- [ ] `pubspec.yaml`: `version: x.x.x` ⭐ **唯一手动修改的版本号**
-- [ ] `CHANGELOG_CN.md`: 添加新版本条目
+**⚠️ 双版本号管理（v2.4.1+）**：
+本项目包含两个独立产品，各有独立版本号：
+- **Flutter Plugin (引擎)**: 版本号在 `pubspec.yaml`
+- **Web SDK (JavaScript)**: 版本号在 `windows/sdk/package.json`
+
+**版本号更新规则**：
+- 两个版本号**可以不同**，根据各自的更新内容独立递增
+- 如果只更新引擎功能（C++/Dart），只需更新 `pubspec.yaml`
+- 如果只更新 Web SDK 功能（TypeScript/JS），只需更新 `windows/sdk/package.json`
+- 如果两者都更新，需要分别更新两个版本号
+
+**Flutter Plugin 版本更新**：
+- [ ] `pubspec.yaml`: `version: x.x.x` ⭐ **引擎版本唯一来源**
+- [ ] `CHANGELOG_CN.md`: 添加新版本条目（标注 Engine vX.X.X）
 - [ ] `.cursorrules` 底部版本号
 - [ ] `docs/PRECOMPILED_DLL_INTEGRATION.md`: 更新示例版本号
 
+**Web SDK 版本更新**：
+- [ ] `windows/sdk/package.json`: `version: x.x.x` ⭐ **SDK 版本唯一来源**
+- [ ] `CHANGELOG_CN.md`: 添加新版本条目（标注 SDK vX.X.X）
+
 **自动生成（无需手动修改）**：
-- ✅ `windows/version.h` - 由 CMake 自动生成
-- ✅ C++ 代码中的 `kPluginVersion` 和 `kSDKVersion` - 从 `version.h` 引用
+- ✅ `windows/version.h` - 由 CMake 从 `pubspec.yaml` 自动生成
+- ✅ C++ 代码中的 `kPluginVersion` - 从 `version.h` 引用
 
-### Step 2: 文档更新
-**新增 API 必须更新**:
-- [ ] `lib/anywp_engine.dart` - 文档注释
-- [ ] `README.md` - 示例代码
-- [ ] `docs/DEVELOPER_API_REFERENCE.md` - API 章节
-- [ ] `docs/FOR_FLUTTER_DEVELOPERS.md` - API 列表
+### Step 2: 文档更新（⚠️ 重要：保持一致性）
 
-**新增功能必须更新**:
-- [ ] `README.md` - Features 章节
-- [ ] `CHANGELOG_CN.md` - 更新日志条目
+**Flutter 开发者文档**（引擎更新时必须检查）:
+- [ ] `lib/anywp_engine.dart` - 公共 API 文档注释
+- [ ] `docs/FOR_FLUTTER_DEVELOPERS.md` - API 列表和使用说明
+- [ ] `docs/DEVELOPER_API_REFERENCE.md` - 完整 API 参考
+- [ ] `docs/PRECOMPILED_DLL_INTEGRATION.md` - 集成指南（包含版本号）
+- [ ] `README.md` - Features 和 Usage 章节
 
-### Step 3: 编译测试
+**Web 开发者文档**（SDK 更新时必须检查）:
+- [ ] `docs/WEB_DEVELOPER_GUIDE_CN.md` - 中文 Web 开发指南
+- [ ] `docs/WEB_DEVELOPER_GUIDE.md` - 英文 Web 开发指南
+- [ ] `docs/API_USAGE_EXAMPLES.md` - API 使用示例
+- [ ] `windows/sdk/` TypeScript 源码注释
+
+**通用文档**:
+- [ ] `README.md` - 更新 Features 和使用示例
+- [ ] `CHANGELOG_CN.md` - 添加更新日志（区分 Engine 和 SDK 版本）
+
+**文档一致性要求**:
+- API 文档必须与代码实现保持同步
+- 集成文档中的版本号必须正确
+- 中英文文档内容应保持一致
+- 示例代码必须可运行
+
+### Step 3: 发版前全面检查（⚠️ 必须执行）
+```bash
+.\scripts\pre_release_check.bat
+```
+
+**检查项目**（13项全面检查）:
+- [x] 引擎版本一致性（pubspec.yaml, version.h, CHANGELOG, .cursorrules）
+- [x] Web SDK 版本验证（独立版本号）
+- [x] **文档一致性检查**（Flutter 和 Web 开发者文档）
+- [x] Windows version.h 文件
+- [x] CHANGELOG_CN.md 版本条目
+- [x] .cursorrules 版本号
+- [x] Flutter Lint 检查
+- [x] WebView2 SDK 就绪
+- [x] Web SDK 已构建
+- [x] 文档文件完整性
+- [x] Git 工作区状态
+- [x] Release 目录冲突检查
+- [x] Web SDK 单元测试
+
+**新增检查项**（v2.4.1+）:
+- ✅ **文档一致性自动检查**: 验证 Flutter 和 Web 开发者文档是否存在
+- ✅ **双版本号显示**: 明确显示 Engine 和 SDK 的独立版本号
+- ✅ **文档更新提醒**: 自动列出需要检查的文档清单
+
+**如果检查失败**: 脚本会阻止发版，必须修复所有错误后才能继续
+
+### Step 4: 编译测试
 ```bash
 cd example
 flutter clean
@@ -153,7 +205,7 @@ flutter build windows --release
 - [ ] 功能测试通过（至少 2 个测试页面）
 - [ ] 验证 .lib 文件已生成
 
-### Step 4: 构建发布包
+### Step 5: 构建发布包
 ```bash
 .\scripts\release.bat
 ```
@@ -168,12 +220,17 @@ flutter build windows --release
 **构建后检查**:
 - [ ] 构建成功（ERROR_COUNT = 0）
 - [ ] DLL/LIB 文件生成
-- [ ] 生成 3 个 ZIP 文件：
-  - `anywp_engine_v{版本号}_precompiled.zip` - 预编译包（DLL + LIB + C API 头文件）
-  - `anywp_engine_v{版本号}_source.zip` - 完整源码包
-  - `anywp_web_sdk_v{版本号}.zip` - Web SDK 包
-- [ ] `release/GITHUB_RELEASE_NOTES_v{版本号}.md` 自动生成
-- [ ] `release/commit_msg_v{版本号}.txt` 自动生成
+- [ ] 生成 3 个 ZIP 文件（⚠️ 注意版本号）：
+  - `anywp_engine_v{引擎版本号}_precompiled.zip` - 预编译包（使用引擎版本）
+  - `anywp_engine_v{引擎版本号}_source.zip` - 完整源码包（使用引擎版本）
+  - `anywp_web_sdk_v{SDK版本号}.zip` - Web SDK 包（使用 SDK 版本）
+- [ ] `release/GITHUB_RELEASE_NOTES_v{引擎版本号}.md` 自动生成
+- [ ] `release/commit_msg_v{引擎版本号}.txt` 自动生成
+
+**版本号说明**:
+- **引擎包**（precompiled/source）使用 `pubspec.yaml` 中的版本号
+- **Web SDK 包**使用 `windows/sdk/package.json` 中的版本号
+- 发布说明主要基于引擎版本，但会标注 SDK 版本
 
 **⚠️ 预编译包验证**（必须全部存在）:
 - `bin/anywp_engine_plugin.dll` + `bin/WebView2Loader.dll`
@@ -197,7 +254,7 @@ flutter build windows --release
 
 **验证命令**: `.\scripts\verify_precompiled.bat {版本号}`（自动验证预编译包、源码包与 Web SDK 包）
 
-### Step 5: Git 提交与推送
+### Step 6: Git 提交与推送
 
 **方式一：自动化脚本（推荐）**
 ```bash
@@ -225,20 +282,41 @@ git push origin v{版本号}
 - ✅ 自动创建并推送 Tag
 - ✅ 支持 `--no-push` 参数（仅本地提交，不推送）
 
-### Step 6: GitHub Release
+### Step 7: GitHub Release
+
+**⚠️ 双版本号发布策略**:
+- **Release Tag**: 使用引擎版本号 `v{引擎版本号}`
+- **Release Title**: `AnyWP Engine v{引擎版本号}`（主版本）
+- **Release Notes**: 在描述中明确标注 SDK 版本号
+
+**发布步骤**:
 1. 访问: `https://github.com/zhaibin/AnyWallpaper-Engine/releases/new`
-2. Tag: `v{版本号}` | Title: `AnyWP Engine v{版本号}`
-3. Description: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
+2. Tag: `v{引擎版本号}` | Title: `AnyWP Engine v{引擎版本号}`
+3. Description: 复制 `release/GITHUB_RELEASE_NOTES_v{引擎版本号}.md`
+   - ⚠️ 在顶部添加版本信息：
+   ```markdown
+   **Flutter Plugin Version**: v{引擎版本号}
+   **Web SDK Version**: v{SDK版本号}
+   ```
 4. 上传 3 个 ZIP 文件：
-   - `anywp_engine_v{版本号}_precompiled.zip` - **推荐给 Flutter 开发者**
-   - `anywp_engine_v{版本号}_source.zip` - 完整源码（高级用户）
-   - `anywp_web_sdk_v{版本号}.zip` - Web 壁纸开发者
+   - `anywp_engine_v{引擎版本号}_precompiled.zip` - **推荐给 Flutter 开发者**
+   - `anywp_engine_v{引擎版本号}_source.zip` - 完整源码（高级用户）
+   - `anywp_web_sdk_v{SDK版本号}.zip` - **Web 壁纸开发者**（注意使用 SDK 版本号）
 5. 勾选 "Set as the latest release"
 
 **包说明**：
 - **Precompiled**: 最简单的集成方式，只包含必要的 DLL、LIB 和纯 C API 头文件，无需 WebView2 开发环境
 - **Source**: 包含完整源码、模块、工具类和 WebView2 依赖，适合需要自定义修改的开发者
-- **Web SDK**: 独立的 JavaScript SDK，供 HTML 壁纸开发者使用
+- **Web SDK**: 独立的 JavaScript SDK，供 HTML 壁纸开发者使用（独立版本号）
+
+**版本号示例**:
+```
+Release: v2.4.1
+Files:
+  - anywp_engine_v2.4.1_precompiled.zip   (引擎)
+  - anywp_engine_v2.4.1_source.zip        (引擎)
+  - anywp_web_sdk_v2.4.0.zip              (SDK - 可能不同版本)
+```
 
 ---
 
@@ -262,6 +340,54 @@ git push origin v{版本号}
 2. **代码可读性** > 简洁性
 3. **错误处理完整性** > 功能丰富度
 4. **测试覆盖率** > 开发速度
+
+---
+
+## CHANGELOG 双版本号格式
+
+**版本标注规则**:
+- 如果只更新引擎，条目标题使用 `[引擎版本号]`
+- 如果只更新 SDK，条目标题使用 `[SDK 版本号]` 并标注 `Web SDK`
+- 如果同时更新，创建两个条目
+
+**示例 1：仅引擎更新**
+```markdown
+## [2.5.0] - 2025-11-20
+
+### 新增功能
+- 添加自动恢复机制
+- 优化 WorkerW 创建流程
+
+### 修复
+- 修复 Explorer 重启后壁纸丢失问题
+```
+
+**示例 2：仅 SDK 更新**
+```markdown
+## [2.4.2] - 2025-11-20 (Web SDK)
+
+### SDK 更新
+- 新增 `setVolume()` API
+- 改进错误处理机制
+- 修复拖拽事件冲突
+
+**注意**: 此版本仅更新 Web SDK，引擎版本保持 v2.4.1
+```
+
+**示例 3：同时更新（推荐分开两个条目）**
+```markdown
+## [2.5.0] - 2025-11-20
+
+### 引擎更新 (Engine v2.5.0)
+- 添加音频控制支持
+- 新增 `setVolume` Dart API
+
+### SDK 更新 (SDK v2.5.0)
+- 新增 `AnyWP.setVolume()` JavaScript API
+- 与引擎音频控制配合使用
+
+**版本信息**: Engine v2.5.0 + SDK v2.5.0
+```
 
 ---
 
