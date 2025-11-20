@@ -473,18 +473,18 @@
                 const id = box.dataset.id;
                 
                 window.AnyWP.makeDraggable(box, {
-                    onDragStart: function() {
+                    onDragStart: function(pos) {
                         box.classList.add('dragging');
-                        addLog('drag-log', `开始拖拽: ${id}`, 'info');
+                        addLog('drag-log', `开始拖拽: ${id} at (${Math.round(pos.x)}, ${Math.round(pos.y)})`, 'info');
                         updateStat('drags');
                         updateStat('events');
                     },
-                    onDragEnd: function(x, y) {
+                    onDragEnd: function(pos) {
                         box.classList.remove('dragging');
-                        addLog('drag-log', `拖拽结束: ${id} at (${x}, ${y})`, 'success');
+                        addLog('drag-log', `拖拽结束: ${id} at (${Math.round(pos.x)}, ${Math.round(pos.y)})`, 'success');
                         
                         // 保存位置
-                        window.AnyWP.saveState(`pos_${id}`, JSON.stringify({x, y}));
+                        window.AnyWP.saveState(`pos_${id}`, JSON.stringify({x: pos.x, y: pos.y}));
                     }
                 });
                 
