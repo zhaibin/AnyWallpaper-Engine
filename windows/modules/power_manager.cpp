@@ -1,5 +1,5 @@
 #include "power_manager.h"
-#include <iostream>
+#include "../utils/logger.h"
 #include <psapi.h>
 #include <tlhelp32.h>
 
@@ -37,17 +37,17 @@ void PowerManager::Enable(bool enabled) {
   
   try {
     if (enabled) {
-      std::cout << "[AnyWP] [PowerManager] Enabling power management" << std::endl;
+      Logger::Instance().Info("PowerManager", "Enabling power management");
       StartFullscreenDetection();
     } else {
-      std::cout << "[AnyWP] [PowerManager] Disabling power management" << std::endl;
+      Logger::Instance().Info("PowerManager", "Disabling power management");
       StopFullscreenDetection();
     }
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [PowerManager] ERROR: Exception in Enable: " << e.what() << std::endl;
+    Logger::Instance().Error("PowerManager", "Exception in Enable: " + std::string(e.what()));
     enabled_ = !enabled;  // Rollback state
   } catch (...) {
-    std::cout << "[AnyWP] [PowerManager] ERROR: Unknown exception in Enable" << std::endl;
+    Logger::Instance().Error("PowerManager", "Unknown exception in Enable");
     enabled_ = !enabled;  // Rollback state
   }
 }
@@ -61,13 +61,13 @@ PowerManager::PowerState PowerManager::GetCurrentState() const {
 }
 
 void PowerManager::SetSessionLocked(bool locked) {
-  std::cout << "[AnyWP] [PowerManager] Session lock state changed: " << locked << std::endl;
+  Logger::Instance().Info("PowerManager", "Session lock state changed: " + std::string(locked ? "true" : "false"));
   is_session_locked_.store(locked);
   UpdatePowerState();
 }
 
 void PowerManager::SetRemoteSession(bool remote) {
-  std::cout << "[AnyWP] [PowerManager] Remote session state changed: " << remote << std::endl;
+  Logger::Instance().Info("PowerManager", "Remote session state changed: " + std::string(remote ? "true" : "false"));
   is_remote_session_.store(remote);
   UpdatePowerState();
 }
@@ -89,18 +89,16 @@ void PowerManager::UpdatePowerState() {
       last_state_ = current_state_;
       current_state_ = new_state;
       
-      std::cout << "[AnyWP] [PowerManager] State changed: "
-                << static_cast<int>(last_state_) << " -> "
-                << static_cast<int>(current_state_) << std::endl;
+      Logger::Instance().Info("PowerManager", 
+        "State changed: " + std::to_string(static_cast<int>(last_state_)) + " -> " + std::to_string(static_cast<int>(current_state_)));
       
       if (on_state_changed_) {
         try {
           on_state_changed_(last_state_, current_state_);
         } catch (const std::exception& e) {
-          std::cout << "[AnyWP] [PowerManager] ERROR: Exception in state change callback: " 
-                    << e.what() << std::endl;
+          Logger::Instance().Error("PowerManager", "Exception in state change callback: " + std::string(e.what()));
         } catch (...) {
-          std::cout << "[AnyWP] [PowerManager] ERROR: Unknown exception in state change callback" << std::endl;
+          Logger::Instance().Error("PowerManager", "Unknown exception in state change callback");
         }
       }
       
@@ -130,15 +128,14 @@ void PowerManager::UpdatePowerState() {
       }
     }
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [PowerManager] ERROR: Exception in UpdatePowerState: " 
-              << e.what() << std::endl;
+    Logger::Instance().Error("PowerManager", "Exception in UpdatePowerState: " + std::string(e.what()));
   } catch (...) {
-    std::cout << "[AnyWP] [PowerManager] ERROR: Unknown exception in UpdatePowerState" << std::endl;
+    Logger::Instance().Error("PowerManager", "Unknown exception in UpdatePowerState");
   }
 }
 
 void PowerManager::Pause(const std::string& reason) {
-  std::cout << "[AnyWP] [PowerManager] Pause requested: " << reason << std::endl;
+  Logger::Instance().Info("PowerManager", "Pause requested: " + reason);
   
   if (on_pause_) {
     on_pause_(reason);
@@ -146,8 +143,8 @@ void PowerManager::Pause(const std::string& reason) {
 }
 
 void PowerManager::Resume(const std::string& reason, bool force_reinit) {
-  std::cout << "[AnyWP] [PowerManager] Resume requested: " << reason 
-            << " (force_reinit=" << force_reinit << ")" << std::endl;
+  Logger::Instance().Info("PowerManager", 
+    "Resume requested: " + reason + " (force_reinit=" + std::string(force_reinit ? "true" : "false") + ")");
   
   if (on_resume_) {
     on_resume_(reason);
@@ -156,20 +153,20 @@ void PowerManager::Resume(const std::string& reason, bool force_reinit) {
 
 void PowerManager::SetIdleTimeout(DWORD timeout_ms) {
   idle_timeout_ms_ = timeout_ms;
-  std::cout << "[AnyWP] [PowerManager] Idle timeout set to " 
-            << (timeout_ms / 1000) << " seconds" << std::endl;
+  Logger::Instance().Info("PowerManager", 
+    "Idle timeout set to " + std::to_string(timeout_ms / 1000) + " seconds");
 }
 
 void PowerManager::SetMemoryThreshold(size_t mb) {
   memory_threshold_mb_ = mb;
-  std::cout << "[AnyWP] [PowerManager] Memory threshold set to " 
-            << mb << " MB" << std::endl;
+  Logger::Instance().Info("PowerManager", 
+    "Memory threshold set to " + std::to_string(mb) + " MB");
 }
 
 void PowerManager::SetCleanupInterval(int minutes) {
   cleanup_interval_minutes_ = minutes;
-  std::cout << "[AnyWP] [PowerManager] Cleanup interval set to " 
-            << minutes << " minutes" << std::endl;
+  Logger::Instance().Info("PowerManager", 
+    "Cleanup interval set to " + std::to_string(minutes) + " minutes");
 }
 
 void PowerManager::SetOnStateChanged(StateChangeCallback callback) {
@@ -222,14 +219,14 @@ size_t PowerManager::GetCurrentMemoryUsage() {
 }
 
 void PowerManager::OptimizeMemoryUsage() {
-  std::cout << "[AnyWP] [PowerManager] Optimizing memory usage..." << std::endl;
+  Logger::Instance().Info("PowerManager", "Optimizing memory usage...");
   
   // Trigger garbage collection (Windows will reclaim unused pages)
   SetProcessWorkingSetSize(GetCurrentProcess(), 
                           static_cast<SIZE_T>(-1), 
                           static_cast<SIZE_T>(-1));
   
-  std::cout << "[AnyWP] [PowerManager] Memory optimization complete" << std::endl;
+  Logger::Instance().Info("PowerManager", "Memory optimization complete");
 }
 
 bool PowerManager::IsFullscreenAppActive() {
@@ -277,8 +274,18 @@ bool PowerManager::IsFullscreenAppActive() {
   // Log fullscreen app info
   wchar_t window_title[256] = {0};
   GetWindowTextW(foreground, window_title, 256);
-  std::wcout << L"[AnyWP] [PowerManager] Fullscreen app detected: \"" 
-             << window_title << L"\" (Class: " << class_name << L")" << std::endl;
+  
+  // Convert wchar_t to std::string for logging
+  int size_needed = WideCharToMultiByte(CP_UTF8, 0, window_title, -1, nullptr, 0, nullptr, nullptr);
+  std::string title_str(size_needed - 1, 0);
+  WideCharToMultiByte(CP_UTF8, 0, window_title, -1, &title_str[0], size_needed, nullptr, nullptr);
+  
+  size_needed = WideCharToMultiByte(CP_UTF8, 0, class_name, -1, nullptr, 0, nullptr, nullptr);
+  std::string class_str(size_needed - 1, 0);
+  WideCharToMultiByte(CP_UTF8, 0, class_name, -1, &class_str[0], size_needed, nullptr, nullptr);
+  
+  Logger::Instance().Info("PowerManager", 
+    "Fullscreen app detected: \"" + title_str + "\" (Class: " + class_str + ")");
   
   return true;
 }
@@ -291,14 +298,14 @@ void PowerManager::StartFullscreenDetection() {
   stop_fullscreen_detection_ = false;
   
   fullscreen_detection_thread_ = std::thread([this]() {
-    std::cout << "[AnyWP] [PowerManager] Fullscreen detection thread started" << std::endl;
+    Logger::Instance().Info("PowerManager", "Fullscreen detection thread started");
     
     while (!stop_fullscreen_detection_) {
       UpdatePowerState();
       std::this_thread::sleep_for(std::chrono::seconds(2));
     }
     
-    std::cout << "[AnyWP] [PowerManager] Fullscreen detection thread stopped" << std::endl;
+    Logger::Instance().Info("PowerManager", "Fullscreen detection thread stopped");
   });
 }
 
@@ -322,10 +329,10 @@ LRESULT CALLBACK PowerManager::PowerSavingWndProc(HWND hwnd, UINT message, WPARA
         // Handle power state changes
         switch (wParam) {
           case PBT_APMSUSPEND:
-            std::cout << "[AnyWP] [PowerManager] System suspending" << std::endl;
+            Logger::Instance().Info("PowerManager", "System suspending");
             break;
           case PBT_APMRESUMESUSPEND:
-            std::cout << "[AnyWP] [PowerManager] System resuming from suspend" << std::endl;
+            Logger::Instance().Info("PowerManager", "System resuming from suspend");
             break;
         }
       }
@@ -337,7 +344,7 @@ LRESULT CALLBACK PowerManager::PowerSavingWndProc(HWND hwnd, UINT message, WPARA
 
 // v1.4.1+ Phase E: Script execution helpers
 void PowerManager::ExecutePauseScripts(ScriptExecutor executor) {
-  std::cout << "[AnyWP] [PowerManager] Executing pause scripts..." << std::endl;
+  Logger::Instance().Info("PowerManager", "Executing pause scripts...");
   
   // 1. Freeze animations and pause media
   std::wstring freeze_script = LR"(
@@ -414,11 +421,11 @@ void PowerManager::ExecutePauseScripts(ScriptExecutor executor) {
   )";
   
   executor(notify_pause);
-  std::cout << "[AnyWP] [PowerManager] Pause scripts executed" << std::endl;
+  Logger::Instance().Info("PowerManager", "Pause scripts executed");
 }
 
 void PowerManager::ExecuteResumeScripts(ScriptExecutor executor) {
-  std::cout << "[AnyWP] [PowerManager] Executing resume scripts..." << std::endl;
+  Logger::Instance().Info("PowerManager", "Executing resume scripts...");
   
   // 1. Unfreeze animations and resume media
   std::wstring unfreeze_script = LR"(
@@ -482,7 +489,7 @@ void PowerManager::ExecuteResumeScripts(ScriptExecutor executor) {
   )";
   
   executor(notify_resume);
-  std::cout << "[AnyWP] [PowerManager] Resume scripts executed" << std::endl;
+  Logger::Instance().Info("PowerManager", "Resume scripts executed");
 }
 
 }  // namespace anywp_engine

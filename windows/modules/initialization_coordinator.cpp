@@ -75,10 +75,10 @@ InitializationCoordinator::Initialize(const InitConfig& config) {
   
   // Step 6: v2.1.10+ Fix - Diagnose window visibility after initialization
   if (window_manager_) {
-    std::cout << "[AnyWP] [InitCoordinator] Running window visibility diagnosis..." << std::endl;
+    Logger::Instance().Info("InitCoordinator", "Running window visibility diagnosis...");
     bool is_visible = window_manager_->DiagnoseWindowVisibility(result.host_window, result.worker_w_window);
     if (!is_visible) {
-      std::cout << "[AnyWP] [InitCoordinator] WARNING: Window visibility diagnosis failed, attempting fixes..." << std::endl;
+      Logger::Instance().Warning("InitCoordinator", "Window visibility diagnosis failed, attempting fixes...");
       
       // Attempt to fix visibility issues
       ShowWindow(result.host_window, SW_SHOW);

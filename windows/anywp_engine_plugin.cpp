@@ -104,7 +104,16 @@ void AnyWPEnginePlugin::RegisterWithRegistrar(
 AnyWPEnginePlugin::AnyWPEnginePlugin() {
   BENCHMARK_SCOPE("AnyWPEnginePlugin::Constructor");
   
-  Logger::Instance().Info("Plugin", "Plugin initialized");
+  // Enable file logging (Debug: console+file, Release: file only)
+  wchar_t temp_path[MAX_PATH];
+  if (GetTempPathW(MAX_PATH, temp_path) > 0) {
+    std::wstring ws_path(temp_path);
+    std::string log_path(ws_path.begin(), ws_path.end());
+    log_path += "AnyWPEngine.log";
+    Logger::Instance().EnableFileLogging(log_path);
+  }
+  
+  Logger::Instance().Info("Plugin", "Plugin initialized (v" + std::string(kPluginVersion) + ")");
   
   // Initialize permission manager with default policy
   PermissionManager::Instance().SetPolicy(PermissionPolicy::CreateDefault());

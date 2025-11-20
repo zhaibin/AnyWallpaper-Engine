@@ -1,5 +1,4 @@
 #include "mouse_hook_manager.h"
-#include <iostream>
 #include "../anywp_engine_plugin.h"
 #include "../utils/logger.h"
 
@@ -25,7 +24,7 @@ bool MouseHookManager::Install() {
   }
   
   try {
-    std::cout << "[AnyWP] [MouseHook] Installing low-level mouse hook..." << std::endl;
+    Logger::Instance().Info("MouseHook", "Installing low-level mouse hook...");
     
     hook_ = SetWindowsHookExW(
       WH_MOUSE_LL,
@@ -35,25 +34,25 @@ bool MouseHookManager::Install() {
     );
     
     if (hook_) {
-      std::cout << "[AnyWP] [MouseHook] Hook installed successfully" << std::endl;
+      Logger::Instance().Info("MouseHook", "Hook installed successfully");
       return true;
     } else {
       DWORD error = GetLastError();
-      std::cout << "[AnyWP] [MouseHook] ERROR: Failed to install hook: " << error << std::endl;
+      Logger::Instance().Error("MouseHook", "Failed to install hook: " + std::to_string(error));
       return false;
     }
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [MouseHook] ERROR: Exception in Install: " << e.what() << std::endl;
+    Logger::Instance().Error("MouseHook", "Exception in Install: " + std::string(e.what()));
     return false;
   } catch (...) {
-    std::cout << "[AnyWP] [MouseHook] ERROR: Unknown exception in Install" << std::endl;
+    Logger::Instance().Error("MouseHook", "Unknown exception in Install");
     return false;
   }
 }
 
 void MouseHookManager::Uninstall() {
   if (hook_) {
-    std::cout << "[AnyWP] [MouseHook] Uninstalling mouse hook..." << std::endl;
+    Logger::Instance().Info("MouseHook", "Uninstalling mouse hook...");
     UnhookWindowsHookEx(hook_);
     hook_ = nullptr;
   }
