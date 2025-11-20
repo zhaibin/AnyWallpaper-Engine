@@ -19,7 +19,7 @@
 ```yaml
 dependencies:
   anywp_engine:
-    path: ./anywp_engine_v2.0.0
+    path: ./anywp_engine_v2.4.1_precompiled  # 使用最新版本
 ```
 
 **详细指南：** [PRECOMPILED_DLL_INTEGRATION.md](PRECOMPILED_DLL_INTEGRATION.md) ⭐

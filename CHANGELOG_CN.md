@@ -474,7 +474,7 @@ AnyWPEngine.setOnMessageCallback((message) {
 - **效果**: SDK 注入日志从 34 行降为 5 行（-85.3%）
 
 **3. 精简 WebConsole 初始化日志**
-- TypeScript SDK 源码优化（`windows/sdk/`）
+- TypeScript SDK 源码优化（`sdk/src/`）
 - 移除 "Setting up WebMessage listener", "setup complete", "Events setup completed" 等冗余日志
 - 保留 SDK 版本信息和重要警告
 - **效果**: WebConsole 日志从 54 行降为 27 行（-50.0%）
@@ -961,7 +961,7 @@ void setupWallpaperRecovery() {
 - 优化 JavaScript SDK 使用 `sendToFlutter` 发送加密请求
 
 #### 🔧 版本号统一性
-- 修复 `windows/sdk/package.json` 版本号不一致（2.1.9 → 2.1.10）
+- 修复 `sdk/src/package.json` 版本号不一致（2.1.9 → 2.1.10）
 - 统一 5 个关键位置的版本号定义
 - 添加版本号检查脚本和文档
 
@@ -971,7 +971,7 @@ void setupWallpaperRecovery() {
 - 新增 `CustomSchemeHandler` 模块处理自定义协议
 - 新增 `MimeTypeDetector` 工具类支持文件类型检测
 - 完善 `FlutterBridge` 添加 encryptFile/decryptFile 处理器
-- TypeScript SDK 新增 `File` 模块（`windows/sdk/modules/file.ts`）
+- TypeScript SDK 新增 `File` 模块（`sdk/src/modules/file.ts`）
 
 #### 🔒 安全性增强
 - 路径验证：强制绝对路径，禁止 `..` 遍历
@@ -1022,7 +1022,7 @@ void setupWallpaperRecovery() {
 - **改进**: JS SDK 版本号与 Flutter 插件版本号保持同步（均为 2.1.9）
 - **发版脚本**: `release.bat` 现在区分并显示两个版本号
   - Flutter 插件版本：从 `pubspec.yaml` 读取
-  - JS SDK 版本：从 `windows/sdk/package.json` 读取
+  - JS SDK 版本：从 `sdk/src/package.json` 读取
 - **Web SDK 包**: 使用 JS SDK 版本号命名：`anywp_web_sdk_v{SDK_VERSION}.zip`
 
 ### 📝 文档更新
@@ -1052,7 +1052,7 @@ void setupWallpaperRecovery() {
   - `example/lib/main.dart`: 快速入口新增「Fullscreen Pause」卡片
 
 #### Web SDK 可靠性增强
-- `windows/sdk/modules/webmessage.ts`: 解析 `PostWebMessageAsString` 传入的字符串，并新增 `powerStateChange` 消息处理逻辑，保证 C++ 端补偿通知能可靠送达 HTML
+- `sdk/src/modules/webmessage.ts`: 解析 `PostWebMessageAsString` 传入的字符串，并新增 `powerStateChange` 消息处理逻辑，保证 C++ 端补偿通知能可靠送达 HTML
 - `windows/anywp_sdk.js` 及 `dist/` 产物同步更新，`window.AnyWP` 能在 WebView2 字符串消息模式下正常收到事件
 - `windows/modules/power_manager.cpp`、`windows/anywp_engine_plugin.cpp`: 统一日志格式，输出脚本执行结果，便于定位全屏暂停问题
 
@@ -1565,9 +1565,9 @@ void setupWallpaperRecovery() {
 - 自动 JSON 解析和错误处理
 
 **JavaScript SDK**:
-- `windows/sdk/modules/webmessage.ts`: `sendToFlutter()` + `setupFlutterMessageListener()`
-- `windows/sdk/core/AnyWP.ts`: 公共 API
-- `windows/sdk/core/init.ts`: SDK 初始化时注册
+- `sdk/src/modules/webmessage.ts`: `sendToFlutter()` + `setupFlutterMessageListener()`
+- `sdk/src/core/AnyWP.ts`: 公共 API
+- `sdk/src/core/init.ts`: SDK 初始化时注册
 
 ### 📦 发布说明
 
@@ -2239,7 +2239,7 @@ interface AnyWPSDK {
 | Dart API | `lib/anywp_engine.dart` | 参数重命名+逻辑反转 |
 | 主界面 | `example/lib/main.dart` | 变量重命名+UI文本更新 |
 | 测试页面 | `examples/test_mouse_transparency.html` | 所有文本更新 |
-| JS SDK | `windows/sdk/` | 新增3个API |
+| JS SDK | `sdk/src/` | 新增3个API |
 | 文档 | `docs/*.md`, `README.md` | 全面更新 |
 
 ### ⚠️ 破坏性变更
@@ -2724,7 +2724,7 @@ await AnyWPEngine.initializeWallpaperOnMonitor(
 - 测试页面中存在冗余的条件加载代码
 
 **解决方案**：
-1. **添加全局标志防护**（`windows/sdk/index.ts`）
+1. **添加全局标志防护**（`sdk/src/index.ts`）
    ```typescript
    if (globalAny._anywpEarlyMessageListenerRegistered) {
      console.log('[AnyWP] WebMessage listener already registered (EARLY), skipping duplicate');
@@ -2770,8 +2770,8 @@ await AnyWPEngine.initializeWallpaperOnMonitor(
 ### 📝 文件改动
 
 #### TypeScript SDK
-- `windows/sdk/index.ts` - 添加重复注册防护
-- `windows/sdk/core/init.ts` - 移动 WebMessage 监听器到 index.ts
+- `sdk/src/index.ts` - 添加重复注册防护
+- `sdk/src/core/init.ts` - 移动 WebMessage 监听器到 index.ts
 
 #### C++ 插件
 - `windows/anywp_engine_plugin.cpp` - 恢复窗口检测 + 添加 `IsOurWindow` 函数
@@ -2859,7 +2859,7 @@ await AnyWPEngine.initializeWallpaperOnMonitor(
 
 3. **重新编译测试**
    ```bash
-   cd windows\sdk
+   cd sdk\src
    npm run build
    
    cd ..\..

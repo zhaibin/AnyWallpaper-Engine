@@ -20,7 +20,7 @@ for /f "tokens=2" %%a in ('findstr "^version:" "%~dp0..\pubspec.yaml"') do set V
 echo Flutter Plugin Version: %VERSION%
 
 REM Read JS SDK version from package.json using PowerShell for reliable JSON parsing
-for /f "delims=" %%a in ('%PWSH_CMD% -NoLogo -NoProfile -Command "(Get-Content '%~dp0..\windows\sdk\package.json' | ConvertFrom-Json).version"') do set SDK_VERSION=%%a
+for /f "delims=" %%a in ('%PWSH_CMD% -NoLogo -NoProfile -Command "(Get-Content '%~dp0..\sdk\src\package.json' | ConvertFrom-Json).version"') do set SDK_VERSION=%%a
 echo JS SDK Version: %SDK_VERSION%
 echo.
 
@@ -30,7 +30,7 @@ set PRECOMPILED_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_precompiled
 set SOURCE_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_source
 REM Web SDK package uses JS SDK version (set after reading SDK_VERSION above)
 set WEB_SDK_DIR=%RELEASE_DIR%\anywp_web_sdk_v%SDK_VERSION%
-set TOTAL_STEPS=30
+set TOTAL_STEPS=31
 set STEP=1
 
 call :PrintStep "Checking version consistency..."
@@ -266,8 +266,10 @@ call :PrintStep "Creating Web SDK README..."
 (
 echo # AnyWP Engine - Web SDK v%SDK_VERSION%
 echo.
-echo **Flutter Plugin Version**: v%VERSION%
-echo **JS SDK Version**: v%SDK_VERSION%
+echo **Web SDK Version**: v%SDK_VERSION%
+echo **Compatible with AnyWP Engine**: v%VERSION%+
+echo.
+echo ^> **Note**: Web SDK has independent version numbers. This SDK is compatible with AnyWP Engine v%VERSION% and later versions.
 echo.
 echo Standalone Web SDK package for wallpaper developers.
 echo.
@@ -288,7 +290,7 @@ echo - `docs/API_USAGE_EXAMPLES.md` - API examples
 echo.
 echo ## Examples
 echo.
-echo See `examples/` folder for 8 test pages.
+echo See `examples/` folder for test pages.
 echo.
 echo ## License
 echo.
@@ -323,17 +325,21 @@ echo ========================================
 echo  Release Build Complete!
 echo ========================================
 echo.
+echo Version Information:
+echo   Flutter Plugin Version: %VERSION%
+echo   Web SDK Version:        %SDK_VERSION%
+echo.
 echo Packages created:
-echo   1. anywp_engine_v%VERSION%_precompiled.zip  (DLL + LIB + C API Header)
-echo   2. anywp_engine_v%VERSION%_source.zip       (Full source code)
-echo   3. anywp_web_sdk_v%SDK_VERSION%.zip         (Web SDK)
+echo   1. anywp_engine_v%VERSION%_precompiled.zip  (Engine v%VERSION%)
+echo   2. anywp_engine_v%VERSION%_source.zip       (Engine v%VERSION%)
+echo   3. anywp_web_sdk_v%SDK_VERSION%.zip         (SDK v%SDK_VERSION%)
 echo.
 echo Location: %RELEASE_DIR%
 echo.
 echo Package descriptions:
-echo   - Precompiled: For Flutter developers who want minimal integration
-echo   - Source: For developers who need to modify or rebuild from source
-echo   - Web SDK: For wallpaper developers (HTML/CSS/JS)
+echo   - Precompiled: For Flutter developers (minimal integration)
+echo   - Source: For developers who need to modify or rebuild
+echo   - Web SDK: For wallpaper developers (HTML/CSS/JS) - Independent version
 echo.
 echo ========================================
 echo  Next Steps

@@ -9,7 +9,7 @@ echo Building AnyWP Web SDK
 echo ========================================
 echo.
 
-cd windows\sdk
+cd sdk\src
 
 if not exist "node_modules\" (
     echo Installing dependencies...

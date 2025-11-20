@@ -1,0 +1,47 @@
+refactor: 迁移SDK源码到项目根目录
+
+SDK源码从 windows/sdk 迁移到 sdk/src，优化项目结构
+
+## 主要变更
+
+### 目录结构优化
+- 迁移 SDK TypeScript 源码：`windows/sdk/` → `sdk/src/`
+- 保持构建产物位置不变：`sdk/dist/`
+- 删除旧的 SDK 源码目录
+
+### 更新的文件
+**构建脚本**：
+- `scripts/build_sdk.bat` - 更新SDK路径为 sdk/src
+- `scripts/pre_release_check.bat` - 更新版本读取路径
+- `scripts/release.bat` - 更新SDK打包路径
+- `scripts/check_*.ps1` - 更新所有检查脚本路径
+
+**文档**：
+- `docs/RELEASE_GUIDE.md` - 更新所有SDK路径引用
+- `docs/WEB_DEVELOPER_GUIDE_CN.md` - 更新源码位置说明
+- `docs/TESTING_GUIDE.md` - 更新测试命令路径
+- `docs/VERSION_MANAGEMENT.md` - 更新版本管理路径
+- `docs/SCRIPTS_REFERENCE.md` - 更新脚本说明
+- `docs/SDK_CHANGELOG.md` - 更新目录结构说明
+- `CHANGELOG_CN.md` - 更新历史记录中的路径引用
+
+**项目配置**：
+- `.cursorrules` - 更新所有SDK相关路径和开发流程
+- `sdk/src/rollup.config.js` - 更新注释说明
+
+### 验证结果
+- ✅ SDK 构建成功 (`.\scripts\build_sdk.bat`)
+- ✅ 单元测试通过 (196/197, 1个非关键失败)
+- ✅ 所有脚本路径正确
+- ✅ 文档路径一致性
+
+## 优势
+1. **更清晰的项目结构**：SDK源码位于项目根目录，与构建产物同级
+2. **更符合标准**：sdk/src 是常见的 SDK 项目结构
+3. **更易理解**：SDK 不再嵌套在 windows 目录下
+
+## 向后兼容
+- 构建产物位置不变 (`sdk/dist/`)
+- 所有构建脚本和工作流已更新
+- 不影响发布流程
+

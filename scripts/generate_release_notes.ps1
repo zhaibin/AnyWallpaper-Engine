@@ -15,6 +15,18 @@ if (-not $Version -or $Version.Trim().Length -eq 0) {
     $Version = Get-PubspecVersion -PubspecPath $pubspecPath
 }
 
+# Get Web SDK version
+$sdkPackagePath = Join-Path $ProjectRoot 'sdk\src\package.json'
+$sdkVersion = $Version  # Default to engine version
+if (Test-Path -Path $sdkPackagePath) {
+    try {
+        $sdkPkg = Get-Content -Path $sdkPackagePath -Raw | ConvertFrom-Json
+        $sdkVersion = $sdkPkg.version
+    } catch {
+        Write-Warning "Failed to parse SDK version, using engine version"
+    }
+}
+
 $changelogPath = Join-Path $ProjectRoot 'CHANGELOG_CN.md'
 $section = Get-ChangelogSection -ChangelogPath $changelogPath -Version $Version
 
@@ -31,7 +43,10 @@ $lines += ""
 if ($section.ReleaseDate) {
     $lines += "**发布日期**: $($section.ReleaseDate)"
 }
-$lines += "**版本**: $Version"
+$lines += "**Flutter Plugin Version**: $Version"
+$lines += "**Web SDK Version**: $sdkVersion"
+$lines += ""
+$lines += "> **Note**: Flutter Plugin and Web SDK have independent version numbers."
 $lines += ""
 $lines += "---"
 $lines += ""
