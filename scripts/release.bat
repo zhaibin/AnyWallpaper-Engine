@@ -20,7 +20,7 @@ for /f "tokens=2" %%a in ('findstr "^version:" "%~dp0..\pubspec.yaml"') do set V
 echo Flutter Plugin Version: %VERSION%
 
 REM Read JS SDK version from package.json using PowerShell for reliable JSON parsing
-for /f "delims=" %%a in ('%PWSH_CMD% -NoLogo -NoProfile -Command "(Get-Content '%~dp0..\windows\sdk\package.json' | ConvertFrom-Json).version"') do set SDK_VERSION=%%a
+for /f "delims=" %%a in ('%PWSH_CMD% -NoLogo -NoProfile -Command "(Get-Content '%~dp0..\sdk\src\package.json' | ConvertFrom-Json).version"') do set SDK_VERSION=%%a
 echo JS SDK Version: %SDK_VERSION%
 echo.
 

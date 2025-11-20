@@ -1,6 +1,6 @@
 export const AnyWP = {
     // Properties
-    version: '2.1.10',
+    version: '__SDK_VERSION__', // Will be replaced by rollup during build
     dpiScale: window.devicePixelRatio || 1,
     screenWidth: screen.width * (window.devicePixelRatio || 1),
     screenHeight: screen.height * (window.devicePixelRatio || 1),

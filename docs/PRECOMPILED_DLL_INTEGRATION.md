@@ -1,5 +1,7 @@
 # 📦 使用预编译 DLL 快速集成 AnyWP Engine
 
+**Version**: 2.4.1
+
 本指南说明如何使用预编译的 DLL 文件集成 AnyWP Engine，**无需安装 WebView2 SDK 或编译 C++ 代码**。
 
 ---
@@ -40,7 +42,7 @@
 - ✅ `windows/anywp_engine_plugin.cpp/h` - 完整 C++ 源码
 - ✅ `windows/modules/` - 所有核心模块
 - ✅ `windows/utils/` - 所有工具类
-- ✅ `windows/sdk/` - TypeScript SDK 源码
+- ✅ `sdk/src/` - TypeScript SDK 源码
 - ✅ `windows/packages/` - WebView2 依赖包
 - ✅ `windows/test/` - C++ 单元测试
 

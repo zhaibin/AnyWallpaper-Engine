@@ -150,12 +150,12 @@ anywp_web_sdk_v%SDK_VERSION%.zip          (SDK 版本)
 | 产品 | 版本文件 | 示例 |
 |------|---------|------|
 | **Flutter Plugin** | `pubspec.yaml` | `version: 2.4.1` |
-| **Web SDK** | `windows/sdk/package.json` | `"version": "2.4.0"` |
+| **Web SDK** | `sdk/src/package.json` | `"version": "2.4.0"` |
 
 ### 更新规则
 
 1. **仅引擎更新** → 只修改 `pubspec.yaml`
-2. **仅 SDK 更新** → 只修改 `windows/sdk/package.json`
+2. **仅 SDK 更新** → 只修改 `sdk/src/package.json`
 3. **同时更新** → 分别修改两个文件
 
 ### 发布包命名
@@ -266,7 +266,7 @@ Checking Web Developer Documentation...
 
 1. **修改代码后，确定需要更新哪个版本号**
    - 修改了 C++/Dart → 更新 `pubspec.yaml`
-   - 修改了 TypeScript/JS SDK → 更新 `windows/sdk/package.json`
+   - 修改了 TypeScript/JS SDK → 更新 `sdk/src/package.json`
    - 两者都改了 → 分别更新两个文件
 
 2. **更新 CHANGELOG_CN.md**

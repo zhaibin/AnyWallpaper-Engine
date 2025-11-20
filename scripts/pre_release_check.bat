@@ -20,7 +20,7 @@ for /f "tokens=2" %%a in ('findstr "^version:" "%~dp0..\pubspec.yaml"') do set V
 echo Flutter Plugin Version: %VERSION%
 
 REM Read Web SDK version from package.json
-for /f "delims=" %%a in ('%PWSH_CMD% -NoLogo -NoProfile -Command "(Get-Content '%~dp0..\windows\sdk\package.json' | ConvertFrom-Json).version"') do set SDK_VERSION=%%a
+for /f "delims=" %%a in ('%PWSH_CMD% -NoLogo -NoProfile -Command "(Get-Content '%~dp0..\sdk\src\package.json' | ConvertFrom-Json).version"') do set SDK_VERSION=%%a
 echo Web SDK Version: %SDK_VERSION%
 echo.
 
@@ -129,11 +129,11 @@ if exist "%~dp0..\release\anywp_engine_v%VERSION%_precompiled.zip" (
 )
 
 call :PrintCheck "Running Web SDK tests..."
-cd /d "%~dp0..\windows\sdk"
+cd /d "%~dp0..\sdk\src"
 call npm test >nul 2>&1
 if ERRORLEVEL 1 (
     call :AddError "Web SDK tests failed"
-    echo   Run: cd windows\sdk; npm test
+    echo   Run: cd sdk\src; npm test
 ) else (
     echo   [PASS] All SDK tests passed
 )

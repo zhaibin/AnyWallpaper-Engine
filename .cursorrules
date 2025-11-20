@@ -33,7 +33,7 @@ Flutter Windows 插件，将 WebView2 嵌入为交互式桌面壁纸（显示在
 
 ### TypeScript/JavaScript
 - 全局 `window.AnyWP` | 方法 `lowerCamelCase`
-- **TypeScript SDK**: 100% TypeScript，模块化架构，类型定义在 `windows/sdk/types.ts`
+- **TypeScript SDK**: 100% TypeScript，模块化架构，类型定义在 `sdk/src/types.ts`
 - 使用严格模式 (`strict: true`)
 
 ---
@@ -74,7 +74,7 @@ release/                # 发布包
 1. **实现功能**: 编写代码 + 完整错误处理 + 文档注释
 2. **本地测试**: 
    - C++: `cd windows\test && run_tests.bat`
-   - Web SDK: `cd windows\sdk && npm test`
+   - Web SDK: `cd sdk\src && npm test`
    - 集成: `.\scripts\test_full.bat`
 3. **代码检查**: `flutter analyze` 确保无警告
 4. **自动提交**: 使用文件方式提交中文信息
@@ -87,13 +87,13 @@ release/                # 发布包
 
 ### Web SDK 开发
 **开发步骤**:
-1. 修改 TypeScript 源码 (`windows/sdk/`)
-2. 运行单元测试: `cd windows\sdk && npm test`
-3. 构建生产 SDK: `npm run build` (生成 `windows/anywp_sdk.js`)
+1. 修改 TypeScript 源码 (`sdk/src/`)
+2. 运行单元测试: `cd sdk\src && npm test`
+3. 构建生产 SDK: `npm run build` (生成 `sdk/dist/anywp_sdk.js`)
 4. 在 Flutter WebView2 中测试: `.\scripts\test_full.bat`
 5. 提交: 同时提交 TS 源码和构建产物
 
-**快速构建**: `.\scripts\build_sdk.bat` 或 `cd windows\sdk && npm run build`
+**快速构建**: `.\scripts\build_sdk.bat` 或 `cd sdk\src && npm run build`
 
 **⚠️ 重要提示**:
 - SDK 功能依赖 WebView2 Native 桥接（`chrome.webview.postMessage`）
@@ -116,7 +116,7 @@ release/                # 发布包
 
 本项目包含两个独立产品，各有独立版本号：
 - **Flutter Plugin (引擎)**: `pubspec.yaml`
-- **Web SDK (JavaScript)**: `windows/sdk/package.json`
+- **Web SDK (JavaScript)**: `sdk/src/package.json`
 
 **重要**: 两个版本号可以不同，根据各自的更新内容独立递增。
 
@@ -125,7 +125,7 @@ release/                # 发布包
 ```bash
 # 1. 更新版本号（根据更新类型选择）
 #    - 引擎更新: 编辑 pubspec.yaml
-#    - SDK 更新: 编辑 windows/sdk/package.json
+#    - SDK 更新: 编辑 sdk/src/package.json
 #    - 同时更新: 分别编辑两个文件
 
 # 2. 更新文档和 CHANGELOG
@@ -298,7 +298,7 @@ del commit_msg.txt
 
 # 测试
 .\scripts\test_full.bat   # 全面测试
-cd windows\sdk && npm test # TypeScript 单元测试
+cd sdk\src && npm test # TypeScript 单元测试
 cd windows\test && run_tests.bat  # C++ 单元测试
 
 # SDK

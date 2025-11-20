@@ -12,7 +12,7 @@
 
 #### 源码架构
 ```
-windows/sdk/
+sdk/src/
 ├── __tests__/       # 单元测试 (118 tests)
 ├── core/            # AnyWP.ts, init.ts
 ├── modules/         # events.ts, click.ts, drag.ts, storage.ts, spa.ts, animations.ts
@@ -87,15 +87,15 @@ npm run test:coverage  # 生成覆盖率报告
 
 ### 📚 文档更新
 - ✅ 更新 `.cursorrules` - TypeScript 工作流
-- ✅ 更新 `windows/sdk/README.md` - 测试统计
+- ✅ 更新 `sdk/src/README.md` - 测试统计
 - ✅ 更新 `docs/WEB_DEVELOPER_GUIDE_CN.md` - SDK 版本信息
-- ~~新增 `windows/sdk/MIGRATION_COMPLETE.md` - 迁移报告~~ (已删除，属于过程性文档)
+- ~~新增 `sdk/src/MIGRATION_COMPLETE.md` - 迁移报告~~ (已删除，属于过程性文档)
 
 ### ⚠️ 注意事项
 - **构建产物未变** - `windows/anywp_sdk.js` 仍是单文件
 - **API 完全兼容** - 无需修改现有代码
 - **WebView2 依赖** - 测试需要在 Flutter 环境进行
-- **源码位置** - `windows/sdk/` (TypeScript)
+- **源码位置** - `sdk/src/` (TypeScript)
 
 ---
 

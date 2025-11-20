@@ -26,14 +26,14 @@
 | 产品 | 版本文件 | 用途 | 示例 |
 |------|---------|------|------|
 | **Flutter Plugin (引擎)** | `pubspec.yaml` | Windows 桌面壁纸引擎 | `version: 2.4.1` |
-| **Web SDK (JavaScript)** | `windows/sdk/package.json` | HTML 壁纸开发 SDK | `"version": "2.4.0"` |
+| **Web SDK (JavaScript)** | `sdk/src/package.json` | HTML 壁纸开发 SDK | `"version": "2.4.0"` |
 
 ### 版本号规则
 
 **重要原则**: 
 - ✅ 两个版本号**可以不同**，根据各自的更新内容独立递增
 - ✅ 如果只更新引擎功能（C++/Dart），只需更新 `pubspec.yaml`
-- ✅ 如果只更新 Web SDK 功能（TypeScript/JS），只需更新 `windows/sdk/package.json`
+- ✅ 如果只更新 Web SDK 功能（TypeScript/JS），只需更新 `sdk/src/package.json`
 - ✅ 如果两者都更新，需要分别更新两个版本号
 
 ### 自动生成的版本
@@ -63,7 +63,7 @@
 #### 场景 B：仅更新 SDK 功能（TypeScript/JS）
 
 **版本号更新**:
-- [ ] `windows/sdk/package.json`: `version: x.x.x` ⭐ **SDK 版本唯一来源**
+- [ ] `sdk/src/package.json`: `version: x.x.x` ⭐ **SDK 版本唯一来源**
 
 **文档更新**:
 - [ ] `CHANGELOG_CN.md`: 添加新版本条目（标注 SDK vX.X.X）
@@ -72,7 +72,7 @@
 
 **版本号更新**:
 - [ ] `pubspec.yaml`: `version: x.x.x`
-- [ ] `windows/sdk/package.json`: `version: x.x.x`
+- [ ] `sdk/src/package.json`: `version: x.x.x`
 
 **文档更新**:
 - [ ] `CHANGELOG_CN.md`: 添加条目，区分 Engine 和 SDK 更新
@@ -98,7 +98,7 @@
 - [ ] `docs/WEB_DEVELOPER_GUIDE_CN.md` - 中文 Web 开发指南
 - [ ] `docs/WEB_DEVELOPER_GUIDE.md` - 英文 Web 开发指南
 - [ ] `docs/API_USAGE_EXAMPLES.md` - API 使用示例
-- [ ] `windows/sdk/` - TypeScript 源码注释
+- [ ] `sdk/src/` - TypeScript 源码注释
 
 #### 通用文档
 
@@ -193,7 +193,7 @@ flutter build windows --release
 
 **版本号说明**:
 - **引擎包**（precompiled/source）使用 `pubspec.yaml` 中的版本号
-- **Web SDK 包**使用 `windows/sdk/package.json` 中的版本号
+- **Web SDK 包**使用 `sdk/src/package.json` 中的版本号
 - 发布说明主要基于引擎版本，但会标注 SDK 版本
 
 #### 预编译包验证（必须全部存在）
@@ -209,7 +209,7 @@ flutter build windows --release
 
 - [ ] `windows/anywp_engine_plugin.cpp/h` - 完整 C++ 源码
 - [ ] `windows/modules/` + `windows/utils/` - 所有模块和工具类
-- [ ] `windows/sdk/` - TypeScript SDK 源码
+- [ ] `sdk/src/` - TypeScript SDK 源码
 - [ ] `windows/packages/` - WebView2 依赖包
 
 #### Web SDK 包验证
@@ -432,7 +432,7 @@ del commit_msg.txt
 ### Q2: 什么时候需要更新 SDK 版本？
 
 **A**: 当修改了以下内容时需要更新 SDK 版本：
-- TypeScript/JavaScript SDK 代码（`windows/sdk/` 目录）
+- TypeScript/JavaScript SDK 代码（`sdk/src/` 目录）
 - Web API 的添加、修改或删除
 - SDK 的类型定义
 - JavaScript 接口变更
@@ -441,7 +441,7 @@ del commit_msg.txt
 
 **A**: 可以！两个版本号是独立的：
 - 只改了引擎 → 只更新 `pubspec.yaml`
-- 只改了 SDK → 只更新 `windows/sdk/package.json`
+- 只改了 SDK → 只更新 `sdk/src/package.json`
 - 两者都改 → 分别更新两个文件
 
 ### Q4: GitHub Release 的 Tag 用哪个版本号？

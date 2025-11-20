@@ -16,7 +16,7 @@ if (-not $Version -or $Version.Trim().Length -eq 0) {
 }
 
 # Get Web SDK version
-$sdkPackagePath = Join-Path $ProjectRoot 'windows\sdk\package.json'
+$sdkPackagePath = Join-Path $ProjectRoot 'sdk\src\package.json'
 $sdkVersion = $Version  # Default to engine version
 if (Test-Path -Path $sdkPackagePath) {
     try {

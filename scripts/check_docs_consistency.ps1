@@ -17,7 +17,7 @@ if (-not $EngineVersion -or $EngineVersion.Trim().Length -eq 0) {
 }
 
 if (-not $SdkVersion -or $SdkVersion.Trim().Length -eq 0) {
-    $sdkPackagePath = Join-Path $ProjectRoot 'windows\sdk\package.json'
+    $sdkPackagePath = Join-Path $ProjectRoot 'sdk\src\package.json'
     if (Test-Path -Path $sdkPackagePath) {
         $sdkPkg = Get-Content -Path $sdkPackagePath -Raw | ConvertFrom-Json
         $SdkVersion = $sdkPkg.version

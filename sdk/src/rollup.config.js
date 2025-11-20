@@ -2,6 +2,12 @@
 import resolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 import terser from '@rollup/plugin-terser';
+import replace from '@rollup/plugin-replace';
+import { readFileSync } from 'fs';
+
+// Read version from package.json (single source of truth)
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
+const version = pkg.version;
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -13,10 +19,16 @@ export default [
       file: '../../sdk/dist/anywp_sdk.js',
       format: 'iife',
       name: 'AnyWPBundle',
-      banner: '// AnyWP Engine SDK v2.1.9 - JavaScript Bridge\n// Auto-injected into WebView2\n// React/Vue SPA Compatible\n// Built with TypeScript modular architecture (100% TS)\n',
-      footer: '// Built from modular source - see windows/sdk/ for source code'
+      banner: `// AnyWP Engine SDK v${version} - JavaScript Bridge\n// Auto-injected into WebView2\n// React/Vue SPA Compatible\n// Built with TypeScript modular architecture (100% TS)\n`,
+      footer: '// Built from modular source - see sdk/src/ for source code'
     },
     plugins: [
+      replace({
+        preventAssignment: true,
+        values: {
+          '__SDK_VERSION__': version
+        }
+      }),
       resolve(),
       // TypeScript plugin for .ts files
       typescript({
@@ -38,10 +50,16 @@ export default [
       file: '../../sdk/dist/anywp_sdk.min.js',
       format: 'iife',
       name: 'AnyWPBundle',
-      banner: '// AnyWP Engine SDK v2.1.9 - Minified (TypeScript)\n',
+      banner: `// AnyWP Engine SDK v${version} - Minified (TypeScript)\n`,
       sourcemap: true
     },
     plugins: [
+      replace({
+        preventAssignment: true,
+        values: {
+          '__SDK_VERSION__': version
+        }
+      }),
       resolve(),
       typescript({
         tsconfig: './tsconfig.json',

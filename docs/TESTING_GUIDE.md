@@ -12,8 +12,8 @@ AnyWP Engine 项目包含三个层次的测试：
 
 ### 2. Web SDK 测试（TypeScript）
 
-**位置**: `windows/sdk/src/__tests__/`  
-**运行**: `cd windows\sdk && npm test`  
+**位置**: `sdk/src/__tests__/`  
+**运行**: `cd sdk\src && npm test`  
 **覆盖**: JavaScript SDK API
 
 ### 3. 预编译包测试（PowerShell）⭐ **新增**
@@ -34,7 +34,7 @@ cd windows\test
 run_tests.bat
 
 # Web SDK 修改后
-cd windows\sdk
+cd sdk\src
 npm test
 ```
 
@@ -111,7 +111,7 @@ npm test
 
 - [预编译包测试详细指南](PRECOMPILED_PACKAGE_TESTING.md)
 - [C++ 单元测试框架](../windows/test/README.md)
-- [Web SDK 测试](../windows/sdk/README.md)
+- [Web SDK 测试](../sdk/src/README.md)
 - [开发者API参考](DEVELOPER_API_REFERENCE.md)
 
 ---

@@ -1,5 +1,7 @@
 ﻿# AnyWP Engine - Developer API Reference
 
+**Version**: 2.4.1
+
 Complete API reference for integrating AnyWP Engine into your Flutter application.
 
 ## Table of Contents
