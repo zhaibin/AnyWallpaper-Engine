@@ -4,9 +4,22 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { AnyWP } from '../core/AnyWP';
 import { initializeAnyWP } from '../core/init';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+// Read version from package.json (single source of truth)
+const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
+const expectedVersion = pkg.version;
 describe('Core - AnyWP object', () => {
     test('should have correct version', () => {
-        expect(AnyWP.version).toBe('2.1.1');
+        // In development/test environment, version is '__SDK_VERSION__' placeholder
+        // In production build, it's replaced with actual version by rollup
+        const version = AnyWP.version;
+        // Accept either the placeholder (dev) or actual version (prod)
+        expect(version === '__SDK_VERSION__' || version === expectedVersion).toBe(true);
+        // If it's a real version, verify format
+        if (version !== '__SDK_VERSION__') {
+            expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+        }
     });
     test('should have DPI scale', () => {
         expect(AnyWP.dpiScale).toBeGreaterThan(0);

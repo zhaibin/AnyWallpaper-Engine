@@ -1,4 +1,4 @@
-// AnyWP Engine SDK v2.4.1 - JavaScript Bridge
+// AnyWP Engine SDK v2.5.0 - JavaScript Bridge
 // Auto-injected into WebView2
 // React/Vue SPA Compatible
 // Built with TypeScript modular architecture (100% TS)
@@ -8,7 +8,7 @@ var AnyWPBundle = (function (exports) {
 
     const AnyWP = {
         // Properties
-        version: '2.4.1', // Will be replaced by rollup during build
+        version: '2.5.0', // Will be replaced by rollup during build
         dpiScale: window.devicePixelRatio || 1,
         screenWidth: screen.width * (window.devicePixelRatio || 1),
         screenHeight: screen.height * (window.devicePixelRatio || 1),
