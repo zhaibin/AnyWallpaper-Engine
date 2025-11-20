@@ -412,12 +412,10 @@ void WebViewConfigurator::LogPermissionDenied(COREWEBVIEW2_PERMISSION_KIND kind)
   }
   
   Logger::Instance().Warning("WebViewConfig", "Permission denied: " + permission_name);
-  std::cout << "[AnyWP] [WebViewConfig] Permission denied: " << permission_name << std::endl;
 }
 
 void WebViewConfigurator::LogNavigationBlocked(const std::string& url) {
   Logger::Instance().Warning("WebViewConfig", "Navigation blocked: " + url);
-  std::cout << "[AnyWP] [WebViewConfig] Navigation blocked: " << url << std::endl;
 }
 
 void WebViewConfigurator::LogConsoleMessage(const std::string& message) {

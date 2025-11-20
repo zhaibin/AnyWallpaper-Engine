@@ -1,5 +1,5 @@
 #include "monitor_manager.h"
-#include <iostream>
+#include "../utils/logger.h"
 
 namespace anywp_engine {
 
@@ -19,7 +19,7 @@ std::vector<MonitorInfo> MonitorManager::GetMonitors() {
   std::vector<MonitorInfo> monitors;
   EnumDisplayMonitors(nullptr, nullptr, MonitorEnumProc, reinterpret_cast<LPARAM>(&monitors));
   
-  std::cout << "[AnyWP] [MonitorManager] Found " << monitors.size() << " monitor(s)" << std::endl;
+  Logger::Instance().Info("MonitorManager", "Found " + std::to_string(monitors.size()) + " monitor(s)");
   
   // Cache for later use
   cached_monitors_ = monitors;
@@ -51,7 +51,7 @@ void MonitorManager::StartMonitoring() {
   }
   
   try {
-    std::cout << "[AnyWP] [MonitorManager] Starting display change monitoring..." << std::endl;
+    Logger::Instance().Info("MonitorManager", "Starting display change monitoring...");
     
     // Register window class
     WNDCLASSEXW wc = {sizeof(WNDCLASSEXW)};
@@ -62,7 +62,7 @@ void MonitorManager::StartMonitoring() {
     if (!RegisterClassExW(&wc)) {
       DWORD error = GetLastError();
       if (error != ERROR_CLASS_ALREADY_EXISTS) {
-        std::cout << "[AnyWP] [MonitorManager] ERROR: Failed to register window class: " << error << std::endl;
+        Logger::Instance().Error("MonitorManager", "Failed to register window class: " + std::to_string(error));
         return;
       }
     }
@@ -81,21 +81,22 @@ void MonitorManager::StartMonitoring() {
     );
     
     if (listener_hwnd_) {
-      std::cout << "[AnyWP] [MonitorManager] Listener window created: " << listener_hwnd_ << std::endl;
+      Logger::Instance().Info("MonitorManager", 
+        "Listener window created: " + std::to_string(reinterpret_cast<uintptr_t>(listener_hwnd_)));
     } else {
       DWORD error = GetLastError();
-      std::cout << "[AnyWP] [MonitorManager] ERROR: Failed to create listener window: " << error << std::endl;
+      Logger::Instance().Error("MonitorManager", "Failed to create listener window: " + std::to_string(error));
     }
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [MonitorManager] ERROR: Exception in StartMonitoring: " << e.what() << std::endl;
+    Logger::Instance().Error("MonitorManager", "Exception in StartMonitoring: " + std::string(e.what()));
   } catch (...) {
-    std::cout << "[AnyWP] [MonitorManager] ERROR: Unknown exception in StartMonitoring" << std::endl;
+    Logger::Instance().Error("MonitorManager", "Unknown exception in StartMonitoring");
   }
 }
 
 void MonitorManager::StopMonitoring() {
   if (listener_hwnd_) {
-    std::cout << "[AnyWP] [MonitorManager] Stopping display change monitoring..." << std::endl;
+    Logger::Instance().Info("MonitorManager", "Stopping display change monitoring...");
     DestroyWindow(listener_hwnd_);
     listener_hwnd_ = nullptr;
   }
@@ -157,9 +158,9 @@ BOOL CALLBACK MonitorManager::MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor,
 
 LRESULT CALLBACK MonitorManager::DisplayChangeWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
   if (message == WM_DISPLAYCHANGE) {
-    std::cout << "[AnyWP] [MonitorManager] Display configuration changed!" << std::endl;
-    std::cout << "[AnyWP] [MonitorManager] New resolution: " 
-              << LOWORD(lParam) << "x" << HIWORD(lParam) << std::endl;
+    Logger::Instance().Info("MonitorManager", "Display configuration changed!");
+    Logger::Instance().Info("MonitorManager", 
+      "New resolution: " + std::to_string(LOWORD(lParam)) + "x" + std::to_string(HIWORD(lParam)));
     
     if (instance_) {
       // Re-enumerate monitors

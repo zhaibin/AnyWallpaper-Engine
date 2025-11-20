@@ -1,8 +1,8 @@
 #include "url_validator.h"
+#include "../utils/logger.h"
 
 #include <algorithm>
 #include <cctype>
-#include <iostream>
 
 namespace anywp_engine {
 
@@ -31,13 +31,13 @@ bool URLValidator::IsAllowed(const std::string& url) {
   // Check blacklist (overrides whitelist)
   for (const auto& pattern : blacklist_) {
     if (MatchesPattern(url, pattern)) {
-      std::cout << "[AnyWP] [Security] URL blocked by blacklist: " << url << std::endl;
+      Logger::Instance().Warning("Security", "URL blocked by blacklist: " + url);
       return false;
     }
   }
   
   if (!allowed && !whitelist_.empty()) {
-    std::cout << "[AnyWP] [Security] URL not in whitelist: " << url << std::endl;
+    Logger::Instance().Warning("Security", "URL not in whitelist: " + url);
   }
   
   return allowed;
@@ -47,12 +47,12 @@ bool URLValidator::IsAllowed(const std::string& url) {
 
 void URLValidator::AddWhitelist(const std::string& pattern) {
   whitelist_.push_back(pattern);
-  std::cout << "[AnyWP] [Security] Added to whitelist: " << pattern << std::endl;
+  Logger::Instance().Info("Security", "Added to whitelist: " + pattern);
 }
 
 void URLValidator::ClearWhitelist() {
   whitelist_.clear();
-  std::cout << "[AnyWP] [Security] Whitelist cleared" << std::endl;
+  Logger::Instance().Info("Security", "Whitelist cleared");
 }
 
 const std::vector<std::string>& URLValidator::GetWhitelist() const {
@@ -63,12 +63,12 @@ const std::vector<std::string>& URLValidator::GetWhitelist() const {
 
 void URLValidator::AddBlacklist(const std::string& pattern) {
   blacklist_.push_back(pattern);
-  std::cout << "[AnyWP] [Security] Added to blacklist: " << pattern << std::endl;
+  Logger::Instance().Info("Security", "Added to blacklist: " + pattern);
 }
 
 void URLValidator::ClearBlacklist() {
   blacklist_.clear();
-  std::cout << "[AnyWP] [Security] Blacklist cleared" << std::endl;
+  Logger::Instance().Info("Security", "Blacklist cleared");
 }
 
 const std::vector<std::string>& URLValidator::GetBlacklist() const {

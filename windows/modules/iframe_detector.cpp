@@ -1,7 +1,6 @@
 #include "iframe_detector.h"
 #include "../utils/logger.h"
 
-#include <iostream>
 #include <sstream>
 
 namespace anywp_engine {
@@ -33,29 +32,30 @@ void IframeDetector::UpdateIframes(const std::string& json_data) {
 IframeInfo* IframeDetector::GetIframeAtPoint(int x, int y) {
   std::lock_guard<std::mutex> lock(mutex_);
   
-  std::cout << "[AnyWP] [iframe] GetIframeAtPoint: checking (" << x << "," << y << ") against " 
-            << iframes_.size() << " iframes" << std::endl;
+  Logger::Instance().Debug("IframeDetector", 
+    "GetIframeAtPoint: checking (" + std::to_string(x) + "," + std::to_string(y) + ") against " + std::to_string(iframes_.size()) + " iframes");
   
   for (auto& iframe : iframes_) {
     if (!iframe.visible) {
-      std::cout << "[AnyWP] [iframe]   " << iframe.id << " - HIDDEN" << std::endl;
+      Logger::Instance().Debug("IframeDetector", "  " + iframe.id + " - HIDDEN");
       continue;
     }
     
     int right = iframe.left + iframe.width;
     int bottom = iframe.top + iframe.height;
     
-    std::cout << "[AnyWP] [iframe]   " << iframe.id << ": [" << iframe.left << "," << iframe.top 
-              << "] ~ [" << right << "," << bottom << "]" << std::endl;
+    Logger::Instance().Debug("IframeDetector", 
+      "  " + iframe.id + ": [" + std::to_string(iframe.left) + "," + std::to_string(iframe.top) + 
+      "] ~ [" + std::to_string(right) + "," + std::to_string(bottom) + "]");
     
     if (x >= iframe.left && x < right &&
         y >= iframe.top && y < bottom) {
-      std::cout << "[AnyWP] [iframe]   MATCH!" << std::endl;
+      Logger::Instance().Debug("IframeDetector", "  MATCH!");
       return &iframe;
     }
   }
   
-  std::cout << "[AnyWP] [iframe]   No match found" << std::endl;
+  Logger::Instance().Debug("IframeDetector", "  No match found");
   return nullptr;
 }
 
@@ -67,7 +67,7 @@ const std::vector<IframeInfo>& IframeDetector::GetIframes() const {
 void IframeDetector::Clear() {
   std::lock_guard<std::mutex> lock(mutex_);
   iframes_.clear();
-  std::cout << "[AnyWP] [iframe] Cleared all iframes" << std::endl;
+  Logger::Instance().Info("IframeDetector", "Cleared all iframes");
 }
 
 size_t IframeDetector::GetCount() const {
@@ -84,13 +84,13 @@ bool IframeDetector::ParseIframeJson(const std::string& json_data, std::vector<I
   // Format: {"type":"IFRAME_DATA","iframes":[{...},{...}]}
   size_t iframes_start = json_data.find("\"iframes\":[");
   if (iframes_start == std::string::npos) {
-    std::cout << "[AnyWP] [iframe] No iframes array found" << std::endl;
+    Logger::Instance().Debug("IframeDetector", "No iframes array found");
     return false;
   }
   
   size_t array_end = json_data.find("]", iframes_start);
   if (array_end == std::string::npos) {
-    std::cout << "[AnyWP] [iframe] No array end found" << std::endl;
+    Logger::Instance().Debug("IframeDetector", "No array end found");
     return false;
   }
   
@@ -112,13 +112,13 @@ bool IframeDetector::ParseIframeJson(const std::string& json_data, std::vector<I
     }
     
     if (brace_count != 0) {
-      std::cout << "[AnyWP] [iframe] ERROR: Unmatched braces at pos " << pos << std::endl;
+      Logger::Instance().Error("IframeDetector", "Unmatched braces at pos " + std::to_string(pos));
       break;
     }
     
     // Extract iframe data within [pos, obj_end)
     std::string obj_data = json_data.substr(pos, obj_end - pos);
-    std::cout << "[AnyWP] [iframe] Object data: " << obj_data << std::endl;
+    Logger::Instance().Debug("IframeDetector", "Object data: " + obj_data);
     
     IframeInfo iframe;
     
@@ -171,10 +171,11 @@ bool IframeDetector::ParseIframeJson(const std::string& json_data, std::vector<I
     // Add to list
     iframes.push_back(iframe);
     
-    std::cout << "[AnyWP] [iframe] Added iframe #" << iframes.size() << ": id=" << iframe.id 
-              << " pos=(" << iframe.left << "," << iframe.top << ")"
-              << " size=" << iframe.width << "x" << iframe.height
-              << " url=" << iframe.click_url << std::endl;
+    Logger::Instance().Debug("IframeDetector", 
+      "Added iframe #" + std::to_string(iframes.size()) + ": id=" + iframe.id + 
+      " pos=(" + std::to_string(iframe.left) + "," + std::to_string(iframe.top) + ")" +
+      " size=" + std::to_string(iframe.width) + "x" + std::to_string(iframe.height) +
+      " url=" + iframe.click_url);
     
     // Move to next object
     pos = obj_end;
@@ -202,8 +203,8 @@ std::string IframeDetector::ExtractJsonValue(const std::string& json, const std:
 // ========== v1.4.0+ Static Helpers for WallpaperInstance ==========
 
 bool IframeDetector::UpdateIframeVector(const std::string& json_data, std::vector<IframeInfo>& target_iframes) {
-  std::cout << "[AnyWP] [iframe] UpdateIframeVector: Parsing iframe data..." << std::endl;
-  std::cout << "[AnyWP] [iframe] Raw JSON: " << json_data << std::endl;
+  Logger::Instance().Debug("IframeDetector", "UpdateIframeVector: Parsing iframe data...");
+  Logger::Instance().Debug("IframeDetector", "Raw JSON: " + json_data);
   
   target_iframes.clear();
   
@@ -211,13 +212,13 @@ bool IframeDetector::UpdateIframeVector(const std::string& json_data, std::vecto
   // Format: {"type":"IFRAME_DATA","iframes":[{...},{...}]}
   size_t iframes_start = json_data.find("\"iframes\":[");
   if (iframes_start == std::string::npos) {
-    std::cout << "[AnyWP] [iframe] No iframes array found" << std::endl;
+    Logger::Instance().Debug("IframeDetector", "No iframes array found");
     return false;
   }
   
   size_t array_end = json_data.find("]", iframes_start);
   if (array_end == std::string::npos) {
-    std::cout << "[AnyWP] [iframe] No array end found" << std::endl;
+    Logger::Instance().Debug("IframeDetector", "No array end found");
     return false;
   }
   
@@ -239,13 +240,13 @@ bool IframeDetector::UpdateIframeVector(const std::string& json_data, std::vecto
     }
     
     if (brace_count != 0) {
-      std::cout << "[AnyWP] [iframe] ERROR: Unmatched braces at pos " << pos << std::endl;
+      Logger::Instance().Error("IframeDetector", "Unmatched braces at pos " + std::to_string(pos));
       break;
     }
     
     // Extract iframe data within [pos, obj_end)
     std::string obj_data = json_data.substr(pos, obj_end - pos);
-    std::cout << "[AnyWP] [iframe] Object data: " << obj_data << std::endl;
+    Logger::Instance().Debug("IframeDetector", "Object data: " + obj_data);
     
     IframeInfo iframe;
     
@@ -317,43 +318,45 @@ bool IframeDetector::UpdateIframeVector(const std::string& json_data, std::vecto
     // Add to list
     target_iframes.push_back(iframe);
     
-    std::cout << "[AnyWP] [iframe] Added iframe #" << target_iframes.size() << ": id=" << iframe.id 
-              << " pos=(" << iframe.left << "," << iframe.top << ")"
-              << " size=" << iframe.width << "x" << iframe.height
-              << " url=" << iframe.click_url << std::endl;
+    Logger::Instance().Debug("IframeDetector", 
+      "Added iframe #" + std::to_string(target_iframes.size()) + ": id=" + iframe.id + 
+      " pos=(" + std::to_string(iframe.left) + "," + std::to_string(iframe.top) + ")" +
+      " size=" + std::to_string(iframe.width) + "x" + std::to_string(iframe.height) +
+      " url=" + iframe.click_url);
     
     // Move to next object
     pos = obj_end;
   }
   
-  std::cout << "[AnyWP] [iframe] Total iframes: " << target_iframes.size() << std::endl;
+  Logger::Instance().Info("IframeDetector", "Total iframes: " + std::to_string(target_iframes.size()));
   return !target_iframes.empty();
 }
 
 IframeInfo* IframeDetector::GetIframeAtPointInVector(int x, int y, std::vector<IframeInfo>& iframes) {
-  std::cout << "[AnyWP] [iframe] GetIframeAtPointInVector: checking (" << x << "," << y << ") against " 
-            << iframes.size() << " iframes" << std::endl;
+  Logger::Instance().Debug("IframeDetector", 
+    "GetIframeAtPointInVector: checking (" + std::to_string(x) + "," + std::to_string(y) + ") against " + std::to_string(iframes.size()) + " iframes");
   
   for (auto& iframe : iframes) {
     if (!iframe.visible) {
-      std::cout << "[AnyWP] [iframe]   " << iframe.id << " - HIDDEN" << std::endl;
+      Logger::Instance().Debug("IframeDetector", "  " + iframe.id + " - HIDDEN");
       continue;
     }
     
     int right = iframe.left + iframe.width;
     int bottom = iframe.top + iframe.height;
     
-    std::cout << "[AnyWP] [iframe]   " << iframe.id << ": [" << iframe.left << "," << iframe.top 
-              << "] ~ [" << right << "," << bottom << "]" << std::endl;
+    Logger::Instance().Debug("IframeDetector", 
+      "  " + iframe.id + ": [" + std::to_string(iframe.left) + "," + std::to_string(iframe.top) + 
+      "] ~ [" + std::to_string(right) + "," + std::to_string(bottom) + "]");
     
     if (x >= iframe.left && x < right &&
         y >= iframe.top && y < bottom) {
-      std::cout << "[AnyWP] [iframe]   MATCH!" << std::endl;
+      Logger::Instance().Debug("IframeDetector", "  MATCH!");
       return &iframe;
     }
   }
   
-  std::cout << "[AnyWP] [iframe]   No match found" << std::endl;
+  Logger::Instance().Debug("IframeDetector", "  No match found");
   return nullptr;
 }
 

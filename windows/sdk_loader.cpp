@@ -4,11 +4,13 @@
 
 #include "sdk_loader.h"
 #include "sdk_resource.h"
+#include "utils/logger.h"
 #include <windows.h>
 #include <string>
-#include <iostream>
 #include <fstream>
 #include <vector>
+
+using anywp_engine::Logger;
 
 namespace anywp {
 namespace sdk {
@@ -20,7 +22,7 @@ std::string LoadSDKFromResource(HMODULE hModule) {
         if (!hModule) {
             hModule = GetModuleHandleW(L"anywp_engine_plugin.dll");
             if (!hModule) {
-                std::cerr << "[AnyWP] [SDK] Failed to get DLL module handle" << std::endl;
+                Logger::Instance().Error("SDK", "Failed to get DLL module handle");
                 return "";
             }
         }
@@ -29,8 +31,7 @@ std::string LoadSDKFromResource(HMODULE hModule) {
         HRSRC hResource = FindResource(hModule, MAKEINTRESOURCE(IDR_ANYWP_SDK), RT_RCDATA);
         if (!hResource) {
             DWORD error = GetLastError();
-            std::cerr << "[AnyWP] [SDK] Failed to find embedded SDK resource (Error: " 
-                      << error << ")" << std::endl;
+            Logger::Instance().Error("SDK", "Failed to find embedded SDK resource (Error: " + std::to_string(error) + ")");
             return "";
         }
         
@@ -38,39 +39,38 @@ std::string LoadSDKFromResource(HMODULE hModule) {
         HGLOBAL hLoadedResource = LoadResource(hModule, hResource);
         if (!hLoadedResource) {
             DWORD error = GetLastError();
-            std::cerr << "[AnyWP] [SDK] Failed to load SDK resource (Error: " 
-                      << error << ")" << std::endl;
+            Logger::Instance().Error("SDK", "Failed to load SDK resource (Error: " + std::to_string(error) + ")");
             return "";
         }
         
         // Lock resource to get pointer
         LPVOID pLockedResource = LockResource(hLoadedResource);
         if (!pLockedResource) {
-            std::cerr << "[AnyWP] [SDK] Failed to lock SDK resource" << std::endl;
+            Logger::Instance().Error("SDK", "Failed to lock SDK resource");
             return "";
         }
         
         // Get resource size
         DWORD dwResourceSize = SizeofResource(hModule, hResource);
         if (dwResourceSize == 0) {
-            std::cerr << "[AnyWP] [SDK] SDK resource size is 0" << std::endl;
+            Logger::Instance().Error("SDK", "SDK resource size is 0");
             return "";
         }
         
         // Convert to std::string
         std::string sdkContent(static_cast<const char*>(pLockedResource), dwResourceSize);
         
-        std::cout << "[AnyWP] [SDK] Loaded embedded SDK successfully (" 
-                  << dwResourceSize << " bytes)" << std::endl;
+        Logger::Instance().Info("SDK", 
+          "Loaded embedded SDK successfully (" + std::to_string(dwResourceSize) + " bytes)");
         
         return sdkContent;
     }
     catch (const std::exception& e) {
-        std::cerr << "[AnyWP] [SDK] Exception in LoadSDKFromResource: " << e.what() << std::endl;
+        Logger::Instance().Error("SDK", "Exception in LoadSDKFromResource: " + std::string(e.what()));
         return "";
     }
     catch (...) {
-        std::cerr << "[AnyWP] [SDK] Unknown exception in LoadSDKFromResource" << std::endl;
+        Logger::Instance().Error("SDK", "Unknown exception in LoadSDKFromResource");
         return "";
     }
 }
@@ -88,19 +88,19 @@ std::string LoadSDKFromFile(const std::string& path) {
         
         std::string content(size, '\0');
         if (file.read(&content[0], size)) {
-            std::cout << "[AnyWP] [SDK] Loaded SDK from file: " << path 
-                      << " (" << size << " bytes)" << std::endl;
+            Logger::Instance().Info("SDK", 
+              "Loaded SDK from file: " + path + " (" + std::to_string(size) + " bytes)");
             return content;
         }
         
         return "";
     }
     catch (const std::exception& e) {
-        std::cerr << "[AnyWP] [SDK] Exception in LoadSDKFromFile: " << e.what() << std::endl;
+        Logger::Instance().Error("SDK", "Exception in LoadSDKFromFile: " + std::string(e.what()));
         return "";
     }
     catch (...) {
-        std::cerr << "[AnyWP] [SDK] Unknown exception in LoadSDKFromFile" << std::endl;
+        Logger::Instance().Error("SDK", "Unknown exception in LoadSDKFromFile");
         return "";
     }
 }
@@ -111,11 +111,11 @@ std::string LoadSDKScript(HMODULE hModule) {
         // Strategy 1: Load from embedded resource (recommended)
         std::string sdkContent = LoadSDKFromResource(hModule);
         if (!sdkContent.empty()) {
-            std::cout << "[AnyWP] [SDK] Using embedded SDK (from DLL resource)" << std::endl;
+            Logger::Instance().Info("SDK", "Using embedded SDK (from DLL resource)");
             return sdkContent;
         }
         
-        std::cout << "[AnyWP] [SDK] Embedded SDK not available, trying file fallback..." << std::endl;
+        Logger::Instance().Info("SDK", "Embedded SDK not available, trying file fallback...");
         
         // Strategy 2: Load from file system (fallback)
         std::vector<std::string> searchPaths = {
@@ -133,17 +133,17 @@ std::string LoadSDKScript(HMODULE hModule) {
             }
         }
         
-        std::cerr << "[AnyWP] [SDK] ERROR: Failed to load SDK from both resource and file system!" << std::endl;
-        std::cerr << "[AnyWP] [SDK] Please ensure SDK is embedded in DLL or available at runtime." << std::endl;
+        Logger::Instance().Error("SDK", "Failed to load SDK from both resource and file system!");
+        Logger::Instance().Error("SDK", "Please ensure SDK is embedded in DLL or available at runtime.");
         
         return "";
     }
     catch (const std::exception& e) {
-        std::cerr << "[AnyWP] [SDK] Exception in LoadSDKScript: " << e.what() << std::endl;
+        Logger::Instance().Error("SDK", "Exception in LoadSDKScript: " + std::string(e.what()));
         return "";
     }
     catch (...) {
-        std::cerr << "[AnyWP] [SDK] Unknown exception in LoadSDKScript" << std::endl;
+        Logger::Instance().Error("SDK", "Unknown exception in LoadSDKScript");
         return "";
     }
 }
