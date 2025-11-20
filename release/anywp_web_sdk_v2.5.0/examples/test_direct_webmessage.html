@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>直接 WebMessage 测试</title>
+  <style>
+    body {
+      margin: 20px;
+      font-family: monospace;
+      background: #0a0a0a;
+      color: #00ff00;
+    }
+    
+    #info {
+      background: #1a1a1a;
+      padding: 20px;
+      border: 2px solid #ffeb3b;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    #mouseCoords {
+      font-size: 24px;
+      color: #ff5722;
+      margin: 20px 0;
+    }
+    
+    #log {
+      background: #000;
+      padding: 15px;
+      border: 2px solid #4CAF50;
+      border-radius: 8px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    
+    .log-entry {
+      margin: 3px 0;
+      padding: 3px 5px;
+      border-left: 3px solid #4CAF50;
+    }
+    
+    .log-error {
+      border-left-color: #f44336;
+      color: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <h1 style="color: #ffeb3b;">🔍 直接 WebMessage 测试</h1>
+    <p>本页面直接监听 WebView2 的 message 事件，不依赖 AnyWP SDK</p>
+    <div id="status">初始化中...</div>
+  </div>
+  
+  <div id="mouseCoords">鼠标坐标: 等待中...</div>
+  
+  <div id="log"></div>
+  
+  <script>
+    // CRITICAL: First line to verify JavaScript executes
+    console.log('[TEST] ========== JavaScript START ==========');
+    console.log('[TEST] test_direct_webmessage.html loaded');
+    
+    let messageCount = 0;
+    let mousemoveCount = 0;
+    
+    function addLog(message, isError) {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry' + (isError ? ' log-error' : '');
+      const time = new Date().toLocaleTimeString();
+      entry.textContent = `[${time}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      
+      while (logDiv.children.length > 100) {
+        logDiv.removeChild(logDiv.firstChild);
+      }
+      
+      console.log(message);
+    }
+    
+    // 检查 WebView2 API
+    if (window.chrome && window.chrome.webview) {
+      document.getElementById('status').innerHTML = 
+        '<span style="color: #4CAF50;">✅ chrome.webview 可用</span>';
+      addLog('✅ chrome.webview API 可用');
+      
+      // 直接注册监听器
+      window.chrome.webview.addEventListener('message', function(event) {
+        messageCount++;
+        const data = event.data;
+        
+        if (data && data.type === 'mouseEvent') {
+          if (data.eventType === 'mousemove') {
+            mousemoveCount++;
+            
+            // 更新实时坐标
+            document.getElementById('mouseCoords').textContent = 
+              `鼠标坐标: (${data.x}, ${data.y}) - 类型: ${data.eventType} - 计数: ${mousemoveCount}`;
+            
+            // 每 50 个 mousemove 打印一次日志
+            if (mousemoveCount % 50 === 0) {
+              addLog(`收到第 ${mousemoveCount} 个 mousemove: (${data.x}, ${data.y})`);
+            }
+          } else {
+            addLog(`收到 ${data.eventType} 事件: (${data.x}, ${data.y})`);
+            document.getElementById('mouseCoords').textContent = 
+              `鼠标坐标: (${data.x}, ${data.y}) - 类型: ${data.eventType}`;
+          }
+        } else {
+          addLog(`收到非 mouseEvent 消息: ${JSON.stringify(data)}` );
+        }
+      });
+      
+      addLog('✅ WebMessage 监听器已注册');
+      addLog('现在移动鼠标到页面上...');
+    } else {
+      document.getElementById('status').innerHTML = 
+        '<span style="color: #f44336;">❌ chrome.webview 不可用</span>';
+      addLog('❌ chrome.webview API 不可用！这不是 WebView2 环境', true);
+    }
+  </script>
+</body>
+</html>
+
