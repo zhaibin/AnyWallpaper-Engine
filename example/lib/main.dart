@@ -1,4 +1,5 @@
 ﻿import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:anywp_engine/anywp_engine.dart';
 import 'package:window_manager/window_manager.dart';
@@ -51,6 +52,10 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   Map<int, TextEditingController> _monitorUrlControllers = {};  // Each monitor has its own URL
   Map<int, bool> _monitorLoading = {};  // Track loading state for each monitor
   bool _allMonitorsLoading = false;  // Track "Start All" / "Stop All" loading state
+  
+  // Local file server for serving images without CORS issues (v2.5.2+)
+  final LocalFileServer _fileServer = LocalFileServer();
+  String _httpServerBaseUrl = '';  // HTTP server base URL (e.g., http://127.0.0.1:54321)
   Timer? _monitorCheckTimer;  // Timer for polling monitor changes
   bool _isHandlingMonitorChange = false;  // Prevent overlapping monitor change handling
   
@@ -102,6 +107,9 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     
     // Register window listener to save/restore position
     windowManager.addListener(this);
+    
+    // Start HTTP server for serving test pages (v2.5.2+)
+    _startHttpServer();
     
     _loadMonitors();
     
@@ -377,11 +385,11 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     print('[APP] Bidirectional communication callback set');
     
     // Auto-start carousel wallpaper
-    // Wait for monitors to load, then auto-start carousel
+    // Wait for monitors and HTTP server to load, then auto-start carousel page
     Future.delayed(Duration(seconds: 2), () async {
-      if (mounted && _monitors.isNotEmpty) {
-        final carouselUrl = 'file:///E:/Projects/AnyWallpaper/AnyWP-Test/examples/test_carousel_control.html';
-        print('[APP] Auto-starting carousel wallpaper: $carouselUrl');
+      if (mounted && _monitors.isNotEmpty && _httpServerBaseUrl.isNotEmpty) {
+        final carouselUrl = '$_httpServerBaseUrl/examples/test_carousel_control.html';
+        print('[APP] Auto-starting carousel page: $carouselUrl');
         final monitorIndex = _monitors.first.index;
         if (_monitorUrlControllers.containsKey(monitorIndex)) {
           _monitorUrlControllers[monitorIndex]!.text = carouselUrl;
@@ -590,6 +598,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     _monitorCheckTimer?.cancel();
     _carouselCountdownTimer?.cancel();
     _tabController?.dispose();
+    _fileServer.stop(); // Clean up HTTP server
     windowManager.removeListener(this);
     for (final controller in _monitorUrlControllers.values) {
       controller.dispose();
@@ -621,7 +630,9 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     if (controller == null) return;
     
     final currentUrl = controller.text.trim();
-    final carouselUrl = 'file:///E:/Projects/AnyWallpaper/AnyWP-Test/examples/test_carousel_control.html';
+    final carouselUrl = _httpServerBaseUrl.isNotEmpty
+        ? '$_httpServerBaseUrl/examples/test_carousel_control.html'
+        : 'http://127.0.0.1/examples/test_carousel_control.html';  // Fallback
     
     // 如果当前不是轮播页面，则切换到轮播页面
     if (currentUrl != carouselUrl) {
@@ -667,6 +678,24 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     // Monitor changes can trigger window repositioning by Windows
     // We'll restore position after monitor detection
     print('[APP] Window event: $eventName');
+  }
+  
+  /// Start HTTP server for serving test pages (v2.5.2+)
+  Future<void> _startHttpServer() async {
+    try {
+      final projectRoot = Directory.current.path;
+      print('[HTTP] Starting server with root: $projectRoot');
+      
+      final serverUrl = await _fileServer.start(projectRoot);
+      
+      setState(() {
+        _httpServerBaseUrl = serverUrl;
+      });
+      
+      print('[HTTP] ✅ Server started: $_httpServerBaseUrl');
+    } catch (e) {
+      print('[HTTP] ❌ Failed to start server: $e');
+    }
   }
   
   // Check for monitor changes by polling
@@ -757,8 +786,12 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
           print('[APP] Initializing UI for new monitor ${monitor.index}');
           _monitorWallpapers[monitor.index] = false;
           _monitorLoading[monitor.index] = false;
+          // Use HTTP URL for carousel page if server is running
+          final defaultUrl = _httpServerBaseUrl.isNotEmpty
+              ? '$_httpServerBaseUrl/examples/test_carousel_control.html'
+              : 'http://127.0.0.1/examples/test_carousel_control.html'; // Will be updated when server starts
           _monitorUrlControllers[monitor.index] = TextEditingController(
-            text: 'file:///E:/Projects/AnyWallpaper/AnyWP-Test/examples/test_carousel_control.html',
+            text: defaultUrl,
           );
         }
       }
@@ -993,7 +1026,15 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     final controller = _monitorUrlControllers[monitorIndex];
     if (controller == null) return;
     
-    final url = 'file:///E:/Projects/AnyWallpaper/AnyWP-Test/examples/$filename';
+    // 启动 HTTP 服务器（如果未运行）
+    if (!_fileServer.isRunning) {
+      final projectRoot = Directory.current.path;
+      await _fileServer.start(projectRoot);
+      print('[QuickTest] HTTP server started: ${_fileServer.baseUrl}');
+    }
+    
+    // 使用 HTTP URL 代替 file://
+    final url = '${_fileServer.baseUrl}/examples/$filename';
     controller.text = url;
     
     // Smart switching: use navigate if already running, otherwise start fresh
