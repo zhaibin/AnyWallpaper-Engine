@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:anywp_engine/anywp_engine.dart';
 import 'package:window_manager/window_manager.dart';
+import 'local_file_server.dart';
 
 /// 显示器配置（用于记忆拔掉前的状态）
 class MonitorConfig {
@@ -54,6 +55,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   bool _allMonitorsLoading = false;  // Track "Start All" / "Stop All" loading state
   
   // Local file server for serving images without CORS issues (v2.5.2+)
+  // TODO: Re-enable when LocalFileServer is implemented
   final LocalFileServer _fileServer = LocalFileServer();
   String _httpServerBaseUrl = '';  // HTTP server base URL (e.g., http://127.0.0.1:54321)
   Timer? _monitorCheckTimer;  // Timer for polling monitor changes
@@ -683,9 +685,28 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   /// Start HTTP server for serving test pages (v2.5.2+)
   Future<void> _startHttpServer() async {
     try {
-      final projectRoot = Directory.current.path;
-      print('[HTTP] Starting server with root: $projectRoot');
+      // Find project root by looking for 'examples' directory
+      var projectRoot = Directory.current.path;
+      print('[HTTP] Current directory: $projectRoot');
       
+      // Navigate up from build/windows/x64/runner/Debug to project root
+      var dir = Directory(projectRoot);
+      while (dir.parent.path != dir.path) {
+        final examplesPath = '${dir.path}${Platform.pathSeparator}examples';
+        final examplesDir = Directory(examplesPath);
+        if (await examplesDir.exists()) {
+          final testFilePath = '$examplesPath${Platform.pathSeparator}test_carousel_control.html';
+          final testFile = File(testFilePath);
+          if (await testFile.exists()) {
+            projectRoot = dir.path;
+            print('[HTTP] Found project root: $projectRoot');
+            break;
+          }
+        }
+        dir = dir.parent;
+      }
+      
+      print('[HTTP] Starting server with root: $projectRoot');
       final serverUrl = await _fileServer.start(projectRoot);
       
       setState(() {
@@ -1033,7 +1054,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       print('[QuickTest] HTTP server started: ${_fileServer.baseUrl}');
     }
     
-    // 使用 HTTP URL 代替 file://
+    // 使用 HTTP URL
     final url = '${_fileServer.baseUrl}/examples/$filename';
     controller.text = url;
     
