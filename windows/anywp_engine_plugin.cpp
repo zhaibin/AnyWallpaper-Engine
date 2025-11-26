@@ -1783,6 +1783,11 @@ bool AnyWPEnginePlugin::InitializeWallpaperCommon(const std::string& url, bool e
   Logger::Instance().Info("Plugin", "Setting up MouseHook for event forwarding...");
   SetupMouseHook();
   
+  // v2.5.1+ Set timer window for polling fallback (must be on UI thread)
+  if (mouse_hook_manager_ && result.host_window) {
+    mouse_hook_manager_->SetTimerWindow(result.host_window);
+  }
+  
   // Return created handles
   out_hwnd = result.host_window;
   out_worker_w = result.worker_w_window;

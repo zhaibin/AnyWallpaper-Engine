@@ -196,7 +196,7 @@ void EventDispatcher::DispatchEventInternal(const MouseEvent& event) {
     HRESULT hr = target_webview->PostWebMessageAsJson(json.str().c_str());
     
     if (FAILED(hr)) {
-      // Only log errors for non-mousemove events
+      // Only log errors for non-mousemove events (mousemove can fail during transitions)
       if (strcmp(event.event_type, "mousemove") != 0) {
         std::ostringstream oss;
         oss << "PostWebMessage failed: 0x" << std::hex << hr;
