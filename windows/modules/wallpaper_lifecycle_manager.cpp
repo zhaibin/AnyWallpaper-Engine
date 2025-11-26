@@ -67,7 +67,8 @@ bool WallpaperLifecycleManager::PauseWallpaper(const std::string& reason) {
     // Light memory trim (Windows API)
     SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
 
-    // TODO: 触发内存优化 (Phase 4+)
+    // Note: MemoryOptimizer integration is available but disabled to avoid
+    // aggressive memory operations during pause. Light trim above is sufficient.
     // if (memory_optimizer_) {
     //   memory_optimizer_->OptimizeMemoryUsage();
     // }

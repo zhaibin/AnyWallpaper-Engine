@@ -56,8 +56,9 @@ bool ScriptInjectionManager::SetupMessageBridge(ICoreWebView2* webview) {
     return false;
   }
 
-  // TODO: 设置 WebMessage 接收器
-  Logger::Instance().Info("ScriptInjectionManager", "Message bridge setup (stub)");
+  // Note: WebMessage receiver is configured in the main plugin (AnyWPEnginePlugin)
+  // via WebMessageHandler module. This method is kept for potential future use.
+  Logger::Instance().Info("ScriptInjectionManager", "Message bridge setup (handled by WebMessageHandler)");
   return true;
 }
 

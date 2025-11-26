@@ -55,7 +55,6 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   bool _allMonitorsLoading = false;  // Track "Start All" / "Stop All" loading state
   
   // Local file server for serving images without CORS issues (v2.5.2+)
-  // TODO: Re-enable when LocalFileServer is implemented
   final LocalFileServer _fileServer = LocalFileServer();
   String _httpServerBaseUrl = '';  // HTTP server base URL (e.g., http://127.0.0.1:54321)
   Timer? _monitorCheckTimer;  // Timer for polling monitor changes

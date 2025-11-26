@@ -82,8 +82,8 @@ void PowerManager::UpdatePowerState() {
     } else if (IsFullscreenAppActive()) {
       new_state = PowerState::FULLSCREEN_APP;
     }
-    // TODO: Add idle detection
-    // TODO: Add screen off detection
+    // Note: Idle detection and screen off detection are planned for future versions.
+    // Current implementation relies on session lock and fullscreen app detection.
     
     if (new_state != current_state_) {
       last_state_ = current_state_;
