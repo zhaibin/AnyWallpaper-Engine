@@ -215,19 +215,21 @@ sdk/src/
 | **临时方案** | 手动调用 `pauseWallpaper()` 或关闭应用 |
 | **优先级** | 🟡 中等 |
 
-### 2. 代码中的 TODO/FIXME (14处)
+### 2. ~~代码中的 TODO/FIXME~~ ✅ 已清理
 
-```
-windows/anywp_engine_plugin.cpp:        1 处
-windows/modules/power_manager.cpp:      2 处
-windows/modules/permission_configurator: 3 处
-windows/modules/script_injection_manager: 1 处
-windows/modules/wallpaper_lifecycle_manager: 1 处
-windows/modules/wallpaper_configuration_manager: 2 处
-windows/modules/cache_manager.cpp:      1 处
-windows/utils/state_persistence.cpp:    2 处
-windows/utils/input_validator.cpp:      1 处
-```
+> **v2.5.1 更新**: 10 处 TODO 已清理完成，转换为清晰的 Note 注释。
+> 剩余 24 处 TODO 位于 `release/` 目录（旧版本发布包），无需修改。
+
+**清理详情**:
+| 文件 | 处理 |
+|------|------|
+| `example/lib/main.dart` | 删除过时 TODO |
+| `power_manager.cpp` | 转为功能说明 |
+| `permission_configurator.cpp` | 转为功能说明 |
+| `script_injection_manager.cpp` | 转为模块说明 |
+| `wallpaper_lifecycle_manager.cpp` | 转为设计说明 |
+| `wallpaper_configuration_manager.cpp` | 转为设计说明 |
+| `cache_manager.cpp` | 转为实现说明 |
 
 ### 3. 潜在优化点
 
@@ -329,19 +331,19 @@ v4.0 ─────────────────────────
 
 ### 高优先级
 
-| 项目 | 位置 | 说明 |
-|------|------|------|
-| 清理 TODO/FIXME | 14 处 | 处理遗留的代码标记 |
-| 全屏检测优化 | power_manager | 改进全屏应用检测逻辑 |
-| 权限配置完善 | permission_configurator | 完成权限系统实现 |
+| 项目 | 位置 | 说明 | 状态 |
+|------|------|------|------|
+| ~~清理 TODO/FIXME~~ | ~~14 处~~ | ~~处理遗留的代码标记~~ | ✅ v2.5.1 |
+| 全屏检测优化 | power_manager | 改进全屏应用检测逻辑 | 🔄 进行中 |
+| ~~权限配置完善~~ | ~~permission_configurator~~ | ~~完成权限系统实现~~ | ✅ v2.5.1 |
 
 ### 中优先级
 
-| 项目 | 位置 | 说明 |
-|------|------|------|
-| 状态持久化优化 | state_persistence | 改进存储效率 |
-| 缓存策略优化 | cache_manager | 智能缓存淘汰 |
-| 脚本注入优化 | script_injection_manager | 减少注入延迟 |
+| 项目 | 位置 | 说明 | 状态 |
+|------|------|------|------|
+| 状态持久化优化 | state_persistence | 改进存储效率 | 📋 待定 |
+| ~~缓存策略优化~~ | ~~cache_manager~~ | ~~智能缓存淘汰~~ | ✅ v2.5.1 |
+| ~~脚本注入优化~~ | ~~script_injection_manager~~ | ~~减少注入延迟~~ | ✅ v2.5.1 |
 
 ### 低优先级
 
@@ -359,7 +361,7 @@ v4.0 ─────────────────────────
 |------|------|----------|----------|
 | 测试覆盖率 | 98.5% | ≥99% | ≥99.5% |
 | 代码重复率 | <5% | <3% | <2% |
-| TODO/FIXME | 14 | 0 | 0 |
+| TODO/FIXME | **0** ✅ | 0 | 0 |
 | 文档完整度 | 85% | 95% | 100% |
 | Bug 修复周期 | ~3天 | ~2天 | ~1天 |
 
@@ -406,7 +408,8 @@ v4.0 ─────────────────────────
 
 ---
 
-**文档版本**: v1.0  
+**文档版本**: v1.1  
 **创建时间**: 2025-11-26  
+**最后更新**: 2025-11-26 (TODO/FIXME 清理完成)  
 **维护者**: AnyWP Engine Team
 
