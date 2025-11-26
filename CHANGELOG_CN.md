@@ -8,6 +8,31 @@
 - **引擎版本**: v2.5.1
 - **SDK 版本**: v2.5.0 (未更新)
 
+### 🎉 新增功能
+
+#### 本地 HTTP 文件服务器
+- **功能说明**：新增 `LocalFileServer` 类，用于在本地启动 HTTP 服务器
+- **解决问题**：
+  - 避免本地文件加载的 CORS 跨域问题
+  - 启用需要 HTTP 协议的现代 Web API
+  - 支持本地 HTML 壁纸文件的可靠加载
+- **使用方式**：
+  ```dart
+  // 添加依赖到 pubspec.yaml:
+  // shelf: ^1.4.1
+  // shelf_static: ^1.1.2
+  
+  final server = LocalFileServer();
+  final baseUrl = await server.start('/path/to/files');
+  // 访问: $baseUrl/your_wallpaper.html
+  await server.stop();
+  ```
+- **特性**：
+  - 自动分配可用端口
+  - 自动添加 CORS 头
+  - 支持目录浏览
+  - 轻量级无额外进程
+
 ### 🐛 Bug 修复
 
 #### 鼠标事件干扰问题修复

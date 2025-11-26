@@ -19,7 +19,7 @@
 ```yaml
 dependencies:
   anywp_engine:
-    path: ./anywp_engine_v2.4.1_precompiled  # 使用最新版本
+    path: ./anywp_engine_v2.5.1_precompiled  # 使用最新版本
 ```
 
 **详细指南：** [PRECOMPILED_DLL_INTEGRATION.md](PRECOMPILED_DLL_INTEGRATION.md) ⭐
@@ -76,6 +76,32 @@ await AnyWPEngine.stopWallpaper();
 ```
 
 **完成！** 你的第一个壁纸应用已经运行了。
+
+### 📁 加载本地 HTML 文件？
+
+如果你需要加载本地 HTML 壁纸文件（而非远程 URL），推荐使用本地 HTTP 服务器：
+
+**阅读：** [LOCAL_HTTP_SERVER_GUIDE.md](LOCAL_HTTP_SERVER_GUIDE.md) ⭐ **v2.5.1+**
+
+```yaml
+# pubspec.yaml 添加依赖
+dependencies:
+  shelf: ^1.4.1
+  shelf_static: ^1.1.2
+```
+
+```dart
+// 启动本地服务器
+final server = LocalFileServer();
+final baseUrl = await server.start('/path/to/wallpapers');
+
+// 通过 HTTP 加载本地文件
+await AnyWPEngine.initializeWallpaper(
+  url: '$baseUrl/my_wallpaper.html',
+);
+```
+
+> 💡 **为什么？** 本地 `file://` 协议有 CORS 限制，HTTP 服务器可以解决这个问题。
 
 ---
 
