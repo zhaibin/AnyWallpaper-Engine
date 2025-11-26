@@ -9,11 +9,17 @@ MouseHookManager* MouseHookManager::instance_ = nullptr;
 MouseHookManager::MouseHookManager()
     : hook_(nullptr),
       paused_(false),
-      is_mouse_down_(false) {
+      is_mouse_down_(false),
+      polling_timer_id_(0),
+      polling_interval_ms_(16),  // ~60fps default
+      polling_fallback_enabled_(true),
+      last_polled_position_{0, 0},
+      last_hook_mousemove_time_(0) {
   instance_ = this;
 }
 
 MouseHookManager::~MouseHookManager() {
+  StopPollingTimer();
   Uninstall();
   instance_ = nullptr;
 }
@@ -86,6 +92,100 @@ bool MouseHookManager::IsPaused() const {
   return paused_;
 }
 
+void MouseHookManager::SetPollingFallbackEnabled(bool enabled) {
+  polling_fallback_enabled_ = enabled;
+  Logger::Instance().Info("MouseHook", 
+    std::string("Polling fallback ") + (enabled ? "enabled" : "disabled"));
+}
+
+void MouseHookManager::SetPollingInterval(UINT interval_ms) {
+  polling_interval_ms_ = interval_ms;
+  Logger::Instance().Info("MouseHook", 
+    "Polling interval set to " + std::to_string(interval_ms) + "ms");
+  
+  // Restart timer if running
+  if (polling_timer_id_ != 0) {
+    StopPollingTimer();
+    StartPollingTimer();
+  }
+}
+
+void MouseHookManager::StartPollingTimer() {
+  if (!polling_fallback_enabled_ || polling_timer_id_ != 0) {
+    return;
+  }
+  
+  // Create a timer using SetTimer with NULL HWND (thread message queue timer)
+  polling_timer_id_ = SetTimer(NULL, 0, polling_interval_ms_, PollingTimerProc);
+  
+  if (polling_timer_id_ != 0) {
+    Logger::Instance().Debug("MouseHook", 
+      "Polling timer started (id=" + std::to_string(polling_timer_id_) + 
+      ", interval=" + std::to_string(polling_interval_ms_) + "ms)");
+    
+    // Initialize last position
+    GetCursorPos(&last_polled_position_);
+  } else {
+    Logger::Instance().Warning("MouseHook", "Failed to start polling timer");
+  }
+}
+
+void MouseHookManager::StopPollingTimer() {
+  if (polling_timer_id_ != 0) {
+    KillTimer(NULL, polling_timer_id_);
+    Logger::Instance().Debug("MouseHook", 
+      "Polling timer stopped (id=" + std::to_string(polling_timer_id_) + ")");
+    polling_timer_id_ = 0;
+  }
+}
+
+void CALLBACK MouseHookManager::PollingTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {
+  if (instance_) {
+    instance_->ProcessPolledPosition();
+  }
+}
+
+void MouseHookManager::ProcessPolledPosition() {
+  // Only process if mouse is down and polling is needed
+  if (!is_mouse_down_ || paused_) {
+    return;
+  }
+  
+  // Check if hook is delivering events normally
+  DWORD current_time = GetTickCount();
+  DWORD last_hook_time = last_hook_mousemove_time_.load(std::memory_order_relaxed);
+  DWORD time_since_hook = current_time - last_hook_time;
+  
+  // If hook delivered a recent event, skip polling (hook is working)
+  if (time_since_hook < HOOK_TIMEOUT_MS) {
+    return;
+  }
+  
+  // Hook appears blocked, use polling
+  POINT current_pos;
+  GetCursorPos(&current_pos);
+  
+  // Check if position changed
+  if (current_pos.x != last_polled_position_.x || 
+      current_pos.y != last_polled_position_.y) {
+    
+    // Generate synthetic mousemove event
+    if (click_callback_) {
+      click_callback_(current_pos.x, current_pos.y, "mousemove");
+    }
+    
+    last_polled_position_ = current_pos;
+    
+    // Debug log (throttled)
+    static int poll_count = 0;
+    if (++poll_count % 60 == 1) {  // Log every ~1 second at 60fps
+      Logger::Instance().Debug("MouseHook", 
+        "Polling fallback active: (" + std::to_string(current_pos.x) + 
+        "," + std::to_string(current_pos.y) + ") hook_gap=" + 
+        std::to_string(time_since_hook) + "ms");
+    }
+  }
+}
 
 LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
   // v2.3.2+: Removed debug counters to reduce log noise
@@ -173,12 +273,27 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
     event_type = "mousedown";
     // v2.0.4+ Track mouse button down state - MUST set this before any early returns
     instance_->is_mouse_down_ = true;
+    
+    // v2.5.1+ Start polling timer for interference resilience
+    instance_->last_polled_position_ = pt;
+    instance_->last_hook_mousemove_time_.store(GetTickCount(), std::memory_order_relaxed);
+    instance_->StartPollingTimer();
+    
   } else if (wParam == WM_LBUTTONUP) {
     event_type = "mouseup";
     // v2.0.4+ Clear mouse button down state
     instance_->is_mouse_down_ = false;
+    
+    // v2.5.1+ Stop polling timer
+    instance_->StopPollingTimer();
+    
   } else if (wParam == WM_MOUSEMOVE) {
     event_type = "mousemove";
+    
+    // v2.5.1+ Update timestamp to indicate hook is working
+    if (instance_->is_mouse_down_) {
+      instance_->last_hook_mousemove_time_.store(GetTickCount(), std::memory_order_relaxed);
+    }
   }
   
   // v2.0.4+ NOW check is_app_window (after mouse button state is set)

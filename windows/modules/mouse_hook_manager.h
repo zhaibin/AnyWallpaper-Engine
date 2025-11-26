@@ -6,6 +6,7 @@
 #include <wrl.h>
 #include <functional>
 #include <vector>
+#include <atomic>
 #include "iframe_detector.h"  // For IframeInfo
 
 namespace anywp_engine {
@@ -22,6 +23,11 @@ struct WallpaperInstance;
  * - Window occlusion detection
  * - Iframe hit-testing
  * - Mouse button state tracking
+ * - v2.5.1+ Polling fallback for interference resilience
+ * 
+ * v2.5.1+ Anti-Interference Design:
+ * When another program's mouse hook blocks mousemove events (e.g., lxwp.exe),
+ * we use a timer-based polling mechanism as fallback to ensure smooth dragging.
  */
 class MouseHookManager {
 public:
@@ -47,14 +53,46 @@ public:
   // State management
   void SetPaused(bool paused);
   bool IsPaused() const;
+  
+  // v2.5.1+ Polling fallback configuration
+  /**
+   * Enable/disable polling fallback mechanism
+   * When enabled, a timer will poll mouse position during drag operations
+   * to compensate for potentially blocked mousemove events from other hooks
+   * 
+   * @param enabled True to enable polling fallback (default: true)
+   */
+  void SetPollingFallbackEnabled(bool enabled);
+  
+  /**
+   * Set polling interval in milliseconds
+   * Lower values = smoother dragging but higher CPU usage
+   * 
+   * @param interval_ms Polling interval (default: 16ms = ~60fps)
+   */
+  void SetPollingInterval(UINT interval_ms);
 
 private:
   static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
+  static void CALLBACK PollingTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
   static MouseHookManager* instance_;
+  
+  // v2.5.1+ Polling fallback implementation
+  void StartPollingTimer();
+  void StopPollingTimer();
+  void ProcessPolledPosition();
   
   HHOOK hook_;
   bool paused_;
   bool is_mouse_down_;  // v2.0.4+ Mouse button down state for event tracking
+  
+  // v2.5.1+ Polling fallback state
+  UINT_PTR polling_timer_id_;
+  UINT polling_interval_ms_;
+  bool polling_fallback_enabled_;
+  POINT last_polled_position_;
+  std::atomic<DWORD> last_hook_mousemove_time_;  // Timestamp of last mousemove from hook
+  static constexpr DWORD HOOK_TIMEOUT_MS = 50;   // If no hook event for this long, use polling
   
   ClickCallback click_callback_;
   IframeCallback iframe_callback_;

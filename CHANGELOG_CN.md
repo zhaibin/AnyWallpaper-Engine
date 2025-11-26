@@ -2,6 +2,41 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [2.5.1] - 2025-11-26
+
+### 版本信息
+- **引擎版本**: v2.5.1
+- **SDK 版本**: v2.5.0 (未更新)
+
+### 🐛 Bug 修复
+
+#### 鼠标事件干扰问题修复
+- **问题描述**：当其他程序（如 lxwp.exe）同时运行时，mousedown 后的 mousemove 事件无法传递到 WebView
+- **影响**：拖拽功能失效，用户体验受损
+- **根本原因**：其他程序的低级鼠标钩子在 mousedown 后阻断了 mousemove 事件的传递链
+- **解决方案**：实现定时器轮询备份机制
+  - 当 mousedown 时启动高频定时器（默认 16ms，约 60fps）
+  - 定时器通过 `GetCursorPos()` 轮询鼠标位置
+  - 当检测到钩子超过 50ms 未收到 mousemove 时，使用轮询位置生成合成事件
+  - mouseup 时停止定时器
+
+### 🔧 技术改进
+
+#### MouseHookManager 增强
+- **新增 `SetPollingFallbackEnabled(bool)`**：启用/禁用轮询备份功能
+- **新增 `SetPollingInterval(UINT)`**：设置轮询间隔（毫秒）
+- **新增内部方法**：
+  - `StartPollingTimer()` / `StopPollingTimer()`：定时器生命周期管理
+  - `ProcessPolledPosition()`：处理轮询到的鼠标位置
+  - `PollingTimerProc()`：定时器回调函数
+- **原子时间戳**：使用 `std::atomic<DWORD>` 跟踪最后一次钩子收到 mousemove 的时间
+
+### 📝 备注
+- 轮询机制仅在检测到钩子被干扰时激活，正常情况下不会增加 CPU 开销
+- 此修复对所有使用全局鼠标钩子的第三方程序都有效
+
+---
+
 ## [2.5.0] - 2025-11-20
 
 ### 版本信息
