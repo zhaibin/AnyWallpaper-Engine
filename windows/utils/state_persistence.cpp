@@ -27,7 +27,7 @@ void StatePersistence::SetApplicationName(const std::string& name) {
   std::lock_guard<std::mutex> lock(mutex_);
   
   if (name.empty()) {
-    std::cout << "[AnyWP] [State] WARNING: Empty application name, using 'Default'" << std::endl;
+    Logger::Instance().Warning("StatePersistence", "Empty application name, using 'Default'");
     application_name_ = "Default";
     return;
   }
@@ -43,20 +43,19 @@ void StatePersistence::SetApplicationName(const std::string& name) {
   }
   
   if (sanitized_name.empty()) {
-    std::cout << "[AnyWP] [State] WARNING: Invalid application name, using 'Default'" << std::endl;
+    Logger::Instance().Warning("StatePersistence", "Invalid application name, using 'Default'");
     application_name_ = "Default";
     return;
   }
   
   // Clear cache when switching applications
   if (application_name_ != sanitized_name && !state_cache_.empty()) {
-    std::cout << "[AnyWP] [State] Switching from '" << application_name_ 
-              << "' to '" << sanitized_name << "', clearing cache" << std::endl;
+    Logger::Instance().Info("StatePersistence", "Switching from '" + application_name_ + "' to '" + sanitized_name + "', clearing cache");
     state_cache_.clear();
   }
   
   application_name_ = sanitized_name;
-  std::cout << "[AnyWP] [State] Application name set to: " << application_name_ << std::endl;
+  Logger::Instance().Info("StatePersistence", "Application name set to: " + application_name_);
 }
 
 std::string StatePersistence::GetApplicationName() const {
@@ -81,15 +80,14 @@ bool StatePersistence::SaveState(const std::string& key, const std::string& valu
     bool success = SaveStateFile(state_cache_);
     
     if (success) {
-      std::cout << "[AnyWP] [State] Saved to file (" << application_name_ 
-                << "): " << key << " = " << value << std::endl;
+      Logger::Instance().Debug("StatePersistence", "Saved to file (" + application_name_ + "): " + key + " = " + value);
     } else {
-      std::cout << "[AnyWP] [State] ERROR: Failed to save state to file" << std::endl;
+      Logger::Instance().Error("StatePersistence", "Failed to save state to file");
     }
     
     return success;
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [State] ERROR: Exception in SaveState: " << e.what() << std::endl;
+    Logger::Instance().Error("StatePersistence", "Exception in SaveState: " + std::string(e.what()));
     return false;
   }
 }
@@ -100,8 +98,7 @@ std::string StatePersistence::LoadState(const std::string& key) {
   // Check cache first
   auto it = state_cache_.find(key);
   if (it != state_cache_.end()) {
-    std::cout << "[AnyWP] [State] Loaded from cache (" << application_name_ 
-              << "): " << key << " = " << it->second << std::endl;
+    Logger::Instance().Debug("StatePersistence", "Loaded from cache (" + application_name_ + "): " + key + " = " + it->second);
     return it->second;
   }
   
@@ -110,19 +107,18 @@ std::string StatePersistence::LoadState(const std::string& key) {
     try {
       state_cache_ = LoadStateFile();
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] [State] ERROR: Exception in LoadStateFile: " << e.what() << std::endl;
+      Logger::Instance().Error("StatePersistence", "Exception in LoadStateFile: " + std::string(e.what()));
     }
   }
   
   // Check cache again after loading
   it = state_cache_.find(key);
   if (it != state_cache_.end()) {
-    std::cout << "[AnyWP] [State] Loaded from file (" << application_name_ 
-              << "): " << key << " = " << it->second << std::endl;
+    Logger::Instance().Debug("StatePersistence", "Loaded from file (" + application_name_ + "): " + key + " = " + it->second);
     return it->second;
   }
   
-  std::cout << "[AnyWP] [State] Key not found (" << application_name_ << "): " << key << std::endl;
+  Logger::Instance().Debug("StatePersistence", "Key not found (" + application_name_ + "): " + key);
   return "";
 }
 
@@ -136,7 +132,7 @@ bool StatePersistence::ClearState() {
     // Delete state file
     std::string app_data = GetAppDataPath();
     if (app_data.empty()) {
-      std::cout << "[AnyWP] [State] ERROR: Failed to get app data path" << std::endl;
+      Logger::Instance().Error("StatePersistence", "Failed to get app data path");
       return false;
     }
     
@@ -144,15 +140,14 @@ bool StatePersistence::ClearState() {
     
     // Delete file if exists
     if (DeleteFileA(state_file.c_str()) || GetLastError() == ERROR_FILE_NOT_FOUND) {
-      std::cout << "[AnyWP] [State] Cleared all state (" << application_name_ 
-                << ") (deleted file: " << state_file << ")" << std::endl;
+      Logger::Instance().Info("StatePersistence", "Cleared all state (" + application_name_ + ") (deleted file: " + state_file + ")");
       return true;
     } else {
-      std::cout << "[AnyWP] [State] ERROR: Failed to delete state file: " << GetLastError() << std::endl;
+      Logger::Instance().Error("StatePersistence", "Failed to delete state file: " + std::to_string(GetLastError()));
       return false;
     }
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [State] ERROR: Exception in ClearState: " << e.what() << std::endl;
+    Logger::Instance().Error("StatePersistence", "Exception in ClearState: " + std::string(e.what()));
     return false;
   }
 }
@@ -164,7 +159,7 @@ std::map<std::string, std::string> StatePersistence::LoadAllStates() {
     try {
       state_cache_ = LoadStateFile();
     } catch (const std::exception& e) {
-      std::cout << "[AnyWP] [State] ERROR: Exception in LoadAllStates: " << e.what() << std::endl;
+      Logger::Instance().Error("StatePersistence", "Exception in LoadAllStates: " + std::string(e.what()));
     }
   }
   
@@ -285,7 +280,7 @@ std::map<std::string, std::string> StatePersistence::LoadStateFile() {
   
   std::string app_data = GetAppDataPath();
   if (app_data.empty()) {
-    std::cout << "[AnyWP] [State] ERROR: Failed to get app data path" << std::endl;
+    Logger::Instance().Error("StatePersistence", "Failed to get app data path");
     return state;
   }
   
@@ -293,7 +288,7 @@ std::map<std::string, std::string> StatePersistence::LoadStateFile() {
   std::ifstream file(state_file);
   
   if (!file.is_open()) {
-    std::cout << "[AnyWP] [State] State file not found (first run): " << state_file << std::endl;
+    Logger::Instance().Info("StatePersistence", "State file not found (first run): " + state_file);
     return state;
   }
   
@@ -343,20 +338,20 @@ std::map<std::string, std::string> StatePersistence::LoadStateFile() {
     pos = value_end + 1;
   }
   
-  std::cout << "[AnyWP] [State] Loaded " << state.size() << " entries from file" << std::endl;
+  Logger::Instance().Debug("StatePersistence", "Loaded " + std::to_string(state.size()) + " entries from file");
   return state;
 }
 
 bool StatePersistence::SaveStateFile(const std::map<std::string, std::string>& state) {
   std::string app_data = GetAppDataPath();
   if (app_data.empty()) {
-    std::cout << "[AnyWP] [State] ERROR: Failed to get app data path" << std::endl;
+    Logger::Instance().Error("StatePersistence", "Failed to get app data path");
     return false;
   }
   
   // Ensure directory exists
   if (!EnsureDirectoryExists(app_data)) {
-    std::cout << "[AnyWP] [State] ERROR: Failed to create directory: " << app_data << std::endl;
+    Logger::Instance().Error("StatePersistence", "Failed to create directory: " + app_data);
     return false;
   }
   
@@ -364,7 +359,7 @@ bool StatePersistence::SaveStateFile(const std::map<std::string, std::string>& s
   std::ofstream file(state_file);
   
   if (!file.is_open()) {
-    std::cout << "[AnyWP] [State] ERROR: Failed to open file: " << state_file << std::endl;
+    Logger::Instance().Error("StatePersistence", "Failed to open file: " + state_file);
     return false;
   }
   
@@ -381,7 +376,7 @@ bool StatePersistence::SaveStateFile(const std::map<std::string, std::string>& s
   file << "\n}\n";
   file.close();
   
-  std::cout << "[AnyWP] [State] Saved " << state.size() << " entries to file: " << state_file << std::endl;
+  Logger::Instance().Debug("StatePersistence", "Saved " + std::to_string(state.size()) + " entries to file: " + state_file);
   return true;
 }
 
@@ -546,7 +541,7 @@ std::map<std::string, std::string> LoadStateFileForApp(const std::string& app_na
     pos = value_end + 1;
   }
   
-  Logger::Instance().Info("StatePersistence", "Loaded " + std::to_string(state.size()) + " entries from file");
+  Logger::Instance().Debug("StatePersistence", "Loaded " + std::to_string(state.size()) + " entries from file");
   return state;
 }
 
@@ -584,7 +579,7 @@ bool SaveStateFileForApp(const std::map<std::string, std::string>& state, const 
   file << "\n}\n";
   file.close();
   
-  Logger::Instance().Info("StatePersistence", "Saved " + std::to_string(state.size()) + " entries to file: " + state_file);
+  Logger::Instance().Debug("StatePersistence", "Saved " + std::to_string(state.size()) + " entries to file: " + state_file);
   return true;
 }
 

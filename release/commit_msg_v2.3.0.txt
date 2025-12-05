@@ -1,0 +1,8 @@
+release: 发布 v2.3.0
+
+- 🎯 重大改进 (Breaking Changes)
+- 嵌入式 SDK - 彻底解决路径问题
+- 版本号统一管理 - 避免版本不一致
+- 新增功能 (Added)
+- 🔨 新增模块
+- 改进 (Improved)

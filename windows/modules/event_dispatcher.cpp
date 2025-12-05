@@ -7,7 +7,7 @@
 namespace anywp_engine {
 
 EventDispatcher::EventDispatcher() {
-  Logger::Instance().Info("EventDispatcher", "Module created");
+  Logger::Instance().Debug("EventDispatcher", "Module created");
 }
 
 EventDispatcher::~EventDispatcher() {
@@ -70,7 +70,7 @@ void EventDispatcher::RebuildHwndCache() {
   
   std::ostringstream oss;
   oss << "Cache rebuilt: " << hwnd_cache_.size() << " entries";
-  Logger::Instance().Info("EventDispatcher", oss.str());
+  Logger::Instance().Debug("EventDispatcher", oss.str());
 }
 
 WallpaperInstance* EventDispatcher::FindInstanceByPoint(int x, int y) {
@@ -196,7 +196,7 @@ void EventDispatcher::DispatchEventInternal(const MouseEvent& event) {
     HRESULT hr = target_webview->PostWebMessageAsJson(json.str().c_str());
     
     if (FAILED(hr)) {
-      // Only log errors for non-mousemove events
+      // Only log errors for non-mousemove events (mousemove can fail during transitions)
       if (strcmp(event.event_type, "mousemove") != 0) {
         std::ostringstream oss;
         oss << "PostWebMessage failed: 0x" << std::hex << hr;
@@ -246,7 +246,7 @@ void EventDispatcher::UpdateStats(const char* event_type) {
 void EventDispatcher::SetLogThrottle(int every_n_events) {
   log_throttle_.store(every_n_events, std::memory_order_relaxed);
   
-  Logger::Instance().Info("EventDispatcher", 
+  Logger::Instance().Debug("EventDispatcher", 
     "Log throttle set to: " + std::to_string(every_n_events));
 }
 

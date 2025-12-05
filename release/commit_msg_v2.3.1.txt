@@ -1,0 +1,8 @@
+release: 发布 v2.3.1
+
+- 🛡️ P0 级增强 - WorkerW 异常自动恢复（Lively-style 优化版）
+- 问题背景
+- 解决方案（基于 Lively Wallpaper 策略优化）
+- 🧪 测试增强 (Testing)
+- 单元测试覆盖
+- 📊 性能影响 (Performance)

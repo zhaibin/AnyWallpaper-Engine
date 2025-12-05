@@ -1,7 +1,6 @@
-import { getBridge, detectPlatform } from '../utils/platform';
 export const AnyWP = {
     // Properties
-    version: '2.2.0',
+    version: '__SDK_VERSION__', // Will be replaced by rollup during build
     dpiScale: window.devicePixelRatio || 1,
     screenWidth: screen.width * (window.devicePixelRatio || 1),
     screenHeight: screen.height * (window.devicePixelRatio || 1),
@@ -17,6 +16,9 @@ export const AnyWP = {
     _autoRefreshEnabled: true,
     _persistedState: {},
     _onFlutterMessage: null,
+    _draggableElements: [],
+    _dragState: null,
+    interactionEnabled: true,
     // Initialize (will be implemented in init.ts)
     _init() {
         throw new Error('_init must be implemented');
@@ -67,19 +69,11 @@ export const AnyWP = {
     },
     openURL(url) {
         console.log('[AnyWP] Opening URL: ' + url);
-        const platform = detectPlatform();
-        if (platform !== 'unknown') {
-            try {
-                const bridge = getBridge();
-                bridge.postMessage({
-                    type: 'openURL',
-                    url: url
-                });
-            }
-            catch (error) {
-                console.error('[AnyWP] Error sending openURL message:', error);
-                window.open(url, '_blank');
-            }
+        if (window.chrome?.webview) {
+            window.chrome.webview.postMessage({
+                type: 'openURL',
+                url: url
+            });
         }
         else {
             console.warn('[AnyWP] Native bridge not available');
@@ -87,19 +81,12 @@ export const AnyWP = {
         }
     },
     ready(name) {
-        const platform = detectPlatform();
-        console.log(`[AnyWP] Wallpaper ready: ${name} (platform: ${platform})`);
-        if (platform !== 'unknown') {
-            try {
-                const bridge = getBridge();
-                bridge.postMessage({
-                    type: 'ready',
-                    name: name
-                });
-            }
-            catch (error) {
-                console.error('[AnyWP] Error sending ready message:', error);
-            }
+        console.log('[AnyWP] Wallpaper ready: ' + name);
+        if (window.chrome?.webview) {
+            window.chrome.webview.postMessage({
+                type: 'ready',
+                name: name
+            });
         }
     },
     // ========================================
@@ -138,6 +125,16 @@ export const AnyWP = {
     },
     async decryptFile(_encryptedPath, _destPath) {
         throw new Error('decryptFile must be implemented');
+    },
+    // Drag & Drop (v2.4.1+)
+    makeDraggable() {
+        throw new Error('Not implemented');
+    },
+    removeDraggable() {
+        throw new Error('Not implemented');
+    },
+    resetPosition() {
+        throw new Error('Not implemented');
     }
 };
 //# sourceMappingURL=AnyWP.js.map

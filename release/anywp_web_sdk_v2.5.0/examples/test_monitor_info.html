@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>显示器信息诊断</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #00ff00;
+      line-height: 1.8;
+    }
+    
+    h1 {
+      color: #ffeb3b;
+      border-bottom: 2px solid #ffeb3b;
+      padding-bottom: 10px;
+    }
+    
+    h2 {
+      color: #4CAF50;
+      margin-top: 30px;
+    }
+    
+    .section {
+      background: #1a1a1a;
+      padding: 15px;
+      margin: 15px 0;
+      border-left: 4px solid #4CAF50;
+      border-radius: 4px;
+    }
+    
+    .value {
+      color: #ff5722;
+      font-weight: bold;
+    }
+    
+    .mouse-tracker {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.9);
+      padding: 20px;
+      border: 2px solid #ffeb3b;
+      border-radius: 8px;
+      min-width: 300px;
+    }
+    
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 15px 0;
+    }
+    
+    th, td {
+      border: 1px solid #333;
+      padding: 10px;
+      text-align: left;
+    }
+    
+    th {
+      background: #1a1a1a;
+      color: #ffeb3b;
+    }
+  </style>
+</head>
+<body>
+  <h1>🖥️ 显示器配置诊断工具</h1>
+  
+  <div class="mouse-tracker">
+    <h3 style="margin: 0 0 10px 0; color: #ffeb3b;">🖱️ 实时鼠标位置</h3>
+    <div id="mousePos">等待移动...</div>
+  </div>
+  
+  <div class="section">
+    <h2>💻 浏览器窗口信息</h2>
+    <table>
+      <tr>
+        <th>属性</th>
+        <th>值</th>
+      </tr>
+      <tr>
+        <td>window.screen.width</td>
+        <td class="value" id="screenWidth"></td>
+      </tr>
+      <tr>
+        <td>window.screen.height</td>
+        <td class="value" id="screenHeight"></td>
+      </tr>
+      <tr>
+        <td>window.screen.availWidth</td>
+        <td class="value" id="availWidth"></td>
+      </tr>
+      <tr>
+        <td>window.screen.availHeight</td>
+        <td class="value" id="availHeight"></td>
+      </tr>
+      <tr>
+        <td>window.innerWidth</td>
+        <td class="value" id="innerWidth"></td>
+      </tr>
+      <tr>
+        <td>window.innerHeight</td>
+        <td class="value" id="innerHeight"></td>
+      </tr>
+      <tr>
+        <td>window.screenX</td>
+        <td class="value" id="screenX"></td>
+      </tr>
+      <tr>
+        <td>window.screenY</td>
+        <td class="value" id="screenY"></td>
+      </tr>
+      <tr>
+        <td>window.devicePixelRatio</td>
+        <td class="value" id="dpr"></td>
+      </tr>
+    </table>
+  </div>
+  
+  <div class="section">
+    <h2>🎯 AnyWP SDK 信息</h2>
+    <div id="sdkInfo">加载中...</div>
+  </div>
+  
+  <div class="section">
+    <h2>📊 C++ 后端显示器信息</h2>
+    <div id="backendInfo">加载中...</div>
+  </div>
+  
+  <div class="section">
+    <h2>🔍 坐标转换测试</h2>
+    <div>
+      <p>移动鼠标到屏幕不同位置，观察坐标变化：</p>
+      <ul>
+        <li>左上角应该接近 (0, 0)</li>
+        <li>如果有多显示器，坐标范围会超过单个显示器的分辨率</li>
+        <li>观察鼠标在不同显示器上的坐标</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    // 显示窗口信息
+    function updateWindowInfo() {
+      document.getElementById('screenWidth').textContent = window.screen.width;
+      document.getElementById('screenHeight').textContent = window.screen.height;
+      document.getElementById('availWidth').textContent = window.screen.availWidth;
+      document.getElementById('availHeight').textContent = window.screen.availHeight;
+      document.getElementById('innerWidth').textContent = window.innerWidth;
+      document.getElementById('innerHeight').textContent = window.innerHeight;
+      document.getElementById('screenX').textContent = window.screenX;
+      document.getElementById('screenY').textContent = window.screenY;
+      document.getElementById('dpr').textContent = window.devicePixelRatio;
+    }
+    
+    updateWindowInfo();
+    
+    // 等待 SDK
+    function waitForAnyWP() {
+      if (window.AnyWP) {
+        const sdkInfo = document.getElementById('sdkInfo');
+        sdkInfo.innerHTML = `
+          <table>
+            <tr><th>属性</th><th>值</th></tr>
+            <tr><td>SDK 版本</td><td class="value">${AnyWP.version}</td></tr>
+            <tr><td>screenWidth</td><td class="value">${AnyWP.screenWidth}</td></tr>
+            <tr><td>screenHeight</td><td class="value">${AnyWP.screenHeight}</td></tr>
+            <tr><td>dpiScale</td><td class="value">${AnyWP.dpiScale}</td></tr>
+            <tr><td>interactionEnabled</td><td class="value">${AnyWP.interactionEnabled}</td></tr>
+          </table>
+        `;
+        
+        // 监听鼠标
+        let eventCount = 0;
+        window.addEventListener('AnyWP:mouse', function(event) {
+          const detail = event.detail;
+          eventCount++;
+          
+          if (detail.type === 'mousemove') {
+            const mousePos = document.getElementById('mousePos');
+            mousePos.innerHTML = `
+              <div style="margin: 5px 0;">
+                <strong>原始坐标:</strong><br>
+                x = <span class="value">${detail.x}</span><br>
+                y = <span class="value">${detail.y}</span>
+              </div>
+              <div style="margin: 5px 0;">
+                <strong>转换后 (CSS):</strong><br>
+                x = <span class="value">${(detail.x / AnyWP.dpiScale).toFixed(1)}</span><br>
+                y = <span class="value">${(detail.y / AnyWP.dpiScale).toFixed(1)}</span>
+              </div>
+              <div style="margin: 5px 0; color: #888;">
+                事件计数: ${eventCount}
+              </div>
+            `;
+          }
+        });
+        
+        console.log('✅ AnyWP SDK 已加载');
+      } else {
+        setTimeout(waitForAnyWP, 100);
+      }
+    }
+    
+    // 显示后端信息（需要从日志读取）
+    document.getElementById('backendInfo').innerHTML = `
+      <p>请查看控制台日志中的显示器信息：</p>
+      <pre style="background:#000; padding:10px; border-radius:4px;">
+搜索日志关键词:
+- "Found X monitor(s)"
+- "MonitorInfo"
+- "Monitor 0 bounds"
+      </pre>
+    `;
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', waitForAnyWP);
+    } else {
+      waitForAnyWP();
+    }
+  </script>
+</body>
+</html>
+
+

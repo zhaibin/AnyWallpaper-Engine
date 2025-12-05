@@ -176,11 +176,11 @@ void InstanceManager::ClearAllInstances() {
 }
 
 bool InstanceManager::CleanupInstance(int monitor_index) {
-  std::cout << "[InstanceManager] Cleaning up instance for monitor " << monitor_index << std::endl;
+  Logger::Instance().Info("InstanceManager", "Cleaning up instance for monitor " + std::to_string(monitor_index));
   
   WallpaperInstance* instance = GetInstanceForMonitor(monitor_index);
   if (!instance) {
-    std::cout << "[InstanceManager] No instance found on monitor " << monitor_index << std::endl;
+    Logger::Instance().Info("InstanceManager", "No instance found on monitor " + std::to_string(monitor_index));
     return false;
   }
   
@@ -188,9 +188,9 @@ bool InstanceManager::CleanupInstance(int monitor_index) {
   if (instance->webview_controller) {
     try {
       instance->webview_controller->Close();
-      std::cout << "[InstanceManager] WebView controller closed" << std::endl;
+      Logger::Instance().Info("InstanceManager", "WebView controller closed");
     } catch (...) {
-      std::cout << "[InstanceManager] WARNING: Exception while closing WebView controller" << std::endl;
+      Logger::Instance().Warning("InstanceManager", "Exception while closing WebView controller");
     }
     instance->webview_controller = nullptr;
   }
@@ -206,13 +206,13 @@ bool InstanceManager::CleanupInstance(int monitor_index) {
       
       if (!DestroyWindow(instance->webview_host_hwnd)) {
         DWORD error = GetLastError();
-        std::cout << "[InstanceManager] WARNING: Failed to destroy window, error: " << error << std::endl;
+        Logger::Instance().Warning("InstanceManager", "Failed to destroy window, error: " + std::to_string(error));
       } else {
-        std::cout << "[InstanceManager] Window destroyed successfully" << std::endl;
+        Logger::Instance().Info("InstanceManager", "Window destroyed successfully");
         Sleep(50); // Wait for window destruction
       }
     } else {
-      std::cout << "[InstanceManager] WARNING: Window already destroyed" << std::endl;
+      Logger::Instance().Warning("InstanceManager", "Window already destroyed");
       if (untrack_window_) {
         untrack_window_(instance->webview_host_hwnd);
       }
@@ -226,8 +226,8 @@ bool InstanceManager::CleanupInstance(int monitor_index) {
   // Remove instance from list
   bool removed = RemoveInstance(monitor_index);
   
-  std::cout << "[InstanceManager] Cleanup " << (removed ? "succeeded" : "failed") 
-            << " for monitor " << monitor_index << std::endl;
+  Logger::Instance().Info("InstanceManager", 
+    "Cleanup " + std::string(removed ? "succeeded" : "failed") + " for monitor " + std::to_string(monitor_index));
   
   return removed;
 }

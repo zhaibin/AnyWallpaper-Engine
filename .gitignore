@@ -13,6 +13,7 @@ flutter_*.log
 windows/flutter/ephemeral/
 windows/packages/
 windows/nuget.exe
+windows/version.h
 example/windows/nuget.exe
 *.user
 *.suo
@@ -51,6 +52,11 @@ desktop.ini
 *.tmp
 *.temp
 *~
+
+# Node.js
+node_modules/
+package-lock.json
+*.lockb
 
 # Test logs directory
 test_logs/

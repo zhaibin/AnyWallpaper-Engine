@@ -39,9 +39,9 @@ The repository now维持 **16** 个脚本（含 PowerShell 模块），覆盖环
 **使用场景**：首次克隆仓库、CI 环境或依赖损坏时执行。
 
 ### `build_sdk.bat`
-- 安装 `windows\sdk\package.json` 依赖
-- 执行 Rollup 打包 `windows\anywp_sdk.js`
-- 运行单测并输出覆盖率（`windows\sdk\coverage\`）
+- 安装 `sdk\src\package.json` 依赖
+- 执行 Rollup 打包到 `sdk\dist\anywp_sdk.js`
+- 运行单测并输出覆盖率（`sdk\src\coverage\`）
 
 **Tip**：发版前需确保最新 `anywp_sdk.js` 已生成。
 

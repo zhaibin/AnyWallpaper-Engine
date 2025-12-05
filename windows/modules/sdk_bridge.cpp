@@ -1,4 +1,6 @@
 #include "sdk_bridge.h"
+#include "../sdk_loader.h"
+#include "../utils/logger.h"
 
 #include <iostream>
 #include <fstream>
@@ -23,7 +25,7 @@ SDKBridge::~SDKBridge() {
 
 void SDKBridge::SetWebView(Microsoft::WRL::ComPtr<ICoreWebView2> webview) {
   webview_ = webview;
-  std::cout << "[AnyWP] [SDKBridge] WebView set" << std::endl;
+  Logger::Instance().Debug("SDKBridge", "WebView set");
 }
 
 Microsoft::WRL::ComPtr<ICoreWebView2> SDKBridge::GetWebView() const {
@@ -34,17 +36,17 @@ Microsoft::WRL::ComPtr<ICoreWebView2> SDKBridge::GetWebView() const {
 
 void SDKBridge::InjectSDK() {
   if (!webview_) {
-    std::cout << "[AnyWP] [SDKBridge] ERROR: WebView not set" << std::endl;
+    Logger::Instance().Error("SDKBridge", "Cannot inject SDK: WebView not set");
     return;
   }
   
-  std::cout << "[AnyWP] [SDKBridge] Injecting AnyWallpaper SDK..." << std::endl;
+  Logger::Instance().Info("SDKBridge", "Injecting SDK...");
   
   // Load SDK script
   std::string sdk_script = LoadSDKScript();
   std::wstring wsdk_script(sdk_script.begin(), sdk_script.end());
   
-  std::cout << "[AnyWP] [SDKBridge] SDK script size: " << sdk_script.length() << " bytes" << std::endl;
+  Logger::Instance().Debug("SDKBridge", "SDK script size: " + std::to_string(sdk_script.length()) + " bytes");
   
   // Inject on every navigation (for future navigations)
   webview_->AddScriptToExecuteOnDocumentCreated(
@@ -52,9 +54,9 @@ void SDKBridge::InjectSDK() {
     Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
       [](HRESULT result, LPCWSTR id) -> HRESULT {
         if (SUCCEEDED(result)) {
-          std::wcout << L"[AnyWP] [SDKBridge] SDK registered for future pages, ID: " << id << std::endl;
+          Logger::Instance().Debug("SDKBridge", "SDK registered for future pages");
         } else {
-          std::cout << "[AnyWP] [SDKBridge] ERROR: Failed to register SDK: " << std::hex << result << std::endl;
+          Logger::Instance().Error("SDKBridge", "Failed to register SDK");
         }
         return S_OK;
       }).Get());
@@ -62,17 +64,15 @@ void SDKBridge::InjectSDK() {
   // IMPORTANT: Also inject immediately for current page
   // Note: This may fail if page hasn't loaded yet, but AddScriptToExecuteOnDocumentCreated
   // will ensure SDK is injected when page is created
-  std::cout << "[AnyWP] [SDKBridge] Attempting to inject SDK into current page..." << std::endl;
+  Logger::Instance().Debug("SDKBridge", "Injecting SDK into current page...");
   webview_->ExecuteScript(
     wsdk_script.c_str(),
     Microsoft::WRL::Callback<ICoreWebView2ExecuteScriptCompletedHandler>(
       [](HRESULT result, LPCWSTR resultObjectAsJson) -> HRESULT {
         if (SUCCEEDED(result)) {
-          std::cout << "[AnyWP] [SDKBridge] SDK executed successfully on current page" << std::endl;
+          Logger::Instance().Debug("SDKBridge", "SDK injected successfully");
         } else {
-          std::cout << "[AnyWP] [SDKBridge] WARNING: Failed to execute SDK on current page (may not be loaded yet): " 
-                    << std::hex << result << std::endl;
-          std::cout << "[AnyWP] [SDKBridge] SDK will be injected via AddScriptToExecuteOnDocumentCreated when page loads" << std::endl;
+          Logger::Instance().Debug("SDKBridge", "SDK injection deferred to page load (will auto-inject)");
         }
         return S_OK;
       }).Get());
@@ -96,22 +96,18 @@ void SDKBridge::InjectSDK() {
     verify_script.c_str(),
     Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
       [](HRESULT result, LPCWSTR id) -> HRESULT {
-        if (SUCCEEDED(result)) {
-          std::wcout << L"[AnyWP] [SDKBridge] SDK verification script registered, ID: " << id << std::endl;
-        } else {
-          std::cout << "[AnyWP] [SDKBridge] WARNING: Failed to register verification script: " << std::hex << result << std::endl;
-        }
+        // Silent - verification happens via postMessage
         return S_OK;
       }).Get());
 }
 
 void SDKBridge::SetupMessageBridge() {
   if (!webview_) {
-    std::cout << "[AnyWP] [SDKBridge] ERROR: WebView not set" << std::endl;
+    Logger::Instance().Error("SDKBridge", "Cannot setup message bridge: WebView not set");
     return;
   }
   
-  std::cout << "[AnyWP] [SDKBridge] Setting up message bridge..." << std::endl;
+  Logger::Instance().Debug("SDKBridge", "Setting up message bridge...");
   
   webview_->add_WebMessageReceived(
     Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>(
@@ -130,7 +126,7 @@ void SDKBridge::SetupMessageBridge() {
         // Check if this is a pause/resume result message
         if (msg.find("\"type\":\"pauseResult\"") != std::string::npos || 
             msg.find("\"type\":\"resumeResult\"") != std::string::npos) {
-          std::cout << "[AnyWP] [SDKBridge] Script Result: " << msg << std::endl;
+          Logger::Instance().Debug("SDKBridge", "Script execution result received");
         }
         
         HandleMessage(msg);
@@ -139,64 +135,64 @@ void SDKBridge::SetupMessageBridge() {
         return S_OK;
       }).Get(), nullptr);
   
-  std::cout << "[AnyWP] [SDKBridge] Message bridge ready" << std::endl;
+  Logger::Instance().Debug("SDKBridge", "Message bridge ready");
 }
 
 // ========== Message Handling ==========
 
 void SDKBridge::RegisterHandler(const std::string& message_type, MessageHandler handler) {
   handlers_[message_type] = handler;
-  std::cout << "[AnyWP] [SDKBridge] Registered handler for: " << message_type << std::endl;
+  Logger::Instance().Debug("SDKBridge", "Registered handler for: " + message_type);
 }
 
 void SDKBridge::UnregisterHandler(const std::string& message_type) {
   handlers_.erase(message_type);
-  std::cout << "[AnyWP] [SDKBridge] Unregistered handler for: " << message_type << std::endl;
+  Logger::Instance().Debug("SDKBridge", "Unregistered handler for: " + message_type);
 }
 
 void SDKBridge::HandleMessage(const std::string& message) {
-  std::cout << "[AnyWP] [SDKBridge] Received message: " << message << std::endl;
+  Logger::Instance().Debug("SDKBridge", "Received message: " + message);
   
   // Determine message type first
   std::string type = GetMessageType(message);
   
   // Check for SDK verification messages (handle before other handlers)
   if (type == "sdkReady" || message.find("\"type\":\"sdkReady\"") != std::string::npos) {
-    std::cout << "[AnyWP] [SDKBridge] SDK verification: SDK loaded successfully" << std::endl;
-    // Extract version if present
+    // SDK ready - log version only at DEBUG level
     std::string version = ExtractJsonValue(message, "version");
     if (!version.empty()) {
-      std::cout << "[AnyWP] [SDKBridge] SDK version: " << version << std::endl;
+      Logger::Instance().Debug("SDKBridge", "SDK ready: v" + version);
+    } else {
+      Logger::Instance().Debug("SDKBridge", "SDK ready");
     }
     return;
   }
   
   if (type == "sdkError" || message.find("\"type\":\"sdkError\"") != std::string::npos) {
-    std::cout << "[AnyWP] [SDKBridge] SDK verification: SDK NOT loaded" << std::endl;
     std::string error = ExtractJsonValue(message, "error");
     if (!error.empty()) {
-      std::cout << "[AnyWP] [SDKBridge] Error: " << error << std::endl;
+      Logger::Instance().Error("SDKBridge", "SDK verification failed: " + error);
     }
     return;
   }
   
   if (type.empty()) {
-    std::cout << "[AnyWP] [SDKBridge] Unknown message type (showing raw): " << message << std::endl;
+    Logger::Instance().Debug("SDKBridge", "Unknown message type: " + message.substr(0, 100));
     return;
   }
   
   // v2.1.0+ Bidirectional Communication: Forward ALL messages to Flutter
   // This allows Flutter to handle any message type from JavaScript
-  std::cout << "[AnyWP] [SDKBridge] Forwarding message to Flutter (type: " << type << ")" << std::endl;
+  Logger::Instance().Debug("SDKBridge", "Forwarding message to Flutter (type: " + type + ")");
   ForwardMessageToFlutter(message);
   
   // Also invoke registered handler (if any) for backward compatibility
   auto it = handlers_.find(type);
   if (it != handlers_.end()) {
-    std::cout << "[AnyWP] [SDKBridge] Invoking registered handler for type: " << type << std::endl;
+    Logger::Instance().Debug("SDKBridge", "Invoking registered handler for type: " + type);
     it->second(message);
   } else {
-    std::cout << "[AnyWP] [SDKBridge] No registered handler for type: " << type << " (message still forwarded to Flutter)" << std::endl;
+    Logger::Instance().Debug("SDKBridge", "No handler for type: " + type + " (forwarded to Flutter)");
   }
 }
 
@@ -204,25 +200,23 @@ void SDKBridge::HandleMessage(const std::string& message) {
 
 void SDKBridge::SetFlutterCallback(std::function<void(const std::string&)> callback) {
   flutter_callback_ = callback;
-  std::cout << "[AnyWP] [SDKBridge] Flutter callback registered" << std::endl;
+  Logger::Instance().Debug("SDKBridge", "Flutter callback registered");
 }
 
 void SDKBridge::ForwardMessageToFlutter(const std::string& message) {
   if (!flutter_callback_) {
-    std::cout << "[AnyWP] [SDKBridge] WARNING: Flutter callback not set, cannot forward message" << std::endl;
+    Logger::Instance().Warn("SDKBridge", "Flutter callback not set, cannot forward message");
     return;
   }
 
-  std::cout << "[AnyWP] [SDKBridge] Forwarding to Flutter: " << message.substr(0, 100) 
-            << (message.length() > 100 ? "..." : "") << std::endl;
+  Logger::Instance().Debug("SDKBridge", "Forwarding to Flutter: " + message.substr(0, 80) + "...");
 
   try {
     // Call Flutter callback
     flutter_callback_(message);
-    std::cout << "[AnyWP] [SDKBridge] Message forwarded successfully" << std::endl;
+    Logger::Instance().Debug("SDKBridge", "Message forwarded successfully");
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [SDKBridge] ERROR: Exception during message forwarding: " 
-              << e.what() << std::endl;
+    Logger::Instance().Error("SDKBridge", "Exception during message forwarding: " + std::string(e.what()));
   }
 }
 
@@ -230,7 +224,7 @@ void SDKBridge::ForwardMessageToFlutter(const std::string& message) {
 
 bool SDKBridge::ExecuteScript(const std::wstring& script) {
   if (!webview_) {
-    std::cout << "[AnyWP] [SDKBridge] ERROR: WebView not set" << std::endl;
+    Logger::Instance().Error("SDKBridge", "Cannot execute script: WebView not set");
     return false;
   }
   
@@ -266,106 +260,29 @@ std::string SDKBridge::ExtractJsonValue(const std::string& json, const std::stri
 std::string SDKBridge::LoadSDKScript() {
   // Performance optimization: Use cached SDK if already loaded
   if (sdk_script_loaded_ && !cached_sdk_script_.empty()) {
-    std::cout << "[AnyWP] [SDKBridge] Using cached SDK (size: " 
-              << cached_sdk_script_.length() << " bytes)" << std::endl;
+    Logger::Instance().Debug("SDKBridge", "Using cached SDK (" + std::to_string(cached_sdk_script_.length()) + " bytes)");
     return cached_sdk_script_;
   }
   
-  // Try to load SDK from file
-  // Priority 1: SDK file in windows/ directory (development mode)
-  // Priority 2: SDK file in data/flutter_assets/ directory (release mode)
-  // Priority 3: SDK file relative to DLL (for precompiled packages)
+  // v2.3.0+: Use new SDK loader with embedded resource support
+  // Priority 1: Embedded in DLL (production, recommended)
+  // Priority 2: File system fallback (development, backward compatibility)
+  std::string sdk_content = anywp::sdk::LoadSDKScript();
   
-  // Priority: minified version first (production), then unminified (development)
-  // v2.2.0: SDK moved to top-level sdk/ directory (cross-platform)
-  std::vector<std::string> sdk_paths = {
-    "sdk\\dist\\anywp_sdk.min.js",     // Production: minified version (priority)
-    "sdk\\dist\\anywp_sdk.js",         // Development: unminified version
-    "..\\anywp_sdk.min.js",            // Alternative: minified relative to executable
-    "..\\anywp_sdk.js",                // Alternative: unminified relative to executable
-    "data\\flutter_assets\\sdk\\dist\\anywp_sdk.min.js",  // Release: minified in assets
-    "data\\flutter_assets\\sdk\\dist\\anywp_sdk.js",      // Release: unminified in assets
-  };
-  
-  // Try to get DLL directory and search for SDK in precompiled package structure
-  // For precompiled packages: packages/anywp_engine/sdk/anywp_sdk.js
-  // Use a static variable address to get the current module handle
-  static int s_module_marker = 0;
-  
-  char dll_path[MAX_PATH];
-  HMODULE dll_handle = nullptr;
-  if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                         reinterpret_cast<LPCSTR>(&s_module_marker), &dll_handle)) {
-    if (GetModuleFileNameA(dll_handle, dll_path, MAX_PATH)) {
-      std::string dll_dir(dll_path);
-      size_t last_slash = dll_dir.find_last_of("\\/");
-      if (last_slash != std::string::npos) {
-        dll_dir = dll_dir.substr(0, last_slash);
-        
-        // Try precompiled package structure: ../sdk/anywp_sdk.min.js (minified, priority)
-        std::string precompiled_sdk = dll_dir + "\\..\\sdk\\anywp_sdk.min.js";
-        sdk_paths.push_back(precompiled_sdk);
-        
-        // Try precompiled package structure: ../sdk/anywp_sdk.js (unminified fallback)
-        precompiled_sdk = dll_dir + "\\..\\sdk\\anywp_sdk.js";
-        sdk_paths.push_back(precompiled_sdk);
-        
-        // Try alternative: ../../sdk/anywp_sdk.min.js (minified, if DLL is in plugins/anywp_engine/Release)
-        precompiled_sdk = dll_dir + "\\..\\..\\sdk\\anywp_sdk.min.js";
-        sdk_paths.push_back(precompiled_sdk);
-        
-        // Try alternative: ../../sdk/anywp_sdk.js (unminified fallback)
-        precompiled_sdk = dll_dir + "\\..\\..\\sdk\\anywp_sdk.js";
-        sdk_paths.push_back(precompiled_sdk);
-        
-        // Try relative to executable: ../windows/anywp_sdk.min.js (minified)
-        std::string relative_windows = dll_dir + "\\..\\windows\\anywp_sdk.min.js";
-        sdk_paths.push_back(relative_windows);
-        
-        // Try relative to executable: ../windows/anywp_sdk.js (unminified fallback)
-        relative_windows = dll_dir + "\\..\\windows\\anywp_sdk.js";
-        sdk_paths.push_back(relative_windows);
-      }
-    }
+  if (!sdk_content.empty()) {
+    // Cache the SDK script for future use
+    cached_sdk_script_ = sdk_content;
+    sdk_script_loaded_ = true;
+    
+    Logger::Instance().Debug("SDKBridge", "SDK loaded (" + std::to_string(sdk_content.length()) + " bytes)");
+    
+    return sdk_content;
   }
   
-  for (const auto& sdk_path : sdk_paths) {
-    std::ifstream sdk_file(sdk_path);
-    if (sdk_file.is_open()) {
-      std::string sdk_content((std::istreambuf_iterator<char>(sdk_file)),
-                              std::istreambuf_iterator<char>());
-      sdk_file.close();
-      
-      if (!sdk_content.empty()) {
-        std::cout << "[AnyWP] [SDKBridge] SDK loaded from: " << sdk_path 
-                  << " (size: " << sdk_content.length() << " bytes)" << std::endl;
-        
-        // Cache the SDK script for future use
-        cached_sdk_script_ = sdk_content;
-        sdk_script_loaded_ = true;
-        
-        return sdk_content;
-      }
-    }
-  }
+  // Should never reach here if SDK is embedded correctly
+  Logger::Instance().Error("SDKBridge", "SDK not found! Ensure SDK is embedded in DLL or at sdk/dist/anywp_sdk.js");
   
-  // Fallback: Return error shim if SDK file not found
-  std::cout << "[AnyWP] [SDKBridge] WARNING: SDK file not found, using error shim" << std::endl;
-  std::cout << "[AnyWP] [SDKBridge] Tried paths:" << std::endl;
-  for (const auto& path : sdk_paths) {
-    std::cout << "[AnyWP] [SDKBridge]   - " << path << std::endl;
-  }
-  
-  return R"(
-console.log('[AnyWP] Note: Full SDK should be loaded via <script src="../sdk/dist/anywp_sdk.js">');
-if (!window.AnyWP) {
-  console.error('[AnyWP] ERROR: SDK not loaded! Add <script src="../sdk/dist/anywp_sdk.js"></script> to your HTML');
-  window.AnyWP = {
-    version: '0.0.0-missing',
-    error: 'SDK not loaded - add script tag to HTML'
-  };
-}
-)";
+  return "";
 }
 
 std::string SDKBridge::GetMessageType(const std::string& message) {

@@ -8,7 +8,7 @@
 namespace anywp_engine {
 
 MemoryOptimizer::MemoryOptimizer() {
-  Logger::Instance().Info("MemoryOptimizer", "Module created");
+  Logger::Instance().Debug("MemoryOptimizer", "Module created");
 }
 
 MemoryOptimizer::~MemoryOptimizer() {
@@ -207,7 +207,7 @@ void MemoryOptimizer::SetOptimizationConfig(const OptimizationConfig& config) {
   config_mutex_.lock();
   config_ = config;
   config_mutex_.unlock();
-  Logger::Instance().Info("MemoryOptimizer", "Configuration updated");
+  Logger::Instance().Debug("MemoryOptimizer", "Configuration updated");
 }
 
 MemoryOptimizer::OptimizationConfig MemoryOptimizer::GetOptimizationConfig() const {

@@ -1,18 +1,17 @@
 {
   "name": "anywp-sdk",
-  "version": "2.2.0",
-  "description": "AnyWP Engine JavaScript SDK - Cross-platform TypeScript SDK (Windows & macOS)",
+  "version": "2.5.0",
+  "description": "AnyWP Engine JavaScript SDK - TypeScript Modular Architecture",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "npm run clean && npm run compile && cross-env NODE_ENV=production rollup -c rollup.config.js && npm run copy",
-    "build:dev": "npm run clean && npm run compile && rollup -c rollup.config.js && npm run copy",
+    "build": "npm run clean && npm run compile && cross-env NODE_ENV=production rollup -c rollup.config.js",
+    "build:dev": "npm run clean && npm run compile && rollup -c rollup.config.js",
     "build:watch": "npm run compile -- --watch",
-    "build:production": "npm run clean && npm run compile && cross-env NODE_ENV=production rollup -c rollup.config.js && npm run copy",
+    "build:production": "npm run clean && npm run compile && cross-env NODE_ENV=production rollup -c rollup.config.js",
     "compile": "tsc",
     "clean": "rimraf dist",
-    "copy": "node -e \"require('fs').copyFileSync('dist/index.js', '../dist/anywp_sdk.js')\"",
     "typecheck": "tsc --noEmit",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules npx jest",
     "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules npx jest --watch",
@@ -21,11 +20,8 @@
   "keywords": [
     "wallpaper",
     "webview2",
-    "wkwebview",
     "desktop",
     "windows",
-    "macos",
-    "cross-platform",
     "typescript"
   ],
   "author": "AnyWP Team",
@@ -33,6 +29,7 @@
   "devDependencies": {
     "@jest/globals": "^30.2.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-replace": "^6.0.3",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/jest": "^30.0.0",

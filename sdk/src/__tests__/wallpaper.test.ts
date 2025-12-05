@@ -29,6 +29,9 @@ describe('Wallpaper module', () => {
       _autoRefreshEnabled: true,
       _persistedState: {},
       _onFlutterMessage: null,
+      _draggableElements: [],
+      _dragState: null,
+      interactionEnabled: true,
       _init: jest.fn(),
       _log: jest.fn(),
       log: jest.fn(),
@@ -49,7 +52,10 @@ describe('Wallpaper module', () => {
       sendToFlutter: jest.fn(() => true),
       onMessage: jest.fn(),
       encryptFile: jest.fn(async () => true),
-      decryptFile: jest.fn(async () => true)
+      decryptFile: jest.fn(async () => true),
+      makeDraggable: jest.fn(),
+      removeDraggable: jest.fn(),
+      resetPosition: jest.fn(() => true)
     };
     
     // Mock chrome.webview

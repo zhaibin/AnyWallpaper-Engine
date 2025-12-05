@@ -36,6 +36,13 @@ Logger::Logger()
   SetConsoleOutputCP(CP_UTF8);
   SetConsoleCP(CP_UTF8);
 #endif
+
+  // v2.3.2+: Set default output mode based on build type
+#ifdef _DEBUG
+  output_mode_ = OutputMode::BOTH;  // Debug: both console and file
+#else
+  output_mode_ = OutputMode::FILE_ONLY;  // Release: file only
+#endif
 }
 
 Logger::~Logger() {
@@ -78,25 +85,27 @@ void Logger::Log(Level level, const std::string& component, const std::string& m
   // Update statistics
   log_counts_[level]++;
   
-  std::string formatted = FormatLogMessage(level, component, message);
+  // v2.3.2+: Format based on output mode
+  bool should_console = (output_mode_ == OutputMode::CONSOLE_ONLY || output_mode_ == OutputMode::BOTH) && console_enabled_;
+  bool should_file = (output_mode_ == OutputMode::FILE_ONLY || output_mode_ == OutputMode::BOTH) && file_enabled_;
   
-  if (console_enabled_) {
-    WriteToConsole(formatted);
-  }
-  
-  if (file_enabled_) {
+  // Format for file (with timestamp and level)
+  if (should_file) {
+    std::string file_formatted = FormatLogMessage(level, component, message);
     if (buffering_enabled_) {
-      // Add to buffer
-      buffer_.push_back(formatted);
-      
-      // Auto-flush if buffer is full
+      buffer_.push_back(file_formatted);
       if (buffer_.size() >= buffer_size_) {
         FlushInternal();
       }
     } else {
-      // Direct write
-      WriteToFile(formatted);
+      WriteToFile(file_formatted);
     }
+  }
+  
+  // Format for console (simpler format)
+  if (should_console) {
+    std::string console_formatted = "[AnyWP] [" + component + "] " + message;
+    WriteToConsole(console_formatted);
   }
 }
 
@@ -156,6 +165,30 @@ void Logger::DisableFileLogging() {
 void Logger::EnableConsoleLogging(bool enable) {
   std::lock_guard<std::mutex> lock(mutex_);
   console_enabled_ = enable;
+}
+
+// v2.3.2+: Output mode control
+void Logger::SetOutputMode(OutputMode mode) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  output_mode_ = mode;
+}
+
+Logger::OutputMode Logger::GetOutputMode() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return output_mode_;
+}
+
+// v2.3.2+: Special formatting methods
+void Logger::Banner(const std::string& component, const std::string& title) {
+  std::string separator(60, '=');
+  std::string banner_msg = separator + "\n" + title + "\n" + separator;
+  Info(component, banner_msg);
+}
+
+void Logger::Section(const std::string& component, const std::string& title) {
+  std::string separator(40, '-');
+  std::string section_msg = separator + " " + title + " " + separator;
+  Info(component, section_msg);
 }
 
 // ========== Internal Helpers ==========

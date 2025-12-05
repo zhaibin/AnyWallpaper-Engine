@@ -12,6 +12,7 @@
 #include "../modules/monitor_manager.h"
 #include "../modules/event_dispatcher.h"
 #include "../modules/memory_optimizer.h"
+#include "../modules/workerw_health_monitor.h"
 #include "../utils/error_handler.h"
 
 // Modules requiring Flutter headers - only include in integration tests
@@ -2175,6 +2176,183 @@ TEST_SUITE(MemoryOptimizer) {
     }
     
     ASSERT_TRUE(true);  // No crash = no obvious leak
+  }
+}
+
+// ========== v2.3.1+ Enhancement: WorkerWHealthMonitor Tests ==========
+
+TEST_SUITE(WorkerWHealthMonitor) {
+  TEST_CASE(initialization) {
+    WorkerWHealthMonitor monitor;
+    ASSERT_FALSE(monitor.IsMonitoring());
+    ASSERT_EQUAL(WorkerWHealthMonitor::HealthStatus::UNKNOWN, monitor.GetHealthStatus());
+    ASSERT_EQUAL(0, monitor.GetConsecutiveFailures());
+  }
+  
+  TEST_CASE(start_stop_monitoring) {
+    WorkerWHealthMonitor monitor;
+    
+    // Find Progman as a valid window handle for testing
+    HWND progman = FindWindowW(L"Progman", nullptr);
+    if (!progman) {
+      // Skip test if Progman not found (unlikely on Windows)
+      Logger::Instance().Warning("Test", "Progman not found, skipping monitoring test");
+      ASSERT_TRUE(true);
+      return;
+    }
+    
+    // Start monitoring
+    bool started = monitor.StartMonitoring(progman, 1000);  // 1 second interval for testing
+    ASSERT_TRUE(started);
+    ASSERT_TRUE(monitor.IsMonitoring());
+    
+    // Give it time to run one check
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    
+    // Stop monitoring
+    monitor.StopMonitoring();
+    ASSERT_FALSE(monitor.IsMonitoring());
+  }
+  
+  TEST_CASE(invalid_handle_rejected) {
+    WorkerWHealthMonitor monitor;
+    
+    // Should reject null handle
+    bool started = monitor.StartMonitoring(nullptr, 1000);
+    ASSERT_FALSE(started);
+    ASSERT_FALSE(monitor.IsMonitoring());
+    
+    // Should reject invalid handle
+    HWND fake_hwnd = (HWND)0x12345678;
+    started = monitor.StartMonitoring(fake_hwnd, 1000);
+    ASSERT_FALSE(started);
+    ASSERT_FALSE(monitor.IsMonitoring());
+  }
+  
+  TEST_CASE(recovery_callback) {
+    WorkerWHealthMonitor monitor;
+    
+    bool callback_called = false;
+    monitor.SetRecoveryCallback([&callback_called]() {
+      callback_called = true;
+    });
+    
+    // Note: callback will only be called if health check fails 2+ times
+    // This test just verifies callback can be set without crash
+    ASSERT_FALSE(callback_called);
+  }
+  
+  TEST_CASE(update_workerw_handle) {
+    WorkerWHealthMonitor monitor;
+    
+    HWND progman = FindWindowW(L"Progman", nullptr);
+    if (!progman) {
+      ASSERT_TRUE(true);
+      return;
+    }
+    
+    monitor.StartMonitoring(progman, 1000);
+    
+    // Update handle (simulating recovery)
+    monitor.UpdateWorkerW(progman);
+    
+    // Should reset failure count
+    ASSERT_EQUAL(0, monitor.GetConsecutiveFailures());
+    ASSERT_EQUAL(WorkerWHealthMonitor::HealthStatus::HEALTHY, monitor.GetHealthStatus());
+    
+    monitor.StopMonitoring();
+  }
+  
+  TEST_CASE(manual_health_check) {
+    WorkerWHealthMonitor monitor;
+    
+    // Manual check without starting monitoring
+    // This should work for basic validation
+    HWND progman = FindWindowW(L"Progman", nullptr);
+    if (!progman) {
+      ASSERT_TRUE(true);
+      return;
+    }
+    
+    // Start monitoring first
+    monitor.StartMonitoring(progman, 5000);
+    
+    // Manual check
+    bool is_healthy = monitor.CheckHealth();
+    // Progman should be healthy
+    ASSERT_TRUE(is_healthy);
+    
+    monitor.StopMonitoring();
+  }
+  
+  TEST_CASE(double_start_monitoring) {
+    WorkerWHealthMonitor monitor;
+    
+    HWND progman = FindWindowW(L"Progman", nullptr);
+    if (!progman) {
+      ASSERT_TRUE(true);
+      return;
+    }
+    
+    // Start monitoring twice (should stop previous and restart)
+    monitor.StartMonitoring(progman, 1000);
+    ASSERT_TRUE(monitor.IsMonitoring());
+    
+    monitor.StartMonitoring(progman, 2000);
+    ASSERT_TRUE(monitor.IsMonitoring());
+    
+    monitor.StopMonitoring();
+    ASSERT_FALSE(monitor.IsMonitoring());
+  }
+  
+  TEST_CASE(stop_without_start) {
+    WorkerWHealthMonitor monitor;
+    
+    // Should be safe to stop without starting
+    monitor.StopMonitoring();
+    ASSERT_FALSE(monitor.IsMonitoring());
+    ASSERT_TRUE(true);  // No crash
+  }
+  
+  TEST_CASE(destructor_stops_monitoring) {
+    HWND progman = FindWindowW(L"Progman", nullptr);
+    if (!progman) {
+      ASSERT_TRUE(true);
+      return;
+    }
+    
+    {
+      WorkerWHealthMonitor monitor;
+      monitor.StartMonitoring(progman, 1000);
+      ASSERT_TRUE(monitor.IsMonitoring());
+      // Destructor should stop monitoring
+    }
+    
+    // If we get here, destructor didn't crash
+    ASSERT_TRUE(true);
+  }
+  
+  TEST_CASE(consecutive_failures_tracking) {
+    WorkerWHealthMonitor monitor;
+    
+    // This test verifies that consecutive failures are tracked
+    // In real scenario, failures would increment when WorkerW becomes invalid
+    ASSERT_EQUAL(0, monitor.GetConsecutiveFailures());
+    
+    // After starting monitoring with valid handle, failures should remain 0
+    HWND progman = FindWindowW(L"Progman", nullptr);
+    if (!progman) {
+      ASSERT_TRUE(true);
+      return;
+    }
+    
+    monitor.StartMonitoring(progman, 1000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+    
+    // With valid Progman, should have 0 failures
+    ASSERT_EQUAL(0, monitor.GetConsecutiveFailures());
+    
+    monitor.StopMonitoring();
   }
 }
 

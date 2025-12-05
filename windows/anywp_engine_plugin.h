@@ -17,12 +17,16 @@
 #include <psapi.h>
 #include <mutex>
 #include <queue>
+#include <map>
 
 // Forward declarations of modular classes
 #include "utils/url_validator.h"
+#include "utils/state_manager.h"  // v2.5.0+ Phase 7: StateManager utility
+#include "utils/message_queue_manager.h"  // v2.5.0+ Phase 7: MessageQueueManager utility
 #include "modules/power_manager.h"  // v1.4.0+ Refactoring: PowerManager module
 #include "modules/monitor_manager.h"  // v1.4.0+ Refactoring: MonitorManager module
 #include "modules/mouse_hook_manager.h"  // v1.4.0+ Refactoring: MouseHookManager module
+#include "modules/keyboard_hook_manager.h"  // v2.4.1+ Enhancement: KeyboardHookManager module
 #include "modules/iframe_detector.h"  // v1.4.0+ Refactoring: IframeDetector module
 #include "modules/sdk_bridge.h"  // v1.4.0+ Refactoring: SDKBridge module
 #include "modules/webview_manager.h"  // v1.4.1+ Refactoring: WebViewManager module
@@ -32,6 +36,15 @@
 #include "modules/window_manager.h"  // v2.0.0+ Phase2: WindowManager module
 #include "modules/initialization_coordinator.h"  // v2.0+ Refactoring: InitializationCoordinator module
 #include "modules/webview_configurator.h"  // v2.0+ Refactoring: WebViewConfigurator module
+#include "modules/workerw_health_monitor.h"  // v2.3.1+ Enhancement: WorkerW health monitoring
+#include "modules/web_message_handler.h"
+#include "modules/wallpaper_lifecycle_manager.h"
+#include "modules/auto_recovery_manager.h"  // v2.5.0+ Phase 4: AutoRecoveryManager module
+#include "modules/workerw_recovery_manager.h"  // v2.5.0+ Phase 5: WorkerWRecoveryManager module
+#include "modules/wallpaper_configuration_manager.h"  // v2.5.0+ Phase 6: WallpaperConfigurationManager module
+#include "modules/script_injection_manager.h"  // v2.5.0+ Phase 6: ScriptInjectionManager module
+#include "modules/permission_configurator.h"  // v2.5.0+ Phase 6: PermissionConfigurator module
+#include "modules/cache_manager.h"  // v2.5.0+ Phase 6: CacheManager module
 
 namespace anywp_engine {
 
@@ -97,10 +110,13 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // Get built-in Web SDK version (v2.1.10+)
   static std::string GetSDKVersion();
+  
+  // Lifecycle: Get active wallpaper instance count (v2.3.2+)
+  size_t GetActiveInstanceCount() const;
 
   // Multi-monitor support
   std::vector<MonitorInfo> GetMonitors();
-  bool InitializeWallpaperOnMonitor(const std::string& url, bool enable_mouse_transparent, int monitor_index);
+  bool InitializeWallpaperOnMonitor(const std::string& url, bool enable_mouse_transparent, int monitor_index, bool auto_save = true);
   bool StopWallpaperOnMonitor(int monitor_index);
   bool NavigateToUrlOnMonitor(const std::string& url, int monitor_index);
   
@@ -177,6 +193,13 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   static LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam);
   void SendClickToWebView(int x, int y, const char* event_type = "mouseup");
   
+  // Keyboard Hook: Capture keyboard events and forward to WebView (v2.4.1+)
+  void SetupKeyboardHook();
+  void RemoveKeyboardHook();
+  void SendKeyboardToWebView(const char* event_type, int vk_code, const std::string& key, const std::string& code, bool alt_down, bool ctrl_down, bool shift_down);
+  std::string VirtualKeyToString(int vk_code);
+  std::string VirtualKeyToCode(int vk_code);
+  
   // iframe Ad Detection: Handle iframe click regions
   void HandleIframeDataMessage(const std::string& json_data, WallpaperInstance* instance);
   IframeInfo* GetIframeAtPoint(int x, int y, WallpaperInstance* instance);
@@ -188,6 +211,8 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   HWND worker_w_hwnd_ = nullptr;
   Microsoft::WRL::ComPtr<ICoreWebView2Controller> webview_controller_;
   Microsoft::WRL::ComPtr<ICoreWebView2> webview_;
+  // v2.3.2+: Deprecated - use GetActiveInstanceCount() instead
+  // Kept for backward compatibility in legacy single-monitor mode
   bool is_initialized_ = false;
   
   // Multi-monitor members
@@ -277,7 +302,7 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   void ResumeWallpaper(const std::string& reason, bool force_reinit = false);
   // v1.4.1+ Phase G: Helper methods for ResumeWallpaper
   bool ValidateWallpaperWindows();
-  bool RestoreWallpaperConfiguration(const std::string& url);
+  bool RestoreWallpaperConfiguration(const std::string& url, const std::string& log_tag = "PowerSaving");
   void NotifyPowerStateChange(PowerState newState);
   std::string PowerStateToString(PowerState state);
   // v2.1.1+ Fix: Convert PowerManager::PowerState to AnyWPEnginePlugin::PowerState
@@ -320,6 +345,25 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // MouseHookManager module for mouse event handling
   std::unique_ptr<MouseHookManager> mouse_hook_manager_;
+  std::unique_ptr<KeyboardHookManager> keyboard_hook_manager_;  // v2.4.1+ Keyboard event handling
+  
+  // v2.4.1+: Keyboard event queue for async processing (avoid deadlock in system hook)
+  struct KeyboardEvent {
+    std::string event_type;
+    int vk_code;
+    std::string key;
+    std::string code;
+    bool alt_down;
+    bool ctrl_down;
+    bool shift_down;
+  };
+  std::queue<KeyboardEvent> keyboard_event_queue_;
+  std::mutex keyboard_queue_mutex_;
+  std::atomic<bool> keyboard_queue_running_;
+  std::thread keyboard_queue_thread_;
+  void ProcessKeyboardQueue();  // Background thread function
+  void EnqueueKeyboardEvent(const char* event_type, int vk_code, const std::string& key, const std::string& code, bool alt_down, bool ctrl_down, bool shift_down);
+  
   std::unique_ptr<anywp_engine::IframeDetector> iframe_detector_;  // v1.4.0+
   std::unique_ptr<anywp_engine::SDKBridge> sdk_bridge_;  // v1.4.0+
   
@@ -352,6 +396,74 @@ class AnyWPEnginePlugin : public flutter::Plugin {
   
   // MemoryOptimizer module for unified memory management (v2.1.0+ Refactoring)
   std::unique_ptr<class MemoryOptimizer> memory_optimizer_;
+  
+  // WorkerWHealthMonitor module for WorkerW health monitoring (v2.3.1+ Enhancement)
+  std::unique_ptr<class WorkerWHealthMonitor> workerw_health_monitor_;
+  
+  // WebMessageHandler module for unified message handling (v2.5.0+ Phase 2)
+  std::unique_ptr<class WebMessageHandler> web_message_handler_;
+
+  // WallpaperLifecycleManager module for pause/resume management (v2.5.0+ Phase 3)
+  std::unique_ptr<class WallpaperLifecycleManager> lifecycle_manager_;
+
+  // AutoRecoveryManager module for wallpaper configuration recovery (v2.5.0+ Phase 4)
+  std::unique_ptr<class AutoRecoveryManager> auto_recovery_manager_;
+
+  // WorkerWRecoveryManager module for WorkerW recovery strategies (v2.5.0+ Phase 5)
+  std::unique_ptr<class WorkerWRecoveryManager> workerw_recovery_manager_;
+
+  // WallpaperConfigurationManager module for runtime configuration (v2.5.0+ Phase 6)
+  std::unique_ptr<class WallpaperConfigurationManager> configuration_manager_;
+
+  // ScriptInjectionManager module for SDK and script injection (v2.5.0+ Phase 6)
+  std::unique_ptr<class ScriptInjectionManager> script_injection_manager_;
+
+  // PermissionConfigurator module for WebView2 permissions and security (v2.5.0+ Phase 6)
+  std::unique_ptr<class PermissionConfigurator> permission_configurator_;
+
+  // CacheManager module for WebView2 cache management (v2.5.0+ Phase 6)
+  std::unique_ptr<class CacheManager> cache_manager_;
+
+  // StateManager utility for unified state management (v2.5.0+ Phase 7)
+  std::unique_ptr<StateManager> state_manager_;
+
+  // MessageQueueManager utility for message queue management (v2.5.0+ Phase 7)
+  std::unique_ptr<MessageQueueManager> message_queue_manager_;
+  
+  // WorkerW recovery methods (called by health monitor)
+  void RecoverWorkerW();  // Main recovery entry point (Lively-style: detect and decide)
+  void RecoverWorkerW_Reparent();  // Re-parent existing windows (when not destroyed)
+  bool ReparentAllWallpaperInstances();  // Helper: Reparent all active wallpaper instances (for WorkerWRecoveryManager)
+  bool CheckExplorerRestart();  // Helper: Check if Explorer was restarted (windows destroyed)
+  void HandleExplorerRestart();  // Helper: Handle Explorer restart (reset and trigger auto-recovery)
+  
+  // Wallpaper recreation state (v2.3.1+ Lively-style recovery)
+  bool need_wallpaper_recreate_ = false;
+  std::string wallpaper_recreate_reason_;
+  std::mutex wallpaper_recreate_mutex_;
+  
+  // ========== v2.3.2+ Auto Recovery ==========
+  // Auto recovery configuration
+  struct WallpaperConfig {
+    std::string url;
+    int monitor_index;
+    bool enable_mouse_transparent;
+  };
+  
+  bool auto_recovery_enabled_ = false;  // Auto recovery enabled flag
+  bool is_auto_recovery_running_ = false;  // Prevent concurrent recovery operations
+  std::map<int, WallpaperConfig> saved_wallpaper_configs_;  // Saved configurations per monitor
+  mutable std::mutex auto_recovery_mutex_;  // Protect auto recovery state (mutable for const methods)
+  
+  // Auto recovery methods
+  void SetAutoRecoveryEnabled(bool enabled);
+  bool IsAutoRecoveryEnabled() const;
+  void SaveWallpaperConfig(int monitor_index, const std::string& url, bool enable_mouse_transparent);
+  void RemoveWallpaperConfig(int monitor_index);
+  
+  // v2.4.0+ Manual save wallpaper configuration
+  bool SaveWallpaperConfigurationManually(int monitor_index = -1);
+  void HandleAutoRecovery();  // Triggered when wallpaper needs recreation
 };
 
 }  // namespace anywp_engine

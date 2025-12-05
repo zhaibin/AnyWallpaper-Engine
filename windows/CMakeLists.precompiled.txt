@@ -52,51 +52,28 @@ set(anywp_engine_bundled_libraries
 )
 
 # ==========================================
-# Copy SDK file to runtime directory
-# This ensures the SDK is available when C++ plugin tries to load it
+# Embedded SDK (v2.3.0+)
+# SDK is now embedded in DLL as a Windows resource
+# No external SDK files needed for deployment!
 # ==========================================
-# Path to SDK file in precompiled package
-set(ANYWP_SDK_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/../sdk/anywp_sdk.js")
 
-# Function to copy SDK file (can be called from main CMakeLists.txt)
-# Usage: anywp_copy_sdk(TARGET_NAME)
+message(STATUS "========================================")
+message(STATUS "AnyWP Engine v2.3.0+ - Embedded SDK Mode")
+message(STATUS "========================================")
+message(STATUS "✓ SDK is embedded in the precompiled DLL")
+message(STATUS "✓ No external SDK files required")
+message(STATUS "✓ Simplified deployment - just copy DLL")
+message(STATUS "========================================")
+
+# Note: The anywp_copy_sdk function is no longer needed for v2.3.0+
+# SDK is automatically loaded from DLL resources at runtime
+# However, for backward compatibility with older projects, we provide a dummy function
+
 function(anywp_copy_sdk TARGET_NAME)
-  if(EXISTS "${ANYWP_SDK_SOURCE}")
-    # Copy SDK to runner directory (where application runs)
-    # This is the most important path - where the executable actually runs
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory 
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/windows"
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ANYWP_SDK_SOURCE}"
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/windows/anywp_sdk.js"
-      COMMENT "Copying AnyWP SDK to runner directory ($<CONFIG>)"
-      VERBATIM
-    )
-    
-    # Also copy to executable directory for compatibility
-    # This covers the case where C++ code looks for "../anywp_sdk.js"
-    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${ANYWP_SDK_SOURCE}"
-        "$<TARGET_FILE_DIR:${TARGET_NAME}>/anywp_sdk.js"
-      COMMENT "Copying AnyWP SDK to executable directory ($<CONFIG>)"
-      VERBATIM
-    )
-    
-    message(STATUS "AnyWP SDK copy commands added for target: ${TARGET_NAME}")
-  else()
-    message(WARNING "AnyWP SDK file not found at ${ANYWP_SDK_SOURCE} - SDK injection may fail at runtime")
-  endif()
+  message(STATUS "[AnyWP] Note: anywp_copy_sdk() called, but SDK is embedded in DLL (v2.3.0+)")
+  message(STATUS "[AnyWP] No external SDK files needed - SDK will be loaded from DLL resources")
+  message(STATUS "[AnyWP] You can safely remove this function call from your CMakeLists.txt")
 endfunction()
-
-# Check if SDK file exists and provide info
-if(EXISTS "${ANYWP_SDK_SOURCE}")
-  message(STATUS "AnyWP SDK found at: ${ANYWP_SDK_SOURCE}")
-  message(STATUS "Note: Call anywp_copy_sdk(YOUR_TARGET_NAME) in your main CMakeLists.txt to copy SDK to runtime")
-else()
-  message(WARNING "AnyWP SDK file not found at ${ANYWP_SDK_SOURCE}")
-endif()
 
 message(STATUS "Using precompiled AnyWP Engine DLL: ${PRECOMPILED_DLL}")
 

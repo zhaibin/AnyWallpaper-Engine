@@ -4,13 +4,13 @@ import type {
   ClickHandlerData, 
   PersistedState,
   MouseCallback,
-  KeyboardCallback
+  KeyboardCallback,
+  DraggableData
 } from '../types';
-import { getBridge, detectPlatform } from '../utils/platform';
 
 export const AnyWP: AnyWPSDK = {
   // Properties
-  version: '2.2.0',
+  version: '__SDK_VERSION__',  // Will be replaced by rollup during build
   dpiScale: window.devicePixelRatio || 1,
   screenWidth: screen.width * (window.devicePixelRatio || 1),
   screenHeight: screen.height * (window.devicePixelRatio || 1),
@@ -27,6 +27,9 @@ export const AnyWP: AnyWPSDK = {
   _autoRefreshEnabled: true,
   _persistedState: {} as PersistedState,
   _onFlutterMessage: null as ((message: any) => void) | null,
+  _draggableElements: [] as DraggableData[],
+  _dragState: null,
+  interactionEnabled: true,
   
   // Initialize (will be implemented in init.ts)
   _init(): void {
@@ -94,19 +97,11 @@ export const AnyWP: AnyWPSDK = {
   openURL(url: string): void {
     console.log('[AnyWP] Opening URL: ' + url);
     
-    const platform = detectPlatform();
-    
-    if (platform !== 'unknown') {
-      try {
-        const bridge = getBridge();
-        bridge.postMessage({
-          type: 'openURL',
-          url: url
-        });
-      } catch (error) {
-        console.error('[AnyWP] Error sending openURL message:', error);
-        window.open(url, '_blank');
-      }
+    if (window.chrome?.webview) {
+      window.chrome.webview.postMessage({
+        type: 'openURL',
+        url: url
+      });
     } else {
       console.warn('[AnyWP] Native bridge not available');
       window.open(url, '_blank');
@@ -114,19 +109,13 @@ export const AnyWP: AnyWPSDK = {
   },
   
   ready(name: string): void {
-    const platform = detectPlatform();
-    console.log(`[AnyWP] Wallpaper ready: ${name} (platform: ${platform})`);
+    console.log('[AnyWP] Wallpaper ready: ' + name);
     
-    if (platform !== 'unknown') {
-      try {
-        const bridge = getBridge();
-        bridge.postMessage({
-          type: 'ready',
-          name: name
-        });
-      } catch (error) {
-        console.error('[AnyWP] Error sending ready message:', error);
-      }
+    if (window.chrome?.webview) {
+      window.chrome.webview.postMessage({
+        type: 'ready',
+        name: name
+      });
     }
   },
   
@@ -170,6 +159,19 @@ export const AnyWP: AnyWPSDK = {
   
   async decryptFile(_encryptedPath: string, _destPath: string): Promise<boolean> {
     throw new Error('decryptFile must be implemented');
+  },
+  
+  // Drag & Drop (v2.4.1+)
+  makeDraggable(): void {
+    throw new Error('Not implemented');
+  },
+  
+  removeDraggable(): void {
+    throw new Error('Not implemented');
+  },
+  
+  resetPosition(): boolean {
+    throw new Error('Not implemented');
   }
 };
 

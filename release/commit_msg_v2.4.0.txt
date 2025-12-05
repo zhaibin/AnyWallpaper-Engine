@@ -1,0 +1,8 @@
+release: 发布 v2.4.0
+
+- ⚡ 简化集成：自动恢复 API（Auto Recovery）
+- 问题背景
+- 解决方案：`enableAutoRecovery` API
+- 新增 API
+- 集成对比
+- 技术实现

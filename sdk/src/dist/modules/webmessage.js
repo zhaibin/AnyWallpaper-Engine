@@ -14,8 +14,7 @@
 import { Coordinates } from '../utils/coordinates';
 import { throttle } from '../utils/throttle';
 import { logger } from '../utils/logger';
-import { getBridge, detectPlatform } from '../utils/platform';
-import { isMouseEventData } from '../types/webmessage';
+import { isMouseEventData, isKeyboardEventData } from '../types/webmessage';
 // Create scoped logger for WebMessage module
 const log = logger.scope('WebMessage');
 /**
@@ -34,9 +33,8 @@ const DOM_UPDATE_THROTTLE = 1000; // Check DOM updates every 1 second
  * Initialize WebMessage listener (must be called IMMEDIATELY after script load)
  */
 export function setupWebMessageListener() {
-    const platform = detectPlatform();
-    if (platform === 'unknown') {
-        log.info('Native bridge not available (platform: unknown)');
+    if (!window.chrome || !window.chrome.webview) {
+        log.info('chrome.webview not available');
         return;
     }
     const globalAny = window;
@@ -45,22 +43,15 @@ export function setupWebMessageListener() {
         log.warn('WebMessage listener already registered (EARLY), skipping duplicate');
         return;
     }
-    log.info(`Setting up WebMessage listener (EARLY) for platform: ${platform}`);
+    // Silent initialization - reduces log noise
     globalAny._anywpEarlyMessageListenerRegistered = true;
-    try {
-        const bridge = getBridge();
-        bridge.addEventListener(handleWebMessage);
-        log.info('WebMessage listener setup complete (EARLY)');
-    }
-    catch (error) {
-        log.error('Failed to setup WebMessage listener:', error);
-    }
+    window.chrome.webview.addEventListener('message', handleWebMessage);
 }
 /**
  * Main WebMessage event handler
- * Receives data directly from platform bridge
  */
-function handleWebMessage(data) {
+function handleWebMessage(event) {
+    let data = event.data;
     if (!data) {
         log.warn('Received empty WebMessage');
         return;
@@ -82,6 +73,9 @@ function handleWebMessage(data) {
         // Handle different message types using type guards
         if (isMouseEventData(data)) {
             handleMouseEvent(data);
+        }
+        else if (isKeyboardEventData(data)) {
+            handleKeyboardEvent(data);
         }
         else if (data.type === 'powerStateChange') {
             // v2.1.7+ Handle power state change notifications from C++
@@ -109,6 +103,9 @@ function logMessage(data) {
     }
     else if (data.type === 'mouseEvent') {
         log.debug('WebMessage: ' + data.eventType + ' at (' + data.x + ',' + data.y + ')');
+    }
+    else if (data.type === 'keyboardEvent') {
+        log.debug('WebMessage: ' + data.eventType + ' key: ' + data.key);
     }
 }
 /**
@@ -171,6 +168,30 @@ const handleMouseMove = throttle((eventInit, data) => {
     });
     window.dispatchEvent(customEvent);
 }, 16); // ~60 FPS throttle (16ms)
+/**
+ * Handle keyboardEvent messages from C++
+ */
+function handleKeyboardEvent(data) {
+    try {
+        log.debug('[KeyboardEvent] ' + data.eventType + ' key: ' + data.key + ' code: ' + data.code);
+        // Dispatch CustomEvent for AnyWP keyboard callbacks
+        const customEvent = new CustomEvent('AnyWP:keyboard', {
+            detail: {
+                type: data.eventType,
+                key: data.key,
+                code: data.code,
+                ctrlKey: data.ctrlKey || false,
+                shiftKey: data.shiftKey || false,
+                altKey: data.altKey || false
+            }
+        });
+        window.dispatchEvent(customEvent);
+        log.info('[DOMDispatch] keyboard event dispatched: ' + data.eventType);
+    }
+    catch (e) {
+        log.error('Error handling keyboard event:', e);
+    }
+}
 /**
  * Get cached or fresh interactive elements
  */
@@ -298,8 +319,7 @@ function handleClickEvent(data, eventInit, viewportPos) {
 /**
  * Send message to Flutter
  *
- * Sends a structured message to the Flutter application via platform bridge
- * (Windows: chrome.webview.postMessage, macOS: webkit.messageHandlers)
+ * Sends a structured message to the Flutter application via chrome.webview.postMessage
  *
  * @param type - Message type (e.g., 'carouselStateChanged', 'wallpaperReady', 'error')
  * @param data - Message data payload
@@ -323,9 +343,8 @@ function handleClickEvent(data, eventInit, viewportPos) {
  * ```
  */
 export function sendToFlutter(type, data = {}) {
-    const platform = detectPlatform();
-    if (platform === 'unknown') {
-        log.warn('Native bridge not available, cannot send message to Flutter');
+    if (!window.chrome?.webview) {
+        log.warn('chrome.webview not available, cannot send message to Flutter');
         return false;
     }
     const message = {
@@ -333,11 +352,10 @@ export function sendToFlutter(type, data = {}) {
         timestamp: Date.now(),
         data: data
     };
-    log.info(`[SendToFlutter] Sending message (${platform}):`, type);
+    log.info('[SendToFlutter] Sending message:', type);
     log.debug('[SendToFlutter] Message data:', message);
     try {
-        const bridge = getBridge();
-        bridge.postMessage(message);
+        window.chrome.webview.postMessage(message);
         return true;
     }
     catch (error) {
@@ -369,7 +387,7 @@ export function setupFlutterMessageListener() {
             }
         }
     });
-    log.info('Flutter message listener setup complete');
+    // Silent initialization - reduces log noise
 }
 /**
  * Handle powerStateChange messages from C++ (v2.1.7+)

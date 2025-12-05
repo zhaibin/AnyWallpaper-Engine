@@ -182,6 +182,22 @@ private:
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 
   // ========================================
+  // v2.3.2+ Auto Recovery Methods
+  // ========================================
+  
+  void HandleEnableAutoRecovery(
+      const flutter::EncodableMap* args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  
+  void HandleIsAutoRecoveryEnabled(
+      const flutter::EncodableMap* args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  
+  void HandleSaveWallpaperConfiguration(
+      const flutter::EncodableMap* args,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+
+  // ========================================
   // v2.1.10+ Custom Scheme Methods
   // ========================================
   

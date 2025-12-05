@@ -2,7 +2,7 @@
 // before including display_change_coordinator.h which uses those types
 #include "../utils/logger.h"
 #include "monitor_manager.h"
-#include <iostream>
+#include <sstream>
 
 // This header defines MonitorInfo and WallpaperInstance
 #include "../anywp_engine_plugin.h"
@@ -91,18 +91,18 @@ void DisplayChangeCoordinator::HandleDisplayChange() {
   std::vector<MonitorInfo> old_monitors = *monitors_ref_;
   std::vector<MonitorInfo> new_monitors = get_monitors_();
   
-  std::cout << "[DisplayChange] Monitor count: " << old_monitors.size() 
-            << " -> " << new_monitors.size() << std::endl;
+  Logger::Instance().Info("DisplayChangeCoordinator", 
+    "Monitor count: " + std::to_string(old_monitors.size()) + " -> " + std::to_string(new_monitors.size()));
   
   bool should_notify_ui = false;
   
   // Check if monitor count changed
   if (old_monitors.size() != new_monitors.size()) {
-    std::cout << "[DisplayChange] Monitor count changed - will notify UI" << std::endl;
+    Logger::Instance().Info("DisplayChangeCoordinator", "Monitor count changed - will notify UI");
     
     // Handle removed monitors FIRST (cleanup)
     if (new_monitors.size() < old_monitors.size()) {
-      std::cout << "[DisplayChange] Monitor(s) removed - cleaning up first" << std::endl;
+      Logger::Instance().Info("DisplayChangeCoordinator", "Monitor(s) removed - cleaning up first");
       HandleMonitorCountChange(old_monitors, new_monitors);
     }
     
@@ -113,18 +113,18 @@ void DisplayChangeCoordinator::HandleDisplayChange() {
     
     // Handle added monitors AFTER size update
     if (new_monitors.size() > old_monitors.size()) {
-      std::cout << "[DisplayChange] Monitor(s) added - handling new monitors" << std::endl;
+      Logger::Instance().Info("DisplayChangeCoordinator", "Monitor(s) added - handling new monitors");
       HandleMonitorCountChange(old_monitors, new_monitors);
     }
   } else {
-    std::cout << "[DisplayChange] Monitor count unchanged - checking for other changes" << std::endl;
+    Logger::Instance().Info("DisplayChangeCoordinator", "Monitor count unchanged - checking for other changes");
     // Even if count is same, monitors might have changed (resolution, position, etc.)
     UpdateWallpaperSizes();
   }
   
   // Notify UI if needed
   if (should_notify_ui) {
-    std::cout << "[DisplayChange] Queuing UI notification..." << std::endl;
+    Logger::Instance().Info("DisplayChangeCoordinator", "Queuing UI notification...");
     SafeNotifyMonitorChange();
   }
   
@@ -136,11 +136,11 @@ void DisplayChangeCoordinator::HandleMonitorCountChange(
     const std::vector<MonitorInfo>& old_monitors,
     const std::vector<MonitorInfo>& new_monitors) {
   
-  std::cout << "[DisplayChange] Handling monitor count change" << std::endl;
+  Logger::Instance().Info("DisplayChangeCoordinator", "Handling monitor count change");
   
   // Detect new monitors
   if (new_monitors.size() > old_monitors.size()) {
-    std::cout << "[DisplayChange] New monitor(s) detected!" << std::endl;
+    Logger::Instance().Info("DisplayChangeCoordinator", "New monitor(s) detected!");
     
     // Find which monitors are new
     for (const auto& new_mon : new_monitors) {
@@ -155,23 +155,24 @@ void DisplayChangeCoordinator::HandleMonitorCountChange(
       }
       
       if (is_new) {
-        std::cout << "[DisplayChange] New monitor " << new_mon.index 
-                  << ": " << new_mon.device_name << " [" << new_mon.width << "x" << new_mon.height << "]" << std::endl;
+        Logger::Instance().Info("DisplayChangeCoordinator", 
+          "New monitor " + std::to_string(new_mon.index) + ": " + new_mon.device_name + 
+          " [" + std::to_string(new_mon.width) + "x" + std::to_string(new_mon.height) + "]");
         
         // Check if we should auto-start wallpaper
         if (!default_wallpaper_url_.empty()) {
-          std::cout << "[DisplayChange] Will auto-start wallpaper on new monitor " << new_mon.index << std::endl;
-          std::cout << "[DisplayChange] Using URL: " << default_wallpaper_url_ << std::endl;
-          std::cout << "[DisplayChange] Note: Auto-start should be implemented by user" << std::endl;
+          Logger::Instance().Info("DisplayChangeCoordinator", "Will auto-start wallpaper on new monitor " + std::to_string(new_mon.index));
+          Logger::Instance().Info("DisplayChangeCoordinator", "Using URL: " + default_wallpaper_url_);
+          Logger::Instance().Info("DisplayChangeCoordinator", "Note: Auto-start should be implemented by user");
         } else {
-          std::cout << "[DisplayChange] No default URL, user can manually start wallpaper" << std::endl;
+          Logger::Instance().Info("DisplayChangeCoordinator", "No default URL, user can manually start wallpaper");
         }
       }
     }
   }
   // Detect removed monitors
   else if (new_monitors.size() < old_monitors.size()) {
-    std::cout << "[DisplayChange] Monitor(s) removed!" << std::endl;
+    Logger::Instance().Info("DisplayChangeCoordinator", "Monitor(s) removed!");
     
     if (!instances_ref_ || !instances_mutex_ref_) {
       Logger::Instance().Error("DisplayChangeCoordinator",
@@ -191,8 +192,8 @@ void DisplayChangeCoordinator::HandleMonitorCountChange(
       }
       
       if (!still_exists) {
-        std::cout << "[DisplayChange] Monitor removed: " << old_mon.device_name 
-                  << " (index: " << old_mon.index << ")" << std::endl;
+        Logger::Instance().Info("DisplayChangeCoordinator", 
+          "Monitor removed: " + old_mon.device_name + " (index: " + std::to_string(old_mon.index) + ")");
         
         // Check if wallpaper is running on removed monitor (thread-safe check)
         bool has_wallpaper = false;
@@ -207,14 +208,16 @@ void DisplayChangeCoordinator::HandleMonitorCountChange(
         }
         
         if (has_wallpaper) {
-          std::cout << "[DisplayChange] Found wallpaper on removed monitor " << old_mon.index 
-                    << ", cleaning up..." << std::endl;
+          Logger::Instance().Info("DisplayChangeCoordinator", 
+            "Found wallpaper on removed monitor " + std::to_string(old_mon.index) + ", cleaning up...");
           
           // Clean up wallpaper on removed monitor
           bool cleanup_success = stop_wallpaper_(old_mon.index);
-          std::cout << "[DisplayChange] Cleanup " << (cleanup_success ? "succeeded" : "failed") << std::endl;
+          Logger::Instance().Info("DisplayChangeCoordinator", 
+            "Cleanup " + std::string(cleanup_success ? "succeeded" : "failed"));
         } else {
-          std::cout << "[DisplayChange] No wallpaper found on removed monitor " << old_mon.index << std::endl;
+          Logger::Instance().Info("DisplayChangeCoordinator", 
+            "No wallpaper found on removed monitor " + std::to_string(old_mon.index));
         }
       }
     }
@@ -230,13 +233,15 @@ void DisplayChangeCoordinator::UpdateWallpaperSizes() {
   
   std::lock_guard<std::mutex> lock(*instances_mutex_ref_);
   
-  std::cout << "[DisplayChange] Updating " << instances_ref_->size() << " wallpaper instance(s)..." << std::endl;
+  Logger::Instance().Info("DisplayChangeCoordinator", 
+    "Updating " + std::to_string(instances_ref_->size()) + " wallpaper instance(s)...");
   
   // Use index-based loop to avoid iterator invalidation
   for (size_t i = 0; i < instances_ref_->size(); ++i) {
     auto& instance = (*instances_ref_)[i];
     
-    std::cout << "[DisplayChange] Checking instance " << i << " (monitor " << instance.monitor_index << ")" << std::endl;
+    Logger::Instance().Info("DisplayChangeCoordinator", 
+      "Checking instance " + std::to_string(i) + " (monitor " + std::to_string(instance.monitor_index) + ")");
     
     // Find current monitor info
     const MonitorInfo* monitor = nullptr;
@@ -248,12 +253,14 @@ void DisplayChangeCoordinator::UpdateWallpaperSizes() {
     }
     
     if (!monitor) {
-      std::cout << "[DisplayChange] Monitor " << instance.monitor_index << " not found, skipping" << std::endl;
+      Logger::Instance().Info("DisplayChangeCoordinator", 
+        "Monitor " + std::to_string(instance.monitor_index) + " not found, skipping");
       continue;
     }
     
     if (!instance.webview_host_hwnd || !IsWindow(instance.webview_host_hwnd)) {
-      std::cout << "[DisplayChange] Window for monitor " << instance.monitor_index << " is invalid, skipping" << std::endl;
+      Logger::Instance().Info("DisplayChangeCoordinator", 
+        "Window for monitor " + std::to_string(instance.monitor_index) + " is invalid, skipping");
       continue;
     }
     
@@ -269,9 +276,10 @@ void DisplayChangeCoordinator::UpdateWallpaperSizes() {
     );
     
     if (success) {
-      std::cout << "[DisplayChange] Updated monitor " << instance.monitor_index 
-                << " window to " << monitor->width << "x" << monitor->height 
-                << " @ (" << monitor->left << "," << monitor->top << ")" << std::endl;
+      Logger::Instance().Info("DisplayChangeCoordinator", 
+        "Updated monitor " + std::to_string(instance.monitor_index) + 
+        " window to " + std::to_string(monitor->width) + "x" + std::to_string(monitor->height) + 
+        " @ (" + std::to_string(monitor->left) + "," + std::to_string(monitor->top) + ")");
       
       // Update WebView bounds
       if (instance.webview_controller) {
@@ -283,29 +291,34 @@ void DisplayChangeCoordinator::UpdateWallpaperSizes() {
         
         HRESULT hr = instance.webview_controller->put_Bounds(bounds);
         if (SUCCEEDED(hr)) {
-          std::cout << "[DisplayChange] Updated WebView bounds for monitor " << instance.monitor_index << std::endl;
+          Logger::Instance().Info("DisplayChangeCoordinator", 
+            "Updated WebView bounds for monitor " + std::to_string(instance.monitor_index));
         } else {
-          std::cout << "[DisplayChange] Failed to update WebView bounds: " << std::hex << hr << std::endl;
+          std::ostringstream oss;
+          oss << std::hex << hr;
+          Logger::Instance().Error("DisplayChangeCoordinator", 
+            "Failed to update WebView bounds: " + oss.str());
         }
       }
     } else {
-      std::cout << "[DisplayChange] Failed to update window for monitor " << instance.monitor_index 
-                << ", error: " << GetLastError() << std::endl;
+      Logger::Instance().Error("DisplayChangeCoordinator", 
+        "Failed to update window for monitor " + std::to_string(instance.monitor_index) + 
+        ", error: " + std::to_string(GetLastError()));
     }
   }
   
-  std::cout << "[DisplayChange] Update complete" << std::endl;
+  Logger::Instance().Info("DisplayChangeCoordinator", "Update complete");
 }
 
 void DisplayChangeCoordinator::NotifyMonitorChange() {
-  std::cout << "[DisplayChange] Notifying monitor change..." << std::endl;
+  Logger::Instance().Info("DisplayChangeCoordinator", "Notifying monitor change...");
   
   // CRITICAL: InvokeMethod causes deadlock/crash
   // Solution: Use polling from Dart side instead (Timer.periodic)
   // Do NOT call InvokeMethod - it will hang the application
   
-  std::cout << "[DisplayChange] Skipping InvokeMethod to prevent deadlock" << std::endl;
-  std::cout << "[DisplayChange] Dart side will detect changes via polling" << std::endl;
+  Logger::Instance().Info("DisplayChangeCoordinator", "Skipping InvokeMethod to prevent deadlock");
+  Logger::Instance().Info("DisplayChangeCoordinator", "Dart side will detect changes via polling");
   
   Logger::Instance().Info("DisplayChangeCoordinator", "Notification completed");
 }

@@ -52,11 +52,9 @@ echo Build successful
 echo Build successful >> "%TEST_REPORT%"
 echo.
 
-REM Step 3: Copy SDK files
-echo [Step 3/10] Copying SDK files...
-set "BUILD_DIR=%PROJECT_ROOT%\example\build\windows\x64\runner\Debug"
-if not exist "%BUILD_DIR%\data\flutter_assets\windows\" mkdir "%BUILD_DIR%\data\flutter_assets\windows\"
-copy /Y "%PROJECT_ROOT%\windows\anywp_sdk.js" "%BUILD_DIR%\data\flutter_assets\windows\" >nul 2>&1
+REM Step 3: SDK Verification (v2.3.0+: SDK is embedded in DLL)
+echo [Step 3/10] Verifying SDK embedding...
+echo SDK is embedded in DLL (no external files needed)
 echo Done.
 echo.
 

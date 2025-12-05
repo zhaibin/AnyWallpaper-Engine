@@ -1,6 +1,6 @@
 #include "mouse_hook_manager.h"
-#include <iostream>
 #include "../anywp_engine_plugin.h"
+#include "../utils/logger.h"
 
 namespace anywp_engine {
 
@@ -9,11 +9,20 @@ MouseHookManager* MouseHookManager::instance_ = nullptr;
 MouseHookManager::MouseHookManager()
     : hook_(nullptr),
       paused_(false),
-      is_mouse_down_(false) {
+      is_mouse_down_(false),
+      polling_thread_running_(false),
+      polling_thread_should_stop_(false),
+      polling_interval_ms_(16),  // ~60fps default
+      polling_fallback_enabled_(true),
+      last_polled_position_{0, 0},
+      last_hook_mousemove_time_(0),
+      timer_hwnd_(nullptr),
+      ui_timer_id_(0) {
   instance_ = this;
 }
 
 MouseHookManager::~MouseHookManager() {
+  StopPollingThread();
   Uninstall();
   instance_ = nullptr;
 }
@@ -24,7 +33,7 @@ bool MouseHookManager::Install() {
   }
   
   try {
-    std::cout << "[AnyWP] [MouseHook] Installing low-level mouse hook..." << std::endl;
+    Logger::Instance().Info("MouseHook", "Installing low-level mouse hook...");
     
     hook_ = SetWindowsHookExW(
       WH_MOUSE_LL,
@@ -34,25 +43,25 @@ bool MouseHookManager::Install() {
     );
     
     if (hook_) {
-      std::cout << "[AnyWP] [MouseHook] Hook installed successfully" << std::endl;
+      Logger::Instance().Info("MouseHook", "Hook installed successfully");
       return true;
     } else {
       DWORD error = GetLastError();
-      std::cout << "[AnyWP] [MouseHook] ERROR: Failed to install hook: " << error << std::endl;
+      Logger::Instance().Error("MouseHook", "Failed to install hook: " + std::to_string(error));
       return false;
     }
   } catch (const std::exception& e) {
-    std::cout << "[AnyWP] [MouseHook] ERROR: Exception in Install: " << e.what() << std::endl;
+    Logger::Instance().Error("MouseHook", "Exception in Install: " + std::string(e.what()));
     return false;
   } catch (...) {
-    std::cout << "[AnyWP] [MouseHook] ERROR: Unknown exception in Install" << std::endl;
+    Logger::Instance().Error("MouseHook", "Unknown exception in Install");
     return false;
   }
 }
 
 void MouseHookManager::Uninstall() {
   if (hook_) {
-    std::cout << "[AnyWP] [MouseHook] Uninstalling mouse hook..." << std::endl;
+    Logger::Instance().Info("MouseHook", "Uninstalling mouse hook...");
     UnhookWindowsHookEx(hook_);
     hook_ = nullptr;
   }
@@ -86,44 +95,167 @@ bool MouseHookManager::IsPaused() const {
   return paused_;
 }
 
+void MouseHookManager::SetPollingFallbackEnabled(bool enabled) {
+  polling_fallback_enabled_ = enabled;
+  Logger::Instance().Info("MouseHook", 
+    std::string("Polling fallback ") + (enabled ? "enabled" : "disabled"));
+}
+
+void MouseHookManager::SetPollingInterval(UINT interval_ms) {
+  polling_interval_ms_ = interval_ms;
+  Logger::Instance().Info("MouseHook", 
+    "Polling interval set to " + std::to_string(interval_ms) + "ms");
+}
+
+void MouseHookManager::SetTimerWindow(HWND hwnd) {
+  timer_hwnd_ = hwnd;
+}
+
+void CALLBACK MouseHookManager::UITimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {
+  if (instance_) {
+    instance_->ProcessPendingPolledEvents();
+  }
+}
+
+void MouseHookManager::StartPollingThread() {
+  if (!polling_fallback_enabled_) {
+    return;
+  }
+  
+  // Already running - just wake it up
+  if (polling_thread_running_.load(std::memory_order_acquire)) {
+    polling_cv_.notify_one();
+    return;
+  }
+  
+  // Initialize state
+  GetCursorPos(&last_polled_position_);
+  polling_thread_should_stop_.store(false, std::memory_order_release);
+  polling_thread_running_.store(true, std::memory_order_release);
+  
+  // Create polling thread
+  polling_thread_ = std::make_unique<std::thread>(&MouseHookManager::PollingThreadFunc, this);
+  
+  // Start UI timer to process queued events (if window handle is set)
+  if (timer_hwnd_ && ui_timer_id_ == 0) {
+    ui_timer_id_ = SetTimer(timer_hwnd_, 1, polling_interval_ms_, UITimerProc);
+  }
+}
+
+void MouseHookManager::StopPollingThread() {
+  // Stop UI timer first
+  if (ui_timer_id_ && timer_hwnd_) {
+    KillTimer(timer_hwnd_, ui_timer_id_);
+    ui_timer_id_ = 0;
+  }
+  
+  if (!polling_thread_running_.load(std::memory_order_acquire)) {
+    return;
+  }
+  
+  // Signal thread to stop
+  polling_thread_should_stop_.store(true, std::memory_order_release);
+  polling_cv_.notify_all();
+  
+  // Wait for thread to finish
+  if (polling_thread_ && polling_thread_->joinable()) {
+    polling_thread_->join();
+  }
+  polling_thread_.reset();
+  
+  polling_thread_running_.store(false, std::memory_order_release);
+}
+
+void MouseHookManager::ProcessPendingPolledEvents() {
+  // Process all pending polled events (called from UI thread via timer or hook callback)
+  std::vector<PolledEvent> events_to_process;
+  
+  {
+    std::lock_guard<std::mutex> lock(event_queue_mutex_);
+    if (polled_event_queue_.empty()) {
+      return;
+    }
+    events_to_process.swap(polled_event_queue_);
+  }
+  
+  // Dispatch events to WebView (we're on UI thread, so PostWebMessage will work)
+  for (const auto& event : events_to_process) {
+    if (click_callback_) {
+      click_callback_(event.x, event.y, "mousemove");
+    }
+  }
+}
+
+void MouseHookManager::PollingThreadFunc() {
+  Logger::Instance().Debug("MouseHook", "Polling thread started");
+  
+  int poll_event_count = 0;
+  
+  while (!polling_thread_should_stop_.load(std::memory_order_acquire)) {
+    bool mouse_down = is_mouse_down_.load(std::memory_order_acquire);
+    
+    // Check if mouse is still down
+    if (!mouse_down) {
+      // Mouse released, wait for next mousedown
+      std::unique_lock<std::mutex> lock(polling_mutex_);
+      polling_cv_.wait(lock, [this] {
+        return polling_thread_should_stop_.load(std::memory_order_acquire) || 
+               is_mouse_down_.load(std::memory_order_acquire);
+      });
+      continue;
+    }
+    
+    // Check if hook is delivering events normally
+    DWORD current_time = GetTickCount();
+    DWORD last_hook_time = last_hook_mousemove_time_.load(std::memory_order_acquire);
+    DWORD time_since_hook = current_time - last_hook_time;
+    
+    // Get current position
+    POINT current_pos;
+    GetCursorPos(&current_pos);
+    
+    // If hook is blocked (no recent events), queue event for UI thread processing
+    if (time_since_hook >= HOOK_TIMEOUT_MS) {
+      // Check if position changed
+      if (current_pos.x != last_polled_position_.x || 
+          current_pos.y != last_polled_position_.y) {
+        
+        poll_event_count++;
+        
+        // Queue event for UI thread (processed by timer)
+        {
+          std::lock_guard<std::mutex> lock(event_queue_mutex_);
+          if (polled_event_queue_.size() < MAX_QUEUED_EVENTS) {
+            polled_event_queue_.push_back({current_pos.x, current_pos.y});
+          }
+        }
+        
+        // Log first few events only
+        if (poll_event_count <= 3) {
+          Logger::Instance().Debug("MouseHook", 
+            "Polling fallback active, queued event #" + std::to_string(poll_event_count));
+        }
+      }
+    }
+    
+    last_polled_position_ = current_pos;
+    
+    // Sleep for polling interval
+    Sleep(polling_interval_ms_);
+  }
+  
+  Logger::Instance().Debug("MouseHook", "Polling thread exiting");
+}
 
 LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
-  // v2.0.10+ CRITICAL DEBUG: Output IMMEDIATELY to confirm callback is called
-  static int total_calls = 0;
-  total_calls++;
-  
-  // ALWAYS output first 20 calls, then every 10th
-  static bool first_call_logged = false;
-  if (!first_call_logged) {
-    std::wcout << L"[MouseHook] *** CALLBACK FIRST CALL *** nCode=" << nCode << L", wParam=" << wParam << std::endl;
-    first_call_logged = true;
-  }
-  
-  if (total_calls <= 20 || total_calls % 10 == 0) {
-    std::wcout << L"[MouseHook] Callback #" << total_calls << L" nCode=" << nCode << L", wParam=" << wParam << std::endl;
-  }
-  
-  // v2.0.10+ DEBUG: Track early returns (log ALL for debugging)
-  static int early_return_ncode = 0;
-  static int early_return_paused = 0;
+  // v2.3.2+: Removed debug counters to reduce log noise
   
   if (nCode < 0 || !instance_) {
-    early_return_ncode++;
-    // Log first 50 or every 20th
-    if (early_return_ncode <= 50 || early_return_ncode % 20 == 0) {
-      std::wcout << L"[MouseHook] DEBUG: Early return (nCode=" << nCode 
-                 << L", instance=" << (instance_ ? L"OK" : L"NULL")
-                 << L"), count: " << early_return_ncode << std::endl;
-    }
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
   }
   
   // Skip if paused (performance optimization)
   if (instance_->paused_) {
-    early_return_paused++;
-    if (early_return_paused <= 50 || early_return_paused % 20 == 0) {
-      std::wcout << L"[MouseHook] DEBUG: Paused, skipping event, count: " << early_return_paused << std::endl;
-    }
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
   }
   
@@ -133,33 +265,10 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
   // Check if click position is occluded by a top-level application window
   HWND window_at_point = WindowFromPoint(pt);
   
-  // Get window class name for debugging
+  // Get window class name
   wchar_t className[256] = {0};
   if (window_at_point) {
     GetClassNameW(window_at_point, className, 256);
-  }
-  
-  // Debug logging (v2.0.10+ log ALL non-mousemove events unconditionally)
-  static int debug_count = 0;
-  static int mousemove_debug_count = 0;
-  bool should_log = (wParam != WM_MOUSEMOVE);  // Always log non-mousemove events
-  
-  // For mousemove, log every 50th event
-  if (wParam == WM_MOUSEMOVE) {
-    mousemove_debug_count++;
-    should_log = (mousemove_debug_count % 50 == 0);
-  }
-  
-  if (should_log) {
-    debug_count++;
-    std::wcout << L"[MouseHook] Event: " << wParam 
-               << L" at (" << pt.x << L"," << pt.y << L")";
-    if (instance_->is_mouse_down_) {
-      std::wcout << L" [MOUSE_DOWN]";
-    }
-    std::wcout << std::endl;
-    std::wcout << L"[MouseHook] WindowAtPoint: " << window_at_point 
-               << L" ClassName: " << className << std::endl;
   }
   
   // Check if this is a top-level application window (not desktop layer)
@@ -175,12 +284,6 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
       // Get root window class name
       wchar_t rootClassName[256] = {0};
       GetClassNameW(root_window, rootClassName, 256);
-      
-      // v2.0.10+ DEBUG: Log root window class
-      if (should_log) {
-        std::wcout << L"[MouseHook] Root window: " << root_window 
-                   << L" Class: " << rootClassName << std::endl;
-      }
       
       // v2.0.10+ CRITICAL FIX: Detect desktop AND desktop icon list
       // SysListView32 is the icon container, we need to forward these events too
@@ -199,11 +302,6 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
         bool check_window = instance_->hwnd_check_callback_(window_at_point);
         bool check_root = instance_->hwnd_check_callback_(root_window);
         is_our_window = check_window || check_root;
-        
-        if (should_log) {
-          std::wcout << L"[MouseHook] HWND Check - window_at_point: " << check_window 
-                     << L", root_window: " << check_root << std::endl;
-        }
       }
       
       // Fallback: Also check if it's our Chrome WebView2 window
@@ -211,16 +309,7 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
         if (instance_->instance_callback_) {
           WallpaperInstance* inst = instance_->instance_callback_(pt.x, pt.y);
           is_our_window = (inst != nullptr);
-          
-          if (should_log) {
-            std::wcout << L"[MouseHook] Chrome window check: " << (inst != nullptr) << std::endl;
-          }
         }
-      }
-      
-      if (should_log) {
-        std::wcout << L"[MouseHook] is_desktop_window: " << is_desktop_window 
-                   << L", is_our_window: " << is_our_window << std::endl;
       }
       
       if (!is_desktop_window && !is_our_window) {
@@ -243,39 +332,37 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
   if (wParam == WM_LBUTTONDOWN) {
     event_type = "mousedown";
     // v2.0.4+ Track mouse button down state - MUST set this before any early returns
-    instance_->is_mouse_down_ = true;
-    if (should_log) {
-      std::wcout << L"[MouseHook] 🖱️ Mouse button down" << std::endl;
-    }
+    instance_->is_mouse_down_.store(true, std::memory_order_release);
+    
+    // v2.5.1+ Start polling thread for interference resilience
+    instance_->last_polled_position_ = pt;
+    instance_->last_hook_mousemove_time_.store(GetTickCount(), std::memory_order_release);
+    instance_->StartPollingThread();
+    
   } else if (wParam == WM_LBUTTONUP) {
     event_type = "mouseup";
     // v2.0.4+ Clear mouse button down state
-    instance_->is_mouse_down_ = false;
-    if (should_log) {
-      std::wcout << L"[MouseHook] 🖱️ Mouse button up" << std::endl;
-    }
+    instance_->is_mouse_down_.store(false, std::memory_order_release);
+    
+    // v2.5.1+ Process all queued events from polling thread before mouseup
+    instance_->ProcessPendingPolledEvents();
+    
+    // v2.5.1+ Wake up polling thread (it will sleep when it sees mouse is up)
+    instance_->polling_cv_.notify_all();
+    
   } else if (wParam == WM_MOUSEMOVE) {
     event_type = "mousemove";
+    
+    // v2.5.1+ Update timestamp to indicate hook is working
+    if (instance_->is_mouse_down_.load(std::memory_order_acquire)) {
+      instance_->last_hook_mousemove_time_.store(GetTickCount(), std::memory_order_release);
+    }
   }
   
   // v2.0.4+ NOW check is_app_window (after mouse button state is set)
   // Don't block events when mouse button is pressed
-  if (is_app_window && !instance_->is_mouse_down_) {
-    if (should_log) {
-      std::wcout << L"[MouseHook] BLOCKED - is_app_window = true, mouse button not down" << std::endl;
-    }
+  if (is_app_window && !instance_->is_mouse_down_.load(std::memory_order_acquire)) {
     return CallNextHookEx(nullptr, nCode, wParam, lParam);
-  }
-  
-  // v2.0.10+ DEBUG: Always log FORWARDING decision
-  static int forward_count = 0;
-  forward_count++;
-  if (should_log || forward_count <= 10) {
-    std::wcout << L"[MouseHook] FORWARDING #" << forward_count << L" event to WebView";
-    if (instance_->is_mouse_down_) {
-      std::wcout << L" (mouse down)";
-    }
-    std::wcout << std::endl;
   }
   
   // Get target wallpaper instance (via callback)
@@ -289,9 +376,9 @@ LRESULT CALLBACK MouseHookManager::LowLevelMouseProc(int nCode, WPARAM wParam, L
     IframeInfo* iframe = instance_->iframe_callback_(pt.x, pt.y, target_instance);
     
     if (iframe && !iframe->click_url.empty()) {
-      std::cout << "[AnyWP] [MouseHook] Click on iframe: " << iframe->id 
-                << " at (" << pt.x << "," << pt.y << ")" << std::endl;
-      std::cout << "[AnyWP] [MouseHook] Opening URL: " << iframe->click_url << std::endl;
+      Logger::Instance().Info("MouseHook", 
+        "Click on iframe: " + iframe->id + " at (" + std::to_string(pt.x) + "," + std::to_string(pt.y) + ")");
+      Logger::Instance().Info("MouseHook", "Opening URL: " + iframe->click_url);
       
       // Open the ad URL directly
       std::wstring url_wide(iframe->click_url.begin(), iframe->click_url.end());

@@ -27,9 +27,9 @@ constexpr char kSDKVersion[] = "2.1.10";  // Built-in Web SDK version
 - **影响**: `AnyWPEngine.getPluginVersion()` / `AnyWPEngine.getSDKVersion()`
 - **必须修改**: ✅ 每次发布
 
-#### 3️⃣ **TypeScript SDK 源码** (windows/sdk/core/AnyWP.ts)
+#### 3️⃣ **TypeScript SDK 源码** (sdk/src/core/AnyWP.ts)
 ```typescript
-// File: windows/sdk/core/AnyWP.ts
+// File: sdk/src/core/AnyWP.ts
 export const AnyWP: AnyWPSDK = {
   version: '2.1.10',
   // ...
@@ -39,9 +39,9 @@ export const AnyWP: AnyWPSDK = {
 - **影响**: 编译后的 `anywp_sdk.js` 文件
 - **必须修改**: ✅ 每次发布（编译前）
 
-#### 4️⃣ **TypeScript 项目配置** (windows/sdk/package.json)
+#### 4️⃣ **TypeScript 项目配置** (sdk/src/package.json)
 ```json
-// File: windows/sdk/package.json
+// File: sdk/src/package.json
 {
   "name": "anywp-sdk",
   "version": "2.1.10",
@@ -81,13 +81,13 @@ export const AnyWP: AnyWPSDK = {
 
 3. **更新 TypeScript SDK 源码**
    ```typescript
-   // 编辑 windows/sdk/core/AnyWP.ts
+   // 编辑 sdk/src/core/AnyWP.ts
    version: '2.1.11',
    ```
 
 4. **更新 SDK 项目配置**
    ```json
-   // 编辑 windows/sdk/package.json
+   // 编辑 sdk/src/package.json
    "version": "2.1.11",
    ```
 
@@ -99,7 +99,7 @@ export const AnyWP: AnyWPSDK = {
 
 6. **重新编译 SDK**
    ```bash
-   cd windows/sdk
+   cd sdk/src
    npm run build
    ```
 
@@ -176,10 +176,10 @@ if (window.AnyWP.version !== '2.1.10') {
 
 - [ ] `pubspec.yaml` → `version: X.Y.Z`
 - [ ] `windows/anywp_engine_plugin.cpp` → `kPluginVersion[]` + `kSDKVersion[]`
-- [ ] `windows/sdk/core/AnyWP.ts` → `version: 'X.Y.Z'`
-- [ ] `windows/sdk/package.json` → `"version": "X.Y.Z"`
+- [ ] `sdk/src/core/AnyWP.ts` → `version: 'X.Y.Z'`
+- [ ] `sdk/src/package.json` → `"version": "X.Y.Z"`
 - [ ] `.cursorrules` (底部) → `**Version**: X.Y.Z`
-- [ ] 运行 `npm run build` (在 `windows/sdk/`)
+- [ ] 运行 `npm run build` (在 `sdk/src/`)
 - [ ] 运行 `.\scripts\check_version_consistency.ps1`
 - [ ] 验证 `AnyWPEngine.getPluginVersion()` 和 `AnyWPEngine.getSDKVersion()` 返回正确版本
 

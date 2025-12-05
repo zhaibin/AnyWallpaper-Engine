@@ -96,6 +96,15 @@ private:
 
   // Helper: Find child window by class recursively
   HWND FindChildWindowByClass(HWND parent, const wchar_t* class_name);
+  
+  // v2.3.1+ Enhanced: Multiple strategies to find SHELLDLL_DefView
+  HWND FindSHELLDLL_DefView_Aggressive();
+  
+  // v2.3.1+ Enhanced: Get Explorer process ID for restart detection
+  DWORD GetExplorerProcessId();
+  
+  // v2.4.1+ Internal: FindWorkerW with retry capability (Lively-inspired)
+  bool FindWorkerWWithRetry(int timeout_ms, bool is_retry);
 };
 
 }  // namespace anywp_engine

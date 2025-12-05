@@ -1,5 +1,7 @@
 # 📦 使用预编译 DLL 快速集成 AnyWP Engine
 
+**Version**: 2.5.1
+
 本指南说明如何使用预编译的 DLL 文件集成 AnyWP Engine，**无需安装 WebView2 SDK 或编译 C++ 代码**。
 
 ---
@@ -40,7 +42,7 @@
 - ✅ `windows/anywp_engine_plugin.cpp/h` - 完整 C++ 源码
 - ✅ `windows/modules/` - 所有核心模块
 - ✅ `windows/utils/` - 所有工具类
-- ✅ `windows/sdk/` - TypeScript SDK 源码
+- ✅ `sdk/src/` - TypeScript SDK 源码
 - ✅ `windows/packages/` - WebView2 依赖包
 - ✅ `windows/test/` - C++ 单元测试
 
@@ -82,12 +84,12 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.1.8_precompiled.zip
+anywp_engine_v2.5.1_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.1.8_source.zip
+anywp_engine_v2.5.1_source.zip
 ```
 
 ### 2. 解压到项目目录
@@ -843,10 +845,13 @@ verify.bat
 
 ---
 
-**Version**: 2.1.10  
-**Updated**: 2025-11-14  
+**Version**: 2.4.1  
+**Updated**: 2025-11-19  
 **主要变更**:
-- ✅ **移除 flutter 库依赖** - 预编译包 CMakeLists.txt 不再链接 flutter 和 flutter_wrapper_plugin
+- ✅ **自动恢复 API** - 1 行代码实现 Explorer 重启自动恢复（从 20 行简化到 1 行）
+- ✅ **日志系统现代化** - 100% Logger 覆盖，日志量减少 35.5%
+- ✅ **Lively 风格优化** - 优化 WorkerW 创建和查找策略
+- ✅ **Windows 11 兼容** - 支持 Raised Desktop 模式
 - ✅ **修复 verify.bat 脚本** - 解决预编译包验证脚本执行错误
 - ✅ **集成文档包含在 ZIP 包中** - `INTEGRATION_GUIDE.md` 随包提供
 - ✅ **完善集成文档** - 详细说明预编译专用 CMakeLists.txt 的特点

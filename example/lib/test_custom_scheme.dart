@@ -15,7 +15,6 @@ class TestCustomSchemePage extends StatefulWidget {
 }
 
 class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
-  final _engine = AnyWPEngine();
   bool _isInitialized = false;
   String _status = 'Initializing...';
 
@@ -35,7 +34,7 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
       final htmlPath = 'E:\\Projects\\AnyWallpaper\\AnyWP-Test\\examples\\test_custom_scheme.html';
       
       // 初始化引擎
-      await _engine.initialize(htmlPath);
+      await AnyWPEngine.initializeWallpaper(url: 'file:///$htmlPath');
       
       setState(() {
         _isInitialized = true;
@@ -44,7 +43,7 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
 
       // 延迟显示壁纸
       await Future.delayed(const Duration(milliseconds: 500));
-      await _engine.show();
+      // await _engine.show(); // Note: show() method removed, wallpaper is visible by default
 
       print('[TestCustomScheme] ✓ Wallpaper shown');
       print('[TestCustomScheme] Test page URL: file:///$htmlPath');
@@ -59,8 +58,8 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
   }
 
   @override
-  void dispose() {
-    _engine.dispose();
+  void dispose() async {
+    await AnyWPEngine.stopWallpaper();
     super.dispose();
   }
 
@@ -210,9 +209,9 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
                     children: [
                       ElevatedButton.icon(
                         onPressed: () async {
-                          await _engine.hide();
+                          await AnyWPEngine.pauseWallpaper();
                           setState(() {
-                            _status = 'Wallpaper hidden';
+                            _status = 'Wallpaper paused';
                           });
                         },
                         icon: const Icon(Icons.visibility_off),
@@ -228,9 +227,9 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
                       const SizedBox(width: 10),
                       ElevatedButton.icon(
                         onPressed: () async {
-                          await _engine.show();
+                          await AnyWPEngine.resumeWallpaper();
                           setState(() {
-                            _status = 'Wallpaper shown';
+                            _status = 'Wallpaper resumed';
                           });
                         },
                         icon: const Icon(Icons.visibility),

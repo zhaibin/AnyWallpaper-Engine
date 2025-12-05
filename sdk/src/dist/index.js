@@ -5,10 +5,14 @@ import { initializeAnyWP } from './core/init';
 import { Debug } from './utils/debug';
 import { Events } from './modules/events';
 import { ClickHandler } from './modules/click';
+import { DragHandler } from './modules/drag';
 import { Storage } from './modules/storage';
 import { SPA } from './modules/spa';
-import { WebMessage } from './modules/webmessage';
+import { WebMessage, setupWebMessageListener } from './modules/webmessage';
 import { File } from './modules/file';
+// CRITICAL: Setup WebMessage listener IMMEDIATELY (before any other initialization)
+// This ensures we catch ALL messages from C++ (including keyboard events)
+setupWebMessageListener();
 // Implement initialization
 AnyWP._init = function () {
     initializeAnyWP(this);
@@ -75,6 +79,16 @@ AnyWP.encryptFile = function (sourcePath, destPath) {
 AnyWP.decryptFile = function (encryptedPath, destPath) {
     return File.decryptFile.call(this, encryptedPath, destPath);
 };
+// Public API: Drag & Drop (v2.4.1+)
+AnyWP.makeDraggable = function (element, options) {
+    DragHandler.makeDraggable(this, element, options);
+};
+AnyWP.removeDraggable = function (element) {
+    DragHandler.removeDraggable(this, element);
+};
+AnyWP.resetPosition = function (element, position) {
+    return DragHandler.resetPosition(this, element, position);
+};
 // Note: openURL and ready are implemented in core/AnyWP.ts
 // Export for build
 export { AnyWP };
@@ -90,7 +104,7 @@ if (typeof window !== 'undefined') {
         console.info('[AnyWP] This is expected when C++ plugin injects SDK multiple times');
     }
     else {
-        console.info('[AnyWP] Initializing SDK for the first time');
+        // Silent initialization - reduces log noise
         window.AnyWP = AnyWP;
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function () {
@@ -100,7 +114,8 @@ if (typeof window !== 'undefined') {
         else {
             AnyWP._init();
         }
-        console.info('[AnyWP] SDK loaded successfully');
+        // SDK ready, log version only
+        console.info(`[AnyWP] SDK loaded: ${AnyWP.version}`);
     }
 }
 //# sourceMappingURL=index.js.map

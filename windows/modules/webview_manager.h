@@ -29,6 +29,9 @@ public:
   // Initialize shared WebView2 environment (call once at startup)
   static void InitializeEnvironment(const std::wstring& user_data_folder);
   
+  // v2.4.1+ Reset environment (for Explorer restart recovery)
+  static void ResetEnvironment();
+  
   // Create WebView2 for a window
   void CreateWebView(
       HWND parent_hwnd,
@@ -72,9 +75,6 @@ private:
 
   // Last cleanup time for throttling
   std::chrono::steady_clock::time_point last_cleanup_;
-
-  // Helper: Load SDK script from file
-  std::string LoadSDKScriptFromFile();
 };
 
 }  // namespace anywp_engine

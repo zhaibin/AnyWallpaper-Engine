@@ -446,14 +446,15 @@
             // Make it draggable
             AnyWP.makeDraggable('#draggable-test', {
                 persistKey: 'test_draggable_pos',
-                onDragStart: function() {
-                    addLog('  🎯 开始拖拽');
+                onDragStart: function(pos) {
+                    addLog('  🎯 开始拖拽，初始位置: (' + Math.round(pos.x) + ', ' + Math.round(pos.y) + ')');
                 },
-                onDrag: function(x, y) {
+                onDrag: function(pos) {
                     // Optional: log during drag
+                    // addLog('  📍 拖拽中: (' + Math.round(pos.x) + ', ' + Math.round(pos.y) + ')');
                 },
-                onDragEnd: function(x, y) {
-                    addLog('  ✅ 拖拽结束，位置: (' + x + ', ' + y + ')');
+                onDragEnd: function(pos) {
+                    addLog('  ✅ 拖拽结束，位置: (' + Math.round(pos.x) + ', ' + Math.round(pos.y) + ')');
                     addLog('  💾 位置已自动保存');
                 }
             });

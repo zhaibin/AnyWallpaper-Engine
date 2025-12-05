@@ -1,5 +1,7 @@
 ﻿# AnyWP Engine - Developer API Reference
 
+**Version**: 2.4.1
+
 Complete API reference for integrating AnyWP Engine into your Flutter application.
 
 ## Table of Contents
@@ -740,6 +742,72 @@ AnyWPEngine.setOnPowerStateChangeCallback((oldState, newState) {
 - `oldState`: Previous power state
 - `newState`: New power state
 
+### Recovery Callback (v2.4.1+)
+
+```dart
+// Called when wallpaper is automatically recovered after Explorer restart
+AnyWPEngine.setOnRecoveryCallback((recoveredMonitors) async {
+  print('Wallpaper recovered on monitors: $recoveredMonitors');
+  
+  // Restore carousel configuration
+  await AnyWPEngine.sendMessage({
+    'type': 'updateCarousel',
+    'data': {'images': myImages, 'interval': 5000},
+  });
+  
+  // Restore playback state
+  if (wasPlaying) {
+    await AnyWPEngine.sendMessage({'type': 'play'});
+  }
+});
+```
+
+**Parameters:**
+- `recoveredMonitors`: `List<int>` - List of monitor indices that were recovered
+
+**When it triggers:**
+- Explorer restarts (TaskManager kill, crash, etc.)
+- WorkerW window destroyed or invalidated
+- After wallpaper display is fully restored (~2-3 seconds delay)
+
+**Use cases:**
+- ✅ Restore carousel configuration
+- ✅ Restore play/pause state
+- ✅ Re-send configuration data to HTML
+- ✅ Update UI state after recovery
+
+**Notes:**
+- Callback is **optional** - if not set, wallpaper still auto-recovers (just without app state)
+- Requires `enableAutoRecovery(true)` to be called first
+- Callback fires after WebView is fully loaded (safe to send messages)
+- Async callback supported (use `async`/`await`)
+
+**Example (Full Recovery Flow):**
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Step 1: Enable auto recovery
+  await AnyWPEngine.enableAutoRecovery(true);
+  
+  // Step 2: Setup recovery callback
+  AnyWPEngine.setOnRecoveryCallback((monitors) async {
+    print('🔄 Wallpaper recovered on: $monitors');
+    
+    // Restore carousel data
+    await _sendCarouselUpdate();
+    
+    // Restore playing state
+    if (_carouselStatus == 'playing') {
+      await Future.delayed(Duration(milliseconds: 500));
+      await _carouselPlay();
+    }
+  });
+  
+  runApp(MyApp());
+}
+```
+
 ---
 
 ## Data Types
@@ -955,7 +1023,54 @@ await AnyWPEngine.sendMessage(
 - `carouselStateChanged` - Carousel state update
 - `error` - Error occurred in JavaScript
 - `heartbeat` - Keep-alive ping
+- `WALLPAPER_RECREATE_REQUIRED` - **System message** (v2.3.1+): Explorer restart detected, wallpaper needs recreation
 - Custom types - Any string you define
+
+**⚠️ Important: Handling System Messages (v2.3.1+)**
+
+The engine may send system messages like `WALLPAPER_RECREATE_REQUIRED` when critical events occur:
+
+```dart
+AnyWPEngine.setOnMessageCallback((message) {
+  final messageType = message['type'] as String;
+  
+  // v2.3.1+ Handle Explorer restart (automatic wallpaper recreation)
+  if (messageType == 'WALLPAPER_RECREATE_REQUIRED') {
+    final reason = message['data']['reason'] as String;
+    print('System requires wallpaper recreation: $reason');
+    
+    // Automatic recreation (recommended)
+    Future.delayed(Duration(seconds: 1), () async {
+      await AnyWPEngine.stopWallpaper();
+      await Future.delayed(Duration(milliseconds: 500));
+      
+      // Recreate wallpaper with your saved settings
+      await AnyWPEngine.initializeWallpaperOnMonitor(
+        url: savedUrl,
+        monitorIndex: savedMonitorIndex,
+      );
+    });
+    return;
+  }
+  
+  // Handle your custom messages
+  switch (messageType) {
+    case 'ready': /* ... */ break;
+    case 'error': /* ... */ break;
+    // ...
+  }
+});
+```
+
+**Why does this happen?**
+- When Windows Explorer restarts, wallpaper windows are destroyed by the system
+- The engine detects this and notifies your app to recreate the wallpaper
+- This ensures wallpapers survive Explorer crashes/restarts without manual intervention
+
+**Best Practice:**
+- Always handle `WALLPAPER_RECREATE_REQUIRED` in production apps
+- Keep track of current wallpaper settings (URL, monitor index) for quick recreation
+- Use a delay (1-2 seconds) before recreation to allow system stabilization
 
 **Error Handling:**
 ```dart
