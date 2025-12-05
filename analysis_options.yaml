@@ -1,0 +1,28 @@
+# Analysis options for AnyWP Engine
+# This file configures the analyzer to exclude release packages and other non-source files
+
+analyzer:
+  exclude:
+    # Exclude release packages (historical releases, not part of active development)
+    - release/**
+    # Exclude build outputs
+    - build/**
+    - .dart_tool/**
+    # Exclude example app (has its own analysis_options.yaml)
+    - example/**
+    # Exclude templates
+    - templates/**
+
+linter:
+  rules:
+    # Enable recommended lints
+    - prefer_single_quotes
+    - prefer_const_constructors
+    - prefer_const_literals_to_create_immutables
+    - avoid_print
+    - prefer_final_fields
+    - prefer_final_locals
+    - unnecessary_this
+    - unnecessary_new
+    - unnecessary_null_in_if_null_operators
+

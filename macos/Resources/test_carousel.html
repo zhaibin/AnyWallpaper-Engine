@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnyWP Carousel - Wallpaper Slideshow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+
+        /* Carousel Container */
+        .carousel-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Carousel Items */
+        .carousel-item {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .carousel-item.active {
+            opacity: 1;
+            z-index: 1;
+        }
+
+        .carousel-item img,
+        .carousel-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Controls */
+        .carousel-controls {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 50px;
+        }
+
+        .carousel-controls button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+
+        .carousel-controls button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .carousel-controls button:active {
+            transform: translateY(0);
+        }
+
+        .carousel-controls button.playing {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: rgba(76, 175, 80, 0.5);
+        }
+
+        /* Status Display */
+        .status-display {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            z-index: 1000;
+            min-width: 300px;
+        }
+
+        .status-display h3 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #4CAF50;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .status-label {
+            opacity: 0.7;
+        }
+
+        .status-value {
+            font-weight: bold;
+        }
+
+        /* Indicators */
+        .carousel-indicators {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .carousel-indicators .indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .carousel-indicators .indicator.active {
+            background: rgba(255, 255, 255, 0.9);
+            transform: scale(1.3);
+        }
+
+        /* SDK Status Badge */
+        .sdk-badge {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+            color: #4CAF50;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .sdk-badge.offline {
+            background: rgba(244, 67, 54, 0.2);
+            border-color: rgba(244, 67, 54, 0.5);
+            color: #f44336;
+        }
+
+        /* Messages Display */
+        .messages-display {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            z-index: 1000;
+            max-width: 400px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .messages-display h4 {
+            margin-bottom: 12px;
+            font-size: 16px;
+            color: #2196F3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .message-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            font-size: 12px;
+            border-left: 3px solid #2196F3;
+        }
+
+        .message-type {
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 4px;
+        }
+
+        .message-data {
+            opacity: 0.8;
+            font-family: monospace;
+        }
+
+        .message-time {
+            opacity: 0.6;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        /* Scrollbar */
+        .messages-display::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .messages-display::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .messages-display::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <!-- SDK Status Badge -->
+    <div class="sdk-badge" id="sdkBadge">
+        <span id="sdkStatus">SDK Loading...</span>
+    </div>
+
+    <!-- Status Display -->
+    <div class="status-display">
+        <h3>🎬 Carousel Status</h3>
+        <div class="status-item">
+            <span class="status-label">Current:</span>
+            <span class="status-value" id="currentIndex">1 / 5</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Type:</span>
+            <span class="status-value" id="currentType">Image</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Status:</span>
+            <span class="status-value" id="playStatus">Playing</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Interval:</span>
+            <span class="status-value" id="intervalDisplay">5s</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">Messages:</span>
+            <span class="status-value" id="messageCount">0</span>
+        </div>
+    </div>
+
+    <!-- Carousel Container -->
+    <div class="carousel-container" id="carouselContainer">
+        <!-- Items will be dynamically added here -->
+    </div>
+
+    <!-- Indicators -->
+    <div class="carousel-indicators" id="indicators">
+        <!-- Indicators will be dynamically added here -->
+    </div>
+
+    <!-- Controls -->
+    <div class="carousel-controls">
+        <button id="prevBtn">⏮️ Previous</button>
+        <button id="playPauseBtn" class="playing">⏸️ Pause</button>
+        <button id="nextBtn">⏭️ Next</button>
+    </div>
+
+    <!-- Messages Display -->
+    <div class="messages-display">
+        <h4>
+            <span>📨 Received Messages</span>
+            <span id="messageCount" style="background: rgba(33, 150, 243, 0.3); padding: 4px 12px; border-radius: 12px; font-size: 14px;">0</span>
+        </h4>
+        <div id="messagesContainer" style="min-height: 60px; max-height: 220px; overflow-y: auto;">
+            <div style="opacity: 0.5; text-align: center; padding: 20px;">
+                Waiting for messages...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Carousel Configuration
+        const carouselItems = [
+            {
+                type: 'image',
+                url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80',
+                duration: 5000
+            },
+            {
+                type: 'video',
+                url: 'https://videos.pexels.com/video-files/854667/854667-hd_1920_1080_24fps.mp4',
+                duration: 10000
+            },
+            {
+                type: 'image',
+                url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80',
+                duration: 5000
+            },
+            {
+                type: 'video',
+                url: 'https://videos.pexels.com/video-files/3571264/3571264-uhd_2560_1440_30fps.mp4',
+                duration: 10000
+            },
+            {
+                type: 'image',
+                url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80',
+                duration: 5000
+            }
+        ];
+
+        // State
+        let currentIndex = 0;
+        let isPlaying = true;
+        let autoPlayTimer = null;
+        let messageCount = 0;
+        let currentInterval = 5000; // Default interval in milliseconds
+        let receivedMessages = []; // Store received messages
+
+        // DOM Elements
+        const container = document.getElementById('carouselContainer');
+        const indicators = document.getElementById('indicators');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const messagesContainer = document.getElementById('messagesContainer');
+
+        // Initialize
+        function init() {
+            console.log('[Carousel] Initializing...');
+            
+            // Check SDK
+            checkSDK();
+            
+            // Create carousel items
+            carouselItems.forEach((item, index) => {
+                createCarouselItem(item, index);
+                createIndicator(index);
+            });
+            
+            // Show first item
+            showItem(0);
+            
+            // Start autoplay
+            startAutoPlay();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Setup Web SDK listeners
+            setupWebSDK();
+            
+            console.log('[Carousel] Initialization complete');
+        }
+
+        function checkSDK() {
+            const badge = document.getElementById('sdkBadge');
+            const status = document.getElementById('sdkStatus');
+            
+            if (window.AnyWP) {
+                badge.classList.remove('offline');
+                status.textContent = `✅ SDK v${window.AnyWP.version}`;
+                console.log('[Carousel] AnyWP SDK detected:', window.AnyWP.version);
+            } else {
+                badge.classList.add('offline');
+                status.textContent = '❌ SDK Offline';
+                console.warn('[Carousel] AnyWP SDK not detected');
+            }
+        }
+
+        function createCarouselItem(item, index) {
+            const div = document.createElement('div');
+            div.className = 'carousel-item';
+            div.dataset.index = index;
+            
+            if (item.type === 'image') {
+                const img = document.createElement('img');
+                img.src = item.url;
+                img.alt = `Wallpaper ${index + 1}`;
+                div.appendChild(img);
+            } else if (item.type === 'video') {
+                const video = document.createElement('video');
+                video.src = item.url;
+                video.muted = true;
+                video.loop = true;
+                video.autoplay = false;
+                div.appendChild(video);
+            }
+            
+            container.appendChild(div);
+        }
+
+        function createIndicator(index) {
+            const indicator = document.createElement('div');
+            indicator.className = 'indicator';
+            indicator.dataset.index = index;
+            indicator.onclick = () => goToItem(index);
+            indicators.appendChild(indicator);
+        }
+
+        function showItem(index) {
+            console.log(`[Carousel] Showing item ${index}`);
+            
+            // Remove active class from all items
+            document.querySelectorAll('.carousel-item').forEach(item => {
+                item.classList.remove('active');
+                const video = item.querySelector('video');
+                if (video) {
+                    video.pause();
+                }
+            });
+            
+            // Remove active class from all indicators
+            document.querySelectorAll('.indicator').forEach(ind => {
+                ind.classList.remove('active');
+            });
+            
+            // Add active class to current item
+            const currentItem = document.querySelector(`.carousel-item[data-index="${index}"]`);
+            currentItem.classList.add('active');
+            
+            // Play video if it's a video
+            const video = currentItem.querySelector('video');
+            if (video) {
+                video.play().catch(err => console.error('Video play error:', err));
+            }
+            
+            // Update indicator
+            const currentIndicator = document.querySelector(`.indicator[data-index="${index}"]`);
+            currentIndicator.classList.add('active');
+            
+            // Update status display
+            updateStatusDisplay(index);
+            
+            // Notify Flutter
+            notifyFlutter('carouselChange', {
+                index: index,
+                total: carouselItems.length,
+                type: carouselItems[index].type,
+                url: carouselItems[index].url
+            });
+        }
+
+        function updateStatusDisplay(index) {
+            document.getElementById('currentIndex').textContent = `${index + 1} / ${carouselItems.length}`;
+            document.getElementById('currentType').textContent = carouselItems[index].type === 'image' ? '🖼️ Image' : '🎥 Video';
+            document.getElementById('playStatus').textContent = isPlaying ? '▶️ Playing' : '⏸️ Paused';
+            document.getElementById('intervalDisplay').textContent = `${currentInterval / 1000}s`;
+        }
+
+        function addMessageToDisplay(message) {
+            // Update message count
+            messageCount++;
+            document.getElementById('messageCount').textContent = messageCount;
+            
+            // Add to messages array (keep last 10)
+            receivedMessages.unshift({
+                type: message.type,
+                data: message.data,
+                time: new Date().toLocaleTimeString()
+            });
+            if (receivedMessages.length > 10) {
+                receivedMessages.pop();
+            }
+            
+            // Update display
+            if (receivedMessages.length > 0) {
+                messagesContainer.innerHTML = receivedMessages.map(msg => `
+                    <div class="message-item">
+                        <div class="message-type">${msg.type}</div>
+                        <div class="message-data">${JSON.stringify(msg.data)}</div>
+                        <div class="message-time">${msg.time}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function startAutoPlay() {
+            if (autoPlayTimer) {
+                clearTimeout(autoPlayTimer);
+            }
+            
+            if (isPlaying) {
+                // Use current interval setting
+                autoPlayTimer = setTimeout(() => {
+                    nextItem();
+                }, currentInterval);
+                console.log(`[Carousel] Auto-play scheduled in ${currentInterval}ms`);
+            }
+        }
+
+        function stopAutoPlay() {
+            if (autoPlayTimer) {
+                clearTimeout(autoPlayTimer);
+                autoPlayTimer = null;
+            }
+        }
+
+        function nextItem() {
+            currentIndex = (currentIndex + 1) % carouselItems.length;
+            showItem(currentIndex);
+            if (isPlaying) {
+                startAutoPlay();
+            }
+        }
+
+        function prevItem() {
+            currentIndex = (currentIndex - 1 + carouselItems.length) % carouselItems.length;
+            showItem(currentIndex);
+            if (isPlaying) {
+                startAutoPlay();
+            }
+        }
+
+        function goToItem(index) {
+            currentIndex = index;
+            showItem(currentIndex);
+            if (isPlaying) {
+                startAutoPlay();
+            }
+        }
+
+        function togglePlayPause() {
+            isPlaying = !isPlaying;
+            
+            if (isPlaying) {
+                playPauseBtn.textContent = '⏸️ Pause';
+                playPauseBtn.classList.add('playing');
+                startAutoPlay();
+                console.log('[Carousel] Resumed');
+            } else {
+                playPauseBtn.textContent = '▶️ Play';
+                playPauseBtn.classList.remove('playing');
+                stopAutoPlay();
+                console.log('[Carousel] Paused');
+            }
+            
+            updateStatusDisplay(currentIndex);
+            notifyFlutter('playStateChange', { isPlaying: isPlaying });
+        }
+
+        function setupEventListeners() {
+            prevBtn.addEventListener('click', () => {
+                console.log('[Carousel] Previous button clicked');
+                prevItem();
+            });
+            
+            nextBtn.addEventListener('click', () => {
+                console.log('[Carousel] Next button clicked');
+                nextItem();
+            });
+            
+            playPauseBtn.addEventListener('click', () => {
+                console.log('[Carousel] Play/Pause button clicked');
+                togglePlayPause();
+            });
+        }
+
+        function setupWebSDK() {
+            if (!window.AnyWP) {
+                console.warn('[Carousel] AnyWP SDK not available, skipping WebMessage setup');
+                return;
+            }
+            
+            // Listen for messages from Flutter
+            window.addEventListener('AnyWP:message', (event) => {
+                console.log('[Carousel] ✉️ Message from Flutter:', event.detail);
+                
+                const message = event.detail;
+                
+                // Add message to display
+                addMessageToDisplay(message);
+                
+                // Handle message
+                switch (message.type) {
+                    case 'next':
+                        console.log('[Carousel] 📨 Command: Next');
+                        nextItem();
+                        break;
+                        
+                    case 'previous':
+                        console.log('[Carousel] 📨 Command: Previous');
+                        prevItem();
+                        break;
+                        
+                    case 'goto':
+                        if (typeof message.data.index === 'number') {
+                            console.log('[Carousel] 📨 Command: Goto', message.data.index);
+                            goToItem(message.data.index);
+                        }
+                        break;
+                        
+                    case 'play':
+                        console.log('[Carousel] 📨 Command: Play');
+                        if (!isPlaying) {
+                            togglePlayPause();
+                        }
+                        break;
+                        
+                    case 'pause':
+                        console.log('[Carousel] 📨 Command: Pause');
+                        if (isPlaying) {
+                            togglePlayPause();
+                        }
+                        break;
+                        
+                    case 'setInterval':
+                        // Note: Flutter sends 'interval' in milliseconds
+                        if (typeof message.data.interval === 'number') {
+                            currentInterval = message.data.interval;
+                            console.log('[Carousel] 📨 Command: Set Interval to', currentInterval, 'ms');
+                            updateStatusDisplay(currentIndex);
+                            // Restart autoplay with new interval
+                            if (isPlaying) {
+                                stopAutoPlay();
+                                startAutoPlay();
+                            }
+                        }
+                        break;
+                        
+                    case 'ping':
+                        console.log('[Carousel] 📨 Test Message:', message.data);
+                        // Send pong response
+                        notifyFlutter('pong', {
+                            originalMessage: message.data,
+                            response: 'Carousel received your message!'
+                        });
+                        break;
+                        
+                    default:
+                        console.log('[Carousel] ❓ Unknown message type:', message.type);
+                }
+            });
+            
+            console.log('[Carousel] ✅ WebMessage listeners registered');
+        }
+
+        function notifyFlutter(type, data) {
+            if (window.AnyWP) {
+                window.AnyWP.sendMessage({
+                    type: type,
+                    data: data,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
+

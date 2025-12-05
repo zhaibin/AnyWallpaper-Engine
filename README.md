@@ -1,18 +1,22 @@
 ﻿# AnyWP Engine
 
-A Flutter Windows plugin that embeds WebView2 as a desktop wallpaper, displaying web content behind desktop icons.
+A Flutter plugin that embeds web content as desktop wallpaper, displaying behind desktop icons.
+
+**Supported Platforms:**
+- ✅ **Windows** (Windows 10/11) - WebView2 (Chromium)
+- ✅ **macOS** (10.14+) - WKWebView (WebKit)
+- 📋 Linux (planned)
 
 
 ## ✨ Features
 
 ### Core Features
-- 🖼️ **WebView2 Integration** - Display any web content as desktop wallpaper
+- 🖼️ **WebView Integration** - Display any web content as desktop wallpaper (WebView2 on Windows, WKWebView on macOS)
 - 🎯 **Proper Z-Order** - WebView renders behind desktop icons (not covering them)
 - 🖱️ **Simple Mode** - Clicks pass through to desktop icons (default behavior)
 - 📺 **Multi-Monitor Support** - Different content on each display
 - 🔥 **Smart Hot-Plug** (v1.3.1 ✨) - Auto-detects monitors, restores configurations, handles failures
-- 🔄 **Auto Recovery** (v2.4.1 ✨) - Zero-maintenance automatic wallpaper restoration after Explorer restarts (just 2 lines of code!)
-- 🪟 **Windows 10/11 Support** - Optimized for modern Windows
+- 🌍 **Cross-Platform** (v2.2.0 ✨) - Windows and macOS support with unified API
 
 ### Architecture (v2.0 ✨)
 - 🏗️ **Modular Design** - 30 independent modules (13 core + 17 utils) with clear responsibilities
@@ -58,41 +62,67 @@ When a fullscreen application (games, video players, browsers in fullscreen) cov
 
 **📦 Want to use this in your own project?**  
 
-**Option 1: Precompiled DLL (Recommended) ⭐**
+**Option 1: Precompiled Packages (Recommended) ⭐**
 - ✅ No compilation required
-- ✅ No WebView2 SDK needed
+- ✅ No platform SDK needed
 - ✅ Fast integration
+- ✅ Available for both Windows and macOS
 
 Download from [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
 
+**Windows:**
 ```powershell
 # Recommended: Run in Flutter project root directory
-packages\anywp_engine_v2.1.0\setup_precompiled.bat
+packages\anywp_engine_v2.2.0\setup_precompiled.bat
 ```
 
 `setup_precompiled.bat` will automatically:
 - ✅ Verify critical files (DLL / LIB / JS / CMake etc.)
-- ✅ Copy precompiled package to `packages/anywp_engine_v2.1.0`
+- ✅ Copy precompiled package to `packages/anywp_engine`
 - ✅ Run `flutter pub get`
+
+👉 See **[Windows Precompiled Integration Guide](docs/PRECOMPILED_DLL_INTEGRATION.md)** for details
+
+**macOS:**
+```bash
+# Extract precompiled package to packages/anywp_engine
+cd packages/anywp_engine
+# Follow integration guide
+```
+
+👉 See **[macOS Precompiled Integration Guide](docs/PRECOMPILED_MACOS_INTEGRATION.md)** for details
+
+**跨平台集成**:
+
+如果你已经有 Windows 项目想添加 macOS 支持（或反之），请参考：  
+👉 **[Cross-Platform Integration Guide](docs/CROSS_PLATFORM_INTEGRATION.md)**
 
 Or manually add to `pubspec.yaml`:
 
 ```yaml
 dependencies:
   anywp_engine:
-    path: ./packages/anywp_engine_v2.1.0
+    path: ./packages/anywp_engine
 ```
 
 🧰 Helper Scripts:
 
+**Windows:**
+
 | File | Purpose |
 | --- | --- |
 | `setup_precompiled.bat` | One-click installation of precompiled package |
-| `verify_precompiled.bat` | Check if all 8 critical files are present |
+| `verify_precompiled.bat` | Check if all critical files are present |
 | `generate_pubspec_snippet.bat` | Generate `pubspec.yaml` snippet |
 | `example_minimal/` | Minimal runnable example to verify integration |
 
-👉 See **[Precompiled DLL Integration Guide](docs/PRECOMPILED_DLL_INTEGRATION.md)** for details
+**macOS:**
+
+| File | Purpose |
+| --- | --- |
+| Integration Guide | Step-by-step setup instructions |
+| CocoaPods | Automatic dependency management |
+| Example App | Full-featured demo application |
 
 **Option 2: Git Reference**
 ```yaml
@@ -109,7 +139,8 @@ dependencies:
     path: ../
 ```
 
-👉 See **[Complete Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md)** for all integration methods
+👉 See **[Complete Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md)** for all integration methods  
+👉 See **[Cross-Platform Integration Guide](docs/CROSS_PLATFORM_INTEGRATION.md)** for Windows ↔ macOS migration
 
 ### Basic Usage (Dart)
 
@@ -121,9 +152,6 @@ void main() async {
   
   // Set application name for isolated storage (v1.2.0+)
   await AnyWPEngine.setApplicationName('MyAwesomeApp');
-  
-  // Enable Auto Recovery (v2.4.1+) - Just 1 line!
-  await AnyWPEngine.enableAutoRecovery(true);
   
   runApp(MyApp());
 }
@@ -172,97 +200,6 @@ if (!compatible) {
   debugPrint('⚠️ AnyWP Engine version mismatch: $version');
 }
 ```
-
-### 🔄 Auto Recovery (v2.4.1+)
-
-**Zero-maintenance automatic wallpaper restoration** after Windows Explorer restarts. Just 2 simple steps!
-
-#### Step 1: Enable Auto Recovery (in main)
-
-```dart
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  await AnyWPEngine.enableAutoRecovery(true);  // ⭐ Just this one line!
-  
-  runApp(MyApp());
-}
-```
-
-#### Step 2: Use Standard API
-
-```dart
-// ✅ Use initializeWallpaperOnMonitor (auto-saves configuration)
-await AnyWPEngine.initializeWallpaperOnMonitor(
-  url: 'https://your-wallpaper.com',
-  monitorIndex: 0,
-  // autoSave: true is default - configuration saved automatically!
-);
-```
-
-**That's it! 🎉** Your wallpapers will automatically recover after Explorer restarts.
-
-#### Optional: Restore Application State (v2.4.1+)
-
-For interactive wallpapers (carousel, games, etc.) that need to restore their state:
-
-```dart
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Enable auto recovery
-  await AnyWPEngine.enableAutoRecovery(true);
-  
-  // ⭐ Optional: Restore application state after recovery
-  AnyWPEngine.setOnRecoveryCallback((recoveredMonitors) async {
-    print('Wallpaper recovered on monitors: $recoveredMonitors');
-    
-    // Restore carousel configuration
-    await AnyWPEngine.sendMessage({
-      'type': 'updateCarousel',
-      'data': {'images': myImages, 'interval': 5000},
-    });
-    
-    // Restore playback state
-    if (wasPlaying) {
-      await AnyWPEngine.sendMessage({'type': 'play'});
-    }
-  });
-  
-  runApp(MyApp());
-}
-```
-
-**When to use:**
-- ✅ Carousel wallpapers (restore images & playback state)
-- ✅ Interactive wallpapers (restore settings)
-- ✅ Games (restore game state)
-
-**When NOT needed:**
-- ❌ Static image/video wallpapers (auto-recovery is enough)
-
-#### Advanced: Manual Save for Dynamic Content
-
-For carousel or interactive wallpapers that need to save state after initial setup:
-
-```dart
-// Step 1: Initialize without auto-save
-await AnyWPEngine.initializeWallpaperOnMonitor(
-  url: 'file:///carousel.html',
-  monitorIndex: 0,
-  autoSave: false,  // Don't save yet
-);
-
-// Step 2: Send dynamic data
-await AnyWPEngine.sendMessage(
-  message: {'type': 'updateCarousel', 'data': carouselData},
-);
-
-// Step 3: Save after data is ready
-await AnyWPEngine.saveCurrentWallpaperConfiguration();
-```
-
-👉 See **[Auto Recovery Simple Guide](docs/AUTO_RECOVERY_SIMPLE_GUIDE.md)** for complete documentation and troubleshooting.
 
 ### JavaScript SDK Usage (NEW ✨)
 

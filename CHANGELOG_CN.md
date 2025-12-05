@@ -2,43 +2,59 @@
 
 所有重要的项目变更都将记录在此文件中。
 
-## [2.5.1] - 2025-11-26
+## [2.6.0] - 2025-12-05 (跨平台大版本发布 🎉)
 
-### 版本信息
-- **引擎版本**: v2.5.1
-- **SDK 版本**: v2.5.0 (未更新)
+### 🌍 macOS 平台支持 (合并 v2.2.0 分支)
 
-### 🎉 新增功能
+#### 新增功能
+- ✅ **macOS 原生插件**: 基于 Objective-C + AppKit + WKWebView
+- ✅ **统一 API**: Windows 和 macOS 使用相同的 Dart API
+- ✅ **模块化架构**: MonitorManager, WallpaperManager, PowerManager, MessageBridge
+- ✅ **JavaScript SDK**: 平台无关的 SDK，自动适配 WKWebView 消息传递
+- ✅ **多显示器支持**: NSScreen API 实现
+- ✅ **电源管理**: NSWorkspace 通知集成（屏幕休眠、会话锁定、空闲检测）
+- ✅ **状态持久化**: 使用 Application Support 目录存储
+- ✅ **内存优化**: 针对 WKWebView 调整阈值（200MB 默认）
+- ✅ **文件加密/解密**: 支持 XOR 加密的文件读写
+
+#### 文档更新
+- ✅ **跨平台集成指南**: `docs/CROSS_PLATFORM_INTEGRATION.md`
+- ✅ **macOS 开发者指南**: `docs/MACOS_DEVELOPER_GUIDE.md`
+- ✅ **macOS 预编译包集成**: `docs/PRECOMPILED_MACOS_INTEGRATION.md`
+- ✅ **macOS 发布流程**: `docs/MACOS_RELEASE_GUIDE.md`
+- ✅ **多平台架构设计**: `docs/MULTIPLATFORM_ARCHITECTURE.md`
+
+#### 构建脚本
+- ✅ **macOS 发布脚本**: `scripts/release_macos.sh`
+- ✅ **macOS SDK 构建**: `scripts/build_sdk.sh`
+- ✅ **macOS 包验证**: `scripts/verify_precompiled_macos.sh`
+
+#### 技术亮点
+- **Windows**: WebView2 (Chromium) + Win32 API + C++17
+- **macOS**: WKWebView (WebKit) + AppKit + Objective-C
+- **共享**: Dart API 层 + TypeScript SDK + 统一消息协议
+
+#### 已知限制
+- macOS 交互模式（Interactive Mode）暂未实现，需要 Accessibility 权限
+- WKWebView 文件访问受沙箱限制
+- WKWebView 内存使用通常高于 WebView2 (150-200MB vs 100-150MB)
+
+### 📦 集成 Windows 平台改进 (v2.5.1)
 
 #### 本地 HTTP 文件服务器
-- **功能说明**：新增 `LocalFileServer` 类，用于在本地启动 HTTP 服务器
-- **解决问题**：
-  - 避免本地文件加载的 CORS 跨域问题
-  - 启用需要 HTTP 协议的现代 Web API
-  - 支持本地 HTML 壁纸文件的可靠加载
-- **使用方式**：
-  ```dart
-  // 添加依赖到 pubspec.yaml:
-  // shelf: ^1.4.1
-  // shelf_static: ^1.1.2
-  
-  final server = LocalFileServer();
-  final baseUrl = await server.start('/path/to/files');
-  // 访问: $baseUrl/your_wallpaper.html
-  await server.stop();
-  ```
-- **特性**：
-  - 自动分配可用端口
-  - 自动添加 CORS 头
-  - 支持目录浏览
-  - 轻量级无额外进程
-
-### 🐛 Bug 修复
+- 新增 `LocalFileServer` 类，解决 CORS 跨域问题
+- 自动分配端口、添加 CORS 头、支持目录浏览
 
 #### 鼠标事件干扰问题修复
-- **问题描述**：当其他程序（如 lxwp.exe）同时运行时，mousedown 后的 mousemove 事件无法传递到 WebView
-- **影响**：拖拽功能失效，用户体验受损
-- **根本原因**：其他程序的低级鼠标钩子在 mousedown 后阻断了 mousemove 事件的传递链（不调用 CallNextHookEx）
+- 修复其他程序钩子干扰导致的拖拽失效
+- 实现多线程轮询 + UI 定时器的双重备份机制
+
+#### MouseHookManager 增强
+- 新增轮询备份功能（可配置）
+- 线程安全队列和原子状态管理
+
+---
+
 - **解决方案**：实现多线程轮询 + UI 定时器的双重备份机制
   - mousedown 时启动后台轮询线程（16ms 间隔，约 60fps）
   - 轮询线程通过 `GetCursorPos()` 获取鼠标位置并将事件放入队列

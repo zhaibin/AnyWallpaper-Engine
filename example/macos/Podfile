@@ -1,0 +1,125 @@
+platform :osx, '10.15'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure \"flutter pub get\" is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Flutter-Generated.xcconfig, then run \"flutter pub get\""
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_macos_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_macos_build_settings(target)
+    
+    # Fix framework search paths for plugin pods that depend on FlutterMacOS
+    # flutter_additional_macos_build_settings should handle this, but if it doesn't, we fix it here
+    if target.name == 'anywp_engine'
+      target.build_configurations.each do |config|
+        # Use the same method as flutter_additional_macos_build_settings
+        artifacts_dir = File.join(flutter_root, 'bin', 'cache', 'artifacts', 'engine')
+        debug_framework_dir = File.join(artifacts_dir, 'darwin-x64', 'FlutterMacOS.xcframework')
+        release_framework_dir = File.join(artifacts_dir, 'darwin-x64-release', 'FlutterMacOS.xcframework')
+        
+        configuration_engine_dir = (config.type == :debug ? debug_framework_dir : release_framework_dir)
+        
+        if Dir.exist?(configuration_engine_dir)
+          Dir.new(configuration_engine_dir).each_child do |xcframework_file|
+            next if xcframework_file.start_with?('.')
+            if xcframework_file.start_with?('macos-')
+              framework_path = File.join(configuration_engine_dir, xcframework_file)
+              framework_full_path = File.join(framework_path, 'FlutterMacOS.framework')
+              header_path = File.join(framework_full_path, 'Headers')
+              modulemap_path = File.join(framework_full_path, 'Modules', 'module.modulemap')
+              
+              # Override with correct absolute path
+              config.build_settings['FRAMEWORK_SEARCH_PATHS'] = "\"#{framework_path}\" $(inherited)"
+              config.build_settings['HEADER_SEARCH_PATHS'] = "\"#{header_path}\" $(inherited)"
+              
+              # Add module map file if it exists
+              if File.exist?(modulemap_path)
+                existing_cflags = config.build_settings['OTHER_CFLAGS'] || '$(inherited)'
+                unless existing_cflags.include?('-fmodule-map-file')
+                  config.build_settings['OTHER_CFLAGS'] = "#{existing_cflags} -fmodule-map-file=\"#{modulemap_path}\""
+                end
+              end
+              
+              puts "[Podfile] Fixed framework path for #{target.name} (#{config.name}): #{framework_path}"
+              break
+            end
+          end
+        end
+      end
+      
+      # Also fix xcconfig files directly (CocoaPods sometimes doesn't pick up post_install changes)
+      installer.pods_project.targets.each do |pod_target|
+        if pod_target.name == 'anywp_engine'
+          pod_target.build_configurations.each do |config|
+            xcconfig_path = File.join(installer.sandbox.root, 'Target Support Files', pod_target.name, "#{pod_target.name}.#{config.name.downcase}.xcconfig")
+            if File.exist?(xcconfig_path)
+              xcconfig_content = File.read(xcconfig_path)
+              artifacts_dir = File.join(flutter_root, 'bin', 'cache', 'artifacts', 'engine')
+              debug_framework_dir = File.join(artifacts_dir, 'darwin-x64', 'FlutterMacOS.xcframework')
+              release_framework_dir = File.join(artifacts_dir, 'darwin-x64-release', 'FlutterMacOS.xcframework')
+              configuration_engine_dir = (config.type == :debug ? debug_framework_dir : release_framework_dir)
+              
+              if Dir.exist?(configuration_engine_dir)
+                Dir.new(configuration_engine_dir).each_child do |xcframework_file|
+                  next if xcframework_file.start_with?('.')
+                  if xcframework_file.start_with?('macos-')
+                    framework_path = File.join(configuration_engine_dir, xcframework_file, 'FlutterMacOS.framework')
+                    header_path = File.join(framework_path, 'Headers')
+                    modulemap_path = File.join(framework_path, 'Modules', 'module.modulemap')
+                    
+                    # Remove existing incorrect paths
+                    xcconfig_content.gsub!(/^FRAMEWORK_SEARCH_PATHS.*$/m, '')
+                    xcconfig_content.gsub!(/^HEADER_SEARCH_PATHS.*$/m, '')
+                    xcconfig_content.gsub!(/^SWIFT_INCLUDE_PATHS.*$/m, '')
+                    
+                    # Add correct paths
+                    xcconfig_content += "\nFRAMEWORK_SEARCH_PATHS = \"#{File.dirname(framework_path)}\" $(inherited)\n"
+                    xcconfig_content += "HEADER_SEARCH_PATHS = \"#{header_path}\" $(inherited)\n"
+                    if File.exist?(modulemap_path)
+                      xcconfig_content += "SWIFT_INCLUDE_PATHS = \"#{File.dirname(modulemap_path)}\" $(inherited)\n"
+                      xcconfig_content += "OTHER_CFLAGS = $(inherited) -fmodule-map-file=\"#{modulemap_path}\"\n"
+                    end
+                    
+                    File.write(xcconfig_path, xcconfig_content)
+                    puts "[Podfile] Fixed xcconfig for #{pod_target.name} (#{config.name})"
+                    break
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
