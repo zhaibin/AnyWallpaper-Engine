@@ -2,6 +2,8 @@
 
 ## 问题描述
 
+### 问题 1：框架未嵌入错误
+
 在 Xcode 中直接构建和运行 macOS 应用时，会出现以下错误：
 
 ```
@@ -10,6 +12,42 @@ Reason: tried: '.../Runner.app/Contents/Frameworks/FlutterMacOS.framework/Versio
 ```
 
 **原因**：Flutter 的 macOS 构建系统没有正确配置 Xcode 项目，导致 FlutterMacOS 框架未被嵌入到应用包中。
+
+### 问题 2：桌面壁纸显示白页
+
+壁纸窗口创建成功但显示为白页，无法加载本地 HTML 文件。
+
+**原因**：WKWebView 在 macOS 上加载本地文件需要特殊权限，使用 `loadRequest:` 方法无法正确加载本地文件。
+
+**修复方法**：
+- 使用 `loadFileURL:allowingReadAccessToURL:` 方法加载本地文件
+- 正确设置 WebView 配置选项，允许本地文件访问
+- 区分处理 HTTP/HTTPS URL 和 file:// URL
+
+### 问题 3：Web SDK 未注入
+
+SDK 功能需要在 WebView 创建时注入 JavaScript 代码。
+
+**症状**：在 JavaScript 中无法访问 `window.AnyWP` 对象。
+
+**原因**：SDK 注入代码存在但未在配置时调用。
+
+**修复方法**：
+- 在 `setupWebViewConfiguration` 中调用 `injectSDKIntoConfiguration`
+- 使用 `WKUserScriptInjectionTimeAtDocumentStart` 确保及时注入
+- SDK 对 HTTP/HTTPS 页面都有效
+
+### 问题 4：窗口层级导致桌面图标被覆盖
+
+壁纸窗口需要显示在桌面图标下方，而不是覆盖它们。
+
+**原因**：使用 `NSNormalWindowLevel` 会覆盖桌面图标。
+
+**修复方法**：
+```objc
+NSInteger desktopIconLevel = CGWindowLevelForKey(kCGDesktopIconWindowLevelKey);
+[window setLevel:desktopIconLevel - 1];  // 在桌面图标下方
+```
 
 ## 解决方案
 
@@ -112,6 +150,60 @@ ls -la "$DERIVED_DATA/Build/Products/Debug/Runner.app/Contents/Frameworks/Flutte
 ```
 
 如果看到框架目录和文件，说明嵌入成功。
+
+## 关键代码修复
+
+### WallpaperManager.m - 本地文件加载
+
+修复前（会导致白页）：
+```objc
+NSURL *nsurl = [NSURL URLWithString:url];
+NSURLRequest *request = [NSURLRequest requestWithURL:nsurl];
+[webView loadRequest:request];
+```
+
+修复后（正确加载本地文件）：
+```objc
+NSURL *nsurl = nil;
+if ([url hasPrefix:@"http://"] || [url hasPrefix:@"https://"]) {
+    // HTTP/HTTPS URL
+    nsurl = [NSURL URLWithString:url];
+    NSURLRequest *request = [NSURLRequest requestWithURL:nsurl];
+    [webView loadRequest:request];
+} else if ([url hasPrefix:@"file://"]) {
+    // File URL
+    NSString *filePath = [url substringFromIndex:7];
+    nsurl = [NSURL fileURLWithPath:filePath];
+    NSURL *directoryURL = [nsurl URLByDeletingLastPathComponent];
+    [webView loadFileURL:nsurl allowingReadAccessToURL:directoryURL];
+} else {
+    // Assume file path
+    nsurl = [NSURL fileURLWithPath:url];
+    NSURL *directoryURL = [nsurl URLByDeletingLastPathComponent];
+    [webView loadFileURL:nsurl allowingReadAccessToURL:directoryURL];
+}
+```
+
+### WebView 配置
+
+必须启用以下选项才能访问本地文件：
+```objc
+[self.webViewConfig.preferences setValue:@YES forKey:@"allowFileAccessFromFileURLs"];
+[self.webViewConfig setValue:@YES forKey:@"allowUniversalAccessFromFileURLs"];
+```
+
+### 测试页面路径（main.dart）
+
+修复前（Windows 路径）：
+```dart
+final url = 'file:///E:/Projects/AnyWallpaper/AnyWallpaper-Engine/examples/$filename';
+```
+
+修复后（macOS 路径）：
+```dart
+final examplesPath = '/Users/zhaibin/Dev/anywp-engine/examples';
+final url = 'file://$examplesPath/$filename';
+```
 
 ## 常见问题
 

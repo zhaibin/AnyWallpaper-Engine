@@ -16,7 +16,7 @@ void main() async {
 }
 
 class AutoTestApp extends StatefulWidget {
-  const AutoTestApp({Key? key}) : super(key: key);
+  const AutoTestApp({super.key});
 
   @override
   State<AutoTestApp> createState() => _AutoTestAppState();
@@ -72,7 +72,7 @@ class _AutoTestAppState extends State<AutoTestApp> {
   ];
   
   int _currentTestIndex = 0;
-  List<String> _testLogs = [];
+  final List<String> _testLogs = [];
   bool _isRunning = false;
   String _status = '准备开始测试...';
   MonitorInfo? _monitor;

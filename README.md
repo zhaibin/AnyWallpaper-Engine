@@ -62,41 +62,67 @@ When a fullscreen application (games, video players, browsers in fullscreen) cov
 
 **📦 Want to use this in your own project?**  
 
-**Option 1: Precompiled DLL (Recommended) ⭐**
+**Option 1: Precompiled Packages (Recommended) ⭐**
 - ✅ No compilation required
-- ✅ No WebView2 SDK needed
+- ✅ No platform SDK needed
 - ✅ Fast integration
+- ✅ Available for both Windows and macOS
 
 Download from [GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
 
+**Windows:**
 ```powershell
 # Recommended: Run in Flutter project root directory
-packages\anywp_engine_v2.1.0\setup_precompiled.bat
+packages\anywp_engine_v2.2.0\setup_precompiled.bat
 ```
 
 `setup_precompiled.bat` will automatically:
 - ✅ Verify critical files (DLL / LIB / JS / CMake etc.)
-- ✅ Copy precompiled package to `packages/anywp_engine_v2.1.0`
+- ✅ Copy precompiled package to `packages/anywp_engine`
 - ✅ Run `flutter pub get`
+
+👉 See **[Windows Precompiled Integration Guide](docs/PRECOMPILED_DLL_INTEGRATION.md)** for details
+
+**macOS:**
+```bash
+# Extract precompiled package to packages/anywp_engine
+cd packages/anywp_engine
+# Follow integration guide
+```
+
+👉 See **[macOS Precompiled Integration Guide](docs/PRECOMPILED_MACOS_INTEGRATION.md)** for details
+
+**跨平台集成**:
+
+如果你已经有 Windows 项目想添加 macOS 支持（或反之），请参考：  
+👉 **[Cross-Platform Integration Guide](docs/CROSS_PLATFORM_INTEGRATION.md)**
 
 Or manually add to `pubspec.yaml`:
 
 ```yaml
 dependencies:
   anywp_engine:
-    path: ./packages/anywp_engine_v2.1.0
+    path: ./packages/anywp_engine
 ```
 
 🧰 Helper Scripts:
 
+**Windows:**
+
 | File | Purpose |
 | --- | --- |
 | `setup_precompiled.bat` | One-click installation of precompiled package |
-| `verify_precompiled.bat` | Check if all 8 critical files are present |
+| `verify_precompiled.bat` | Check if all critical files are present |
 | `generate_pubspec_snippet.bat` | Generate `pubspec.yaml` snippet |
 | `example_minimal/` | Minimal runnable example to verify integration |
 
-👉 See **[Precompiled DLL Integration Guide](docs/PRECOMPILED_DLL_INTEGRATION.md)** for details
+**macOS:**
+
+| File | Purpose |
+| --- | --- |
+| Integration Guide | Step-by-step setup instructions |
+| CocoaPods | Automatic dependency management |
+| Example App | Full-featured demo application |
 
 **Option 2: Git Reference**
 ```yaml
@@ -113,7 +139,8 @@ dependencies:
     path: ../
 ```
 
-👉 See **[Complete Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md)** for all integration methods
+👉 See **[Complete Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md)** for all integration methods  
+👉 See **[Cross-Platform Integration Guide](docs/CROSS_PLATFORM_INTEGRATION.md)** for Windows ↔ macOS migration
 
 ### Basic Usage (Dart)
 

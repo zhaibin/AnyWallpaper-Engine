@@ -8,7 +8,7 @@ import 'package:anywp_engine/anywp_engine.dart';
 /// 2. 监听协议请求
 /// 3. 显示测试结果
 class TestCustomSchemePage extends StatefulWidget {
-  const TestCustomSchemePage({Key? key}) : super(key: key);
+  const TestCustomSchemePage({super.key});
 
   @override
   State<TestCustomSchemePage> createState() => _TestCustomSchemePageState();

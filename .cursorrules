@@ -102,11 +102,15 @@ release/                # 发布包
 
 ## 发版流程
 
+**重要说明**: 项目现在支持 Windows 和 macOS 两个平台，发布流程需要为两个平台分别构建预编译包。
+
 ### Step 1: 版本号更新
 - [ ] `pubspec.yaml`: `version: x.x.x`
 - [ ] `CHANGELOG_CN.md`: 添加新版本条目
 - [ ] `.cursorrules` 底部版本号
-- [ ] `docs/PRECOMPILED_DLL_INTEGRATION.md`: 更新示例版本号
+- [ ] `docs/PRECOMPILED_DLL_INTEGRATION.md`: 更新示例版本号（Windows）
+- [ ] `docs/PRECOMPILED_MACOS_INTEGRATION.md`: 更新示例版本号（macOS）
+- [ ] `macos/anywp_engine.podspec`: 更新版本号
 
 ### Step 2: 文档更新
 **新增 API 必须更新**:
@@ -120,6 +124,8 @@ release/                # 发布包
 - [ ] `CHANGELOG_CN.md` - 更新日志条目
 
 ### Step 3: 编译测试
+
+**Windows 平台**:
 ```bash
 cd example
 flutter clean
@@ -129,41 +135,81 @@ flutter build windows --release
 .\scripts\test_full.bat
 ```
 
+**macOS 平台**:
+```bash
+cd example
+flutter clean
+flutter pub get
+flutter build macos --debug
+flutter build macos --release
+# 手动测试应用功能
+```
+
 **检查清单**:
-- [ ] Debug/Release 构建成功
+- [ ] Windows Debug/Release 构建成功
+- [ ] macOS Debug/Release 构建成功
 - [ ] 无 Linter 警告：`flutter analyze`
 - [ ] 功能测试通过（至少 2 个测试页面）
-- [ ] 验证 .lib 文件已生成
+- [ ] Windows: 验证 .lib 文件已生成
+- [ ] macOS: 验证 plugin framework 已生成
 
 ### Step 4: 构建发布包
+
+**Windows 平台（在 Windows 机器上运行）**:
 ```bash
 .\scripts\release.bat
 ```
 
-**注意**: `release.bat` 会自动运行版本一致性检查，无需手动执行 `check_version_consistency.ps1`
+**macOS 平台（在 macOS 机器上运行）**:
+```bash
+./scripts/release_macos.sh
+```
+
+**注意**: 
+- Windows `release.bat` 会自动运行版本一致性检查
+- macOS `release_macos.sh` 也会构建 SDK 和预编译包
+- Web SDK 包在两个平台都可以构建，但只需要构建一次
 
 **构建后检查**:
 - [ ] 构建成功（ERROR_COUNT = 0）
-- [ ] DLL/LIB 文件生成
-- [ ] 生成 3 个 ZIP 文件：
-  - `anywp_engine_v{版本号}_precompiled.zip` - 预编译包（DLL + LIB + C API 头文件）
-  - `anywp_engine_v{版本号}_source.zip` - 完整源码包
-  - `anywp_web_sdk_v{版本号}.zip` - Web SDK 包
+- [ ] Windows: DLL/LIB 文件生成
+- [ ] macOS: Framework 文件生成
+- [ ] 生成 5 个 ZIP 文件（Windows + macOS）：
+  - `anywp_engine_v{版本号}_precompiled.zip` - Windows 预编译包
+  - `anywp_engine_v{版本号}_source.zip` - Windows 源码包
+  - `anywp_engine_macos_v{版本号}_precompiled.zip` - macOS 预编译包
+  - `anywp_engine_macos_v{版本号}_source.zip` - macOS 源码包
+  - `anywp_web_sdk_v{版本号}.zip` - Web SDK 包（跨平台）
 - [ ] `release/GITHUB_RELEASE_NOTES_v{版本号}.md` 自动生成
 - [ ] `release/commit_msg_v{版本号}.txt` 自动生成
 
-**⚠️ 预编译包验证**（必须全部存在）:
+**⚠️ Windows 预编译包验证**（必须全部存在）:
 - `bin/anywp_engine_plugin.dll` + `bin/WebView2Loader.dll`
 - `lib/anywp_engine_plugin.lib` ⚠️ 最易遗漏
 - `lib/dart/anywp_engine.dart`
 - `include/anywp_engine/anywp_engine_plugin_c_api.h` ⚠️ 新增纯C API头文件
 - `windows/CMakeLists.txt`
 
-**⚠️ 源码包验证**（额外包含）:
+**⚠️ macOS 预编译包验证**（必须全部存在）:
+- `Frameworks/` 或通过 CocoaPods 自动获取
+- `lib/anywp_engine.dart`
+- `include/anywp_engine/anywp_engine_plugin.h`
+- `macos/anywp_engine.podspec`
+- `macos/CMakeLists.txt`
+- `sdk/anywp_sdk.js`
+- `INTEGRATION_GUIDE_MACOS.md`
+
+**⚠️ Windows 源码包验证**（额外包含）:
 - `windows/anywp_engine_plugin.cpp/h` - 完整 C++ 源码
 - `windows/modules/` + `windows/utils/` - 所有模块和工具类
 - `windows/sdk/` + `windows/anywp_sdk.js` - TypeScript SDK 源码
 - `windows/packages/` - WebView2 依赖包
+
+**⚠️ macOS 源码包验证**（额外包含）:
+- `macos/Classes/` - 完整 Objective-C 源码
+- `macos/Classes/Modules/` - 核心功能模块
+- `macos/Classes/Utils/` - 工具类
+- `sdk/` - TypeScript SDK 源码
 
 **⚠️ Web SDK 包验证**:
 - `sdk/anywp_sdk.js`
@@ -172,7 +218,9 @@ flutter build windows --release
 - `examples/` 目录
 - `README.md`
 
-**验证命令**: `.\scripts\verify_precompiled.bat {版本号}`（自动验证预编译包、源码包与 Web SDK 包）
+**验证命令**: 
+- Windows: `.\scripts\verify_precompiled.bat {版本号}`
+- macOS: `./scripts/verify_precompiled_macos.sh {版本号}`
 
 ### Step 5: Git 提交与推送
 
@@ -206,16 +254,20 @@ git push origin v{版本号}
 1. 访问: `https://github.com/zhaibin/AnyWallpaper-Engine/releases/new`
 2. Tag: `v{版本号}` | Title: `AnyWP Engine v{版本号}`
 3. Description: 复制 `release/GITHUB_RELEASE_NOTES_v{版本号}.md`
-4. 上传 3 个 ZIP 文件：
-   - `anywp_engine_v{版本号}_precompiled.zip` - **推荐给 Flutter 开发者**
-   - `anywp_engine_v{版本号}_source.zip` - 完整源码（高级用户）
-   - `anywp_web_sdk_v{版本号}.zip` - Web 壁纸开发者
+4. 上传 5 个 ZIP 文件：
+   - `anywp_engine_v{版本号}_precompiled.zip` - **Windows 预编译包（推荐给 Flutter 开发者）**
+   - `anywp_engine_v{版本号}_source.zip` - Windows 源码包（高级用户）
+   - `anywp_engine_macos_v{版本号}_precompiled.zip` - **macOS 预编译包（推荐给 Flutter 开发者）**
+   - `anywp_engine_macos_v{版本号}_source.zip` - macOS 源码包（高级用户）
+   - `anywp_web_sdk_v{版本号}.zip` - Web 壁纸开发者（跨平台）
 5. 勾选 "Set as the latest release"
 
 **包说明**：
-- **Precompiled**: 最简单的集成方式，只包含必要的 DLL、LIB 和纯 C API 头文件，无需 WebView2 开发环境
-- **Source**: 包含完整源码、模块、工具类和 WebView2 依赖，适合需要自定义修改的开发者
-- **Web SDK**: 独立的 JavaScript SDK，供 HTML 壁纸开发者使用
+- **Windows Precompiled**: 最简单的集成方式，只包含必要的 DLL、LIB 和纯 C API 头文件，无需 WebView2 开发环境
+- **Windows Source**: 包含完整 C++ 源码、模块、工具类和 WebView2 依赖，适合需要自定义修改的开发者
+- **macOS Precompiled**: 通过 CocoaPods 集成，只需要 Xcode Command Line Tools
+- **macOS Source**: 包含完整 Objective-C 源码、模块和工具类，适合需要自定义修改的开发者
+- **Web SDK**: 独立的 JavaScript SDK，供 HTML 壁纸开发者使用（跨平台通用）
 
 ---
 
@@ -295,6 +347,7 @@ del commit_msg.txt
 
 ## 常用命令
 
+**Windows 平台**:
 ```bash
 # 开发
 .\scripts\build.bat       # 构建并运行
@@ -311,7 +364,20 @@ cd windows\test && run_tests.bat  # C++ 单元测试
 
 # 发布
 .\scripts\release.bat     # 构建 Release 包
-.\scripts\verify_release.bat {版本号}  # 验证发布包
+.\scripts\verify_precompiled.bat {版本号}  # 验证发布包
+```
+
+**macOS 平台**:
+```bash
+# 开发
+cd example && flutter run -d macos
+
+# SDK
+./scripts/build_sdk.sh    # 构建 Web SDK
+
+# 发布
+./scripts/release_macos.sh  # 构建 Release 包
+./scripts/verify_precompiled_macos.sh {版本号}  # 验证发布包
 ```
 
 **日志目录**: `test_logs/` (所有测试和调试日志统一存放)

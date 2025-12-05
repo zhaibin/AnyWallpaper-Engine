@@ -4,7 +4,7 @@ import 'package:anywp_engine/anywp_engine.dart';
 
 /// 测试加密解密功能
 class EncryptionTestPage extends StatefulWidget {
-  const EncryptionTestPage({Key? key}) : super(key: key);
+  const EncryptionTestPage({super.key});
 
   @override
   State<EncryptionTestPage> createState() => _EncryptionTestPageState();
