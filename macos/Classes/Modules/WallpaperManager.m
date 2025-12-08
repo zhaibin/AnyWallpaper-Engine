@@ -108,11 +108,23 @@
         // Create window for this monitor
         NSRect screenFrame = screen.frame;
         
+        [AWPLogger log:[NSString stringWithFormat:@"Screen frame: origin=(%f, %f) size=(%f x %f)",
+                       screenFrame.origin.x, screenFrame.origin.y,
+                       screenFrame.size.width, screenFrame.size.height]];
+        
         NSWindow *window = [[NSWindow alloc] initWithContentRect:screenFrame
                                                        styleMask:NSWindowStyleMaskBorderless
                                                          backing:NSBackingStoreBuffered
                                                            defer:NO
                                                           screen:screen];
+        
+        // Explicitly set frame origin to ensure correct positioning on HiDPI displays
+        // This fixes an issue where secondary monitors get positioned at 2x the expected location
+        [window setFrameOrigin:screenFrame.origin];
+        
+        [AWPLogger log:[NSString stringWithFormat:@"Window frame after creation: origin=(%f, %f) size=(%f x %f)",
+                       window.frame.origin.x, window.frame.origin.y,
+                       window.frame.size.width, window.frame.size.height]];
         
         // Configure window to be wallpaper-like (below desktop icons)
         // Use a window level that's below the desktop but visible
