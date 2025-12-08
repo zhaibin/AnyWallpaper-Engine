@@ -1,7 +1,7 @@
 # AnyWP Engine macOS Plugin CMake Configuration
 
 cmake_minimum_required(VERSION 3.10)
-project(anywp_engine VERSION 2.2.0 LANGUAGES OBJC)
+project(anywp_engine VERSION 2.6.5 LANGUAGES OBJC)
 
 # Set C++ standard (though we're using Objective-C)
 set(CMAKE_CXX_STANDARD 17)

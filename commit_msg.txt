@@ -1,4 +1,0 @@
-fix(macos): 修复 setGlobalAllowedAccessPath 无限递归崩溃 (v2.6.5)
-
-问题: setter 方法中使用 self.property = value 导致无限递归
-修复: 改用实例变量 _globalAllowedAccessPath 直接赋值
