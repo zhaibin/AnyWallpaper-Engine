@@ -1,5 +1,6 @@
 #import "MessageBridge.h"
 #import "../Utils/Logger.h"
+#import "../Utils/EmbeddedSDK.h"
 #import "WallpaperManager.h"
 
 @interface MessageBridge ()
@@ -193,11 +194,23 @@
 }
 
 - (NSString *)loadSDKScript {
-    // Load the unified TypeScript SDK (compiled from sdk/src/)
-    // The SDK is platform-independent and automatically detects macOS
-    // v2.2.0: SDK moved to top-level sdk/ directory
+    // v2.6.0: Use embedded SDK (similar to Windows DLL resource approach)
+    // Priority 1: Load from embedded source (production, recommended)
+    // Priority 2: Load from bundle resources (development fallback)
+    // Priority 3: Minimal fallback SDK (emergency fallback)
     
-    // Try to load from bundle resources
+    // Strategy 1: Load embedded SDK (recommended for production)
+    NSString *embeddedSDK = [EmbeddedSDK getSDKScript];
+    if (embeddedSDK && embeddedSDK.length > 0) {
+        [AWPLogger log:[NSString stringWithFormat:@"Using embedded SDK v%@ (%lu bytes)",
+                       [EmbeddedSDK getSDKVersion],
+                       (unsigned long)embeddedSDK.length]];
+        return embeddedSDK;
+    }
+    
+    [AWPLogger warn:@"Embedded SDK not available, trying bundle resources..."];
+    
+    // Strategy 2: Load from bundle resources (fallback for development)
     NSBundle *bundle = [NSBundle bundleForClass:[self class]];
     NSString *sdkPath = [bundle pathForResource:@"anywp_sdk" ofType:@"js"];
     
@@ -206,18 +219,17 @@
         NSString *sdkScript = [NSString stringWithContentsOfFile:sdkPath
                                                         encoding:NSUTF8StringEncoding
                                                            error:&error];
-        if (error) {
-            [AWPLogger error:[NSString stringWithFormat:@"Failed to load SDK from bundle: %@",
-                            error.localizedDescription]];
-            return [self fallbackSDKScript];
+        if (!error && sdkScript.length > 0) {
+            [AWPLogger log:@"Loaded SDK from bundle resources (development mode)"];
+            return sdkScript;
         }
         
-        [AWPLogger log:@"Loaded unified TypeScript SDK from bundle (sdk/dist/)"];
-        return sdkScript;
+        [AWPLogger error:[NSString stringWithFormat:@"Failed to load SDK from bundle: %@",
+                        error.localizedDescription]];
     }
     
-    // If not found in bundle, return fallback minimal SDK
-    [AWPLogger warn:@"SDK file not found in bundle, using fallback"];
+    // Strategy 3: Minimal fallback SDK (emergency)
+    [AWPLogger warn:@"Using minimal fallback SDK (limited functionality)"];
     return [self fallbackSDKScript];
 }
 

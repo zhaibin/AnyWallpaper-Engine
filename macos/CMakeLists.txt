@@ -31,6 +31,10 @@ add_library(anywp_engine SHARED
   "Classes/Utils/Logger.m"
   "Classes/Utils/StatePersistence.h"
   "Classes/Utils/StatePersistence.m"
+  "Classes/Utils/EmbeddedSDK.h"
+  "Classes/Utils/EmbeddedSDK.m"
+  "Classes/Utils/AWPCustomSchemeHandler.h"
+  "Classes/Utils/AWPCustomSchemeHandler.m"
 )
 
 # Apply Flutter plugin configuration

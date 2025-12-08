@@ -1,0 +1,26 @@
+chore: 实现 macOS SDK 嵌入机制（类似 Windows DLL 资源）
+
+- 创建 EmbeddedSDK 类将 SDK 编译到框架中
+- 更新 MessageBridge 优先使用嵌入式 SDK
+- 添加三层加载策略：嵌入 > Bundle > Fallback
+- 新增 generate_embedded_sdk_macos.sh 自动生成脚本
+- 更新 CMakeLists.txt 包含 EmbeddedSDK 文件
+
+技术实现:
+- EmbeddedSDK.m 包含完整 SDK 源码（95KB）
+- 使用 dispatch_once 确保单例模式
+- MessageBridge 优先加载嵌入 SDK，失败则回退到文件
+- 发布流程自动生成 EmbeddedSDK 文件
+
+优点:
+- SDK 打包在框架中，无需外部文件依赖
+- 与 Windows 版本保持一致的架构设计
+- 保留文件回退机制用于开发调试
+
+文件变更:
+- macos/Classes/Utils/EmbeddedSDK.h/m (新增)
+- macos/Classes/Modules/MessageBridge.m (更新)
+- macos/CMakeLists.txt (更新)
+- scripts/generate_embedded_sdk_macos.sh (新增)
+- scripts/release_macos.sh (更新)
+

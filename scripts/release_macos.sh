@@ -30,7 +30,7 @@ PRECOMPILED_DIR="$RELEASE_DIR/anywp_engine_macos_v${VERSION}_precompiled"
 SOURCE_DIR="$RELEASE_DIR/anywp_engine_macos_v${VERSION}_source"
 WEB_SDK_DIR="$RELEASE_DIR/anywp_web_sdk_v${SDK_VERSION}"
 
-TOTAL_STEPS=20
+TOTAL_STEPS=21
 STEP=1
 
 print_step() {
@@ -55,6 +55,13 @@ else
     cd "$PROJECT_ROOT/sdk"
     npm run build
     cd "$PROJECT_ROOT"
+fi
+
+print_step "Generating embedded SDK for macOS..."
+if [ -f "$PROJECT_ROOT/scripts/generate_embedded_sdk_macos.sh" ]; then
+    bash "$PROJECT_ROOT/scripts/generate_embedded_sdk_macos.sh"
+else
+    echo "WARNING: generate_embedded_sdk_macos.sh not found, skipping embedded SDK generation"
 fi
 
 print_step "Cleaning old release..."
