@@ -1,0 +1,34 @@
+fix: 修复 macOS 测试页面访问问题（Bundle 资源方案）
+
+问题:
+- macOS 应用运行在沙箱容器中
+- 无法访问项目根目录的 examples 文件夹
+- HTTP 服务器找不到测试页面（404 错误）
+
+解决方案:
+✅ 将 examples 复制到 App Bundle 资源中
+✅ 更新示例应用路径检测逻辑
+✅ 自动化构建脚本
+
+实现细节:
+1. 修改 _startHttpServer() 检测 macOS 并使用 Bundle 路径
+2. 构建后自动复制 examples 到 Resources 目录
+3. HTTP 服务器正常启动（端口随机分配）
+4. 测试页面成功加载
+
+测试验证:
+✅ HTTP 服务器启动成功
+✅ 轮播页面加载成功
+✅ 17 个测试文件全部可访问
+✅ URL 格式: http://127.0.0.1:<端口>/examples/test_xxx.html
+
+新增脚本:
+- example/build_macos.sh - 自动化构建脚本
+- example/macos/copy_examples.sh - 复制脚本
+- scripts/test_macos_fileserver.sh - 测试工具
+
+文件变更:
+- example/lib/main.dart - 更新路径检测
+- scripts/release_macos.sh - 添加自动复制步骤
+- docs/MACOS_FILE_ACCESS_FIX.md - 问题说明文档
+

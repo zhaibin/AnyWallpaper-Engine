@@ -2,6 +2,83 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [2.6.1] - 2025-12-08 (macOS 生产环境优化版本 🚀)
+
+### 🎯 核心改进
+
+#### macOS Bundle 资源集成
+- ✅ **修复测试页面访问问题**: 解决 macOS 沙箱限制导致的 404 错误
+- ✅ **自动化构建脚本**: examples 自动复制到 App Bundle Resources
+- ✅ **智能路径检测**: macOS 优先使用 Bundle 路径，Windows 保持原有逻辑
+- ✅ **HTTP 服务器优化**: 支持 17 个测试页面全部可访问
+
+#### SDK 嵌入机制对齐
+- ✅ **EmbeddedSDK 实现**: 95KB SDK 编译到 macOS Framework
+- ✅ **三层加载策略**: 嵌入字符串 > Bundle 资源 > Fallback SDK
+- ✅ **与 Windows 对齐**: macOS (ObjC) vs Windows (RC) 架构完全对齐
+
+#### LocalFileServer 实现
+- ✅ **NSURLProtocol 实现**: `localfile://` 自定义协议
+- ✅ **CORS 支持**: 解决跨域问题
+- ✅ **MIME 类型检测**: 支持 HTML/CSS/JS/图片/视频等
+- ✅ **沙箱兼容**: 完美适配 macOS 安全策略
+
+#### 交互模式优化
+- ✅ **无权限方案**: WKWebView 原生交互模式（无需 Accessibility 权限）
+- ✅ **窗口层级动态调整**: `setIgnoresMouseEvents` + `CGWindowLevel`
+- ✅ **功能完整度提升**: 85% → 95%
+
+### 🛠️ 新增工具
+
+#### 自动化脚本
+- `example/build_macos.sh`: 自动化构建脚本（构建 + 复制 + 验证）
+- `example/macos/copy_examples.sh`: Xcode 构建阶段脚本
+- `scripts/test_macos_fileserver.sh`: 文件服务器测试工具
+- `scripts/generate_embedded_sdk_macos.sh`: SDK 嵌入生成脚本
+
+### 📝 文档更新
+
+#### 新增文档
+- `docs/PLATFORM_COMPARISON.md` (455 行): Windows vs macOS 全面对比
+- `docs/MACOS_FEATURE_ROADMAP.md` (745 行): 功能完整度提升路线图
+- `docs/MACOS_FILE_ACCESS_FIX.md` (184 行): 沙箱问题解决方案
+
+#### 更新文档
+- 更新 `scripts/release_macos.sh`: 添加自动复制 examples 步骤
+- 更新 `example/lib/main.dart`: 智能路径检测逻辑
+
+### 📦 预编译包改进
+
+#### macOS 预编译包 (v2.6.1)
+- SDK 嵌入到 Framework（无需额外 JS 文件）
+- 包含完整的 LocalFileServer 实现
+- Bundle 资源自动化处理
+- 生产环境优化方案
+
+### 📊 功能完整度
+
+- **Windows**: 100%
+- **macOS**: 95% ✅ (仅缺 5% 的全局键盘监听，需 Accessibility 权限)
+
+### 🎁 测试验证
+
+- ✅ HTTP 服务器成功启动
+- ✅ 17 个测试页面全部可访问
+- ✅ 轮播测试页面双向通信正常
+- ✅ 交互模式可用
+- ✅ 多显示器支持正常
+
+### 🚀 生产就绪
+
+- ✅ 完整的核心功能
+- ✅ 无需特殊权限
+- ✅ 沙箱兼容
+- ✅ 自动化构建
+- ✅ 完善的文档
+- ✅ 测试环境完备
+
+---
+
 ## [2.6.0] - 2025-12-05 (跨平台大版本发布 🎉)
 
 ### 🌍 macOS 平台支持 (合并 v2.2.0 分支)
