@@ -126,34 +126,50 @@
                        window.frame.origin.x, window.frame.origin.y,
                        window.frame.size.width, window.frame.size.height]];
         
-        // Configure window to be wallpaper-like (below desktop icons)
-        // Use a window level that's below the desktop but visible
-        // CGWindowLevelForKey(kCGDesktopIconWindowLevelKey) is the desktop icons level
-        // We need to be below that
-        NSInteger desktopIconLevel = CGWindowLevelForKey(kCGDesktopIconWindowLevelKey);
-        [window setLevel:desktopIconLevel - 1];  // Below desktop icons
+        // Configure window level for wallpaper display
+        // The window should be just below desktop icons so it acts as a true wallpaper
+        // 
+        // Root cause of previous rendering issue was WebView frame using screen coordinates
+        // instead of window-relative coordinates. Now that's fixed, we can use proper level.
+        NSInteger desktopIconLevel = CGWindowLevelForKey(kCGDesktopIconWindowLevelKey);  // -2147483603
+        NSInteger wallpaperLevel = desktopIconLevel - 1;  // Just below icons
+        
+        [window setLevel:wallpaperLevel];
+        
+        [AWPLogger log:[NSString stringWithFormat:@"Window level set to: %ld (icon level: %ld, wallpaper: below icons)",
+                       (long)window.level, (long)desktopIconLevel]];
         
         [window setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces |
                                        NSWindowCollectionBehaviorStationary |
                                        NSWindowCollectionBehaviorIgnoresCycle];
-        [window setOpaque:YES];
-        [window setBackgroundColor:[NSColor blackColor]];
+        [window setOpaque:YES];  // Opaque window to show content
+        [window setBackgroundColor:[NSColor blackColor]];  // Black background as base
+        [window setHasShadow:NO];  // No shadow for wallpaper
         // Start in simple mode (mouse transparent)
         [window setIgnoresMouseEvents:YES];
         [window setAcceptsMouseMovedEvents:NO];
         [window setHidesOnDeactivate:NO];
         [window setReleasedWhenClosed:NO];
         
-        [AWPLogger log:[NSString stringWithFormat:@"Window created with level: %ld (desktop icons level: %ld), mouse transparent: YES",
-                       (long)window.level, (long)desktopIconLevel]];
+        [AWPLogger log:[NSString stringWithFormat:@"Window configured - Level: %ld (below desktop icons), mouse transparent: YES",
+                       (long)window.level]];
         
         instance.window = window;
         
-        // Create WebView
-        WKWebView *webView = [[WKWebView alloc] initWithFrame:screenFrame
+        // Create WebView with frame relative to window (not screen)
+        // IMPORTANT: Use bounds (0, 0, width, height), not screen coordinates
+        NSRect webViewFrame = NSMakeRect(0, 0, screenFrame.size.width, screenFrame.size.height);
+        WKWebView *webView = [[WKWebView alloc] initWithFrame:webViewFrame
                                                  configuration:self.webViewConfig];
         webView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
         webView.navigationDelegate = self;  // Set navigation delegate for load tracking
+        
+        // Configure WebView for proper rendering
+        webView.wantsLayer = YES;
+        
+        [AWPLogger log:[NSString stringWithFormat:@"WebView frame: origin=(%f, %f) size=(%f x %f)",
+                       webViewFrame.origin.x, webViewFrame.origin.y,
+                       webViewFrame.size.width, webViewFrame.size.height]];
         
         // Set webView as window content
         [window.contentView addSubview:webView];
@@ -185,9 +201,17 @@
                            nsurl.path, directoryURL.path]];
         }
         
-        // Show window
-        [window makeKeyAndOrderFront:nil];
-        [AWPLogger log:@"Window displayed"];
+        // Show window at wallpaper level (below desktop icons)
+        // Use orderBack to ensure it stays behind other windows
+        [window setAlphaValue:1.0];  // Ensure fully opaque window
+        [window orderBack:nil];
+        
+        // Force display update
+        [window display];
+        [webView setNeedsDisplay:YES];
+        
+        [AWPLogger log:[NSString stringWithFormat:@"Window ordered to back (wallpaper level), alpha: %f, isVisible: %d",
+                       window.alphaValue, window.isVisible]];
         
         // Add instance to array
         @synchronized (self.instances) {
@@ -314,26 +338,20 @@
         NSInteger desktopIconLevel = CGWindowLevelForKey(kCGDesktopIconWindowLevelKey);
         
         if (interactive) {
-            // Interactive mode: 
-            // 1. Raise window level ABOVE desktop icons to capture mouse events
-            // 2. Enable mouse event capture
+            // Interactive mode: Raise above icons and enable mouse
             [instance.window setLevel:desktopIconLevel + 1];  // Above desktop icons
             [instance.window setIgnoresMouseEvents:NO];
             [instance.window setAcceptsMouseMovedEvents:YES];
-            // Make window key to receive events
             [instance.window makeKeyAndOrderFront:nil];
-            [AWPLogger log:[NSString stringWithFormat:@"Monitor %ld: Interactive mode enabled (level: %ld)", 
+            [AWPLogger log:[NSString stringWithFormat:@"Monitor %ld: Interactive mode (level: %ld, above icons, mouse enabled)", 
                            (long)monitorIndex, (long)(desktopIconLevel + 1)]];
         } else {
-            // Simple mode: 
-            // 1. Lower window level BELOW desktop icons (wallpaper-like)
-            // 2. Make mouse transparent
+            // Simple mode: Below icons and mouse transparent (true wallpaper behavior)
             [instance.window setLevel:desktopIconLevel - 1];  // Below desktop icons
             [instance.window setIgnoresMouseEvents:YES];
             [instance.window setAcceptsMouseMovedEvents:NO];
-            // Order back to avoid covering desktop
             [instance.window orderBack:nil];
-            [AWPLogger log:[NSString stringWithFormat:@"Monitor %ld: Simple mode enabled (level: %ld)", 
+            [AWPLogger log:[NSString stringWithFormat:@"Monitor %ld: Simple mode (level: %ld, below icons, mouse disabled)", 
                            (long)monitorIndex, (long)(desktopIconLevel - 1)]];
         }
         
