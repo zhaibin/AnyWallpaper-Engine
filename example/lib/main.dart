@@ -684,25 +684,76 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   /// Start HTTP server for serving test pages (v2.5.2+)
   Future<void> _startHttpServer() async {
     try {
-      // Find project root by looking for 'examples' directory
-      var projectRoot = Directory.current.path;
-      print('[HTTP] Current directory: $projectRoot');
+      String projectRoot;
       
-      // Navigate up from build/windows/x64/runner/Debug to project root
-      var dir = Directory(projectRoot);
-      while (dir.parent.path != dir.path) {
-        final examplesPath = '${dir.path}${Platform.pathSeparator}examples';
-        final examplesDir = Directory(examplesPath);
-        if (await examplesDir.exists()) {
-          final testFilePath = '$examplesPath${Platform.pathSeparator}test_carousel_control.html';
-          final testFile = File(testFilePath);
-          if (await testFile.exists()) {
-            projectRoot = dir.path;
-            print('[HTTP] Found project root: $projectRoot');
-            break;
+      if (Platform.isMacOS) {
+        // macOS: Use app bundle resources
+        // Get the executable path and find Resources directory
+        final executablePath = Platform.resolvedExecutable;
+        final appPath = executablePath.substring(0, executablePath.lastIndexOf('/Contents/MacOS'));
+        projectRoot = '$appPath/Contents/Resources';
+        
+        print('[HTTP] macOS: Using app bundle resources');
+        print('[HTTP] Executable: $executablePath');
+        print('[HTTP] App path: $appPath');
+        print('[HTTP] Resources path: $projectRoot');
+        
+        // Verify examples directory exists in bundle
+        final examplesDir = Directory('$projectRoot/examples');
+        if (!await examplesDir.exists()) {
+          print('[HTTP] ❌ examples not found in bundle, trying development path...');
+          
+          // Fallback: Try to find project root (development mode)
+          projectRoot = Directory.current.path;
+          var dir = Directory(projectRoot);
+          var maxLevels = 10;
+          var levelCount = 0;
+          
+          while (dir.parent.path != dir.path && levelCount < maxLevels) {
+            final examplesPath = '${dir.path}/examples';
+            if (await Directory(examplesPath).exists()) {
+              final testFile = File('$examplesPath/test_carousel_control.html');
+              if (await testFile.exists()) {
+                projectRoot = dir.path;
+                print('[HTTP] ✅ Found development path: $projectRoot');
+                break;
+              }
+            }
+            dir = dir.parent;
+            levelCount++;
           }
+        } else {
+          print('[HTTP] ✅ Found examples in app bundle');
         }
-        dir = dir.parent;
+      } else {
+        // Windows: Navigate up from build directory
+        projectRoot = Directory.current.path;
+        print('[HTTP] Windows: Current directory: $projectRoot');
+        
+        var dir = Directory(projectRoot);
+        while (dir.parent.path != dir.path) {
+          final examplesPath = '${dir.path}${Platform.pathSeparator}examples';
+          final examplesDir = Directory(examplesPath);
+          if (await examplesDir.exists()) {
+            final testFilePath = '$examplesPath${Platform.pathSeparator}test_carousel_control.html';
+            final testFile = File(testFilePath);
+            if (await testFile.exists()) {
+              projectRoot = dir.path;
+              print('[HTTP] ✅ Found project root: $projectRoot');
+              break;
+            }
+          }
+          dir = dir.parent;
+        }
+      }
+      
+      // Verify examples directory exists
+      final examplesDir = Directory('$projectRoot${Platform.pathSeparator}examples');
+      if (!await examplesDir.exists()) {
+        print('[HTTP] ❌ examples directory not found at: ${examplesDir.path}');
+        print('[HTTP] ⚠️  HTTP server will not start');
+        print('[HTTP] Tip: Use file:// or localfile:// protocol instead');
+        return;
       }
       
       print('[HTTP] Starting server with root: $projectRoot');
@@ -713,8 +764,12 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       });
       
       print('[HTTP] ✅ Server started: $_httpServerBaseUrl');
-    } catch (e) {
+      print('[HTTP] Test URLs:');
+      print('[HTTP]   - $_httpServerBaseUrl/examples/test_carousel_control.html');
+      print('[HTTP]   - $_httpServerBaseUrl/examples/test_simple.html');
+    } catch (e, stackTrace) {
       print('[HTTP] ❌ Failed to start server: $e');
+      print('[HTTP] Stack trace: $stackTrace');
     }
   }
   

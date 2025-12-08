@@ -30,7 +30,7 @@ PRECOMPILED_DIR="$RELEASE_DIR/anywp_engine_macos_v${VERSION}_precompiled"
 SOURCE_DIR="$RELEASE_DIR/anywp_engine_macos_v${VERSION}_source"
 WEB_SDK_DIR="$RELEASE_DIR/anywp_web_sdk_v${SDK_VERSION}"
 
-TOTAL_STEPS=21
+TOTAL_STEPS=22
 STEP=1
 
 print_step() {
@@ -77,6 +77,19 @@ if [ $BUILD_ERROR -ne 0 ]; then
     echo "ERROR: Build failed with code $BUILD_ERROR"
     exit 1
 fi
+
+# Copy examples to app bundle for production use
+print_step "Copying examples to app bundle..."
+BUILD_OUTPUT="$PROJECT_ROOT/example/build/macos/Build/Products/Release"
+RESOURCES_DIR="$BUILD_OUTPUT/Runner.app/Contents/Resources"
+if [ -d "$PROJECT_ROOT/examples" ]; then
+    cp -R "$PROJECT_ROOT/examples" "$RESOURCES_DIR/"
+    EXAMPLE_COUNT=$(ls -1 "$RESOURCES_DIR/examples"/*.html 2>/dev/null | wc -l | tr -d ' ')
+    echo "  ✅ Copied $EXAMPLE_COUNT example files to app bundle"
+else
+    echo "  ⚠️  WARNING: examples directory not found, skipping"
+fi
+
 cd "$PROJECT_ROOT"
 
 # ==========================================
