@@ -2,6 +2,77 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [2.6.4] - 2025-12-08 (macOS 文件访问控制增强 📂)
+
+### 🎯 核心功能
+
+#### 扩展文件访问范围 (macOS)
+
+**问题**: WKWebView 的 `loadFileURL:allowingReadAccessToURL:` 默认只授权文件所在目录的访问权限，导致 HTML 无法加载其他子目录的资源。
+
+**解决方案**: 
+- 默认将授权范围扩展到 `~/Library` 目录
+- 支持自定义全局授权路径
+- 支持单个壁纸级别的授权路径
+
+### ✨ 新增 API (macOS)
+
+#### Dart API
+
+```dart
+// 设置全局文件授权路径
+await AnyWPEngine.setAllowedAccessPath('/path/to/directory');
+
+// 获取 Library 目录路径
+final libraryPath = await AnyWPEngine.getDefaultLibraryPath();
+
+// 获取 Application Support 路径
+final appSupportPath = await AnyWPEngine.getApplicationSupportPath();
+
+// initializeWallpaperOnMonitor 新增 allowedAccessPath 参数
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file:///path/to/wallpaper.html',
+  monitorIndex: 0,
+  allowedAccessPath: '/path/to/authorize', // 新增
+);
+```
+
+### 🛠️ 技术改进
+
+#### WallpaperManager.h/m
+- 新增 `globalAllowedAccessPath` 属性存储全局授权路径
+- 新增 `setGlobalAllowedAccessPath:` 方法设置全局授权路径
+- 新增 `determineAllowedAccessURL:forFileURL:` 方法智能确定授权路径
+- 新增 `defaultLibraryPath` 和 `applicationSupportPath` 类方法
+- 修改 `initializeWallpaperOnMonitor:monitorIndex:` 支持 `allowedAccessPath` 参数
+- 修改 `navigateToUrlOnMonitor:monitorIndex:` 使用相同的授权路径逻辑
+
+#### AnyWPEnginePlugin.m
+- 新增 `handleSetAllowedAccessPath:` 方法处理
+- 新增 `handleGetDefaultLibraryPath:` 方法处理
+- 新增 `handleGetApplicationSupportPath:` 方法处理
+- 修改 `handleInitializeWallpaperOnMonitor:` 支持 `allowedAccessPath` 参数
+
+#### anywp_engine.dart
+- `initializeWallpaperOnMonitor()` 新增 `allowedAccessPath` 可选参数
+- 新增 `setAllowedAccessPath()` 方法
+- 新增 `getDefaultLibraryPath()` 方法
+- 新增 `getApplicationSupportPath()` 方法
+
+### 📖 文档更新
+
+- 更新 `MACOS_FILE_ACCESS_FIX.md` 添加方案 0 (新 API)
+- 更新 `DEVELOPER_API_REFERENCE.md` 添加 File Access Control 部分
+- 更新 `FOR_FLUTTER_DEVELOPERS.md` API 列表
+
+### 🧪 测试验证
+
+- ✅ macOS Debug 编译成功
+- ✅ 应用正常启动和运行
+- ✅ 壁纸正常初始化和显示
+
+---
+
 ## [2.6.3] - 2025-12-08 (多显示器修复版本 🖥️)
 
 ### 🎯 核心修复

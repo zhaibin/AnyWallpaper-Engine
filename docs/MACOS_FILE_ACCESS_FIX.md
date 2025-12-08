@@ -8,7 +8,44 @@ macOS 应用运行在沙箱容器中，无法访问项目根目录的 `examples`
 项目目录: /Users/zhaibin/Dev/anywp-engine/examples ❌ 无法访问
 ```
 
-## 解决方案（3种）
+另外，WKWebView 的 `loadFileURL:allowingReadAccessToURL:` 默认只授权文件所在目录的访问权限，
+导致 HTML 无法加载其他子目录的资源（如图片、CSS、JavaScript 等）。
+
+## 解决方案（4种）
+
+### 方案 0: 使用扩展文件访问 API（v2.6.4+ 推荐）⭐⭐⭐ 最简单
+
+v2.6.4 新增了扩展文件访问范围的 API，默认将授权范围扩展到 Library 目录：
+
+```dart
+// 方式一：使用默认授权范围（Library 目录）
+// 无需任何额外配置，默认即可访问 ~/Library 下的所有文件
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file:///Users/username/Library/Application Support/MyApp/wallpaper.html',
+  monitorIndex: 0,
+);
+
+// 方式二：设置全局授权路径
+final libraryPath = await AnyWPEngine.getDefaultLibraryPath();
+await AnyWPEngine.setAllowedAccessPath(libraryPath);
+
+// 方式三：针对单个壁纸指定授权路径
+final appSupportPath = await AnyWPEngine.getApplicationSupportPath();
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file://$appSupportPath/MyApp/wallpaper.html',
+  monitorIndex: 0,
+  allowedAccessPath: '$appSupportPath/MyApp', // 授权整个 MyApp 目录
+);
+```
+
+**优点**：
+- ✅ 最简单的方案（无需额外配置）
+- ✅ 默认支持 Library 目录下的所有子目录
+- ✅ 支持自定义授权路径
+- ✅ 支持全局和单个壁纸级别的配置
+
+**缺点**：
+- ⚠️ 只能授权用户可访问的目录（受沙箱限制）
 
 ### 方案 1: 使用 file:// 协议 ⭐ 最简单
 

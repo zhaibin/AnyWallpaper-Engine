@@ -1,6 +1,6 @@
 ﻿# AnyWP Engine - Developer API Reference
 
-**Version**: 2.4.1
+**Version**: 2.6.4
 
 Complete API reference for integrating AnyWP Engine into your Flutter application.
 
@@ -707,6 +707,114 @@ class WallpaperAssetManager {
 **Web SDK Integration:**
 
 The JavaScript SDK (`window.AnyWP`) also provides encryption/decryption methods that communicate with Flutter via message passing. See [Web Developer Guide](WEB_DEVELOPER_GUIDE_CN.md#custom-scheme-support) for details.
+
+---
+
+## File Access Control (macOS v2.6.4+)
+
+macOS WKWebView requires explicit authorization for file access. By default, the engine now authorizes the Library directory (`~/Library`) for expanded file access.
+
+### setAllowedAccessPath
+
+Set global allowed access path for file loading.
+
+```dart
+// Set allowed access to Application Support directory
+final appSupportPath = await AnyWPEngine.getApplicationSupportPath();
+final result = await AnyWPEngine.setAllowedAccessPath(appSupportPath);
+
+if (result?['success'] == true) {
+  print('Access path set to: ${result!['currentPath']}');
+}
+```
+
+**Parameters:**
+- `path` (String?, required): Directory path to authorize. Pass null or empty to reset to default (Library directory).
+
+**Returns:** `Future<Map<String, dynamic>?>` - Map with:
+- `success`: true if successful
+- `currentPath`: The current allowed access path
+
+**Platform Support:**
+- ❌ Windows (not needed)
+- ✅ macOS
+
+### getDefaultLibraryPath
+
+Get the default Library directory path.
+
+```dart
+final libraryPath = await AnyWPEngine.getDefaultLibraryPath();
+print('Library path: $libraryPath');
+// Output: /Users/username/Library
+```
+
+**Returns:** `Future<String>` - Library directory path, or empty string on error
+
+**Platform Support:**
+- ❌ Windows (returns empty string)
+- ✅ macOS
+
+### getApplicationSupportPath
+
+Get the Application Support directory path.
+
+```dart
+final appSupportPath = await AnyWPEngine.getApplicationSupportPath();
+print('App Support path: $appSupportPath');
+// Output: /Users/username/Library/Application Support
+
+// Store wallpapers in your app's directory
+final myAppPath = '$appSupportPath/MyWallpaperApp';
+```
+
+**Returns:** `Future<String>` - Application Support path, or empty string on error
+
+**Platform Support:**
+- ❌ Windows (returns empty string)
+- ✅ macOS
+
+### initializeWallpaperOnMonitor with allowedAccessPath
+
+Initialize wallpaper with custom file access authorization.
+
+```dart
+// Load HTML with custom access path
+final appSupportPath = await AnyWPEngine.getApplicationSupportPath();
+await AnyWPEngine.initializeWallpaperOnMonitor(
+  url: 'file://$appSupportPath/MyApp/wallpaper.html',
+  monitorIndex: 0,
+  allowedAccessPath: '$appSupportPath/MyApp', // Authorize entire MyApp directory
+);
+```
+
+**Parameters:**
+- `url` (String, required): URL to load
+- `monitorIndex` (int, required): Target monitor index
+- `autoSave` (bool, optional): Auto-save for recovery (default: true)
+- `allowedAccessPath` (String?, optional): Custom path for file access authorization (macOS only)
+
+**Returns:** `Future<bool>` - true if successful
+
+**Notes:**
+- If `allowedAccessPath` is null, uses global setting or defaults to Library directory
+- This allows HTML to load resources from any subdirectory within the allowed path
+
+### Recommended Setup
+
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // macOS: Set allowed access path at app startup
+  if (Platform.isMacOS) {
+    final libraryPath = await AnyWPEngine.getDefaultLibraryPath();
+    await AnyWPEngine.setAllowedAccessPath(libraryPath);
+  }
+  
+  runApp(MyApp());
+}
+```
 
 ---
 

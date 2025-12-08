@@ -173,6 +173,12 @@ setOnMessageCallback(callback)             // 接收来自 JavaScript 的消息
 encryptFile(sourcePath, destPath) -> bool  // 加密文件（XOR）
 decryptFile(encryptedPath, destPath) -> bool // 解密文件（XOR）
 // 配合 anywp://file?path=... 自定义协议使用
+
+// 文件访问控制 (macOS v2.6.4+) ✨ 新增
+setAllowedAccessPath(path) -> Map          // 设置全局文件授权路径
+getDefaultLibraryPath() -> String          // 获取 Library 目录路径
+getApplicationSupportPath() -> String      // 获取 Application Support 路径
+// initializeWallpaperOnMonitor 新增 allowedAccessPath 参数
 ```
 
 **立即阅读** → [DEVELOPER_API_REFERENCE.md](DEVELOPER_API_REFERENCE.md)

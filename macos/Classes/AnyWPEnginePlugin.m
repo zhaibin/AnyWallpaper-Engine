@@ -187,6 +187,17 @@
             [self handleIsFileServerRunning:call result:result];
         }
         
+        // ========== File Access Control ==========
+        else if ([method isEqualToString:@"setAllowedAccessPath"]) {
+            [self handleSetAllowedAccessPath:call result:result];
+        }
+        else if ([method isEqualToString:@"getDefaultLibraryPath"]) {
+            [self handleGetDefaultLibraryPath:call result:result];
+        }
+        else if ([method isEqualToString:@"getApplicationSupportPath"]) {
+            [self handleGetApplicationSupportPath:call result:result];
+        }
+        
         // ========== Unknown Method ==========
         else {
             result(FlutterMethodNotImplemented);
@@ -234,9 +245,19 @@
     NSDictionary *args = call.arguments;
     NSString *url = args[@"url"];
     NSNumber *monitorIndex = args[@"monitorIndex"];
+    NSString *allowedAccessPath = args[@"allowedAccessPath"];  // Optional custom access path
     
-    BOOL success = [self.wallpaperManager initializeWallpaperOnMonitor:url
-                                                          monitorIndex:[monitorIndex intValue]];
+    BOOL success;
+    if (allowedAccessPath && allowedAccessPath.length > 0) {
+        // Use custom allowed access path
+        success = [self.wallpaperManager initializeWallpaperOnMonitor:url
+                                                         monitorIndex:[monitorIndex intValue]
+                                                    allowedAccessPath:allowedAccessPath];
+    } else {
+        // Use default (global or Library path)
+        success = [self.wallpaperManager initializeWallpaperOnMonitor:url
+                                                         monitorIndex:[monitorIndex intValue]];
+    }
     result(@(success));
 }
 
@@ -557,6 +578,36 @@
             @"running": @NO
         });
     }
+}
+
+#pragma mark - File Access Control
+
+- (void)handleSetAllowedAccessPath:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSDictionary *args = call.arguments;
+    NSString *path = args[@"path"];
+    
+    [self.wallpaperManager setGlobalAllowedAccessPath:path];
+    
+    // Return the current allowed access path (or default)
+    NSString *currentPath = [self.wallpaperManager globalAllowedAccessPath];
+    if (!currentPath || currentPath.length == 0) {
+        currentPath = [WallpaperManager defaultLibraryPath];
+    }
+    
+    result(@{
+        @"success": @YES,
+        @"currentPath": currentPath ?: @""
+    });
+}
+
+- (void)handleGetDefaultLibraryPath:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSString *path = [WallpaperManager defaultLibraryPath];
+    result(path ?: @"");
+}
+
+- (void)handleGetApplicationSupportPath:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSString *path = [WallpaperManager applicationSupportPath];
+    result(path ?: @"");
 }
 
 - (void)dealloc {

@@ -564,6 +564,8 @@ class AnyWPEngine {
   /// - [url]: The URL to load in the wallpaper WebView
   /// - [monitorIndex]: The index of the target monitor (0-based)
   /// - [autoSave]: Whether to auto-save this configuration for recovery (default: `true`)
+  /// - [allowedAccessPath]: Custom path for file access authorization (macOS only).
+  ///   If null, uses global setting or defaults to Library directory.
   ///
   /// Returns: `true` if successful, `false` otherwise
   ///
@@ -580,6 +582,11 @@ class AnyWPEngine {
   /// - Set `autoSave: false` when frequently switching wallpapers (e.g., carousel, previews)
   /// - Set `autoSave: true` when user explicitly selects a wallpaper to persist
   /// - Use [saveCurrentWallpaperConfiguration] to manually save at the right time
+  ///
+  /// **File Access Control (macOS v2.6.4+):**
+  /// - By default, file access is authorized to the entire Library directory
+  /// - Use `allowedAccessPath` to specify a custom directory for file access
+  /// - This allows HTML to load resources from subdirectories within the allowed path
   ///
   /// **Example 1: Simple wallpaper (auto-save):**
   ///
@@ -605,42 +612,43 @@ class AnyWPEngine {
   /// await AnyWPEngine.saveCurrentWallpaperConfiguration();
   /// ```
   ///
-  /// **Example 3: Interactive wallpaper with state:**
+  /// **Example 3: Custom file access path (macOS):**
   ///
   /// ```dart
-  /// // Initialize interactive content
+  /// // Load HTML from a custom cache directory with full access
+  /// final libraryPath = await AnyWPEngine.getDefaultLibraryPath();
   /// await AnyWPEngine.initializeWallpaperOnMonitor(
-  ///   url: 'file:///path/to/interactive.html',
+  ///   url: 'file://$libraryPath/Application Support/MyApp/wallpaper.html',
   ///   monitorIndex: 0,
-  ///   autoSave: false,  // Don't save intermediate states
+  ///   allowedAccessPath: '$libraryPath/Application Support/MyApp',
   /// );
-  /// 
-  /// // Send messages to update state
-  /// await AnyWPEngine.sendMessage({
-  ///   'type': 'updateConfig',
-  ///   'data': {'theme': 'dark', 'widgets': ['clock', 'weather']},
-  /// });
-  /// 
-  /// // Save when user clicks "Apply" or "Save"
-  /// await AnyWPEngine.saveCurrentWallpaperConfiguration();
   /// ```
   ///
   /// See also:
   /// - [getMonitors] - Get available monitors
   /// - [saveCurrentWallpaperConfiguration] - Manually save current configuration
   /// - [enableAutoRecovery] - Enable/disable auto-recovery feature
+  /// - [setAllowedAccessPath] - Set global file access path (macOS)
   static Future<bool> initializeWallpaperOnMonitor({
     required String url,
     required int monitorIndex,
     bool autoSave = true,
+    String? allowedAccessPath,
   }) async {
     try {
-      final result = await _channel.invokeMethod<bool>('initializeWallpaperOnMonitor', {
+      final args = <String, dynamic>{
         'url': url,
         'monitorIndex': monitorIndex,
         'enableMouseTransparent': true,  // Always use Simple Mode
         'autoSave': autoSave,  // v2.4.0+ Control auto-save behavior
-      });
+      };
+      
+      // Add allowedAccessPath if specified (macOS only)
+      if (allowedAccessPath != null && allowedAccessPath.isNotEmpty) {
+        args['allowedAccessPath'] = allowedAccessPath;
+      }
+      
+      final result = await _channel.invokeMethod<bool>('initializeWallpaperOnMonitor', args);
       return result ?? false;
     } catch (e) {
       print('Error initializing wallpaper on monitor $monitorIndex: $e');
@@ -1725,6 +1733,142 @@ class AnyWPEngine {
     } catch (e) {
       print('[AnyWPEngine] Failed to check file server status: $e');
       return null;
+    }
+  }
+
+  // ========== File Access Control (macOS v2.6.4+) ==========
+
+  /// Set global allowed access path for file loading (macOS)
+  /// 
+  /// Sets a global path that will be used as the file access authorization
+  /// base for all wallpaper instances. This allows HTML files to load
+  /// resources from any subdirectory within the allowed path.
+  /// 
+  /// **Use Case:**
+  /// When loading local HTML wallpapers that reference other files (images,
+  /// CSS, JavaScript) from different subdirectories, you need to authorize
+  /// a parent directory that contains all required resources.
+  /// 
+  /// **Default Behavior:**
+  /// If not set, the engine defaults to authorizing the Library directory
+  /// (~/Library), which allows access to Application Support, Caches, etc.
+  /// 
+  /// Parameters:
+  /// - [path]: The directory path to authorize. Pass null or empty to
+  ///   reset to default (Library directory).
+  /// 
+  /// Returns: Map with result info
+  ///   - success: true if successful
+  ///   - currentPath: The current allowed access path
+  /// 
+  /// Platform support:
+  /// - ❌ Windows (not needed, WebView2 handles this differently)
+  /// - ✅ macOS (WKWebView file access control)
+  /// 
+  /// Example:
+  /// ```dart
+  /// // Set allowed access to Application Support directory
+  /// final appSupportPath = await AnyWPEngine.getApplicationSupportPath();
+  /// final result = await AnyWPEngine.setAllowedAccessPath(appSupportPath);
+  /// 
+  /// if (result?['success'] == true) {
+  ///   print('Access path set to: ${result!['currentPath']}');
+  ///   
+  ///   // Now load HTML that references files in Application Support
+  ///   await AnyWPEngine.initializeWallpaperOnMonitor(
+  ///     url: 'file://$appSupportPath/MyApp/wallpaper.html',
+  ///     monitorIndex: 0,
+  ///   );
+  /// }
+  /// ```
+  /// 
+  /// **Recommended Setup for Wallpaper Apps:**
+  /// ```dart
+  /// void main() async {
+  ///   WidgetsFlutterBinding.ensureInitialized();
+  ///   
+  ///   // Set access path at app startup
+  ///   final libraryPath = await AnyWPEngine.getDefaultLibraryPath();
+  ///   await AnyWPEngine.setAllowedAccessPath(libraryPath);
+  ///   
+  ///   runApp(MyApp());
+  /// }
+  /// ```
+  /// 
+  /// See also:
+  /// - [getDefaultLibraryPath] - Get Library directory path
+  /// - [getApplicationSupportPath] - Get Application Support path
+  /// - [initializeWallpaperOnMonitor] - Initialize with custom access path
+  static Future<Map<String, dynamic>?> setAllowedAccessPath(String? path) async {
+    try {
+      final result = await _channel.invokeMethod('setAllowedAccessPath', {
+        'path': path ?? '',
+      });
+      if (result is Map) {
+        return Map<String, dynamic>.from(result);
+      }
+      return null;
+    } catch (e) {
+      print('[AnyWPEngine] Failed to set allowed access path: $e');
+      return null;
+    }
+  }
+
+  /// Get the default Library directory path (macOS)
+  /// 
+  /// Returns the path to the user's Library directory (~/Library).
+  /// This is the default base path for file access authorization.
+  /// 
+  /// Returns: The Library directory path, or empty string on error
+  /// 
+  /// Platform support:
+  /// - ❌ Windows (returns empty string)
+  /// - ✅ macOS
+  /// 
+  /// Example:
+  /// ```dart
+  /// final libraryPath = await AnyWPEngine.getDefaultLibraryPath();
+  /// print('Library path: $libraryPath');
+  /// // Output: /Users/username/Library
+  /// ```
+  static Future<String> getDefaultLibraryPath() async {
+    try {
+      final result = await _channel.invokeMethod<String>('getDefaultLibraryPath');
+      return result ?? '';
+    } catch (e) {
+      print('[AnyWPEngine] Failed to get default library path: $e');
+      return '';
+    }
+  }
+
+  /// Get the Application Support directory path (macOS)
+  /// 
+  /// Returns the path to the Application Support directory
+  /// (~/Library/Application Support). This is commonly used to store
+  /// app-specific data, cache, and resources.
+  /// 
+  /// Returns: The Application Support path, or empty string on error
+  /// 
+  /// Platform support:
+  /// - ❌ Windows (returns empty string)
+  /// - ✅ macOS
+  /// 
+  /// Example:
+  /// ```dart
+  /// final appSupportPath = await AnyWPEngine.getApplicationSupportPath();
+  /// print('App Support path: $appSupportPath');
+  /// // Output: /Users/username/Library/Application Support
+  /// 
+  /// // Store wallpapers in your app's directory
+  /// final myAppPath = '$appSupportPath/MyWallpaperApp';
+  /// ```
+  static Future<String> getApplicationSupportPath() async {
+    try {
+      final result = await _channel.invokeMethod<String>('getApplicationSupportPath');
+      return result ?? '';
+    } catch (e) {
+      print('[AnyWPEngine] Failed to get application support path: $e');
+      return '';
     }
   }
 

@@ -11,10 +11,14 @@
 @property (nonatomic, strong) MessageBridge *messageBridge;
 @property (nonatomic, strong) NSMutableArray<WallpaperInstance *> *instances;
 @property (nonatomic, strong) WKWebViewConfiguration *webViewConfig;
+@property (nonatomic, strong) NSString *globalAllowedAccessPath;  // Global allowed access path for file loading
 
 @end
 
 @implementation WallpaperManager
+
+// Synthesize the globalAllowedAccessPath property to generate the instance variable
+@synthesize globalAllowedAccessPath = _globalAllowedAccessPath;
 
 - (instancetype)initWithMonitorManager:(MonitorManager *)monitorManager
                         messageBridge:(MessageBridge *)messageBridge {
@@ -81,9 +85,21 @@
 }
 
 - (BOOL)initializeWallpaperOnMonitor:(NSString *)url monitorIndex:(NSInteger)monitorIndex {
+    // Use the global allowed access path if set, otherwise use default (nil triggers Library path usage)
+    return [self initializeWallpaperOnMonitor:url 
+                                 monitorIndex:monitorIndex 
+                            allowedAccessPath:self.globalAllowedAccessPath];
+}
+
+- (BOOL)initializeWallpaperOnMonitor:(NSString *)url 
+                        monitorIndex:(NSInteger)monitorIndex 
+                   allowedAccessPath:(NSString *)allowedAccessPath {
     @try {
         [AWPLogger log:[NSString stringWithFormat:@"Initializing wallpaper on monitor %ld with URL: %@",
                        (long)monitorIndex, url]];
+        if (allowedAccessPath) {
+            [AWPLogger log:[NSString stringWithFormat:@"Custom allowed access path: %@", allowedAccessPath]];
+        }
         
         // Get monitor
         NSScreen *screen = [self.monitorManager getMonitorAtIndex:monitorIndex];
@@ -187,18 +203,23 @@
             // File URL
             NSString *filePath = [url substringFromIndex:7];  // Remove "file://"
             nsurl = [NSURL fileURLWithPath:filePath];
-            // Load file URL with read access to directory
-            NSURL *directoryURL = [nsurl URLByDeletingLastPathComponent];
-            [webView loadFileURL:nsurl allowingReadAccessToURL:directoryURL];
+            // Determine allowed access path
+            NSURL *accessURL = [self determineAllowedAccessURL:allowedAccessPath forFileURL:nsurl];
+            [webView loadFileURL:nsurl allowingReadAccessToURL:accessURL];
             [AWPLogger log:[NSString stringWithFormat:@"Loading local file: %@ with read access to: %@",
-                           nsurl.path, directoryURL.path]];
+                           nsurl.path, accessURL.path]];
+            // Save allowed access path to instance
+            instance.allowedAccessPath = allowedAccessPath;
         } else {
             // Assume file path
             nsurl = [NSURL fileURLWithPath:url];
-            NSURL *directoryURL = [nsurl URLByDeletingLastPathComponent];
-            [webView loadFileURL:nsurl allowingReadAccessToURL:directoryURL];
+            // Determine allowed access path
+            NSURL *accessURL = [self determineAllowedAccessURL:allowedAccessPath forFileURL:nsurl];
+            [webView loadFileURL:nsurl allowingReadAccessToURL:accessURL];
             [AWPLogger log:[NSString stringWithFormat:@"Loading local file: %@ with read access to: %@",
-                           nsurl.path, directoryURL.path]];
+                           nsurl.path, accessURL.path]];
+            // Save allowed access path to instance
+            instance.allowedAccessPath = allowedAccessPath;
         }
         
         // Show window at wallpaper level (below desktop icons)
@@ -278,13 +299,17 @@
             // File URL
             NSString *filePath = [url substringFromIndex:7];  // Remove "file://"
             nsurl = [NSURL fileURLWithPath:filePath];
-            NSURL *directoryURL = [nsurl URLByDeletingLastPathComponent];
-            [instance.webView loadFileURL:nsurl allowingReadAccessToURL:directoryURL];
+            // Use instance's allowed access path or determine from global/default
+            NSURL *accessURL = [self determineAllowedAccessURL:instance.allowedAccessPath forFileURL:nsurl];
+            [instance.webView loadFileURL:nsurl allowingReadAccessToURL:accessURL];
+            [AWPLogger log:[NSString stringWithFormat:@"Navigating with read access to: %@", accessURL.path]];
         } else {
             // Assume file path
             nsurl = [NSURL fileURLWithPath:url];
-            NSURL *directoryURL = [nsurl URLByDeletingLastPathComponent];
-            [instance.webView loadFileURL:nsurl allowingReadAccessToURL:directoryURL];
+            // Use instance's allowed access path or determine from global/default
+            NSURL *accessURL = [self determineAllowedAccessURL:instance.allowedAccessPath forFileURL:nsurl];
+            [instance.webView loadFileURL:nsurl allowingReadAccessToURL:accessURL];
+            [AWPLogger log:[NSString stringWithFormat:@"Navigating with read access to: %@", accessURL.path]];
         }
         
         instance.currentURL = url;
@@ -397,6 +422,70 @@
             }
         }
     }
+}
+
+#pragma mark - Allowed Access Path Management
+
+- (NSURL *)determineAllowedAccessURL:(NSString *)customPath forFileURL:(NSURL *)fileURL {
+    // Priority: 1. Custom path specified for this call
+    //           2. Global allowed access path
+    //           3. Library directory (default, expanded access)
+    
+    if (customPath && customPath.length > 0) {
+        // Use custom path specified in the call
+        return [NSURL fileURLWithPath:customPath isDirectory:YES];
+    }
+    
+    if (self.globalAllowedAccessPath && self.globalAllowedAccessPath.length > 0) {
+        // Use global allowed access path
+        return [NSURL fileURLWithPath:self.globalAllowedAccessPath isDirectory:YES];
+    }
+    
+    // Default: Use Library directory for expanded access
+    // This allows access to ~/Library and all subdirectories (Application Support, Caches, etc.)
+    NSString *libraryPath = [WallpaperManager defaultLibraryPath];
+    if (libraryPath) {
+        [AWPLogger log:[NSString stringWithFormat:@"Using default Library path for access: %@", libraryPath]];
+        return [NSURL fileURLWithPath:libraryPath isDirectory:YES];
+    }
+    
+    // Fallback: Use the file's parent directory
+    [AWPLogger warn:@"Could not determine Library path, falling back to file's parent directory"];
+    return [fileURL URLByDeletingLastPathComponent];
+}
+
+- (void)setGlobalAllowedAccessPath:(NSString *)path {
+    if (path && path.length > 0) {
+        // Validate the path exists
+        BOOL isDirectory = NO;
+        BOOL exists = [[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&isDirectory];
+        
+        if (!exists) {
+            [AWPLogger warn:[NSString stringWithFormat:@"Allowed access path does not exist: %@", path]];
+        } else if (!isDirectory) {
+            [AWPLogger warn:[NSString stringWithFormat:@"Allowed access path is not a directory: %@", path]];
+        }
+        
+        self.globalAllowedAccessPath = path;
+        [AWPLogger log:[NSString stringWithFormat:@"Global allowed access path set to: %@", path]];
+    } else {
+        self.globalAllowedAccessPath = nil;
+        [AWPLogger log:@"Global allowed access path cleared (will use default Library path)"];
+    }
+}
+
+- (NSString *)globalAllowedAccessPath {
+    return _globalAllowedAccessPath;
+}
+
++ (NSString *)defaultLibraryPath {
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
+    return paths.firstObject;
+}
+
++ (NSString *)applicationSupportPath {
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
+    return paths.firstObject;
 }
 
 - (void)dealloc {

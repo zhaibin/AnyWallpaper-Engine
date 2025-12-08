@@ -14,6 +14,7 @@
 @property (nonatomic, strong) WKWebView *webView;
 @property (nonatomic, strong) NSString *currentURL;
 @property (nonatomic, assign) BOOL isPaused;
+@property (nonatomic, strong) NSString *allowedAccessPath;  // Custom allowed access path for file loading
 
 @end
 
@@ -48,6 +49,16 @@
  * Initialize wallpaper on specific monitor
  */
 - (BOOL)initializeWallpaperOnMonitor:(NSString *)url monitorIndex:(NSInteger)monitorIndex;
+
+/**
+ * Initialize wallpaper on specific monitor with custom allowed access path
+ * @param url The URL to load
+ * @param monitorIndex Target monitor index
+ * @param allowedAccessPath Custom path for file access authorization (nil = use default)
+ */
+- (BOOL)initializeWallpaperOnMonitor:(NSString *)url 
+                        monitorIndex:(NSInteger)monitorIndex 
+                   allowedAccessPath:(NSString *)allowedAccessPath;
 
 /**
  * Stop wallpaper on specific monitor
@@ -95,6 +106,28 @@
  * Send message to all WebViews
  */
 - (void)sendMessageToAll:(NSString *)message;
+
+/**
+ * Set global allowed access path for file loading
+ * This path will be used as the base for file access authorization
+ * @param path The path to authorize (nil = use Library directory)
+ */
+- (void)setGlobalAllowedAccessPath:(NSString *)path;
+
+/**
+ * Get current global allowed access path
+ */
+- (NSString *)globalAllowedAccessPath;
+
+/**
+ * Get the default Library directory path
+ */
++ (NSString *)defaultLibraryPath;
+
+/**
+ * Get Application Support directory path
+ */
++ (NSString *)applicationSupportPath;
 
 @end
 
