@@ -109,6 +109,12 @@ print_step "Copying framework to precompiled package..."
 BUILD_OUTPUT="$PROJECT_ROOT/example/build/macos/Build/Products/Release"
 if [ -d "$BUILD_OUTPUT/anywp_engine" ]; then
     cp -R "$BUILD_OUTPUT/anywp_engine" "$PRECOMPILED_DIR/Frameworks/"
+    
+    # Fix framework structure and sign it
+    echo "  Fixing framework structure and signing..."
+    if [ -f "$PROJECT_ROOT/scripts/fix_framework_structure.sh" ]; then
+        bash "$PROJECT_ROOT/scripts/fix_framework_structure.sh" "$PRECOMPILED_DIR/Frameworks/anywp_engine/anywp_engine.framework" 2>&1 | sed 's/^/  /'
+    fi
 else
     echo "WARNING: Plugin framework not found at $BUILD_OUTPUT/anywp_engine"
 fi

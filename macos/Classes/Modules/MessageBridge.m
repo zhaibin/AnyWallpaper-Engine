@@ -243,7 +243,7 @@
                           @"    return;\n"
                           @"  }\n"
                           @"  window.AnyWP = {\n"
-                          @"    version: '2.2.0',\n"
+                          @"    version: '2.5.0',\n"
                           @"    platform: 'macos',\n"
                           @"    sendMessage: function(message) {\n"
                           @"      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.anywpMessage) {\n"

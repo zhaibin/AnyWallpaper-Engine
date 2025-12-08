@@ -58,10 +58,10 @@
     @try {
         // ========== Version Info ==========
         if ([method isEqualToString:@"getVersion"]) {
-            result(@"2.2.0");
+            result(@"2.6.2");
         }
         else if ([method isEqualToString:@"getSDKVersion"]) {
-            result(@"2.2.0");
+            result(@"2.5.0");
         }
         
         // ========== Wallpaper Initialization ==========
