@@ -1,0 +1,17 @@
+release: 发布 v2.6.0 macOS 预编译包 🎉
+
+- 修复 macOS 发布脚本路径问题
+- 成功构建 macOS 预编译包和源码包
+- 包含 Web SDK v2.5.0
+- 验证包内容完整性通过
+
+发布文件:
+- anywp_engine_macos_v2.6.0_precompiled.zip (1.3M)
+- anywp_engine_macos_v2.6.0_source.zip (24M)
+- anywp_web_sdk_v2.5.0.zip (116K)
+
+脚本修复:
+- 修正 SDK 目录路径从 sdk/ 到 sdk/src/
+- 修正 build:prod 为 build:production
+- 更新 build_sdk.sh 中所有路径引用
+

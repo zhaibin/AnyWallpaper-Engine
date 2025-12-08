@@ -21,7 +21,7 @@ VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | tr -d ' ')
 echo "Plugin Version: $VERSION"
 
 # Read JS SDK version from package.json
-SDK_VERSION=$(grep '"version"' sdk/package.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+SDK_VERSION=$(grep '"version"' sdk/src/package.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
 echo "JS SDK Version: $SDK_VERSION"
 echo ""
 

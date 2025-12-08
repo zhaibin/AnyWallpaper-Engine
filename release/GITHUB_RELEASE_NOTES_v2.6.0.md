@@ -1,90 +1,197 @@
-# AnyWP Engine v2.6.0 - Release Notes
+# AnyWP Engine v2.6.0 - Cross-Platform Release 🎉
 
-**发布日期**: 2025-12-05
-**Flutter Plugin Version**: 2.6.0
-**Web SDK Version**: 2.5.0
-
-> **Note**: Flutter Plugin and Web SDK have independent version numbers.
+**Release Date**: December 8, 2025  
+**Engine Version**: 2.6.0  
+**SDK Version**: 2.5.0
 
 ---
 
+## 🌍 Major Update: macOS Platform Support
 
-## 🌍 macOS 平台支持 (合并 v2.2.0 分支)
+We are excited to announce that **AnyWP Engine** now supports **macOS**! This release merges the macOS support branch (v2.2.0) into the main codebase, making AnyWP Engine a truly cross-platform desktop wallpaper engine.
 
-### 新增功能
-- ✅ **macOS 原生插件**: 基于 Objective-C + AppKit + WKWebView
-- ✅ **统一 API**: Windows 和 macOS 使用相同的 Dart API
-- ✅ **模块化架构**: MonitorManager, WallpaperManager, PowerManager, MessageBridge
-- ✅ **JavaScript SDK**: 平台无关的 SDK，自动适配 WKWebView 消息传递
-- ✅ **多显示器支持**: NSScreen API 实现
-- ✅ **电源管理**: NSWorkspace 通知集成（屏幕休眠、会话锁定、空闲检测）
-- ✅ **状态持久化**: 使用 Application Support 目录存储
-- ✅ **内存优化**: 针对 WKWebView 调整阈值（200MB 默认）
-- ✅ **文件加密/解密**: 支持 XOR 加密的文件读写
+### Highlights
 
-### 文档更新
-- ✅ **跨平台集成指南**: `docs/CROSS_PLATFORM_INTEGRATION.md`
-- ✅ **macOS 开发者指南**: `docs/MACOS_DEVELOPER_GUIDE.md`
-- ✅ **macOS 预编译包集成**: `docs/PRECOMPILED_MACOS_INTEGRATION.md`
-- ✅ **macOS 发布流程**: `docs/MACOS_RELEASE_GUIDE.md`
-- ✅ **多平台架构设计**: `docs/MULTIPLATFORM_ARCHITECTURE.md`
-
-### 构建脚本
-- ✅ **macOS 发布脚本**: `scripts/release_macos.sh`
-- ✅ **macOS SDK 构建**: `scripts/build_sdk.sh`
-- ✅ **macOS 包验证**: `scripts/verify_precompiled_macos.sh`
-
-### 技术亮点
-- **Windows**: WebView2 (Chromium) + Win32 API + C++17
-- **macOS**: WKWebView (WebKit) + AppKit + Objective-C
-- **共享**: Dart API 层 + TypeScript SDK + 统一消息协议
-
-### 已知限制
-- macOS 交互模式（Interactive Mode）暂未实现，需要 Accessibility 权限
-- WKWebView 文件访问受沙箱限制
-- WKWebView 内存使用通常高于 WebView2 (150-200MB vs 100-150MB)
-
-## 📦 集成 Windows 平台改进 (v2.5.1)
-
-### 本地 HTTP 文件服务器
-- 新增 `LocalFileServer` 类，解决 CORS 跨域问题
-- 自动分配端口、添加 CORS 头、支持目录浏览
-
-### 鼠标事件干扰问题修复
-- 修复其他程序钩子干扰导致的拖拽失效
-- 实现多线程轮询 + UI 定时器的双重备份机制
-
-### MouseHookManager 增强
-- 新增轮询备份功能（可配置）
-- 线程安全队列和原子状态管理
+- ✅ **Native macOS Plugin**: Built with Objective-C + AppKit + WKWebView
+- ✅ **Unified Dart API**: Same API for Windows and macOS
+- ✅ **Cross-Platform JavaScript SDK**: Automatically adapts to platform-specific messaging (WebView2 on Windows, WKWebView on macOS)
+- ✅ **Multi-Monitor Support**: Full support for multiple displays on macOS via NSScreen API
+- ✅ **Power Management**: Screen sleep, session lock, and idle detection via NSWorkspace notifications
+- ✅ **State Persistence**: Application-scoped data storage using macOS Application Support directory
+- ✅ **Memory Optimization**: Optimized thresholds for WKWebView (200MB default)
+- ✅ **File Encryption/Decryption**: XOR-based file encryption support on macOS
 
 ---
 
-- **解决方案**：实现多线程轮询 + UI 定时器的双重备份机制
-  - mousedown 时启动后台轮询线程（16ms 间隔，约 60fps）
-  - 轮询线程通过 `GetCursorPos()` 获取鼠标位置并将事件放入队列
-  - UI 线程定时器（`SetTimer`）定期从队列取出事件并发送到 WebView
-  - 仅当检测到钩子超过 50ms 未收到 mousemove 时才启用轮询
-  - mouseup 时停止轮询线程和定时器
+## 📦 Download Packages
 
-## 🔧 技术改进
+### For Flutter Developers
 
-### MouseHookManager 增强
-- **新增 `SetPollingFallbackEnabled(bool)`**：启用/禁用轮询备份功能
-- **新增 `SetPollingInterval(UINT)`**：设置轮询间隔（毫秒）
-- **新增 `SetTimerWindow(HWND)`**：设置 UI 定时器的窗口句柄
-- **新增内部方法**：
-  - `StartPollingThread()` / `StopPollingThread()`：轮询线程生命周期管理
-  - `PollingThreadFunc()`：后台轮询线程主函数
-  - `ProcessPendingPolledEvents()`：在 UI 线程处理队列中的事件
-  - `UITimerProc()`：UI 定时器回调函数
-- **线程安全队列**：使用 `std::mutex` 保护事件队列
-- **原子状态**：使用 `std::atomic` 管理线程状态和时间戳
+**Windows:**
+- **`anywp_engine_v2.6.0_precompiled.zip`** ⭐ Recommended
+  - Precompiled DLL + LIB + Pure C API headers
+  - No WebView2 development environment required
+  - Easiest integration for Flutter apps
 
-## 📝 备注
-- 轮询机制仅在检测到钩子被干扰时激活，正常情况下不会增加 CPU 开销
-- 使用 UI 定时器确保事件在正确的线程发送到 WebView（WebView2 要求）
-- 此修复对所有使用全局鼠标钩子的第三方程序都有效
+**macOS:**
+- **`anywp_engine_macos_v2.6.0_precompiled.zip`** ⭐ Recommended
+  - Precompiled framework + CocoaPods integration
+  - Only requires Xcode Command Line Tools
+  - Simplest integration for Flutter apps
+
+### For Advanced Developers
+
+**Windows:**
+- **`anywp_engine_v2.6.0_source.zip`**
+  - Complete C++ source code
+  - All modules and utility classes
+  - WebView2 SDK included
+  - For developers who need to customize or debug
+
+**macOS:**
+- **`anywp_engine_macos_v2.6.0_source.zip`**
+  - Complete Objective-C source code
+  - All modules and utility classes
+  - For developers who need to customize or debug
+
+### For Wallpaper Developers
+
+- **`anywp_web_sdk_v2.5.0.zip`** (Cross-platform)
+  - JavaScript SDK for HTML wallpapers
+  - Works on both Windows and macOS
+  - Includes examples and documentation
 
 ---
+
+## 🚀 Platform Comparison
+
+| Feature | Windows | macOS |
+|---------|---------|-------|
+| **WebView Engine** | WebView2 (Chromium) | WKWebView (WebKit) |
+| **Native Implementation** | C++17 + Win32 API | Objective-C + AppKit |
+| **Multi-Monitor** | ✅ Full support | ✅ Full support |
+| **Power Management** | ✅ Full support | ✅ Full support |
+| **Interactive Mode** | ✅ Full support | ⚠️ Not yet (requires Accessibility permissions) |
+| **File Access** | ✅ Local files | ⚠️ Sandboxed |
+| **Memory Usage** | ~100-150MB | ~150-200MB |
+| **JavaScript SDK** | ✅ Unified API | ✅ Unified API |
+
+---
+
+## 📚 Documentation
+
+### Integration Guides
+- **Windows**: `docs/PRECOMPILED_DLL_INTEGRATION.md`
+- **macOS**: `docs/PRECOMPILED_MACOS_INTEGRATION.md`
+- **Cross-Platform**: `docs/CROSS_PLATFORM_INTEGRATION.md`
+
+### Developer Guides
+- **Flutter Developers**: `docs/FOR_FLUTTER_DEVELOPERS.md`
+- **Web Developers**: `docs/WEB_DEVELOPER_GUIDE_CN.md` / `docs/WEB_DEVELOPER_GUIDE.md`
+- **API Reference**: `docs/DEVELOPER_API_REFERENCE.md`
+- **macOS Development**: `docs/MACOS_DEVELOPER_GUIDE.md`
+
+### Architecture & Technical
+- **Multi-Platform Architecture**: `docs/MULTIPLATFORM_ARCHITECTURE.md`
+- **Technical Notes**: `docs/TECHNICAL_NOTES.md`
+- **API Bridge**: `docs/API_BRIDGE.md`
+
+---
+
+## 🔧 Technical Details
+
+### macOS Modular Architecture
+- **MonitorManager**: Multi-display management via NSScreen API
+- **WallpaperManager**: Wallpaper window lifecycle and positioning
+- **PowerManager**: Power event monitoring (sleep, lock, idle)
+- **MessageBridge**: JavaScript ↔ Native communication bridge
+
+### Shared Components
+- **Unified Dart API Layer**: Same API for both platforms
+- **Cross-Platform TypeScript SDK**: Automatic platform detection and adaptation
+- **Unified Message Protocol**: Consistent communication between web and native layers
+
+### Build Scripts
+- **`scripts/release_macos.sh`**: Build macOS release packages
+- **`scripts/build_sdk.sh`**: Build cross-platform Web SDK
+- **`scripts/verify_precompiled_macos.sh`**: Verify package integrity
+
+---
+
+## ⚠️ Known Limitations (macOS)
+
+1. **Interactive Mode**: Not yet implemented (requires Accessibility permissions for global input interception)
+2. **File Access**: Subject to macOS sandbox restrictions; prefer `https://` over `file://` URLs
+3. **Memory Usage**: WKWebView typically uses more memory than WebView2 (150-200MB vs 100-150MB)
+
+---
+
+## 📖 Quick Start
+
+### Windows Integration
+
+```yaml
+dependencies:
+  anywp_engine:
+    path: ./packages/anywp_engine
+```
+
+See `docs/PRECOMPILED_DLL_INTEGRATION.md` for detailed instructions.
+
+### macOS Integration
+
+```yaml
+dependencies:
+  anywp_engine:
+    path: ./packages/anywp_engine_macos
+```
+
+See `docs/PRECOMPILED_MACOS_INTEGRATION.md` for detailed instructions.
+
+### Web Wallpaper Development
+
+```html
+<script src="sdk/anywp_sdk.js"></script>
+<script>
+  AnyWP.onClick(element, () => {
+    console.log('Clicked!');
+  });
+</script>
+```
+
+See `docs/WEB_DEVELOPER_GUIDE.md` for API documentation.
+
+---
+
+## 🎯 System Requirements
+
+### Windows
+- Windows 10 version 1809 (build 17763) or later
+- WebView2 Runtime installed
+- Flutter 3.0+
+- Visual Studio 2019+ (for source builds)
+
+### macOS
+- macOS 10.14+
+- Flutter 3.0+
+- Xcode 12+ / Xcode Command Line Tools
+
+---
+
+## 🙏 Feedback & Support
+
+- **Issues**: [GitHub Issues](https://github.com/zhaibin/AnyWallpaper-Engine/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/zhaibin/AnyWallpaper-Engine/discussions)
+- **Documentation**: [Complete Documentation Index](https://github.com/zhaibin/AnyWallpaper-Engine/blob/main/docs/DOCUMENTATION_INDEX.md)
+
+---
+
+## 📝 Full Changelog
+
+See [CHANGELOG_CN.md](https://github.com/zhaibin/AnyWallpaper-Engine/blob/main/CHANGELOG_CN.md) for complete version history.
+
+---
+
+**License**: MIT  
+**Repository**: https://github.com/zhaibin/AnyWallpaper-Engine
 
