@@ -690,18 +690,32 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
         // macOS: Use app bundle resources
         // Get the executable path and find Resources directory
         final executablePath = Platform.resolvedExecutable;
-        final appPath = executablePath.substring(0, executablePath.lastIndexOf('/Contents/MacOS'));
-        projectRoot = '$appPath/Contents/Resources';
         
-        print('[HTTP] macOS: Using app bundle resources');
-        print('[HTTP] Executable: $executablePath');
-        print('[HTTP] App path: $appPath');
-        print('[HTTP] Resources path: $projectRoot');
+        // Safe path extraction with validation
+        final macOSMarker = '/Contents/MacOS';
+        final markerIndex = executablePath.lastIndexOf(macOSMarker);
+        
+        if (markerIndex != -1) {
+          // Running from app bundle
+          final appPath = executablePath.substring(0, markerIndex);
+          projectRoot = '$appPath/Contents/Resources';
+          
+          print('[HTTP] macOS: Using app bundle resources');
+          print('[HTTP] Executable: $executablePath');
+          print('[HTTP] App path: $appPath');
+          print('[HTTP] Resources path: $projectRoot');
+        } else {
+          // Not in standard app bundle (e.g., debug/development mode)
+          print('[HTTP] macOS: Not in standard app bundle, using development path');
+          final execDir = Directory(executablePath).parent.path;
+          projectRoot = execDir;
+          print('[HTTP] Development path: $projectRoot');
+        }
         
         // Verify examples directory exists in bundle
         final examplesDir = Directory('$projectRoot/examples');
         if (!await examplesDir.exists()) {
-          print('[HTTP] ❌ examples not found in bundle, trying development path...');
+          print('[HTTP] ❌ examples not found at $projectRoot, trying development path...');
           
           // Fallback: Try to find project root (development mode)
           projectRoot = Directory.current.path;

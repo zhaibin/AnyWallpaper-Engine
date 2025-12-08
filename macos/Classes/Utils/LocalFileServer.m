@@ -13,10 +13,21 @@
 @interface LocalFileProtocol : NSURLProtocol
 @end
 
+// Thread-safe static variables with synchronization
 static NSString *_rootDirectory = nil;
 static BOOL _isRunning = NO;
+static dispatch_queue_t _syncQueue = nil;
 
 @implementation LocalFileProtocol
+
++ (void)initialize {
+    if (self == [LocalFileProtocol class]) {
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            _syncQueue = dispatch_queue_create("com.anywp.localfileserver.sync", DISPATCH_QUEUE_SERIAL);
+        });
+    }
+}
 
 + (BOOL)canInitWithRequest:(NSURLRequest *)request {
     // Handle requests with "localfile" scheme
@@ -35,23 +46,49 @@ static BOOL _isRunning = NO;
         // localfile:///path/to/file.html -> /path/to/file.html
         NSString *filePath = [url.path stringByRemovingPercentEncoding];
         
-        // If path is relative, prepend root directory
-        if (![filePath isAbsolutePath] && _rootDirectory) {
-            filePath = [_rootDirectory stringByAppendingPathComponent:filePath];
+        // Thread-safe access to _rootDirectory
+        __block NSString *rootDir = nil;
+        dispatch_sync(_syncQueue, ^{
+            rootDir = [_rootDirectory copy];
+        });
+        
+        // Security: Validate and normalize path
+        if (!rootDir) {
+            [AWPLogger error:@"LocalFileServer: Root directory not set"];
+            [self sendError:500 message:@"Server not properly configured"];
+            return;
         }
         
-        [AWPLogger log:[NSString stringWithFormat:@"LocalFileServer: Loading %@", filePath]];
+        // Always prepend root directory for security (treat all paths as relative)
+        // Remove leading slash if present to ensure proper path joining
+        if ([filePath hasPrefix:@"/"]) {
+            filePath = [filePath substringFromIndex:1];
+        }
+        
+        NSString *fullPath = [rootDir stringByAppendingPathComponent:filePath];
+        
+        // Security: Ensure the resolved path is within root directory
+        NSString *canonicalRoot = [rootDir stringByStandardizingPath];
+        NSString *canonicalPath = [fullPath stringByStandardizingPath];
+        
+        if (![canonicalPath hasPrefix:canonicalRoot]) {
+            [AWPLogger error:[NSString stringWithFormat:@"Security: Path traversal attempt blocked: %@", filePath]];
+            [self sendError:403 message:@"Access denied"];
+            return;
+        }
+        
+        [AWPLogger log:[NSString stringWithFormat:@"LocalFileServer: Loading %@", canonicalPath]];
         
         // Check if file exists
         NSFileManager *fileManager = [NSFileManager defaultManager];
-        if (![fileManager fileExistsAtPath:filePath]) {
+        if (![fileManager fileExistsAtPath:canonicalPath]) {
             [self sendError:404 message:@"File not found"];
             return;
         }
         
         // Read file data
         NSError *readError = nil;
-        NSData *data = [NSData dataWithContentsOfFile:filePath options:0 error:&readError];
+        NSData *data = [NSData dataWithContentsOfFile:canonicalPath options:0 error:&readError];
         if (readError || !data) {
             [AWPLogger error:[NSString stringWithFormat:@"Failed to read file: %@", readError.localizedDescription]];
             [self sendError:500 message:@"Failed to read file"];
@@ -59,7 +96,7 @@ static BOOL _isRunning = NO;
         }
         
         // Detect MIME type
-        NSString *mimeType = [self detectMIMEType:filePath];
+        NSString *mimeType = [self detectMIMEType:canonicalPath];
         
         // Create response with CORS headers
         NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc]
@@ -81,7 +118,7 @@ static BOOL _isRunning = NO;
         [self.client URLProtocolDidFinishLoading:self];
         
         [AWPLogger log:[NSString stringWithFormat:@"LocalFileServer: Served %@ (%@, %lu bytes)",
-                       [filePath lastPathComponent], mimeType, (unsigned long)data.length]];
+                       [canonicalPath lastPathComponent], mimeType, (unsigned long)data.length]];
         
     } @catch (NSException *exception) {
         [AWPLogger error:[NSString stringWithFormat:@"Exception in LocalFileProtocol: %@", exception.reason]];
@@ -159,7 +196,13 @@ static BOOL _isRunning = NO;
 
 + (BOOL)startWithRootDirectory:(NSString *)rootDirectory {
     @try {
-        if (_isRunning) {
+        // Thread-safe check if already running
+        __block BOOL alreadyRunning = NO;
+        dispatch_sync(_syncQueue, ^{
+            alreadyRunning = _isRunning;
+        });
+        
+        if (alreadyRunning) {
             [AWPLogger warn:@"LocalFileServer already running"];
             return YES;
         }
@@ -172,13 +215,14 @@ static BOOL _isRunning = NO;
             return NO;
         }
         
-        // Store root directory
-        _rootDirectory = [rootDirectory copy];
+        // Thread-safe update of static variables
+        dispatch_sync(_syncQueue, ^{
+            _rootDirectory = [rootDirectory copy];
+            _isRunning = YES;
+        });
         
         // Register custom URL protocol
         [NSURLProtocol registerClass:[LocalFileProtocol class]];
-        
-        _isRunning = YES;
         
         [AWPLogger log:[NSString stringWithFormat:@"LocalFileServer started - Root: %@", rootDirectory]];
         [AWPLogger log:@"LocalFileServer: Use URL scheme: localfile:///path/to/file.html"];
@@ -193,15 +237,22 @@ static BOOL _isRunning = NO;
 
 + (void)stop {
     @try {
-        if (!_isRunning) {
+        // Thread-safe check and update
+        __block BOOL wasRunning = NO;
+        dispatch_sync(_syncQueue, ^{
+            wasRunning = _isRunning;
+            if (_isRunning) {
+                _rootDirectory = nil;
+                _isRunning = NO;
+            }
+        });
+        
+        if (!wasRunning) {
             return;
         }
         
         // Unregister custom URL protocol
         [NSURLProtocol unregisterClass:[LocalFileProtocol class]];
-        
-        _rootDirectory = nil;
-        _isRunning = NO;
         
         [AWPLogger log:@"LocalFileServer stopped"];
         
@@ -211,11 +262,19 @@ static BOOL _isRunning = NO;
 }
 
 + (BOOL)isRunning {
-    return _isRunning;
+    __block BOOL running = NO;
+    dispatch_sync(_syncQueue, ^{
+        running = _isRunning;
+    });
+    return running;
 }
 
 + (NSString *)rootDirectory {
-    return _rootDirectory;
+    __block NSString *rootDir = nil;
+    dispatch_sync(_syncQueue, ^{
+        rootDir = [_rootDirectory copy];
+    });
+    return rootDir;
 }
 
 + (NSString *)baseURL {
@@ -223,4 +282,3 @@ static BOOL _isRunning = NO;
 }
 
 @end
-
