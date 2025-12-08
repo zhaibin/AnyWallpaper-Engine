@@ -1,432 +1,266 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Custom Scheme Test - anywp://</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnyWP Custom Scheme Test (anywp://)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      padding: 20px;
-    }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 20px;
-      padding: 30px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
 
-    h1 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 10px;
-      font-size: 2.5em;
-    }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
 
-    .subtitle {
-      text-align: center;
-      color: #666;
-      margin-bottom: 30px;
-      font-size: 1.2em;
-    }
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
 
-    .status {
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      font-weight: bold;
-    }
+        .section h2 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            color: #ffd700;
+        }
 
-    .status.pending {
-      background: #fef3c7;
-      color: #92400e;
-    }
+        .info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
 
-    .status.success {
-      background: #d1fae5;
-      color: #065f46;
-    }
+        .media-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
 
-    .status.error {
-      background: #fee2e2;
-      color: #991b1b;
-    }
+        .media-container img,
+        .media-container video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
 
-    .test-section {
-      margin-bottom: 30px;
-      padding: 20px;
-      border: 2px solid #e5e7eb;
-      border-radius: 10px;
-    }
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
 
-    .test-section h2 {
-      color: #667eea;
-      margin-bottom: 15px;
-    }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+        }
 
-    .test-item {
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      margin-bottom: 15px;
-      padding: 15px;
-      background: #f9fafb;
-      border-radius: 8px;
-    }
+        .status {
+            background: rgba(0, 255, 0, 0.1);
+            border-left: 4px solid #00ff00;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 5px;
+        }
 
-    .test-image {
-      width: 150px;
-      height: 150px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 2px solid #ddd;
-    }
+        .error {
+            background: rgba(255, 0, 0, 0.1);
+            border-left: 4px solid #ff0000;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 5px;
+        }
 
-    .test-info {
-      flex: 1;
-    }
-
-    .test-url {
-      font-family: 'Courier New', monospace;
-      background: #1f2937;
-      color: #10b981;
-      padding: 8px 12px;
-      border-radius: 5px;
-      font-size: 0.9em;
-      word-break: break-all;
-      margin: 8px 0;
-    }
-
-    .btn {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1em;
-      font-weight: bold;
-      transition: all 0.3s;
-    }
-
-    .btn-primary {
-      background: #667eea;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #5568d3;
-      transform: translateY(-2px);
-    }
-
-    .btn-success {
-      background: #10b981;
-      color: white;
-    }
-
-    .btn-danger {
-      background: #ef4444;
-      color: white;
-    }
-
-    .result-indicator {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-left: 10px;
-    }
-
-    .result-indicator.pending {
-      background: #fbbf24;
-    }
-
-    .result-indicator.success {
-      background: #10b981;
-    }
-
-    .result-indicator.error {
-      background: #ef4444;
-    }
-
-    .controls {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-top: 20px;
-    }
-
-    .log {
-      background: #1f2937;
-      color: #d1d5db;
-      padding: 15px;
-      border-radius: 8px;
-      font-family: 'Courier New', monospace;
-      font-size: 0.85em;
-      max-height: 300px;
-      overflow-y: auto;
-      margin-top: 20px;
-    }
-
-    .log-entry {
-      margin-bottom: 5px;
-      padding: 3px 0;
-    }
-
-    .log-entry.info {
-      color: #60a5fa;
-    }
-
-    .log-entry.success {
-      color: #34d399;
-    }
-
-    .log-entry.error {
-      color: #f87171;
-    }
-
-    .log-entry.warn {
-      color: #fbbf24;
-    }
-  </style>
+        code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🚀 Custom Scheme Test</h1>
-    <div class="subtitle">Testing anywp:// protocol with encrypted cache files</div>
+    <div class="container">
+        <h1>🔐 AnyWP Custom Scheme Test</h1>
 
-    <div id="status" class="status pending">
-      ⏳ Waiting for test to start...
-    </div>
-
-    <div class="test-section">
-      <h2>📋 Test Instructions</h2>
-      <ol style="line-height: 2; padding-left: 20px;">
-        <li>Prepare encrypted test files in: <code>%AppData%\AnyWP_Cache\images\</code></li>
-        <li>Test files should be encrypted with XOR key 0x5A (first 64 bytes)</li>
-        <li>Click "Run Tests" to test anywp:// protocol</li>
-        <li>Check if images load correctly below</li>
-      </ol>
-    </div>
-
-    <div class="test-section">
-      <h2>🖼️ Image Tests</h2>
-      
-      <div class="test-item">
-        <img id="img1" class="test-image" alt="Test Image 1">
-        <div class="test-info">
-          <h3>Test 1: JPEG Image <span class="result-indicator pending" id="result1"></span></h3>
-          <div class="test-url">anywp://image/test_jpeg_001</div>
-          <button class="btn btn-primary" onclick="loadImage(1, 'test_jpeg_001')">Load Image</button>
+        <div class="section">
+            <h2>📋 Protocol Info</h2>
+            <div class="info">
+                <p><strong>Protocol:</strong> <code>anywp://</code></p>
+                <p><strong>Purpose:</strong> Encrypted image and video loading</p>
+                <p><strong>Algorithm:</strong> XOR (Key: 0x5A, First 64 bytes)</p>
+                <p><strong>Format:</strong> <code>anywp://file?path={absolute_path}</code></p>
+            </div>
         </div>
-      </div>
 
-      <div class="test-item">
-        <img id="img2" class="test-image" alt="Test Image 2">
-        <div class="test-info">
-          <h3>Test 2: PNG Image <span class="result-indicator pending" id="result2"></span></h3>
-          <div class="test-url">anywp://image/test_png_001</div>
-          <button class="btn btn-primary" onclick="loadImage(2, 'test_png_001')">Load Image</button>
+        <div class="section">
+            <h2>🖼️ Example: Encrypted Image</h2>
+            <div class="info">
+                <p>To test this feature:</p>
+                <ol style="line-height: 1.8;">
+                    <li>Use Flutter to encrypt an image file</li>
+                    <li>Note the encrypted file path</li>
+                    <li>Load it using <code>anywp://file?path=/path/to/encrypted.dat</code></li>
+                </ol>
+            </div>
+            
+            <!-- Example encrypted image (will be 404 until you create one) -->
+            <div class="media-container">
+                <img id="testImage" 
+                     src="anywp://file?path=/tmp/test_encrypted_image.dat" 
+                     alt="Encrypted Image (404 until created)"
+                     onerror="handleImageError()">
+            </div>
+            <div id="imageStatus"></div>
         </div>
-      </div>
 
-      <div class="test-item">
-        <img id="img3" class="test-image" alt="Test Image 3">
-        <div class="test-info">
-          <h3>Test 3: WebP Image <span class="result-indicator pending" id="result3"></span></h3>
-          <div class="test-url">anywp://image/test_webp_001</div>
-          <button class="btn btn-primary" onclick="loadImage(3, 'test_webp_001')">Load Image</button>
+        <div class="section">
+            <h2>🎥 Example: Encrypted Video</h2>
+            <div class="info">
+                <p>Videos work the same way as images!</p>
+                <p><code>anywp://file?path=/path/to/encrypted_video.dat</code></p>
+            </div>
+            
+            <!-- Example encrypted video (will be 404 until you create one) -->
+            <div class="media-container">
+                <video id="testVideo" 
+                       controls 
+                       muted 
+                       loop
+                       onerror="handleVideoError()">
+                    <source src="anywp://file?path=/tmp/test_encrypted_video.dat" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            <div id="videoStatus"></div>
         </div>
-      </div>
-    </div>
 
-    <div class="test-section">
-      <h2>🎬 Video Test</h2>
-      <div class="test-item">
-        <video id="video1" class="test-image" controls>
-          <source src="" type="video/mp4">
-          Your browser does not support the video tag.
-        </video>
-        <div class="test-info">
-          <h3>Test 4: MP4 Video <span class="result-indicator pending" id="result4"></span></h3>
-          <div class="test-url">anywp://video/test_mp4_001</div>
-          <button class="btn btn-primary" onclick="loadVideo(1, 'test_mp4_001')">Load Video</button>
+        <div class="section">
+            <h2>🧪 How to Test</h2>
+            <div class="info">
+                <p><strong>Step 1:</strong> Use Flutter to encrypt a test file:</p>
+                <code style="display: block; padding: 10px; margin: 10px 0;">
+                    await AnyWPEngine.encryptFile(<br>
+                    &nbsp;&nbsp;sourcePath: '/path/to/image.jpg',<br>
+                    &nbsp;&nbsp;destPath: '/tmp/test_encrypted_image.dat'<br>
+                    );
+                </code>
+                
+                <p><strong>Step 2:</strong> Reload this page to see the encrypted image</p>
+                
+                <p><strong>Step 3:</strong> Check browser console for logs</p>
+            </div>
         </div>
-      </div>
+
+        <div class="section">
+            <h2>📊 SDK Status</h2>
+            <div id="sdkStatus" class="info">
+                <p>Checking AnyWP SDK...</p>
+            </div>
+        </div>
     </div>
 
-    <div class="controls">
-      <button class="btn btn-success" onclick="runAllTests()">🚀 Run All Tests</button>
-      <button class="btn btn-danger" onclick="clearResults()">🗑️ Clear Results</button>
-    </div>
+    <script>
+        // Initialize
+        window.addEventListener('load', () => {
+            checkSDK();
+            console.log('[AnyWP] Custom scheme test page loaded');
+        });
 
-    <div class="test-section">
-      <h2>📜 Test Log</h2>
-      <div id="log" class="log"></div>
-    </div>
-  </div>
-
-  <script>
-    // 日志函数
-    function log(message, type = 'info') {
-      const logDiv = document.getElementById('log');
-      const timestamp = new Date().toLocaleTimeString();
-      const entry = document.createElement('div');
-      entry.className = `log-entry ${type}`;
-      entry.textContent = `[${timestamp}] ${message}`;
-      logDiv.appendChild(entry);
-      logDiv.scrollTop = logDiv.scrollHeight;
-    }
-
-    // 更新状态
-    function updateStatus(message, type = 'pending') {
-      const statusDiv = document.getElementById('status');
-      statusDiv.className = `status ${type}`;
-      
-      const icons = {
-        pending: '⏳',
-        success: '✅',
-        error: '❌'
-      };
-      
-      statusDiv.textContent = `${icons[type]} ${message}`;
-    }
-
-    // 更新测试结果指示器
-    function updateResult(testId, success) {
-      const indicator = document.getElementById(`result${testId}`);
-      indicator.className = `result-indicator ${success ? 'success' : 'error'}`;
-    }
-
-    // 加载图片
-    function loadImage(testId, fileId) {
-      const img = document.getElementById(`img${testId}`);
-      const url = `anywp://image/${fileId}`;
-      
-      log(`Loading image: ${url}`, 'info');
-      
-      img.onload = function() {
-        log(`✓ Image loaded successfully: ${url}`, 'success');
-        updateResult(testId, true);
-      };
-      
-      img.onerror = function(error) {
-        log(`✗ Failed to load image: ${url}`, 'error');
-        log(`Error: ${error.toString()}`, 'error');
-        updateResult(testId, false);
-      };
-      
-      img.src = url;
-    }
-
-    // 加载视频
-    function loadVideo(testId, fileId) {
-      const video = document.getElementById('video1');
-      const source = video.querySelector('source');
-      const url = `anywp://video/${fileId}`;
-      
-      log(`Loading video: ${url}`, 'info');
-      
-      video.onloadeddata = function() {
-        log(`✓ Video loaded successfully: ${url}`, 'success');
-        updateResult(4, true);
-      };
-      
-      video.onerror = function(error) {
-        log(`✗ Failed to load video: ${url}`, 'error');
-        log(`Error: ${error.toString()}`, 'error');
-        updateResult(4, false);
-      };
-      
-      source.src = url;
-      video.load();
-    }
-
-    // 运行所有测试
-    function runAllTests() {
-      log('========================================', 'info');
-      log('Starting all tests...', 'info');
-      log('========================================', 'info');
-      
-      updateStatus('Running tests...', 'pending');
-      
-      // 加载所有图片（延迟执行以便观察）
-      setTimeout(() => loadImage(1, 'test_jpeg_001'), 500);
-      setTimeout(() => loadImage(2, 'test_png_001'), 1000);
-      setTimeout(() => loadImage(3, 'test_webp_001'), 1500);
-      setTimeout(() => loadVideo(1, 'test_mp4_001'), 2000);
-      
-      // 2.5秒后检查结果
-      setTimeout(() => {
-        const results = [
-          document.getElementById('result1').className.includes('success'),
-          document.getElementById('result2').className.includes('success'),
-          document.getElementById('result3').className.includes('success'),
-          document.getElementById('result4').className.includes('success')
-        ];
-        
-        const successCount = results.filter(r => r).length;
-        const totalCount = results.length;
-        
-        if (successCount === totalCount) {
-          updateStatus(`All tests passed! (${successCount}/${totalCount})`, 'success');
-          log('========================================', 'success');
-          log('✓ ALL TESTS PASSED!', 'success');
-          log('========================================', 'success');
-        } else {
-          updateStatus(`Some tests failed (${successCount}/${totalCount})`, 'error');
-          log('========================================', 'error');
-          log(`✗ ${totalCount - successCount} test(s) failed`, 'error');
-          log('========================================', 'error');
+        // Check SDK availability
+        function checkSDK() {
+            const statusDiv = document.getElementById('sdkStatus');
+            
+            if (window.AnyWP) {
+                statusDiv.innerHTML = `
+                    <p>✅ <strong>AnyWP SDK: Available</strong></p>
+                    <p>Version: ${window.AnyWP.version || 'Unknown'}</p>
+                    <p>Platform: ${window.AnyWP.platform || 'Unknown'}</p>
+                `;
+                statusDiv.className = 'status';
+            } else {
+                statusDiv.innerHTML = `
+                    <p>⚠️ <strong>AnyWP SDK: Not Available</strong></p>
+                    <p>The test page will still work, but SDK features are unavailable.</p>
+                `;
+                statusDiv.className = 'error';
+            }
         }
-      }, 3000);
-    }
 
-    // 清除结果
-    function clearResults() {
-      // 重置所有图片
-      for (let i = 1; i <= 3; i++) {
-        document.getElementById(`img${i}`).src = '';
-        document.getElementById(`result${i}`).className = 'result-indicator pending';
-      }
-      
-      // 重置视频
-      const video = document.getElementById('video1');
-      video.querySelector('source').src = '';
-      video.load();
-      document.getElementById('result4').className = 'result-indicator pending';
-      
-      // 清空日志
-      document.getElementById('log').innerHTML = '';
-      
-      // 重置状态
-      updateStatus('Waiting for test to start...', 'pending');
-      
-      log('Results cleared', 'info');
-    }
+        // Image error handler
+        function handleImageError() {
+            const statusDiv = document.getElementById('imageStatus');
+            statusDiv.innerHTML = `
+                <p>⚠️ Image load failed (expected until you create an encrypted file)</p>
+                <p>Create an encrypted image at: <code>/tmp/test_encrypted_image.dat</code></p>
+            `;
+            statusDiv.className = 'error';
+            console.log('[AnyWP] Image load failed - file not found or decryption failed');
+        }
 
-    // 页面加载完成
-    window.onload = function() {
-      log('Custom Scheme Test page loaded', 'info');
-      log('Waiting for user to start tests...', 'info');
-      
-      // 检查 AnyWP SDK
-      if (typeof window.AnyWP !== 'undefined') {
-        log('✓ AnyWP SDK detected', 'success');
-      } else {
-        log('⚠ AnyWP SDK not detected (this is OK for protocol testing)', 'warn');
-      }
-    };
-  </script>
+        // Video error handler
+        function handleVideoError() {
+            const statusDiv = document.getElementById('videoStatus');
+            statusDiv.innerHTML = `
+                <p>⚠️ Video load failed (expected until you create an encrypted file)</p>
+                <p>Create an encrypted video at: <code>/tmp/test_encrypted_video.dat</code></p>
+            `;
+            statusDiv.className = 'error';
+            console.log('[AnyWP] Video load failed - file not found or decryption failed');
+        }
+
+        // Image load success
+        document.getElementById('testImage').addEventListener('load', () => {
+            const statusDiv = document.getElementById('imageStatus');
+            statusDiv.innerHTML = `<p>✅ Encrypted image loaded successfully!</p>`;
+            statusDiv.className = 'status';
+            console.log('[AnyWP] ✅ Encrypted image loaded and decrypted successfully');
+        });
+
+        // Video load success
+        document.getElementById('testVideo').addEventListener('loadeddata', () => {
+            const statusDiv = document.getElementById('videoStatus');
+            statusDiv.innerHTML = `<p>✅ Encrypted video loaded successfully!</p>`;
+            statusDiv.className = 'status';
+            console.log('[AnyWP] ✅ Encrypted video loaded and decrypted successfully');
+        });
+    </script>
 </body>
 </html>
-

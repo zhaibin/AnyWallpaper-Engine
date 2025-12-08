@@ -18,8 +18,7 @@ export declare function setupWebMessageListener(): void;
 /**
  * Send message to Flutter
  *
- * Sends a structured message to the Flutter application via platform bridge
- * (Windows: chrome.webview.postMessage, macOS: webkit.messageHandlers)
+ * Sends a structured message to the Flutter application via chrome.webview.postMessage
  *
  * @param type - Message type (e.g., 'carouselStateChanged', 'wallpaperReady', 'error')
  * @param data - Message data payload
