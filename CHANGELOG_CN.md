@@ -2,6 +2,68 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [2.6.3] - 2025-12-08 (多显示器修复版本 🖥️)
+
+### 🎯 核心修复
+
+#### 修复 macOS 多显示器壁纸渲染问题
+
+**根本原因**: WebView 初始化时使用屏幕坐标而非窗口相对坐标
+
+- **问题表现**: 副屏壁纸显示黑屏，主屏正常
+- **根本原因**: 
+  - 主屏: WebView frame = (0, 0, 2560, 1440) ✅ 正确
+  - 副屏: WebView frame = (2560, 0, 2560, 1440) ❌ 超出窗口范围
+- **修复方案**: 使用 `NSMakeRect(0, 0, width, height)` 替代 `screenFrame`
+- **影响**: 副屏 WebView 完全在窗口可见区域之外导致黑屏
+
+#### 修复 HiDPI 多显示器窗口定位问题
+
+- **问题**: 副屏窗口位置错误 (5120, 0) 而非 (2560, 0)
+- **原因**: HiDPI 坐标系统问题，坐标被重复缩放
+- **修复**: 窗口创建后显式调用 `setFrameOrigin:` 设置正确位置
+
+#### 修复 URL 端口同步问题
+
+- **问题**: 副屏 URL 缺少端口号 `http://127.0.0.1/...` 
+- **原因**: HTTP 服务器启动前 URL 控制器已创建
+- **修复**: 服务器启动后自动更新所有监视器 URL 控制器
+
+### 🛠️ 技术改进
+
+#### WallpaperManager.m
+- WebView frame 使用窗口相对坐标 (0, 0, width, height)
+- 添加详细的日志记录用于调试
+- 窗口层级优化: `kCGDesktopIconWindowLevel - 1`
+- Interactive Mode 层级切换逻辑优化
+
+#### main.dart (示例应用)
+- HTTP 服务器启动后自动同步所有监视器 URL
+- 改进的 URL 控制器管理
+
+### 🧪 测试验证
+
+- ✅ 主屏壁纸正常显示，图标可见
+- ✅ 副屏壁纸正常显示，图标可见
+- ✅ WebView 内容正常渲染
+- ✅ Interactive Mode 切换正常
+- ✅ 窗口定位正确 (HiDPI 兼容)
+
+### 📊 调试历程
+
+经过 6 轮层级调试后发现真正原因是 WebView frame：
+
+| 尝试 | 层级 | 结果 | 原因 |
+|------|------|------|------|
+| 1 | iconLevel - 1 | 黑屏 | WebView frame 错误 |
+| 2 | desktopLevel | 黑屏 | WebView frame 错误 |
+| 3 | iconLevel - 10 | 黑屏 | WebView frame 错误 |
+| 4 | normalLevel - 1 | 遮挡图标 | WebView frame 错误 |
+| 5 | iconLevel + 1 | 显示但遮挡图标 | frame 正确但层级太高 |
+| 6 | iconLevel - 1 | ✅ 完美 | frame 正确 + 层级正确 |
+
+---
+
 ## [2.6.2] - 2025-12-08 (安全补丁版本 🔒)
 
 ### 🔒 安全修复 (HIGH)

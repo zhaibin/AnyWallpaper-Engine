@@ -1,0 +1,28 @@
+release: v2.6.3 多显示器修复版本
+
+🎯 核心修复:
+
+1. 修复 macOS 多显示器壁纸渲染问题
+   - 根本原因: WebView 使用屏幕坐标而非窗口相对坐标
+   - 副屏 WebView frame = (2560, 0, ...) 超出窗口范围
+   - 修复: 使用 NSMakeRect(0, 0, width, height)
+
+2. 修复 HiDPI 多显示器窗口定位问题
+   - 窗口位置被错误缩放 (5120 而非 2560)
+   - 修复: 显式调用 setFrameOrigin:
+
+3. 修复 URL 端口同步问题
+   - 副屏 URL 缺少端口号
+   - 修复: HTTP 服务器启动后自动同步 URL
+
+验证结果:
+✅ 主屏/副屏壁纸正常显示
+✅ 桌面图标可见
+✅ Interactive Mode 正常
+✅ HiDPI 兼容
+
+发布包:
+- anywp_engine_macos_v2.6.3_precompiled.zip
+- anywp_engine_macos_v2.6.3_source.zip
+- anywp_web_sdk_v2.5.0.zip
+

@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'anywp_engine'
-  s.version          = '2.6.2'
+  s.version          = '2.6.3'
   s.summary          = 'AnyWP Engine - Desktop Wallpaper Plugin for Flutter (macOS)'
   s.description      = <<-DESC
 AnyWP Engine plugin for macOS, providing desktop wallpaper functionality using WKWebView.
