@@ -359,12 +359,12 @@ class AnyWPEngine {
       // Step 1: Stop existing wallpapers
       print('[AnyWPEngine] 🛑 Stopping existing wallpapers...');
       await stopWallpaper();
-      await Future.delayed(Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 500));
       
       // Step 2: Recreate wallpapers
       print('[AnyWPEngine] 🔄 Recreating wallpapers...');
       int successCount = 0;
-      List<int> recoveredMonitors = [];
+      final List<int> recoveredMonitors = [];
       
       for (var config in configs) {
         final monitorIndex = config['monitorIndex'] as int;
@@ -394,7 +394,7 @@ class AnyWPEngine {
       // Step 3: Wait for WebView to fully load
       if (recoveredMonitors.isNotEmpty) {
         print('[AnyWPEngine] ⏳ Waiting for WebView to load (2 seconds)...');
-        await Future.delayed(Duration(seconds: 2));
+        await Future.delayed(const Duration(seconds: 2));
         
         // Step 4: Call user's recovery callback if set
         if (_onRecoveryCallback != null) {
