@@ -2,6 +2,26 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [2.6.5] - 2025-12-08 (紧急修复 🔧)
+
+### 🐛 Bug 修复
+
+#### 修复 setGlobalAllowedAccessPath 无限递归崩溃
+
+**问题**: `setGlobalAllowedAccessPath:` 方法中使用 `self.globalAllowedAccessPath = path` 导致无限递归调用 setter，最终栈溢出崩溃（递归 104478 次）。
+
+**修复**: 使用实例变量 `_globalAllowedAccessPath` 直接赋值，避免触发 setter 递归。
+
+```objc
+// 修复前 (无限递归)
+self.globalAllowedAccessPath = path;
+
+// 修复后 (直接赋值)
+_globalAllowedAccessPath = path;
+```
+
+---
+
 ## [2.6.4] - 2025-12-08 (macOS 文件访问控制增强 📂)
 
 ### 🎯 核心功能

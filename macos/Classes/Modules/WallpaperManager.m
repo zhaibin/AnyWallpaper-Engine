@@ -466,10 +466,12 @@
             [AWPLogger warn:[NSString stringWithFormat:@"Allowed access path is not a directory: %@", path]];
         }
         
-        self.globalAllowedAccessPath = path;
+        // Use instance variable directly to avoid infinite recursion
+        _globalAllowedAccessPath = path;
         [AWPLogger log:[NSString stringWithFormat:@"Global allowed access path set to: %@", path]];
     } else {
-        self.globalAllowedAccessPath = nil;
+        // Use instance variable directly to avoid infinite recursion
+        _globalAllowedAccessPath = nil;
         [AWPLogger log:@"Global allowed access path cleared (will use default Library path)"];
     }
 }

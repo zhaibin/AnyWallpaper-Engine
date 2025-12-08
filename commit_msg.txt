@@ -1,19 +1,4 @@
-feat(macos): 扩展文件访问控制 API (v2.6.4)
+fix(macos): 修复 setGlobalAllowedAccessPath 无限递归崩溃 (v2.6.5)
 
-新增功能:
-- 默认将文件访问授权范围扩展到 Library 目录
-- 新增 setAllowedAccessPath() 设置全局授权路径
-- 新增 getDefaultLibraryPath() 获取 Library 路径
-- 新增 getApplicationSupportPath() 获取 Application Support 路径
-- initializeWallpaperOnMonitor() 新增 allowedAccessPath 参数
-
-技术改进:
-- WallpaperManager 新增 determineAllowedAccessURL 智能授权逻辑
-- AnyWPEnginePlugin 新增文件访问控制方法处理
-- Dart API 完整实现并添加文档注释
-
-文档更新:
-- MACOS_FILE_ACCESS_FIX.md 添加新 API 方案
-- DEVELOPER_API_REFERENCE.md 添加 File Access Control 部分
-- FOR_FLUTTER_DEVELOPERS.md 更新 API 列表
-- CHANGELOG_CN.md 添加 v2.6.4 更新日志
+问题: setter 方法中使用 self.property = value 导致无限递归
+修复: 改用实例变量 _globalAllowedAccessPath 直接赋值
