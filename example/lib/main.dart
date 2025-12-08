@@ -781,6 +781,19 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       print('[HTTP] Test URLs:');
       print('[HTTP]   - $_httpServerBaseUrl/examples/test_carousel_control.html');
       print('[HTTP]   - $_httpServerBaseUrl/examples/test_simple.html');
+      
+      // Update all existing monitor URL controllers with correct server URL
+      if (_monitorUrlControllers.isNotEmpty) {
+        final carouselUrl = '$_httpServerBaseUrl/examples/test_carousel_control.html';
+        for (final entry in _monitorUrlControllers.entries) {
+          // Only update if the controller still has the fallback URL (without port)
+          final currentUrl = entry.value.text.trim();
+          if (currentUrl == 'http://127.0.0.1/examples/test_carousel_control.html') {
+            entry.value.text = carouselUrl;
+            print('[HTTP] Updated monitor ${entry.key} URL to: $carouselUrl');
+          }
+        }
+      }
     } catch (e, stackTrace) {
       print('[HTTP] ❌ Failed to start server: $e');
       print('[HTTP] Stack trace: $stackTrace');
