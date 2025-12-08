@@ -6,6 +6,7 @@
 #import "Utils/Logger.h"
 #import "Utils/StatePersistence.h"
 #import "Utils/AWPCustomSchemeHandler.h"
+#import "Utils/LocalFileServer.h"
 
 @interface AnyWPEnginePlugin ()
 
@@ -166,6 +167,17 @@
         // ========== Interactive Mode ==========
         else if ([method isEqualToString:@"setInteractiveMode"]) {
             [self handleSetInteractiveMode:call result:result];
+        }
+        
+        // ========== Local File Server ==========
+        else if ([method isEqualToString:@"startFileServer"]) {
+            [self handleStartFileServer:call result:result];
+        }
+        else if ([method isEqualToString:@"stopFileServer"]) {
+            [self handleStopFileServer:call result:result];
+        }
+        else if ([method isEqualToString:@"isFileServerRunning"]) {
+            [self handleIsFileServerRunning:call result:result];
         }
         
         // ========== Unknown Method ==========
@@ -486,6 +498,58 @@
     }
     
     result(@(success));
+}
+
+#pragma mark - Local File Server
+
+- (void)handleStartFileServer:(FlutterMethodCall*)call result:(FlutterResult)result {
+    NSDictionary *args = call.arguments;
+    NSString *rootPath = args[@"rootPath"];
+    
+    if (!rootPath || rootPath.length == 0) {
+        result([FlutterError errorWithCode:@"INVALID_ARGUMENT"
+                                   message:@"Root path is required"
+                                   details:nil]);
+        return;
+    }
+    
+    BOOL success = [LocalFileServer startWithRootDirectory:rootPath];
+    
+    if (success) {
+        NSString *baseURL = [LocalFileServer baseURL];
+        result(@{
+            @"success": @YES,
+            @"baseURL": baseURL,
+            @"rootPath": rootPath
+        });
+    } else {
+        result(@{
+            @"success": @NO,
+            @"error": @"Failed to start file server"
+        });
+    }
+}
+
+- (void)handleStopFileServer:(FlutterMethodCall*)call result:(FlutterResult)result {
+    [LocalFileServer stop];
+    result(@YES);
+}
+
+- (void)handleIsFileServerRunning:(FlutterMethodCall*)call result:(FlutterResult)result {
+    BOOL isRunning = [LocalFileServer isRunning];
+    NSString *rootDirectory = [LocalFileServer rootDirectory];
+    
+    if (isRunning && rootDirectory) {
+        result(@{
+            @"running": @YES,
+            @"baseURL": [LocalFileServer baseURL],
+            @"rootPath": rootDirectory
+        });
+    } else {
+        result(@{
+            @"running": @NO
+        });
+    }
 }
 
 - (void)dealloc {

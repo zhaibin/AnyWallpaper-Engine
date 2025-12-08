@@ -1616,4 +1616,116 @@ class AnyWPEngine {
     }
   }
 
+  // ========== Local File Server (macOS) ==========
+
+  /// Start Local File Server (macOS)
+  /// 
+  /// Starts a local file server to serve files from a directory.
+  /// This solves CORS issues when loading local resources.
+  /// 
+  /// Parameters:
+  /// - [rootPath]: Root directory to serve files from
+  /// 
+  /// Returns: Map with server info or null if failed
+  ///   - success: true if started successfully
+  ///   - baseURL: Base URL for accessing files (localfile://)
+  ///   - rootPath: Root directory path
+  ///   - error: Error message if failed
+  /// 
+  /// Platform support:
+  /// - ❌ Windows (not needed, use LocalFileServer class in C++)
+  /// - ✅ macOS (NSURLProtocol-based)
+  /// 
+  /// Example:
+  /// ```dart
+  /// final result = await AnyWPEngine.startFileServer(
+  ///   rootPath: '/path/to/wallpaper/files',
+  /// );
+  /// 
+  /// if (result?['success'] == true) {
+  ///   String baseURL = result!['baseURL'];
+  ///   // Now you can load files like: localfile:///index.html
+  ///   await AnyWPEngine.initializeWallpaper(url: '${baseURL}/index.html');
+  /// }
+  /// ```
+  /// 
+  /// Notes:
+  /// - Uses custom URL scheme: localfile://
+  /// - Automatically adds CORS headers
+  /// - Detects MIME types automatically
+  /// - No need to specify port (scheme-based)
+  static Future<Map<String, dynamic>?> startFileServer({
+    required String rootPath,
+  }) async {
+    try {
+      final result = await _channel.invokeMethod('startFileServer', {
+        'rootPath': rootPath,
+      });
+      if (result is Map) {
+        return Map<String, dynamic>.from(result);
+      }
+      return null;
+    } catch (e) {
+      print('[AnyWPEngine] Failed to start file server: $e');
+      return null;
+    }
+  }
+
+  /// Stop Local File Server (macOS)
+  /// 
+  /// Stops the running local file server.
+  /// 
+  /// Returns: true if stopped successfully
+  /// 
+  /// Platform support:
+  /// - ❌ Windows (not needed)
+  /// - ✅ macOS
+  /// 
+  /// Example:
+  /// ```dart
+  /// await AnyWPEngine.stopFileServer();
+  /// ```
+  static Future<bool> stopFileServer() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('stopFileServer');
+      return result ?? false;
+    } catch (e) {
+      print('[AnyWPEngine] Failed to stop file server: $e');
+      return false;
+    }
+  }
+
+  /// Check if File Server is Running (macOS)
+  /// 
+  /// Checks if the local file server is currently running.
+  /// 
+  /// Returns: Map with server status or null if not running
+  ///   - running: true if server is running
+  ///   - baseURL: Base URL if running
+  ///   - rootPath: Root directory if running
+  /// 
+  /// Platform support:
+  /// - ❌ Windows (not needed)
+  /// - ✅ macOS
+  /// 
+  /// Example:
+  /// ```dart
+  /// final status = await AnyWPEngine.isFileServerRunning();
+  /// if (status?['running'] == true) {
+  ///   print('Server is running: ${status!['baseURL']}');
+  /// }
+  /// ```
+  static Future<Map<String, dynamic>?> isFileServerRunning() async {
+    try {
+      final result = await _channel.invokeMethod('isFileServerRunning');
+      if (result is Map) {
+        return Map<String, dynamic>.from(result);
+      }
+      return null;
+    } catch (e) {
+      print('[AnyWPEngine] Failed to check file server status: $e');
+      return null;
+    }
+  }
+
 }
