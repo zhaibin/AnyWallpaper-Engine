@@ -58,9 +58,16 @@
     @try {
         // ========== Version Info ==========
         if ([method isEqualToString:@"getVersion"]) {
-            result(@"2.6.2");
+            // Read version from Info.plist dynamically
+            NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+            NSString *version = [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+            if (!version) {
+                version = @"Unknown";
+            }
+            result(version);
         }
         else if ([method isEqualToString:@"getSDKVersion"]) {
+            // SDK version is independent from plugin version
             result(@"2.5.0");
         }
         

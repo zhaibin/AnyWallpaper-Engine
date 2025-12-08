@@ -1,201 +1,239 @@
-# Version Management Guide
+# 版本管理策略
 
-## 版本号统一管理
+本文档说明 AnyWP Engine 的版本号管理策略。
 
-### 📍 版本号定义位置
+---
 
-AnyWP Engine 的版本号在以下 **4 个关键位置** 定义，发布前必须保持一致：
+## 📋 版本号来源
 
-#### 1️⃣ **Dart/Flutter 层** (pubspec.yaml)
+### 单一真实来源 (Single Source of Truth)
+
+**`pubspec.yaml`** 是版本号的唯一真实来源。所有其他位置的版本号都从这里同步。
+
 ```yaml
-# File: pubspec.yaml
-version: 2.1.10
+# pubspec.yaml
+version: 2.6.2
 ```
-- **作用**: Flutter 插件版本
-- **影响**: pub.dev 发布、依赖解析
-- **必须修改**: ✅ 每次发布
-
-#### 2️⃣ **C++ 引擎层** (anywp_engine_plugin.cpp)
-```cpp
-// File: windows/anywp_engine_plugin.cpp
-namespace {
-constexpr char kPluginVersion[] = "2.1.10";
-constexpr char kSDKVersion[] = "2.1.10";  // Built-in Web SDK version
-}
-```
-- **作用**: C++ 引擎版本 + 内置 SDK 版本
-- **影响**: `AnyWPEngine.getPluginVersion()` / `AnyWPEngine.getSDKVersion()`
-- **必须修改**: ✅ 每次发布
-
-#### 3️⃣ **TypeScript SDK 源码** (sdk/src/core/AnyWP.ts)
-```typescript
-// File: sdk/src/core/AnyWP.ts
-export const AnyWP: AnyWPSDK = {
-  version: '2.1.10',
-  // ...
-};
-```
-- **作用**: TypeScript SDK 源码版本
-- **影响**: 编译后的 `anywp_sdk.js` 文件
-- **必须修改**: ✅ 每次发布（编译前）
-
-#### 4️⃣ **TypeScript 项目配置** (sdk/src/package.json)
-```json
-// File: sdk/src/package.json
-{
-  "name": "anywp-sdk",
-  "version": "2.1.10",
-  // ...
-}
-```
-- **作用**: npm 项目版本
-- **影响**: SDK 开发、测试、文档
-- **必须修改**: ✅ 每次发布
-
-#### 5️⃣ **Cursor Rules** (.cursorrules)
-```
-**Version**: 2.1.10 | **Updated**: 2025-11-16
-```
-- **作用**: AI 编码助手识别当前版本
-- **影响**: 自动化提交消息、版本检查
-- **必须修改**: ✅ 每次发布
 
 ---
 
-## 🔧 版本号修改工作流
+## 🔄 版本号同步机制
 
-### **手动修改步骤**
+### 1. podspec 版本同步
 
-1. **更新 Dart 插件版本**
-   ```bash
-   # 编辑 pubspec.yaml
-   version: 2.1.11
-   ```
+**脚本**: `scripts/sync_version.sh`
 
-2. **更新 C++ 引擎版本**
-   ```cpp
-   // 编辑 windows/anywp_engine_plugin.cpp
-   constexpr char kPluginVersion[] = "2.1.11";
-   constexpr char kSDKVersion[] = "2.1.11";
-   ```
+从 `pubspec.yaml` 读取版本号并自动更新到 `macos/anywp_engine.podspec`。
 
-3. **更新 TypeScript SDK 源码**
-   ```typescript
-   // 编辑 sdk/src/core/AnyWP.ts
-   version: '2.1.11',
-   ```
+**使用方法**:
+```bash
+bash scripts/sync_version.sh
+```
 
-4. **更新 SDK 项目配置**
-   ```json
-   // 编辑 sdk/src/package.json
-   "version": "2.1.11",
-   ```
+**输出示例**:
+```
+Syncing version: 2.6.2
+  Source: pubspec.yaml
+  Target: macos/anywp_engine.podspec
+✅ Version synced successfully: 2.6.2
+```
 
-5. **更新 Cursor Rules**
-   ```
-   # 编辑 .cursorrules (底部)
-   **Version**: 2.1.11 | **Updated**: YYYY-MM-DD
-   ```
+### 2. 原生代码版本读取
 
-6. **重新编译 SDK**
-   ```bash
-   cd sdk/src
-   npm run build
-   ```
+**文件**: `macos/Classes/AnyWPEnginePlugin.m`
 
-7. **验证版本一致性**
-   ```bash
-   .\scripts\check_version_consistency.ps1
-   ```
+从 Bundle 的 Info.plist 动态读取版本号，而非硬编码。
+
+```objc
+- (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
+    if ([method isEqualToString:@"getVersion"]) {
+        // Read version from Info.plist dynamically
+        NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+        NSString *version = [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+        if (!version) {
+            version = @"Unknown";
+        }
+        result(version);
+    }
+}
+```
+
+### 3. 发布脚本集成
+
+**文件**: `scripts/release_macos.sh`
+
+发布脚本会自动调用 `sync_version.sh` 确保版本一致：
+
+```bash
+print_step "Syncing version numbers..."
+bash "$PROJECT_ROOT/scripts/sync_version.sh"
+```
 
 ---
 
-## ✅ 版本验证 API
+## 📝 更新版本号流程
 
-### **Dart API**
+### Step 1: 更新 pubspec.yaml
+
+```yaml
+# pubspec.yaml
+name: anywp_engine
+version: 2.6.3  # 更新这里
+```
+
+### Step 2: 同步版本号
+
+```bash
+# 方式 1: 手动同步
+bash scripts/sync_version.sh
+
+# 方式 2: 发布脚本会自动同步
+bash scripts/release_macos.sh
+```
+
+### Step 3: 验证同步结果
+
+```bash
+# 检查 podspec
+grep "s.version" macos/anywp_engine.podspec
+# 输出: s.version = '2.6.3'
+
+# 检查 pubspec
+grep "^version:" pubspec.yaml
+# 输出: version: 2.6.3
+```
+
+---
+
+## 🎯 版本号位置总览
+
+| 位置 | 类型 | 更新方式 |
+|------|------|----------|
+| `pubspec.yaml` | 主版本号 | ✍️ 手动更新 |
+| `macos/anywp_engine.podspec` | CocoaPods | 🔄 自动同步 |
+| `Info.plist` | Bundle | 🔄 Flutter 自动生成 |
+| `getVersion()` | 运行时 | 📖 动态读取 Info.plist |
+| `.cursorrules` | 文档记录 | ✍️ 手动更新（可选）|
+
+---
+
+## 🔍 版本号验证
+
+### 验证所有版本号一致
+
+```bash
+# 1. 检查 pubspec
+PUBSPEC_VERSION=$(grep "^version:" pubspec.yaml | sed 's/version: //' | tr -d ' ')
+echo "pubspec.yaml: $PUBSPEC_VERSION"
+
+# 2. 检查 podspec
+PODSPEC_VERSION=$(grep "s.version" macos/anywp_engine.podspec | sed "s/.*'\([^']*\)'.*/\1/")
+echo "podspec: $PODSPEC_VERSION"
+
+# 3. 检查是否一致
+if [ "$PUBSPEC_VERSION" = "$PODSPEC_VERSION" ]; then
+    echo "✅ Versions are consistent"
+else
+    echo "❌ Version mismatch!"
+fi
+```
+
+### 运行时验证
 
 ```dart
-// 获取引擎版本
-final engineVersion = await AnyWPEngine.getPluginVersion();
-print('Engine Version: $engineVersion');  // Output: 2.1.10
-
-// 获取内置 SDK 版本
-final sdkVersion = await AnyWPEngine.getSDKVersion();
-print('SDK Version: $sdkVersion');  // Output: 2.1.10
-
-// 验证版本一致性
-assert(engineVersion == sdkVersion, 'Version mismatch!');
+// 在 Flutter 应用中
+final version = await AnyWPEngine.getVersion();
+print('Runtime version: $version');
+// 应该输出: Runtime version: 2.6.2
 ```
 
-### **JavaScript API**
+---
 
-```javascript
-// 在 Web 壁纸中检查 SDK 版本
-console.log('SDK Version:', window.AnyWP.version);  // Output: 2.1.10
+## ⚠️ 注意事项
 
-// 运行时检查版本
-if (window.AnyWP.version !== '2.1.10') {
-  console.warn('SDK version mismatch!');
+### 1. SDK 版本独立
+
+JavaScript SDK 有独立的版本号，在 `sdk/src/package.json` 中管理：
+
+```json
+{
+  "version": "2.5.0"
 }
 ```
 
----
+通过 `getSDKVersion()` 获取：
 
-## 🚨 常见问题
+```dart
+final sdkVersion = await AnyWPEngine.getSDKVersion();
+print('SDK version: $sdkVersion');
+// 输出: SDK version: 2.5.0
+```
 
-### **Q1: 为什么有两个版本号 (kPluginVersion 和 kSDKVersion)?**
+### 2. 不要硬编码版本号
 
-**A**: 为了支持独立的 SDK 更新：
-- **`kPluginVersion`**: C++ 引擎核心版本
-- **`kSDKVersion`**: 内置的 JavaScript SDK 版本
-- **当前策略**: 两者保持一致（同步更新）
-- **未来策略**: 可能独立更新（SDK 版本 ≤ 引擎版本）
+❌ **错误示例**:
+```objc
+result(@"2.6.2"); // 硬编码
+```
 
-### **Q2: 忘记更新某个位置的版本号会怎样?**
+✅ **正确示例**:
+```objc
+NSBundle *bundle = [NSBundle bundleForClass:[self class]];
+NSString *version = [bundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+result(version); // 动态读取
+```
 
-**A**: 
-- ❌ `pubspec.yaml` 未更新 → pub.dev 发布失败
-- ❌ `anywp_engine_plugin.cpp` 未更新 → API 返回错误版本号
-- ❌ `AnyWP.ts` 未更新 → 前端显示旧版本
-- ❌ `package.json` 未更新 → npm 测试/文档版本错误
+### 3. 更新 CHANGELOG
 
-### **Q3: 如何自动化版本检查?**
+每次更新版本号后，记得更新 `CHANGELOG_CN.md`：
 
-**A**: 使用内置脚本：
-```bash
-# 检查版本一致性
-.\scripts\check_version_consistency.ps1
+```markdown
+## [2.6.3] - 2025-12-08
 
-# 发布流程会自动检查
-.\scripts\release.bat  # 内部调用版本检查
+### 新增功能
+- ...
 ```
 
 ---
 
-## 📦 发布检查清单
+## 🛠️ 故障排查
 
-- [ ] `pubspec.yaml` → `version: X.Y.Z`
-- [ ] `windows/anywp_engine_plugin.cpp` → `kPluginVersion[]` + `kSDKVersion[]`
-- [ ] `sdk/src/core/AnyWP.ts` → `version: 'X.Y.Z'`
-- [ ] `sdk/src/package.json` → `"version": "X.Y.Z"`
-- [ ] `.cursorrules` (底部) → `**Version**: X.Y.Z`
-- [ ] 运行 `npm run build` (在 `sdk/src/`)
-- [ ] 运行 `.\scripts\check_version_consistency.ps1`
-- [ ] 验证 `AnyWPEngine.getPluginVersion()` 和 `AnyWPEngine.getSDKVersion()` 返回正确版本
+### 问题: 版本号不一致
+
+**症状**: `getVersion()` 返回的版本与 `pubspec.yaml` 不一致
+
+**解决方案**:
+```bash
+# 1. 同步版本号
+bash scripts/sync_version.sh
+
+# 2. 清理并重新构建
+flutter clean
+flutter pub get
+flutter build macos
+```
+
+### 问题: 运行时返回 "Unknown"
+
+**症状**: `getVersion()` 返回 "Unknown"
+
+**原因**: Info.plist 中没有 `CFBundleShortVersionString` 字段
+
+**解决方案**:
+确保 Flutter 正确生成了 Info.plist。检查：
+```bash
+cat example/build/macos/Build/Products/Release/anywp_engine/Info.plist
+```
 
 ---
 
-## 🎯 最佳实践
+## 📚 相关文档
 
-1. **始终先更新版本号，再开始开发**
-2. **使用 `.\scripts\release.bat` 自动化发布** (包含版本检查)
-3. **在 PR 中包含版本号变更**
-4. **每次提交后运行 `check_version_consistency.ps1`**
-5. **在 CHANGELOG_CN.md 中记录版本变更**
+- [发布流程](../scripts/release_macos.sh)
+- [故障排查](./MACOS_TROUBLESHOOTING.md)
+- [开发者指南](./FOR_FLUTTER_DEVELOPERS.md)
 
 ---
 
-**维护者**: AnyWP Engine Team  
-**最后更新**: 2025-11-16  
-**当前版本**: 2.1.10
-
+**最后更新**: 2025-12-08  
+**版本**: v2.6.2

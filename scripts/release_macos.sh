@@ -44,8 +44,13 @@ if [[ "$(uname)" != "Darwin" ]]; then
     exit 1
 fi
 
-print_step "Checking version consistency..."
-# TODO: Create macOS version check script
+print_step "Syncing version numbers..."
+# Sync version from pubspec.yaml to podspec
+if [ -f "$PROJECT_ROOT/scripts/sync_version.sh" ]; then
+    bash "$PROJECT_ROOT/scripts/sync_version.sh"
+else
+    echo "  WARNING: sync_version.sh not found, skipping version sync"
+fi
 
 print_step "Building SDK..."
 if [ -f "$PROJECT_ROOT/scripts/build_sdk.sh" ]; then
