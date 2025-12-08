@@ -1,0 +1,44 @@
+release: AnyWP Engine v2.6.2 - 安全补丁版本 🔒
+
+安全等级: CRITICAL - 立即更新
+
+修复 3 个严重的安全和稳定性问题:
+
+1. Race Condition (HIGH)
+   - 静态变量多线程访问无同步保护
+   - 修复: dispatch_queue_t 串行队列保护
+   - 影响: 防止数据竞争和崩溃
+
+2. Path Traversal Vulnerability (CRITICAL) ⚠️
+   - 路径遍历安全漏洞，可访问系统任意文件
+   - 修复: 强制相对路径 + 规范化验证
+   - 影响: 阻止安全攻击
+
+3. RangeError Crash (HIGH)
+   - substring 操作未验证可能崩溃
+   - 修复: lastIndexOf 返回值检查
+   - 影响: 应用稳定性
+
+代码质量:
+✅ 修复 3 个 Flutter linter 警告
+✅ 90 issues → 87 issues
+
+测试验证:
+✅ macOS Debug/Release 构建成功
+✅ 路径安全验证通过
+✅ 多线程访问安全
+
+预编译包:
+- anywp_engine_macos_v2.6.2_precompiled.zip (1.5MB)
+- anywp_engine_macos_v2.6.2_source.zip (24MB)
+- anywp_web_sdk_v2.5.0.zip (116KB)
+
+验证状态: ✅ PASSED
+
+影响版本:
+- v2.6.0: 不受影响
+- v2.6.1: 受影响（请立即更新）
+- v2.6.2: 所有问题已修复
+
+建议: 所有 v2.6.1 用户立即更新到此版本
+

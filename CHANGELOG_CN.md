@@ -2,6 +2,71 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## [2.6.2] - 2025-12-08 (安全补丁版本 🔒)
+
+### 🔒 安全修复 (HIGH)
+
+#### 修复 3 个严重的安全和稳定性问题
+
+1. **Race Condition - 静态变量多线程访问无同步**
+   - 问题: `_rootDirectory` 和 `_isRunning` 从多线程访问导致数据竞争
+   - 修复: 使用 `dispatch_queue_t` 串行队列保护所有静态变量访问
+   - 实现: `dispatch_once` 初始化 + `dispatch_sync` 包裹所有读写操作
+   - 影响: 防止数据竞争和未定义行为
+
+2. **Path Traversal Security Vulnerability - 路径遍历安全漏洞 (CRITICAL)**
+   - 问题: 以 `/` 开头的路径被视为绝对路径，可绕过 rootDirectory 限制
+   - 修复: 强制所有路径作为相对路径处理，移除前导 `/`
+   - 安全增强:
+     * 规范化路径并验证在 rootDirectory 范围内
+     * 阻止路径遍历攻击 (`../`)
+     * 返回 403 Forbidden 而非 404
+   - 影响: **这是一个严重的安全漏洞**，攻击者可利用此漏洞访问系统任意文件
+
+3. **RangeError Crash - substring 操作未验证子字符串存在**
+   - 问题: `lastIndexOf` 返回 -1 时，`substring(0, -1)` 抛出 RangeError
+   - 修复: 先检查 lastIndexOf 返回值，-1 时使用备用逻辑
+   - 增强: 添加开发模式路径处理，提升调试体验
+   - 影响: 防止非标准路径下应用崩溃
+
+### 📝 代码质量改进
+
+#### Flutter 分析器警告修复
+- 修复 3 个 linter 警告:
+  * 2 个 `prefer_const_constructors` (Line 362, 397)
+  * 1 个 `prefer_final_locals` (Line 367)
+- 分析结果: 90 issues → 87 issues (仅剩 `avoid_print` 调试日志)
+
+### 🛠️ 技术细节
+
+#### LocalFileServer (macOS)
+- 添加 `dispatch_queue_t _syncQueue` 用于同步
+- 所有静态变量访问使用 `dispatch_sync` 保护
+- 路径规范化使用 `stringByStandardizingPath`
+- 安全验证: `hasPrefix` 检查防止路径遍历
+
+#### 示例应用 (main.dart)
+- 安全的路径提取: 先检查 `lastIndexOf` 结果
+- 开发模式支持: 非标准路径下的备用逻辑
+- 增强的错误处理和日志记录
+
+### 📊 安全等级
+
+- **问题严重性**: HIGH (问题 2 为 CRITICAL 安全漏洞)
+- **修复优先级**: URGENT
+- **影响范围**: 所有 macOS 用户
+- **建议**: 立即更新到此版本
+
+### 🧪 测试验证
+
+- ✅ macOS Debug 构建成功
+- ✅ macOS Release 构建成功
+- ✅ 无编译警告
+- ✅ 路径安全验证通过
+- ✅ 多线程访问安全
+
+---
+
 ## [2.6.1] - 2025-12-08 (macOS 生产环境优化版本 🚀)
 
 ### 🎯 核心改进
