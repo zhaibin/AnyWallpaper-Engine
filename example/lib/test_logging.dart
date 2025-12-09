@@ -5,7 +5,7 @@ import 'package:anywp_engine/anywp_engine.dart';
 /// 
 /// Tests the new setLogLevel() and getLogLevel() APIs
 class TestLoggingPage extends StatefulWidget {
-  const TestLoggingPage({Key? key}) : super(key: key);
+  const TestLoggingPage({super.key});
 
   @override
   State<TestLoggingPage> createState() => _TestLoggingPageState();

@@ -11,7 +11,7 @@ import 'package:anywp_engine/anywp_engine.dart';
 /// 4. 模拟 Explorer 重启（手动）
 /// 5. 验证壁纸自动恢复
 class AutoRecoveryTestApp extends StatelessWidget {
-  const AutoRecoveryTestApp({Key? key}) : super(key: key);
+  const AutoRecoveryTestApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +24,7 @@ class AutoRecoveryTestApp extends StatelessWidget {
 }
 
 class TestPage extends StatefulWidget {
-  const TestPage({Key? key}) : super(key: key);
+  const TestPage({super.key});
 
   @override
   State<TestPage> createState() => _TestPageState();

@@ -40,7 +40,7 @@ void main() async {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -50,9 +50,9 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   TabController? _tabController;
   // Multi-monitor support
   List<MonitorInfo> _monitors = [];
-  Map<int, bool> _monitorWallpapers = {};  // Track which monitors have wallpapers
-  Map<int, TextEditingController> _monitorUrlControllers = {};  // Each monitor has its own URL
-  Map<int, bool> _monitorLoading = {};  // Track loading state for each monitor
+  final Map<int, bool> _monitorWallpapers = {};  // Track which monitors have wallpapers
+  final Map<int, TextEditingController> _monitorUrlControllers = {};  // Each monitor has its own URL
+  final Map<int, bool> _monitorLoading = {};  // Track loading state for each monitor
   bool _allMonitorsLoading = false;  // Track "Start All" / "Stop All" loading state
   
   // Local file server for serving images without CORS issues (v2.5.2+)
@@ -62,7 +62,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   bool _isHandlingMonitorChange = false;  // Prevent overlapping monitor change handling
   
   // Monitor configuration memory - preserves settings when monitors are unplugged
-  Map<String, MonitorConfig> _monitorConfigMemory = {};  // Key: deviceName (e.g., \\.\DISPLAY2)
+  final Map<String, MonitorConfig> _monitorConfigMemory = {};  // Key: deviceName (e.g., \\.\DISPLAY2)
   
   // Window position memory - prevents jumping when monitors change
   Offset? _savedWindowPosition;
@@ -73,7 +73,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   bool _autoPowerSaving = true;
   
   // Bidirectional communication
-  List<Map<String, dynamic>> _receivedMessages = [];
+  final List<Map<String, dynamic>> _receivedMessages = [];
   int _messagesSent = 0;
   int _messagesReceived = 0;
   
@@ -85,7 +85,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   ];
   
   // 轮播控制状态
-  List<String> _carouselImages = [
+  final List<String> _carouselImages = [
     'https://picsum.photos/1920/1080?random=1',
     'https://picsum.photos/1920/1080?random=2',
     'https://picsum.photos/1920/1080?random=3',
@@ -97,7 +97,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   String _carouselStatus = 'stopped';
   int _carouselCountdown = 0; // 倒计时（秒）
   Timer? _carouselCountdownTimer;
-  TextEditingController _intervalController = TextEditingController(text: '5');
+  final TextEditingController _intervalController = TextEditingController(text: '5');
 
   @override
   void initState() {
@@ -259,8 +259,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
           debugPrint('[APP] 🖼️ Image displayed');
           final index = messageData['index'];
           final url = messageData['url'];
-          debugPrint('[APP]   Index: ${index}');
-          debugPrint('[APP]   URL: ${url}');
+          debugPrint('[APP]   Index: $index');
+          debugPrint('[APP]   URL: $url');
           
           if (index != null && index is int) {
             setState(() {
@@ -1417,16 +1417,16 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       children: [
         Expanded(
           child: Text(
-            label + ':',
+            '$label:',
             style: TextStyle(fontWeight: FontWeight.w500),
           ),
         ),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Text(
             value,
@@ -1715,7 +1715,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
               ),
             ),
           );
-        }).toList(),
+        }),
         SizedBox(height: 24),
         Card(
           color: Colors.blue[50],
@@ -1929,7 +1929,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
         _carouselInterval = interval;
       });
       debugPrint('[APP] ✅ Carousel interval set to ${seconds}s');
-      _showMessage('轮播间隔已设置为 ${seconds}秒');
+      _showMessage('轮播间隔已设置为 $seconds秒');
     }
   }
 
@@ -2052,7 +2052,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(_carouselStatus).withOpacity(0.1),
+                          color: _getStatusColor(_carouselStatus).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: _getStatusColor(_carouselStatus)),
                         ),
@@ -2454,9 +2454,9 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
