@@ -198,7 +198,7 @@ class _AutoTestAppState extends State<AutoTestApp> {
   void _log(String message) {
     final timestamp = DateTime.now().toString().substring(11, 19);
     final logMessage = '[$timestamp] $message';
-    print(logMessage);
+    debugPrint(logMessage);
     setState(() {
       _testLogs.add(logMessage);
     });

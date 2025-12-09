@@ -18,7 +18,7 @@ class _EncryptionTestPageState extends State<EncryptionTestPage> {
     setState(() {
       _logs.add('[${DateTime.now().toString().substring(11, 19)}] $message');
     });
-    print(message);
+    debugPrint(message);
   }
 
   Future<void> _runEncryptionTest() async {

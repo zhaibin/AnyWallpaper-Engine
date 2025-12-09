@@ -49,7 +49,7 @@ class _TestPageState extends State<TestPage> {
     setState(() {
       _testLogs.add('[$timestamp] $prefix $message');
     });
-    print('[$timestamp] $prefix $message');
+    debugPrint('[$timestamp] $prefix $message');
   }
 
   Future<void> _runTest() async {

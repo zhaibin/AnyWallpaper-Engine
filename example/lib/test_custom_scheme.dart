@@ -45,15 +45,15 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
       await Future.delayed(const Duration(milliseconds: 500));
       // await _engine.show(); // Note: show() method removed, wallpaper is visible by default
 
-      print('[TestCustomScheme] ✓ Wallpaper shown');
-      print('[TestCustomScheme] Test page URL: file:///$htmlPath');
-      print('[TestCustomScheme] Expected to handle anywp:// protocol requests');
+      debugPrint('[TestCustomScheme] ✓ Wallpaper shown');
+      debugPrint('[TestCustomScheme] Test page URL: file:///$htmlPath');
+      debugPrint('[TestCustomScheme] Expected to handle anywp:// protocol requests');
       
     } catch (e) {
       setState(() {
         _status = 'Error: $e';
       });
-      print('[TestCustomScheme] ✗ Error: $e');
+      debugPrint('[TestCustomScheme] ✗ Error: $e');
     }
   }
 

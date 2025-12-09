@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_static/shelf_static.dart';
@@ -23,12 +24,12 @@ class LocalFileServer {
   /// Returns the base URL (e.g., http://127.0.0.1:54321)
   Future<String> start(String rootPath) async {
     if (_server != null) {
-      print('[LocalFileServer] Server already running at $_baseUrl');
+      debugPrint('[LocalFileServer] Server already running at $_baseUrl');
       return _baseUrl;
     }
     
     try {
-      print('[LocalFileServer] Starting server with root: $rootPath');
+      debugPrint('[LocalFileServer] Starting server with root: $rootPath');
       
       // Create static file handler
       final handler = createStaticHandler(
@@ -51,13 +52,13 @@ class LocalFileServer {
       
       _baseUrl = 'http://${_server!.address.host}:${_server!.port}';
       
-      print('[LocalFileServer] ✅ Server started at $_baseUrl');
-      print('[LocalFileServer]    Root directory: $rootPath');
-      print('[LocalFileServer]    Access examples at: $_baseUrl/examples/');
+      debugPrint('[LocalFileServer] ✅ Server started at $_baseUrl');
+      debugPrint('[LocalFileServer]    Root directory: $rootPath');
+      debugPrint('[LocalFileServer]    Access examples at: $_baseUrl/examples/');
       
       return _baseUrl;
     } catch (e) {
-      print('[LocalFileServer] ❌ Failed to start server: $e');
+      debugPrint('[LocalFileServer] ❌ Failed to start server: $e');
       _server = null;
       _baseUrl = '';
       rethrow;
@@ -67,18 +68,18 @@ class LocalFileServer {
   /// Stop the HTTP server
   Future<void> stop() async {
     if (_server == null) {
-      print('[LocalFileServer] Server not running, nothing to stop');
+      debugPrint('[LocalFileServer] Server not running, nothing to stop');
       return;
     }
     
     try {
-      print('[LocalFileServer] Stopping server at $_baseUrl');
+      debugPrint('[LocalFileServer] Stopping server at $_baseUrl');
       await _server!.close(force: true);
       _server = null;
       _baseUrl = '';
-      print('[LocalFileServer] ✅ Server stopped');
+      debugPrint('[LocalFileServer] ✅ Server stopped');
     } catch (e) {
-      print('[LocalFileServer] ❌ Error stopping server: $e');
+      debugPrint('[LocalFileServer] ❌ Error stopping server: $e');
       _server = null;
       _baseUrl = '';
     }
