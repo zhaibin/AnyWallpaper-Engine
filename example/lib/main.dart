@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:anywp_engine/anywp_engine.dart';
 import 'package:window_manager/window_manager.dart';
 import 'local_file_server.dart';
+import 'test_logging.dart';
 
 /// 显示器配置（用于记忆拔掉前的状态）
 class MonitorConfig {
@@ -103,7 +104,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     super.initState();
     
     // Initialize tab controller
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController!.addListener(_onTabChanged);
     
     // Register window listener to save/restore position
@@ -2540,6 +2541,99 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     }
   }
 
+  /// Debug Tab - Logging Control
+  Widget _buildDebugTab() {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.bug_report, color: Colors.deepPurple, size: 28),
+                      SizedBox(width: 12),
+                      Text(
+                        '🐛 Debug Tools',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  Divider(height: 32),
+                  
+                  Text(
+                    '日志级别控制',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '控制 macOS 原生日志输出级别，减少控制台日志噪音。',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  SizedBox(height: 16),
+                  
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => TestLoggingPage()),
+                        );
+                      },
+                      icon: Icon(Icons.settings, size: 24),
+                      label: Text('打开日志控制面板', style: TextStyle(fontSize: 16)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          SizedBox(height: 16),
+          
+          // Future debug features can be added here
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ℹ️ 关于日志优化',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    '• 日志级别仅影响原生 macOS 代码的输出\n'
+                    '• Flutter 端的 debugPrint() 仅在 Debug 构建中输出\n'
+                    '• 建议生产环境使用 Info (1) 或 Warn (2) 级别\n'
+                    '• Windows 平台暂不支持日志级别控制',
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -2558,6 +2652,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
               Tab(icon: Icon(Icons.monitor), text: 'Wallpaper'),
               Tab(icon: Icon(Icons.tune), text: 'Optimization'),
               Tab(icon: Icon(Icons.view_carousel), text: 'Carousel Control'),
+              Tab(icon: Icon(Icons.bug_report), text: 'Debug'),
             ],
           ),
         ),
@@ -2567,6 +2662,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
             _buildMultiMonitorTab(),
             _buildOptimizationTab(),
             _buildCommunicationTab(),
+            _buildDebugTab(),
           ],
         ),
       ),

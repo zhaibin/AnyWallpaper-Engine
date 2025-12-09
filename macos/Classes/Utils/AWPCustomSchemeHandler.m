@@ -7,6 +7,7 @@
 //
 
 #import "AWPCustomSchemeHandler.h"
+#import "Logger.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 // XOR 混淆常量（与 Windows 端和 Dart 端保持一致）
@@ -18,7 +19,7 @@ static const NSUInteger OBFUSCATION_BYTE_COUNT = 64;
 - (instancetype)init {
     self = [super init];
     if (self) {
-        NSLog(@"[AnyWP] AWPCustomSchemeHandler initialized");
+        [AWPLogger debug:@"AWPCustomSchemeHandler initialized"];
     }
     return self;
 }
@@ -28,12 +29,12 @@ static const NSUInteger OBFUSCATION_BYTE_COUNT = 64;
 - (void)webView:(WKWebView *)webView startURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {
     @autoreleasepool {
         NSURL *url = urlSchemeTask.request.URL;
-        NSLog(@"[AnyWP] Processing anywp:// request: %@", url.absoluteString);
+        [AWPLogger debug:[NSString stringWithFormat:@"Processing anywp:// request: %@", url.absoluteString]];
         
         // 1. 提取文件路径
         NSString *filePath = [self extractFilePathFromURL:url];
         if (!filePath) {
-            NSLog(@"[AnyWP ERROR] Invalid URL format: %@", url.absoluteString);
+            [AWPLogger error:[NSString stringWithFormat:@"Invalid URL format: %@", url.absoluteString]];
             [self sendErrorResponse:urlSchemeTask 
                          statusCode:400 
                             message:@"Invalid URL format: expected anywp://file?path=..."];
@@ -42,18 +43,18 @@ static const NSUInteger OBFUSCATION_BYTE_COUNT = 64;
         
         // 2. 验证路径安全性
         if (![self validatePathSecurity:filePath]) {
-            NSLog(@"[AnyWP ERROR] Path security validation failed: %@", filePath);
+            [AWPLogger error:[NSString stringWithFormat:@"Path security validation failed: %@", filePath]];
             [self sendErrorResponse:urlSchemeTask 
                          statusCode:403 
                             message:@"Forbidden: Invalid file path"];
             return;
         }
         
-        NSLog(@"[AnyWP] Decrypting file: %@", filePath);
+        [AWPLogger debug:[NSString stringWithFormat:@"Decrypting file: %@", filePath]];
         
         // 3. 检查文件是否存在
         if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
-            NSLog(@"[AnyWP ERROR] File not found: %@", filePath);
+            [AWPLogger error:[NSString stringWithFormat:@"File not found: %@", filePath]];
             [self sendErrorResponse:urlSchemeTask 
                          statusCode:404 
                             message:@"File not found"];
@@ -71,7 +72,8 @@ static const NSUInteger OBFUSCATION_BYTE_COUNT = 64;
         NSData *decryptedData = [self decryptFileToData:filePath error:&error];
         
         if (!decryptedData || error) {
-            NSLog(@"[AnyWP ERROR] Decryption failed for: %@ Error: %@", filePath, error.localizedDescription);
+            [AWPLogger error:[NSString stringWithFormat:@"Decryption failed for: %@ Error: %@", 
+                             filePath, error.localizedDescription]];
             [self sendErrorResponse:urlSchemeTask 
                          statusCode:500 
                             message:@"Decryption failed"];
@@ -95,13 +97,13 @@ static const NSUInteger OBFUSCATION_BYTE_COUNT = 64;
         [urlSchemeTask didReceiveData:decryptedData];
         [urlSchemeTask didFinish];
         
-        NSLog(@"[AnyWP] Successfully handled request - MimeType: %@ Size: %lu bytes", 
-              mimeType, (unsigned long)decryptedData.length);
+        [AWPLogger debug:[NSString stringWithFormat:@"Successfully handled request - MimeType: %@ Size: %lu bytes", 
+                         mimeType, (unsigned long)decryptedData.length]];
     }
 }
 
 - (void)webView:(WKWebView *)webView stopURLSchemeTask:(id<WKURLSchemeTask>)urlSchemeTask {
-    NSLog(@"[AnyWP] URL scheme task stopped");
+    [AWPLogger debug:@"URL scheme task stopped"];
 }
 
 #pragma mark - Path Extraction and Validation
@@ -216,7 +218,7 @@ static const NSUInteger OBFUSCATION_BYTE_COUNT = 64;
         // 1. 读取源文件
         NSData *sourceData = [NSData dataWithContentsOfFile:sourcePath options:0 error:error];
         if (!sourceData) {
-            NSLog(@"[AnyWP ERROR] Failed to read source file: %@", sourcePath);
+            [AWPLogger error:[NSString stringWithFormat:@"Failed to read source file: %@", sourcePath]];
             return NO;
         }
         
@@ -235,9 +237,10 @@ static const NSUInteger OBFUSCATION_BYTE_COUNT = 64;
         BOOL success = [encryptedData writeToFile:destPath options:NSDataWritingAtomic error:error];
         
         if (success) {
-            NSLog(@"[AnyWP] Successfully encrypted file: %@ -> %@", sourcePath, destPath);
+            [AWPLogger debug:[NSString stringWithFormat:@"Successfully encrypted file: %@ -> %@", 
+                             sourcePath, destPath]];
         } else {
-            NSLog(@"[AnyWP ERROR] Failed to write encrypted file: %@", destPath);
+            [AWPLogger error:[NSString stringWithFormat:@"Failed to write encrypted file: %@", destPath]];
         }
         
         return success;
@@ -287,8 +290,8 @@ static const NSUInteger OBFUSCATION_BYTE_COUNT = 64;
         [urlSchemeTask didReceiveData:errorData];
         [urlSchemeTask didFinish];
         
-        NSLog(@"[AnyWP WARN] Error response sent - Code: %ld Message: %@", 
-              (long)statusCode, message);
+        [AWPLogger warn:[NSString stringWithFormat:@"Error response sent - Code: %ld Message: %@", 
+                        (long)statusCode, message]];
     }
 }
 

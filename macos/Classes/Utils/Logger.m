@@ -2,22 +2,48 @@
 
 @implementation AWPLogger
 
-+ (void)log:(NSString *)message {
-    NSLog(@"[AnyWP] %@", message);
+static AWPLogLevel _currentLogLevel = AWPLogLevelInfo; // Default to Info in Release
+
++ (void)initialize {
+    if (self == [AWPLogger class]) {
+#ifdef DEBUG
+        _currentLogLevel = AWPLogLevelDebug; // Show all logs in Debug builds
+#else
+        _currentLogLevel = AWPLogLevelInfo;  // Hide debug logs in Release builds
+#endif
+    }
 }
 
-+ (void)error:(NSString *)message {
-    NSLog(@"[AnyWP ERROR] %@", message);
++ (void)setLogLevel:(AWPLogLevel)level {
+    _currentLogLevel = level;
 }
 
-+ (void)warn:(NSString *)message {
-    NSLog(@"[AnyWP WARN] %@", message);
++ (AWPLogLevel)logLevel {
+    return _currentLogLevel;
 }
 
 + (void)debug:(NSString *)message {
-#ifdef DEBUG
-    NSLog(@"[AnyWP DEBUG] %@", message);
-#endif
+    if (_currentLogLevel <= AWPLogLevelDebug) {
+        NSLog(@"[AnyWP DEBUG] %@", message);
+    }
+}
+
++ (void)log:(NSString *)message {
+    if (_currentLogLevel <= AWPLogLevelInfo) {
+        NSLog(@"[AnyWP] %@", message);
+    }
+}
+
++ (void)warn:(NSString *)message {
+    if (_currentLogLevel <= AWPLogLevelWarn) {
+        NSLog(@"[AnyWP WARN] %@", message);
+    }
+}
+
++ (void)error:(NSString *)message {
+    if (_currentLogLevel <= AWPLogLevelError) {
+        NSLog(@"[AnyWP ERROR] %@", message);
+    }
 }
 
 @end

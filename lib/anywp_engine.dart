@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// 显示器信息
@@ -77,10 +78,10 @@ class AnyWPEngine {
   
   /// Set callback for monitor change events
   static void setOnMonitorChangeCallback(void Function() callback) {
-    print('[AnyWPEngine] Setting up monitor change callback');
+    debugPrint('[AnyWPEngine] Setting up monitor change callback');
     _onMonitorChangeCallback = callback;
     _setupMethodCallHandler();
-    print('[AnyWPEngine] Monitor change callback setup complete');
+    debugPrint('[AnyWPEngine] Monitor change callback setup complete');
   }
   
   /// Set callback for power state changes
@@ -103,11 +104,11 @@ class AnyWPEngine {
   static void setOnPowerStateChangeCallback(
     void Function(String oldState, String newState) callback
   ) {
-    print('[AnyWPEngine] Setting up power state change callback');
+    debugPrint('[AnyWPEngine] Setting up power state change callback');
     _onPowerStateChangeCallback = callback;
     _setupMethodCallHandler();
     _startPowerStatePolling();
-    print('[AnyWPEngine] Power state change callback setup complete');
+    debugPrint('[AnyWPEngine] Power state change callback setup complete');
   }
   
   /// Start polling for power state changes (v2.1.1+ Fix: avoids InvokeMethod deadlock)
@@ -125,13 +126,13 @@ class AnyWPEngine {
       try {
         final changes = await _channel.invokeMethod<List>('getPendingPowerStateChanges');
         if (changes != null && changes.isNotEmpty) {
-          print('[AnyWPEngine] Retrieved ${changes.length} pending power state changes');
+          debugPrint('[AnyWPEngine] Retrieved ${changes.length} pending power state changes');
           for (final changeData in changes) {
             if (changeData is Map) {
               final oldState = changeData['oldState'] as String?;
               final newState = changeData['newState'] as String?;
               if (oldState != null && newState != null) {
-                print('[AnyWPEngine] Power state changed: $oldState -> $newState');
+                debugPrint('[AnyWPEngine] Power state changed: $oldState -> $newState');
                 _onPowerStateChangeCallback!(oldState, newState);
               }
             }
@@ -142,7 +143,7 @@ class AnyWPEngine {
       }
     });
     
-    print('[AnyWPEngine] Power state polling started (1000ms interval)');
+    debugPrint('[AnyWPEngine] Power state polling started (1000ms interval)');
   }
   
   /// Set callback for messages from JavaScript
@@ -181,7 +182,7 @@ class AnyWPEngine {
   ///       
   ///     case 'error':
   ///       final data = message['data'] as Map<String, dynamic>;
-  ///       print('Error: ${data['message']}');
+  ///       debugPrint('Error: ${data['message']}');
   ///       break;
   ///   }
   /// });
@@ -189,11 +190,11 @@ class AnyWPEngine {
   static void setOnMessageCallback(
     void Function(Map<String, dynamic> message) callback
   ) {
-    print('[AnyWPEngine] Setting up message callback');
+    debugPrint('[AnyWPEngine] Setting up message callback');
     _onMessageCallback = callback;
     _setupMethodCallHandler();
     _startMessagePolling();
-    print('[AnyWPEngine] Message callback and polling setup complete');
+    debugPrint('[AnyWPEngine] Message callback and polling setup complete');
   }
   
   /// Set callback for wallpaper recovery completion (v2.4.1+)
@@ -269,17 +270,17 @@ class AnyWPEngine {
   static void setOnRecoveryCallback(
     Future<void> Function(List<int> recoveredMonitors)? callback
   ) {
-    print('[AnyWPEngine] Setting recovery callback');
+    debugPrint('[AnyWPEngine] Setting recovery callback');
     _onRecoveryCallback = callback;
     
     // Ensure message polling is active to receive AUTO_RECOVERY_REQUEST
     if (callback != null && _messagePollingTimer == null) {
       _setupMethodCallHandler();
       _startMessagePolling();
-      print('[AnyWPEngine] Message polling started for recovery handling');
+      debugPrint('[AnyWPEngine] Message polling started for recovery handling');
     }
     
-    print('[AnyWPEngine] Recovery callback setup complete');
+    debugPrint('[AnyWPEngine] Recovery callback setup complete');
   }
   
   /// Start polling for messages from JavaScript (avoids InvokeMethod deadlock)
@@ -297,7 +298,7 @@ class AnyWPEngine {
       try {
         final messages = await _channel.invokeMethod<List>('getPendingMessages');
         if (messages != null && messages.isNotEmpty) {
-          print('[AnyWPEngine] Retrieved ${messages.length} pending messages');
+          debugPrint('[AnyWPEngine] Retrieved ${messages.length} pending messages');
           for (final messageJson in messages) {
             if (messageJson is String) {
               _processMessage(messageJson);
@@ -309,7 +310,7 @@ class AnyWPEngine {
       }
     });
     
-    print('[AnyWPEngine] Message polling started (1 second interval)');
+    debugPrint('[AnyWPEngine] Message polling started (1 second interval)');
   }
   
   /// Process a single message
@@ -318,11 +319,11 @@ class AnyWPEngine {
       final message = jsonDecode(messageJson) as Map<String, dynamic>;
       final messageType = message['type'] as String?;
       
-      print('[AnyWPEngine] Processing message: $messageType');
+      debugPrint('[AnyWPEngine] Processing message: $messageType');
       
       // v2.4.1+ Auto-handle recovery requests
       if (messageType == 'AUTO_RECOVERY_REQUEST') {
-        print('[AnyWPEngine] 🔄 Auto recovery request received from C++');
+        debugPrint('[AnyWPEngine] 🔄 Auto recovery request received from C++');
         _handleAutoRecoveryRequest(message);
         return; // Don't forward to user callback
       }
@@ -332,7 +333,7 @@ class AnyWPEngine {
         _onMessageCallback!(message);
       }
     } catch (e) {
-      print('[AnyWPEngine] ERROR: Failed to process message: $e');
+      debugPrint('[AnyWPEngine] ERROR: Failed to process message: $e');
     }
   }
   
@@ -341,28 +342,28 @@ class AnyWPEngine {
     try {
       final messageData = message['data'] as Map<String, dynamic>?;
       if (messageData == null) {
-        print('[AnyWPEngine] ⚠️  No data in recovery request');
+        debugPrint('[AnyWPEngine] ⚠️  No data in recovery request');
         return;
       }
       
       final configs = messageData['configs'] as List<dynamic>?;
       if (configs == null || configs.isEmpty) {
-        print('[AnyWPEngine] ⚠️  No configurations to recover');
+        debugPrint('[AnyWPEngine] ⚠️  No configurations to recover');
         return;
       }
       
-      print('[AnyWPEngine] 📋 Recovery configurations: ${configs.length} monitor(s)');
+      debugPrint('[AnyWPEngine] 📋 Recovery configurations: ${configs.length} monitor(s)');
       for (var config in configs) {
-        print('[AnyWPEngine]   - Monitor ${config['monitorIndex']}: ${config['url']}');
+        debugPrint('[AnyWPEngine]   - Monitor ${config['monitorIndex']}: ${config['url']}');
       }
       
       // Step 1: Stop existing wallpapers
-      print('[AnyWPEngine] 🛑 Stopping existing wallpapers...');
+      debugPrint('[AnyWPEngine] 🛑 Stopping existing wallpapers...');
       await stopWallpaper();
       await Future.delayed(const Duration(milliseconds: 500));
       
       // Step 2: Recreate wallpapers
-      print('[AnyWPEngine] 🔄 Recreating wallpapers...');
+      debugPrint('[AnyWPEngine] 🔄 Recreating wallpapers...');
       int successCount = 0;
       final List<int> recoveredMonitors = [];
       
@@ -380,37 +381,37 @@ class AnyWPEngine {
           if (result == true) {
             successCount++;
             recoveredMonitors.add(monitorIndex);
-            print('[AnyWPEngine] ✅ Monitor $monitorIndex recovered successfully');
+            debugPrint('[AnyWPEngine] ✅ Monitor $monitorIndex recovered successfully');
           } else {
-            print('[AnyWPEngine] ❌ Monitor $monitorIndex recovery failed');
+            debugPrint('[AnyWPEngine] ❌ Monitor $monitorIndex recovery failed');
           }
         } catch (e) {
-          print('[AnyWPEngine] ❌ Monitor $monitorIndex recovery exception: $e');
+          debugPrint('[AnyWPEngine] ❌ Monitor $monitorIndex recovery exception: $e');
         }
       }
       
-      print('[AnyWPEngine] 🎉 Auto recovery completed: $successCount/${configs.length} monitors');
+      debugPrint('[AnyWPEngine] 🎉 Auto recovery completed: $successCount/${configs.length} monitors');
       
       // Step 3: Wait for WebView to fully load
       if (recoveredMonitors.isNotEmpty) {
-        print('[AnyWPEngine] ⏳ Waiting for WebView to load (2 seconds)...');
+        debugPrint('[AnyWPEngine] ⏳ Waiting for WebView to load (2 seconds)...');
         await Future.delayed(const Duration(seconds: 2));
         
         // Step 4: Call user's recovery callback if set
         if (_onRecoveryCallback != null) {
-          print('[AnyWPEngine] 📞 Calling user recovery callback...');
+          debugPrint('[AnyWPEngine] 📞 Calling user recovery callback...');
           try {
             await _onRecoveryCallback!(recoveredMonitors);
-            print('[AnyWPEngine] ✅ User recovery callback completed');
+            debugPrint('[AnyWPEngine] ✅ User recovery callback completed');
           } catch (e) {
-            print('[AnyWPEngine] ❌ User recovery callback error: $e');
+            debugPrint('[AnyWPEngine] ❌ User recovery callback error: $e');
           }
         } else {
-          print('[AnyWPEngine] ℹ️  No recovery callback set (basic recovery only)');
+          debugPrint('[AnyWPEngine] ℹ️  No recovery callback set (basic recovery only)');
         }
       }
     } catch (e) {
-      print('[AnyWPEngine] ❌ Auto recovery error: $e');
+      debugPrint('[AnyWPEngine] ❌ Auto recovery error: $e');
     }
   }
   
@@ -418,56 +419,56 @@ class AnyWPEngine {
   static void _setupMethodCallHandler() {
     // Set method call handler for callbacks from native
     _channel.setMethodCallHandler((call) async {
-      print('[AnyWPEngine] Received method call from native: ${call.method}');
+      debugPrint('[AnyWPEngine] Received method call from native: ${call.method}');
       
       try {
         if (call.method == 'onMonitorChange') {
-          print('[AnyWPEngine] Monitor change detected from native - calling callback');
+          debugPrint('[AnyWPEngine] Monitor change detected from native - calling callback');
           if (_onMonitorChangeCallback != null) {
             _onMonitorChangeCallback!();
-            print('[AnyWPEngine] Callback executed successfully');
+            debugPrint('[AnyWPEngine] Callback executed successfully');
           } else {
-            print('[AnyWPEngine] WARNING: Monitor change callback is null!');
+            debugPrint('[AnyWPEngine] WARNING: Monitor change callback is null!');
           }
         } else if (call.method == 'onPowerStateChange') {
           final args = call.arguments as Map<dynamic, dynamic>;
           final oldState = args['oldState'] as String;
           final newState = args['newState'] as String;
           
-          print('[AnyWPEngine] Power state changed: $oldState -> $newState');
+          debugPrint('[AnyWPEngine] Power state changed: $oldState -> $newState');
           if (_onPowerStateChangeCallback != null) {
             _onPowerStateChangeCallback!(oldState, newState);
-            print('[AnyWPEngine] Power state callback executed successfully');
+            debugPrint('[AnyWPEngine] Power state callback executed successfully');
           } else {
-            print('[AnyWPEngine] WARNING: Power state callback is null!');
+            debugPrint('[AnyWPEngine] WARNING: Power state callback is null!');
           }
         } else if (call.method == 'onMessage') {
           final args = call.arguments as Map<dynamic, dynamic>;
           final messageJson = args['message'] as String;
           
-          print('[AnyWPEngine] Message received from JavaScript');
-          print('[AnyWPEngine] Raw message: $messageJson');
+          debugPrint('[AnyWPEngine] Message received from JavaScript');
+          debugPrint('[AnyWPEngine] Raw message: $messageJson');
           
           if (_onMessageCallback != null) {
             try {
               // Parse JSON message
               final message = jsonDecode(messageJson) as Map<String, dynamic>;
-              print('[AnyWPEngine] Parsed message type: ${message['type']}');
+              debugPrint('[AnyWPEngine] Parsed message type: ${message['type']}');
               
               _onMessageCallback!(message);
-              print('[AnyWPEngine] Message callback executed successfully');
+              debugPrint('[AnyWPEngine] Message callback executed successfully');
             } catch (e) {
-              print('[AnyWPEngine] ERROR: Failed to parse message JSON: $e');
+              debugPrint('[AnyWPEngine] ERROR: Failed to parse message JSON: $e');
             }
           } else {
-            print('[AnyWPEngine] WARNING: Message callback is null!');
+            debugPrint('[AnyWPEngine] WARNING: Message callback is null!');
           }
         } else {
-          print('[AnyWPEngine] Unknown method: ${call.method}');
+          debugPrint('[AnyWPEngine] Unknown method: ${call.method}');
         }
       } catch (e, stackTrace) {
-        print('[AnyWPEngine] ERROR in method handler: $e');
-        print('[AnyWPEngine] StackTrace: $stackTrace');
+        debugPrint('[AnyWPEngine] ERROR in method handler: $e');
+        debugPrint('[AnyWPEngine] StackTrace: $stackTrace');
       }
     });
   }
@@ -512,7 +513,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error initializing wallpaper: $e');
+      debugPrint('Error initializing wallpaper: $e');
       return false;
     }
   }
@@ -523,7 +524,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<bool>('stopWallpaper');
       return result ?? false;
     } catch (e) {
-      print('Error stopping wallpaper: $e');
+      debugPrint('Error stopping wallpaper: $e');
       return false;
     }
   }
@@ -536,7 +537,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error navigating to URL: $e');
+      debugPrint('Error navigating to URL: $e');
       return false;
     }
   }
@@ -551,7 +552,7 @@ class AnyWPEngine {
       
       return result.map((e) => MonitorInfo.fromMap(e as Map<dynamic, dynamic>)).toList();
     } catch (e) {
-      print('Error getting monitors: $e');
+      debugPrint('Error getting monitors: $e');
       return [];
     }
   }
@@ -651,7 +652,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<bool>('initializeWallpaperOnMonitor', args);
       return result ?? false;
     } catch (e) {
-      print('Error initializing wallpaper on monitor $monitorIndex: $e');
+      debugPrint('Error initializing wallpaper on monitor $monitorIndex: $e');
       return false;
     }
   }
@@ -664,7 +665,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error stopping wallpaper on monitor $monitorIndex: $e');
+      debugPrint('Error stopping wallpaper on monitor $monitorIndex: $e');
       return false;
     }
   }
@@ -678,7 +679,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error navigating to URL on monitor $monitorIndex: $e');
+      debugPrint('Error navigating to URL on monitor $monitorIndex: $e');
       return false;
     }
   }
@@ -725,7 +726,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<bool>('pauseWallpaper');
       return result ?? false;
     } catch (e) {
-      print('Error pausing wallpaper: $e');
+      debugPrint('Error pausing wallpaper: $e');
       return false;
     }
   }
@@ -738,7 +739,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<bool>('resumeWallpaper');
       return result ?? false;
     } catch (e) {
-      print('Error resuming wallpaper: $e');
+      debugPrint('Error resuming wallpaper: $e');
       return false;
     }
   }
@@ -759,7 +760,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error setting auto power saving: $e');
+      debugPrint('Error setting auto power saving: $e');
       return false;
     }
   }
@@ -778,7 +779,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<String>('getPowerState');
       return result ?? 'UNKNOWN';
     } catch (e) {
-      print('Error getting power state: $e');
+      debugPrint('Error getting power state: $e');
       return 'UNKNOWN';
     }
   }
@@ -791,7 +792,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<int>('getMemoryUsage');
       return result ?? 0;
     } catch (e) {
-      print('Error getting memory usage: $e');
+      debugPrint('Error getting memory usage: $e');
       return 0;
     }
   }
@@ -809,7 +810,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<bool>('optimizeMemory');
       return result ?? false;
     } catch (e) {
-      print('Error optimizing memory: $e');
+      debugPrint('Error optimizing memory: $e');
       return false;
     }
   }
@@ -833,7 +834,7 @@ class AnyWPEngine {
   /// ```
   static Future<bool> setIdleTimeout(int seconds) async {
     if (seconds < 60) {
-      print('Warning: Idle timeout should be at least 60 seconds');
+      debugPrint('Warning: Idle timeout should be at least 60 seconds');
       seconds = 60;
     }
     
@@ -843,7 +844,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error setting idle timeout: $e');
+      debugPrint('Error setting idle timeout: $e');
       return false;
     }
   }
@@ -863,7 +864,7 @@ class AnyWPEngine {
   /// ```
   static Future<bool> setMemoryThreshold(int thresholdMB) async {
     if (thresholdMB < 100) {
-      print('Warning: Memory threshold should be at least 100 MB');
+      debugPrint('Warning: Memory threshold should be at least 100 MB');
       thresholdMB = 100;
     }
     
@@ -873,7 +874,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error setting memory threshold: $e');
+      debugPrint('Error setting memory threshold: $e');
       return false;
     }
   }
@@ -892,7 +893,7 @@ class AnyWPEngine {
   /// ```
   static Future<bool> setCleanupInterval(int minutes) async {
     if (minutes < 10) {
-      print('Warning: Cleanup interval should be at least 10 minutes');
+      debugPrint('Warning: Cleanup interval should be at least 10 minutes');
       minutes = 10;
     }
     
@@ -902,7 +903,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error setting cleanup interval: $e');
+      debugPrint('Error setting cleanup interval: $e');
       return false;
     }
   }
@@ -921,7 +922,7 @@ class AnyWPEngine {
       
       return result.map((key, value) => MapEntry(key.toString(), value));
     } catch (e) {
-      print('Error getting configuration: $e');
+      debugPrint('Error getting configuration: $e');
       return {};
     }
   }
@@ -956,7 +957,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error saving state: $e');
+      debugPrint('Error saving state: $e');
       return false;
     }
   }
@@ -987,7 +988,7 @@ class AnyWPEngine {
       });
       return result ?? '';
     } catch (e) {
-      print('Error loading state: $e');
+      debugPrint('Error loading state: $e');
       return '';
     }
   }
@@ -1008,7 +1009,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<bool>('clearState');
       return result ?? false;
     } catch (e) {
-      print('Error clearing state: $e');
+      debugPrint('Error clearing state: $e');
       return false;
     }
   }
@@ -1040,7 +1041,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error setting application name: $e');
+      debugPrint('Error setting application name: $e');
       return false;
     }
   }
@@ -1062,7 +1063,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<String>('getStoragePath');
       return result ?? '';
     } catch (e) {
-      print('Error getting storage path: $e');
+      debugPrint('Error getting storage path: $e');
       return '';
     }
   }
@@ -1075,7 +1076,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<String>('getVersion');
       return result ?? '0.0.0';
     } catch (e) {
-      print('Error getting plugin version: $e');
+      debugPrint('Error getting plugin version: $e');
       return '0.0.0';
     }
   }
@@ -1101,8 +1102,83 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<String>('getSDKVersion');
       return result ?? '0.0.0';
     } catch (e) {
-      print('Error getting SDK version: $e');
+      debugPrint('Error getting SDK version: $e');
       return '0.0.0';
+    }
+  }
+
+  // ============================================================================
+  // Debug & Logging Configuration (macOS only, v2.6.5+)
+  // ============================================================================
+
+  /// Set native logging level for macOS plugin
+  ///
+  /// Controls the verbosity of native (Objective-C) logging output.
+  /// This helps reduce console spam in production builds.
+  ///
+  /// **Log Levels:**
+  /// - `0`: Debug - All logs (verbose, development only)
+  /// - `1`: Info - General information (default in Release)
+  /// - `2`: Warn - Warnings only
+  /// - `3`: Error - Errors only
+  /// - `4`: None - Disable all logging
+  ///
+  /// **Platform Support:**
+  /// - ✅ macOS: Fully supported (controls AWPLogger output)
+  /// - ⚠️ Windows: Not yet implemented (returns false)
+  ///
+  /// **Default Behavior:**
+  /// - Debug builds: Level 0 (Debug) - all logs enabled
+  /// - Release builds: Level 1 (Info) - debug logs hidden
+  ///
+  /// **Example:**
+  /// ```dart
+  /// // Reduce logging noise in production
+  /// await AnyWPEngine.setLogLevel(2);  // Warn and Error only
+  /// 
+  /// // Enable verbose logging for debugging
+  /// await AnyWPEngine.setLogLevel(0);  // All logs
+  /// 
+  /// // Completely silence native logs
+  /// await AnyWPEngine.setLogLevel(4);  // No logs
+  /// ```
+  ///
+  /// - [level]: Log level (0-4)
+  /// - Returns: `true` if successful, `false` if not supported or failed
+  static Future<bool> setLogLevel(int level) async {
+    try {
+      final result = await _channel.invokeMethod<bool>('setLogLevel', {
+        'level': level,
+      });
+      return result ?? false;
+    } catch (e) {
+      debugPrint('Error setting log level: $e');
+      return false;
+    }
+  }
+
+  /// Get current native logging level (macOS only)
+  ///
+  /// Returns the current log level setting for the native plugin.
+  ///
+  /// **Platform Support:**
+  /// - ✅ macOS: Returns current AWPLogger level (0-4)
+  /// - ⚠️ Windows: Not yet implemented (returns -1)
+  ///
+  /// **Example:**
+  /// ```dart
+  /// final level = await AnyWPEngine.getLogLevel();
+  /// print('Current log level: $level');  // 0 (Debug) to 4 (None)
+  /// ```
+  ///
+  /// - Returns: Current log level (0-4), or -1 if not supported
+  static Future<int> getLogLevel() async {
+    try {
+      final result = await _channel.invokeMethod<int>('getLogLevel');
+      return result ?? -1;
+    } catch (e) {
+      debugPrint('Error getting log level: $e');
+      return -1;
     }
   }
 
@@ -1150,7 +1226,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error encrypting file: $e');
+      debugPrint('Error encrypting file: $e');
       return false;
     }
   }
@@ -1189,7 +1265,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error decrypting file: $e');
+      debugPrint('Error decrypting file: $e');
       return false;
     }
   }
@@ -1268,7 +1344,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error enabling auto recovery: $e');
+      debugPrint('Error enabling auto recovery: $e');
       return false;
     }
   }
@@ -1287,7 +1363,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<bool>('isAutoRecoveryEnabled');
       return result ?? false;
     } catch (e) {
-      print('Error checking auto recovery status: $e');
+      debugPrint('Error checking auto recovery status: $e');
       return false;
     }
   }
@@ -1413,7 +1489,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('Error saving wallpaper configuration: $e');
+      debugPrint('Error saving wallpaper configuration: $e');
       return false;
     }
   }
@@ -1507,7 +1583,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<bool>('sendMessage', args);
       return result ?? false;
     } catch (e) {
-      print('Error sending message: $e');
+      debugPrint('Error sending message: $e');
       return false;
     }
   }
@@ -1555,7 +1631,7 @@ class AnyWPEngine {
       });
       return result;
     } catch (e) {
-      print('[AnyWPEngine] Failed to get bundle resource: $e');
+      debugPrint('[AnyWPEngine] Failed to get bundle resource: $e');
       return null;
     }
   }
@@ -1619,7 +1695,7 @@ class AnyWPEngine {
       });
       return result ?? false;
     } catch (e) {
-      print('[AnyWPEngine] Failed to set interactive mode: $e');
+      debugPrint('[AnyWPEngine] Failed to set interactive mode: $e');
       return false;
     }
   }
@@ -1674,7 +1750,7 @@ class AnyWPEngine {
       }
       return null;
     } catch (e) {
-      print('[AnyWPEngine] Failed to start file server: $e');
+      debugPrint('[AnyWPEngine] Failed to start file server: $e');
       return null;
     }
   }
@@ -1698,7 +1774,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<bool>('stopFileServer');
       return result ?? false;
     } catch (e) {
-      print('[AnyWPEngine] Failed to stop file server: $e');
+      debugPrint('[AnyWPEngine] Failed to stop file server: $e');
       return false;
     }
   }
@@ -1731,7 +1807,7 @@ class AnyWPEngine {
       }
       return null;
     } catch (e) {
-      print('[AnyWPEngine] Failed to check file server status: $e');
+      debugPrint('[AnyWPEngine] Failed to check file server status: $e');
       return null;
     }
   }
@@ -1809,7 +1885,7 @@ class AnyWPEngine {
       }
       return null;
     } catch (e) {
-      print('[AnyWPEngine] Failed to set allowed access path: $e');
+      debugPrint('[AnyWPEngine] Failed to set allowed access path: $e');
       return null;
     }
   }
@@ -1836,7 +1912,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<String>('getDefaultLibraryPath');
       return result ?? '';
     } catch (e) {
-      print('[AnyWPEngine] Failed to get default library path: $e');
+      debugPrint('[AnyWPEngine] Failed to get default library path: $e');
       return '';
     }
   }
@@ -1867,7 +1943,7 @@ class AnyWPEngine {
       final result = await _channel.invokeMethod<String>('getApplicationSupportPath');
       return result ?? '';
     } catch (e) {
-      print('[AnyWPEngine] Failed to get application support path: $e');
+      debugPrint('[AnyWPEngine] Failed to get application support path: $e');
       return '';
     }
   }

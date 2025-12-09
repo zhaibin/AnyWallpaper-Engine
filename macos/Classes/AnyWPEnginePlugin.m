@@ -71,6 +71,25 @@
             result(@"2.5.0");
         }
         
+        // ========== Debug & Logging ==========
+        else if ([method isEqualToString:@"setLogLevel"]) {
+            NSDictionary *args = call.arguments;
+            NSNumber *levelNum = args[@"level"];
+            if (levelNum) {
+                AWPLogLevel level = (AWPLogLevel)[levelNum integerValue];
+                [AWPLogger setLogLevel:level];
+                [AWPLogger debug:[NSString stringWithFormat:@"Log level changed to: %ld", (long)level]];
+                result(@YES);
+            } else {
+                [AWPLogger error:@"setLogLevel: missing 'level' parameter"];
+                result(@NO);
+            }
+        }
+        else if ([method isEqualToString:@"getLogLevel"]) {
+            AWPLogLevel currentLevel = [AWPLogger logLevel];
+            result(@(currentLevel));
+        }
+        
         // ========== Wallpaper Initialization ==========
         else if ([method isEqualToString:@"initializeWallpaper"]) {
             [self handleInitializeWallpaper:call result:result];
