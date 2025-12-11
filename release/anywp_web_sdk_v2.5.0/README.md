@@ -1,8 +1,11 @@
 # AnyWP Engine - Web SDK v2.5.0
 
-Cross-platform Web SDK for desktop wallpaper development.
+**Web SDK Version**: v2.5.0
+**Compatible with AnyWP Engine**: v2.6.6+
 
-**Supported Platforms**: Windows, macOS
+> **Note**: Web SDK has independent version numbers. This SDK is compatible with AnyWP Engine v2.6.6 and later versions.
+
+Standalone Web SDK package for wallpaper developers.
 
 ## Quick Start
 

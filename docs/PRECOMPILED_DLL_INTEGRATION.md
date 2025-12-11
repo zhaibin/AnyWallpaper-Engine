@@ -84,12 +84,12 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.6.0_precompiled.zip
+anywp_engine_v2.6.6_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.6.0_source.zip
+anywp_engine_v2.6.6_source.zip
 ```
 
 ### 2. 解压到项目目录
@@ -859,4 +859,8 @@ verify.bat
 - ✅ **创建独立的预编译包和源码包** - 简化集成流程
 - ✅ **Web SDK 包含在预编译包中** - `sdk/anywp_sdk.js` 和 `examples/` 目录🆕
 - ✅ **Web 开发者指南包含在预编译包中** - 中英文文档🆕
+
+---
+
+**Version**: 2.6.6
 
