@@ -106,19 +106,20 @@ mkdir -p "$PRECOMPILED_DIR/Frameworks"
 mkdir -p "$PRECOMPILED_DIR/lib/dart"
 mkdir -p "$PRECOMPILED_DIR/include/anywp_engine"
 mkdir -p "$PRECOMPILED_DIR/macos"
+mkdir -p "$PRECOMPILED_DIR/macos/Frameworks"
 mkdir -p "$PRECOMPILED_DIR/sdk"
 mkdir -p "$PRECOMPILED_DIR/examples"
 
 print_step "Copying framework to precompiled package..."
-# Copy the built framework/plugin
+# Copy the built framework/plugin to macos/Frameworks/ (CocoaPods standard path)
 BUILD_OUTPUT="$PROJECT_ROOT/example/build/macos/Build/Products/Release"
 if [ -d "$BUILD_OUTPUT/anywp_engine" ]; then
-    cp -R "$BUILD_OUTPUT/anywp_engine" "$PRECOMPILED_DIR/Frameworks/"
+    cp -R "$BUILD_OUTPUT/anywp_engine" "$PRECOMPILED_DIR/macos/Frameworks/"
     
     # Fix framework structure and sign it
     echo "  Fixing framework structure and signing..."
     if [ -f "$PROJECT_ROOT/scripts/fix_framework_structure.sh" ]; then
-        bash "$PROJECT_ROOT/scripts/fix_framework_structure.sh" "$PRECOMPILED_DIR/Frameworks/anywp_engine/anywp_engine.framework" 2>&1 | sed 's/^/  /'
+        bash "$PROJECT_ROOT/scripts/fix_framework_structure.sh" "$PRECOMPILED_DIR/macos/Frameworks/anywp_engine/anywp_engine.framework" 2>&1 | sed 's/^/  /'
     fi
 else
     echo "WARNING: Plugin framework not found at $BUILD_OUTPUT/anywp_engine"
@@ -155,7 +156,37 @@ void AnyWPEnginePluginRegisterWithRegistrar(void* registrar);
 EOF
 
 print_step "Copying podspec to precompiled package..."
-cp "$PROJECT_ROOT/macos/anywp_engine.podspec" "$PRECOMPILED_DIR/macos/"
+# Create precompiled-specific podspec (use vendored_frameworks instead of source_files)
+cat > "$PRECOMPILED_DIR/macos/anywp_engine.podspec" << EOF
+#
+# Precompiled AnyWP Engine Podspec
+# This uses vendored_frameworks for precompiled integration
+#
+Pod::Spec.new do |s|
+  s.name             = 'anywp_engine'
+  s.version          = '$VERSION'
+  s.summary          = 'AnyWP Engine - Desktop Wallpaper Plugin for Flutter (macOS)'
+  s.description      = <<-DESC
+AnyWP Engine plugin for macOS, providing desktop wallpaper functionality using WKWebView.
+This is the precompiled version.
+                       DESC
+  s.homepage         = 'https://github.com/zhaibin/AnyWallpaper-Engine'
+  s.license          = { :type => 'MIT', :file => '../LICENSE' }
+  s.author           = { 'Bin Zhai' => 'billzhai@gmail.com' }
+  s.source           = { :path => '.' }
+  s.platform         = :osx, '10.15'
+  s.swift_version    = '5.0'
+
+  # ⭐️ Use vendored_frameworks for precompiled package
+  s.vendored_frameworks = 'Frameworks/anywp_engine/anywp_engine.framework'
+  
+  # Resource bundle
+  s.resources = 'Resources/**/*'
+
+  # Dependency on FlutterMacOS
+  s.dependency 'FlutterMacOS'
+end
+EOF
 
 print_step "Creating precompiled CMakeLists.txt..."
 # Create a simplified CMakeLists.txt for precompiled package
