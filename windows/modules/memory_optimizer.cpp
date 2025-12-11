@@ -96,20 +96,55 @@ void MemoryOptimizer::ClearWebViewCacheInternal(Microsoft::WRL::ComPtr<ICoreWebV
   // Note: ClearBrowsingData may not be available in all WebView2 SDK versions
   std::wstring script = L"(function() { \
     try { \
+      console.log('[AnyWP] Starting memory optimization...'); \
+      var itemsCleared = 0; \
+      \
+      /* Clear Cache API */ \
       if (window.caches) { \
         caches.keys().then(function(names) { \
-          names.forEach(function(name) { caches.delete(name); }); \
+          names.forEach(function(name) { caches.delete(name); itemsCleared++; }); \
         }); \
       } \
-      if (window.localStorage) { window.localStorage.clear(); } \
+      \
+      /* Clear Storage (localStorage NOT cleared to preserve wallpaper state) */ \
       if (window.sessionStorage) { window.sessionStorage.clear(); } \
-    } catch(e) { console.error('Cache clear failed:', e); } \
+      \
+      /* CRITICAL: Optimize Video Memory */ \
+      var videos = document.querySelectorAll('video'); \
+      if (videos.length > 0) { \
+        console.log('[AnyWP] Found ' + videos.length + ' video(s), flushing buffers...'); \
+        videos.forEach(function(video) { \
+          var wasPaused = video.paused; \
+          var currentTime = video.currentTime; \
+          /* Pause to release decoder buffers */ \
+          video.pause(); \
+          /* Force buffer flush by seeking */ \
+          video.currentTime = currentTime; \
+          video.load(); /* Re-init video element */ \
+          /* Resume if was playing */ \
+          if (!wasPaused) { \
+            setTimeout(function() { \
+              video.currentTime = currentTime; \
+              video.play().catch(function(e) { console.warn('[AnyWP] Video resume failed:', e); }); \
+            }, 200); \
+          } \
+        }); \
+      } \
+      \
+      /* Trigger GC if available */ \
+      if (window.gc) { \
+        window.gc(); \
+        console.log('[AnyWP] GC triggered'); \
+      } \
+      \
+      console.log('[AnyWP] Memory optimization complete'); \
+    } catch(e) { console.error('[AnyWP] Cache clear failed:', e); } \
   })()";
   
   webview->ExecuteScript(script.c_str(), nullptr);
   
   if (config_.log_operations) {
-    Logger::Instance().Info("MemoryOptimizer", "WebView cache cleared via script");
+    Logger::Instance().Info("MemoryOptimizer", "WebView cache cleared + video memory optimized");
   }
 }
 

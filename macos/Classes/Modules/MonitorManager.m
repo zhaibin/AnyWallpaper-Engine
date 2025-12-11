@@ -55,7 +55,15 @@
         [monitors addObject:monitorInfo];
     }
     
-    [AWPLogger log:[NSString stringWithFormat:@"Found %ld monitors", (long)monitors.count]];
+    // ⚠️ 避免频繁日志输出（轮询场景每3秒调用一次）
+    // 仅在显示器数量变化时输出
+    static NSInteger lastMonitorCount = -1;
+    if (lastMonitorCount != monitors.count) {
+        [AWPLogger log:[NSString stringWithFormat:@"Monitor count changed: %ld -> %ld", 
+                       (long)lastMonitorCount, (long)monitors.count]];
+        lastMonitorCount = monitors.count;
+    }
+    
     return monitors;
 }
 

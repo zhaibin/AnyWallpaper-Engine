@@ -34,8 +34,9 @@
 
 /**
  * Manually trigger memory optimization
+ * @param instances Array of WallpaperInstance objects to optimize (pass nil for all)
  */
-- (void)optimizeMemory;
+- (void)optimizeMemory:(NSArray *)instances;
 
 /**
  * Get pending power state changes

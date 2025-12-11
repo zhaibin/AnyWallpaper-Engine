@@ -329,7 +329,12 @@
 }
 
 - (void)handleOptimizeMemory:(FlutterMethodCall*)call result:(FlutterResult)result {
-    [self.powerManager optimizeMemory];
+    // Get all wallpaper instances from WallpaperManager
+    NSArray *instances = [self.wallpaperManager getAllInstances];
+    
+    // Pass instances to PowerManager for optimization
+    [self.powerManager optimizeMemory:instances];
+    
     result(@YES);
 }
 
