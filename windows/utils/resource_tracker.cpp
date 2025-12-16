@@ -131,6 +131,11 @@ void ResourceTracker::CleanupAll() {
   size_t orphan_count = 0;
   for (HWND orphan : orphans) {
     if (IsWindow(orphan)) {
+      // Hide first to prevent white screen
+      ShowWindow(orphan, SW_HIDE);
+      // Remove from parent
+      SetParent(orphan, nullptr);
+      
       if (DestroyWindow(orphan)) {
         orphan_count++;
         Logger::Instance().Warning("ResourceTracker", 

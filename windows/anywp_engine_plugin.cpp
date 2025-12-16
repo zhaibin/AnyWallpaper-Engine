@@ -1904,6 +1904,12 @@ bool AnyWPEnginePlugin::StopWallpaper() {
         if (instance.webview_host_hwnd) {
           try {
           if (IsWindow(instance.webview_host_hwnd)) {
+            // v2.6.7 FIX: Hide window first to prevent white screen flash
+            ShowWindow(instance.webview_host_hwnd, SW_HIDE);
+            
+            // Remove from parent to make it a top-level window (easier to destroy)
+            SetParent(instance.webview_host_hwnd, nullptr);
+            
             ResourceTracker::Instance().UntrackWindow(instance.webview_host_hwnd);
             if (!DestroyWindow(instance.webview_host_hwnd)) {
               DWORD error = GetLastError();
@@ -1966,6 +1972,12 @@ bool AnyWPEnginePlugin::StopWallpaper() {
     try {
     // Verify window is still valid
     if (IsWindow(webview_host_hwnd_)) {
+      // v2.6.7 FIX: Hide window first to prevent white screen flash
+      ShowWindow(webview_host_hwnd_, SW_HIDE);
+      
+      // Remove from parent to make it a top-level window (easier to destroy)
+      SetParent(webview_host_hwnd_, nullptr);
+      
       // P0-1: Untrack before destroying
       ResourceTracker::Instance().UntrackWindow(webview_host_hwnd_);
       
