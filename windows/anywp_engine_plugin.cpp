@@ -1897,6 +1897,9 @@ bool AnyWPEnginePlugin::StopWallpaper() {
         }
         instance.webview = nullptr;
         
+        // v2.6.7 FIX: Wait for WebView2 to complete cleanup before destroying window
+        Sleep(50);
+        
         // Destroy window
         if (instance.webview_host_hwnd) {
           try {
@@ -1905,6 +1908,8 @@ bool AnyWPEnginePlugin::StopWallpaper() {
             if (!DestroyWindow(instance.webview_host_hwnd)) {
               DWORD error = GetLastError();
                 Logger::Instance().Warning("Plugin", "Failed to destroy window, error: " + std::to_string(error));
+            } else {
+              Logger::Instance().Info("Plugin", "Window destroyed for monitor " + std::to_string(instance.monitor_index));
             }
           } else {
             ResourceTracker::Instance().UntrackWindow(instance.webview_host_hwnd);
@@ -1953,6 +1958,9 @@ bool AnyWPEnginePlugin::StopWallpaper() {
   }
 
   webview_ = nullptr;
+  
+  // v2.6.7 FIX: Wait for WebView2 to complete cleanup before destroying window
+  Sleep(50);
 
   if (webview_host_hwnd_) {
     try {
@@ -1964,6 +1972,8 @@ bool AnyWPEnginePlugin::StopWallpaper() {
       if (!DestroyWindow(webview_host_hwnd_)) {
         DWORD error = GetLastError();
           Logger::Instance().Warning("Plugin", "Failed to destroy window, error: " + std::to_string(error));
+      } else {
+        Logger::Instance().Info("Plugin", "Single-monitor window destroyed successfully");
       }
     } else {
         Logger::Instance().Warning("Plugin", "WebView host window already destroyed");
