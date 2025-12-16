@@ -1867,6 +1867,32 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
 
 bool AnyWPEnginePlugin::StopWallpaper() {
   Logger::Instance().Info("Plugin", "Stopping wallpaper...");
+  
+  // v2.6.7 CRITICAL FIX: Immediately hide ALL windows at the very beginning
+  // This must happen BEFORE any other cleanup to prevent white screen
+  Logger::Instance().Info("Plugin", "[IMMEDIATE] Hiding all wallpaper windows...");
+  
+  // Hide multi-monitor windows immediately
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
+        // Immediately hide and move off-screen
+        ShowWindow(instance.webview_host_hwnd, SW_HIDE);
+        SetWindowPos(instance.webview_host_hwnd, nullptr, -32000, -32000, 1, 1,
+          SWP_NOZORDER | SWP_NOACTIVATE | SWP_HIDEWINDOW);
+      }
+    }
+  }
+  
+  // Hide single-monitor window immediately
+  if (webview_host_hwnd_ && IsWindow(webview_host_hwnd_)) {
+    ShowWindow(webview_host_hwnd_, SW_HIDE);
+    SetWindowPos(webview_host_hwnd_, nullptr, -32000, -32000, 1, 1,
+      SWP_NOZORDER | SWP_NOACTIVATE | SWP_HIDEWINDOW);
+  }
+  
+  Logger::Instance().Info("Plugin", "[IMMEDIATE] All windows hidden");
 
   // v2.3.1+ Enhancement: Stop WorkerW health monitoring
   if (workerw_health_monitor_ && workerw_health_monitor_->IsMonitoring()) {
