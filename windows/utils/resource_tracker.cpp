@@ -55,6 +55,41 @@ bool ResourceTracker::IsTracked(HWND hwnd) const {
   return tracked_windows_.find(hwnd) != tracked_windows_.end();
 }
 
+// v2.6.7 FIX: Callback for EnumWindows to find orphaned AnyWallpaperHost windows
+static BOOL CALLBACK EnumOrphanedWindowsProc(HWND hwnd, LPARAM lParam) {
+  std::vector<HWND>* orphans = reinterpret_cast<std::vector<HWND>*>(lParam);
+  
+  wchar_t class_name[256] = {0};
+  wchar_t window_text[256] = {0};
+  
+  if (GetClassNameW(hwnd, class_name, 256) > 0 && 
+      GetWindowTextW(hwnd, window_text, 256) > 0) {
+    if (wcscmp(class_name, L"STATIC") == 0 && 
+        wcscmp(window_text, L"AnyWallpaperHost") == 0) {
+      orphans->push_back(hwnd);
+    }
+  }
+  
+  // Also check child windows (our windows are children of WorkerW)
+  EnumChildWindows(hwnd, [](HWND child, LPARAM lp) -> BOOL {
+    std::vector<HWND>* list = reinterpret_cast<std::vector<HWND>*>(lp);
+    
+    wchar_t cls[256] = {0};
+    wchar_t txt[256] = {0};
+    
+    if (GetClassNameW(child, cls, 256) > 0 && 
+        GetWindowTextW(child, txt, 256) > 0) {
+      if (wcscmp(cls, L"STATIC") == 0 && 
+          wcscmp(txt, L"AnyWallpaperHost") == 0) {
+        list->push_back(child);
+      }
+    }
+    return TRUE;
+  }, lParam);
+  
+  return TRUE;
+}
+
 void ResourceTracker::CleanupAll() {
   std::lock_guard<std::mutex> lock(mutex_);
   
@@ -88,20 +123,24 @@ void ResourceTracker::CleanupAll() {
     tracked_windows_.clear();
   }
   
-  // v2.6.7 FIX: Also find and destroy any orphaned AnyWallpaperHost windows
-  // This handles edge cases where windows weren't properly tracked
+  // v2.6.7 FIX: Find and destroy any orphaned AnyWallpaperHost windows
+  // Use EnumWindows to find child windows (our windows are children of WorkerW)
+  std::vector<HWND> orphans;
+  EnumWindows(EnumOrphanedWindowsProc, reinterpret_cast<LPARAM>(&orphans));
+  
   size_t orphan_count = 0;
-  HWND orphan = nullptr;
-  while ((orphan = FindWindowW(L"STATIC", L"AnyWallpaperHost")) != nullptr) {
-    if (DestroyWindow(orphan)) {
-      orphan_count++;
-      Logger::Instance().Warning("ResourceTracker", 
-        "Destroyed orphaned AnyWallpaperHost window: " + std::to_string((long long)orphan));
-    } else {
-      // Avoid infinite loop if destroy fails
-      Logger::Instance().Error("ResourceTracker", 
-        "Failed to destroy orphaned window, breaking loop");
-      break;
+  for (HWND orphan : orphans) {
+    if (IsWindow(orphan)) {
+      if (DestroyWindow(orphan)) {
+        orphan_count++;
+        Logger::Instance().Warning("ResourceTracker", 
+          "Destroyed orphaned AnyWallpaperHost window: " + std::to_string((long long)orphan));
+      } else {
+        DWORD error = GetLastError();
+        Logger::Instance().Warning("ResourceTracker", 
+          "Failed to destroy orphaned window: " + std::to_string((long long)orphan) +
+          " (Error: " + std::to_string(error) + ")");
+      }
     }
   }
 

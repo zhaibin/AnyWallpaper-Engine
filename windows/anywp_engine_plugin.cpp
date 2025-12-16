@@ -2007,6 +2007,10 @@ bool AnyWPEnginePlugin::StopWallpaper() {
   is_initialized_ = false;
   enable_interaction_ = false;
 
+  // v2.6.7 FIX: Force cleanup any remaining orphaned windows
+  // This ensures no AnyWallpaperHost windows are left behind
+  ResourceTracker::Instance().CleanupAll();
+
   Logger::Instance().Info("Plugin", "Wallpaper stopped successfully");
   Logger::Instance().Info("Plugin", 
     "[ResourceTracker] Tracked windows: " + std::to_string(ResourceTracker::Instance().GetTrackedCount()));
