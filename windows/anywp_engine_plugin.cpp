@@ -1886,39 +1886,56 @@ bool AnyWPEnginePlugin::StopWallpaper() {
         "Stopping " + std::to_string(wallpaper_instances_.size()) + " multi-monitor instance(s)...");
       
       for (auto& instance : wallpaper_instances_) {
-        // Close WebView
+        HWND hwnd_to_destroy = instance.webview_host_hwnd;
+        
+        // v2.6.7 FIX: Hide window FIRST before any WebView cleanup
+        // This prevents white screen from being visible
+        if (hwnd_to_destroy && IsWindow(hwnd_to_destroy)) {
+          ShowWindow(hwnd_to_destroy, SW_HIDE);
+          Logger::Instance().Info("Plugin", "Window hidden for monitor " + std::to_string(instance.monitor_index));
+        }
+        
+        // Close WebView - must release all references before destroying window
         if (instance.webview_controller) {
           try {
             instance.webview_controller->Close();
           } catch (...) {
             Logger::Instance().Warning("Plugin", "Exception while closing WebView controller");
           }
-          instance.webview_controller = nullptr;
         }
+        // Release COM references
+        instance.webview_controller = nullptr;
         instance.webview = nullptr;
         
-        // v2.6.7 FIX: Wait for WebView2 to complete cleanup before destroying window
-        Sleep(50);
+        // v2.6.7 FIX: Wait longer for WebView2 to complete async cleanup
+        // WebView2's Close() is asynchronous
+        Sleep(200);
         
         // Destroy window
-        if (instance.webview_host_hwnd) {
+        if (hwnd_to_destroy) {
           try {
-          if (IsWindow(instance.webview_host_hwnd)) {
-            // v2.6.7 FIX: Hide window first to prevent white screen flash
-            ShowWindow(instance.webview_host_hwnd, SW_HIDE);
+          if (IsWindow(hwnd_to_destroy)) {
+            // Remove from parent to make it a top-level window
+            SetParent(hwnd_to_destroy, nullptr);
             
-            // Remove from parent to make it a top-level window (easier to destroy)
-            SetParent(instance.webview_host_hwnd, nullptr);
+            // Process pending messages to help WebView2 cleanup
+            MSG msg;
+            while (PeekMessage(&msg, hwnd_to_destroy, 0, 0, PM_REMOVE)) {
+              TranslateMessage(&msg);
+              DispatchMessage(&msg);
+            }
             
-            ResourceTracker::Instance().UntrackWindow(instance.webview_host_hwnd);
-            if (!DestroyWindow(instance.webview_host_hwnd)) {
+            ResourceTracker::Instance().UntrackWindow(hwnd_to_destroy);
+            if (!DestroyWindow(hwnd_to_destroy)) {
               DWORD error = GetLastError();
-                Logger::Instance().Warning("Plugin", "Failed to destroy window, error: " + std::to_string(error));
+              Logger::Instance().Warning("Plugin", "Failed to destroy window, error: " + std::to_string(error));
+              // Try sending WM_CLOSE as fallback
+              PostMessage(hwnd_to_destroy, WM_CLOSE, 0, 0);
             } else {
               Logger::Instance().Info("Plugin", "Window destroyed for monitor " + std::to_string(instance.monitor_index));
             }
           } else {
-            ResourceTracker::Instance().UntrackWindow(instance.webview_host_hwnd);
+            ResourceTracker::Instance().UntrackWindow(hwnd_to_destroy);
             }
           } catch (const std::exception& e) {
             LOG_AND_REPORT_ERROR_EX("WindowManager", "DestroyWindow", 
@@ -1954,42 +1971,56 @@ bool AnyWPEnginePlugin::StopWallpaper() {
   }
 
   // Stop single-monitor mode instance
+  HWND hwnd_to_destroy = webview_host_hwnd_;
+  
+  // v2.6.7 FIX: Hide window FIRST before any WebView cleanup
+  if (hwnd_to_destroy && IsWindow(hwnd_to_destroy)) {
+    ShowWindow(hwnd_to_destroy, SW_HIDE);
+    Logger::Instance().Info("Plugin", "Single-monitor window hidden");
+  }
+  
   if (webview_controller_) {
     try {
       webview_controller_->Close();
     } catch (...) {
       Logger::Instance().Warning("Plugin", "Exception while closing WebView controller");
     }
-    webview_controller_ = nullptr;
   }
-
+  // Release COM references
+  webview_controller_ = nullptr;
   webview_ = nullptr;
   
-  // v2.6.7 FIX: Wait for WebView2 to complete cleanup before destroying window
-  Sleep(50);
+  // v2.6.7 FIX: Wait longer for WebView2 to complete async cleanup
+  Sleep(200);
 
-  if (webview_host_hwnd_) {
+  if (hwnd_to_destroy) {
     try {
     // Verify window is still valid
-    if (IsWindow(webview_host_hwnd_)) {
-      // v2.6.7 FIX: Hide window first to prevent white screen flash
-      ShowWindow(webview_host_hwnd_, SW_HIDE);
+    if (IsWindow(hwnd_to_destroy)) {
+      // Remove from parent to make it a top-level window
+      SetParent(hwnd_to_destroy, nullptr);
       
-      // Remove from parent to make it a top-level window (easier to destroy)
-      SetParent(webview_host_hwnd_, nullptr);
+      // Process pending messages to help WebView2 cleanup
+      MSG msg;
+      while (PeekMessage(&msg, hwnd_to_destroy, 0, 0, PM_REMOVE)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+      }
       
       // P0-1: Untrack before destroying
-      ResourceTracker::Instance().UntrackWindow(webview_host_hwnd_);
+      ResourceTracker::Instance().UntrackWindow(hwnd_to_destroy);
       
-      if (!DestroyWindow(webview_host_hwnd_)) {
+      if (!DestroyWindow(hwnd_to_destroy)) {
         DWORD error = GetLastError();
-          Logger::Instance().Warning("Plugin", "Failed to destroy window, error: " + std::to_string(error));
+        Logger::Instance().Warning("Plugin", "Failed to destroy window, error: " + std::to_string(error));
+        // Try sending WM_CLOSE as fallback
+        PostMessage(hwnd_to_destroy, WM_CLOSE, 0, 0);
       } else {
         Logger::Instance().Info("Plugin", "Single-monitor window destroyed successfully");
       }
     } else {
         Logger::Instance().Warning("Plugin", "WebView host window already destroyed");
-      ResourceTracker::Instance().UntrackWindow(webview_host_hwnd_);
+      ResourceTracker::Instance().UntrackWindow(hwnd_to_destroy);
       }
     } catch (const std::exception& e) {
       LOG_AND_REPORT_ERROR_EX("WindowManager", "DestroyWindow", 
