@@ -139,6 +139,24 @@ void WebViewManager::CreateWebView(
           return hr;
         }
 
+        // v2.6.7 FIX: Set WebView2 background to transparent (prevents startup white screen flash)
+        Microsoft::WRL::ComPtr<ICoreWebView2Controller2> ctrl2;
+        hr = ctrl->QueryInterface(IID_PPV_ARGS(&ctrl2));
+        if (SUCCEEDED(hr) && ctrl2) {
+          // COREWEBVIEW2_COLOR with alpha=0 means transparent
+          COREWEBVIEW2_COLOR transparent = { 0, 0, 0, 0 };  // A, R, G, B - all zeros = fully transparent
+          hr = ctrl2->put_DefaultBackgroundColor(transparent);
+          if (SUCCEEDED(hr)) {
+            Logger::Instance().Info("WebViewManager", "WebView2 background set to transparent");
+          } else {
+            Logger::Instance().Warning("WebViewManager", 
+              "Failed to set transparent background: HRESULT=0x" + std::to_string(hr));
+          }
+        } else {
+          Logger::Instance().Warning("WebViewManager", 
+            "ICoreWebView2Controller2 not available, cannot set transparent background");
+        }
+
         // Set bounds
         RECT bounds;
         GetClientRect(parent_hwnd, &bounds);

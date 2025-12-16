@@ -921,6 +921,13 @@ void AnyWPEnginePlugin::SetupWebView2WithManager(HWND hwnd, const std::string& u
                 "Navigation failed with status: " + std::to_string(status),
                 ErrorHandler::ErrorCategory::NETWORK, 
                 ErrorHandler::ErrorLevel::ERROR);
+              
+              // v2.6.7 FIX: Still make window visible even if navigation failed
+              // (otherwise user sees nothing)
+              if (hwnd && IsWindow(hwnd)) {
+                SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+                Logger::Instance().Info("Plugin", "Window made visible despite navigation failure");
+              }
               return S_OK;
             }
             
@@ -949,6 +956,12 @@ void AnyWPEnginePlugin::SetupWebView2WithManager(HWND hwnd, const std::string& u
               }
               
               Logger::Instance().Info("Plugin", "SDK injection completed successfully");
+              
+              // v2.6.7 FIX: Make window visible now that WebView2 is ready (prevents startup white screen)
+              if (hwnd && IsWindow(hwnd)) {
+                SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+                Logger::Instance().Info("Plugin", "Window made visible (alpha=255) after WebView2 ready");
+              }
               
               // v2.3.1+ Enhanced: Start WorkerW health monitoring after wallpaper initialization
               if (!use_legacy && monitor_index >= 0) {
@@ -1865,8 +1878,85 @@ bool AnyWPEnginePlugin::InitializeWallpaper(const std::string& url, bool enable_
   return true;
 }
 
+// v2.6.7 FIX: Helper to destroy all child windows of a WebView host
+static BOOL CALLBACK DestroyChildWindowsProc(HWND hwnd, LPARAM lParam) {
+  // Skip the parent window itself
+  if (hwnd == reinterpret_cast<HWND>(lParam)) {
+    return TRUE;
+  }
+  
+  // First hide the child window to prevent visual artifacts
+  ShowWindow(hwnd, SW_HIDE);
+  
+  // Try to destroy it
+  if (IsWindow(hwnd)) {
+    DestroyWindow(hwnd);
+  }
+  
+  return TRUE;
+}
+
+// v2.6.7 FIX: Helper to forcibly hide a window (also defined in resource_tracker.cpp)
+static void ForceHideWindowImmediate(HWND hwnd, bool change_title = false) {
+  if (!hwnd || !IsWindow(hwnd)) return;
+  
+  // Hide the window immediately
+  ShowWindow(hwnd, SW_HIDE);
+  
+  // Move off screen
+  SetWindowPos(hwnd, nullptr, -32000, -32000, 0, 0, 
+    SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+  
+  // Make fully transparent
+  SetWindowLongPtr(hwnd, GWL_EXSTYLE, 
+    GetWindowLongPtr(hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+  SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);
+  
+  // Set window size to 0
+  SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, 
+    SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+  
+  // v2.6.7 FIX: Change the window title so FindWindowW won't find it again
+  if (change_title) {
+    SetWindowTextW(hwnd, L"");
+  }
+}
+
 bool AnyWPEnginePlugin::StopWallpaper() {
   Logger::Instance().Info("Plugin", "Stopping wallpaper...");
+
+  // v2.6.7 CRITICAL FIX: Hide ALL windows IMMEDIATELY at the very start
+  // This ensures no white screen remains visible during cleanup
+  {
+    std::lock_guard<std::mutex> lock(instances_mutex_);
+    for (auto& instance : wallpaper_instances_) {
+      if (instance.webview_host_hwnd) {
+        Logger::Instance().Info("Plugin", "Immediately hiding window for monitor " + 
+          std::to_string(instance.monitor_index));
+        ForceHideWindowImmediate(instance.webview_host_hwnd);
+      }
+    }
+  }
+  if (webview_host_hwnd_) {
+    Logger::Instance().Info("Plugin", "Immediately hiding single-monitor window");
+    ForceHideWindowImmediate(webview_host_hwnd_);
+  }
+  
+  // v2.6.7 FIX: Also find and hide any orphaned AnyWallpaperHost windows immediately
+  HWND found = nullptr;
+  int hide_count = 0;
+  while ((found = FindWindowW(L"STATIC", L"AnyWallpaperHost")) != nullptr && hide_count < 100) {
+    hide_count++;
+    Logger::Instance().Info("Plugin", "Found orphaned AnyWallpaperHost, hiding: " + 
+      std::to_string((long long)found));
+    // Pass true to change title so FindWindowW won't find it again
+    ForceHideWindowImmediate(found, true);
+    // Also try to destroy it
+    DestroyWindow(found);
+  }
+  if (hide_count > 0) {
+    Logger::Instance().Info("Plugin", "Processed " + std::to_string(hide_count) + " orphaned windows");
+  }
 
   // v2.3.1+ Enhancement: Stop WorkerW health monitoring
   if (workerw_health_monitor_ && workerw_health_monitor_->IsMonitoring()) {
@@ -1886,6 +1976,23 @@ bool AnyWPEnginePlugin::StopWallpaper() {
         "Stopping " + std::to_string(wallpaper_instances_.size()) + " multi-monitor instance(s)...");
       
       for (auto& instance : wallpaper_instances_) {
+        // v2.6.7 FIX: Hide host window FIRST to prevent white screen on Windows 10
+        if (instance.webview_host_hwnd && IsWindow(instance.webview_host_hwnd)) {
+          ShowWindow(instance.webview_host_hwnd, SW_HIDE);
+          // Move off screen immediately
+          SetWindowPos(instance.webview_host_hwnd, nullptr, -32000, -32000, 0, 0, 
+            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        
+        // v2.6.7 FIX: Hide WebView content before closing
+        if (instance.webview_controller) {
+          try {
+            instance.webview_controller->put_IsVisible(FALSE);
+          } catch (...) {
+            Logger::Instance().Warning("Plugin", "Exception hiding WebView");
+          }
+        }
+        
         // Close WebView
         if (instance.webview_controller) {
           try {
@@ -1897,23 +2004,30 @@ bool AnyWPEnginePlugin::StopWallpaper() {
         }
         instance.webview = nullptr;
         
+        // v2.6.7 FIX: Wait for WebView2 async cleanup and process messages
+        Sleep(100);
+        MSG msg;
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+          TranslateMessage(&msg);
+          DispatchMessage(&msg);
+        }
+        
         // Destroy window
         if (instance.webview_host_hwnd) {
           try {
             if (IsWindow(instance.webview_host_hwnd)) {
-              // v2.6.7 FIX: Hide window first (for Windows 10 compatibility)
-              ShowWindow(instance.webview_host_hwnd, SW_HIDE);
+              // v2.6.7 FIX: Destroy child windows first (WebView2 creates internal windows)
+              EnumChildWindows(instance.webview_host_hwnd, DestroyChildWindowsProc, 
+                reinterpret_cast<LPARAM>(instance.webview_host_hwnd));
               
               ResourceTracker::Instance().UntrackWindow(instance.webview_host_hwnd);
               if (!DestroyWindow(instance.webview_host_hwnd)) {
                 DWORD error = GetLastError();
                 Logger::Instance().Warning("Plugin", "Failed to destroy window, error: " + std::to_string(error));
                 
-                // v2.6.7 FIX: Fallback for Windows 10 - move off screen and make transparent
+                // v2.6.7 FIX: Force hide - make it a message-only window and fully transparent
                 if (IsWindow(instance.webview_host_hwnd)) {
                   SetParent(instance.webview_host_hwnd, HWND_MESSAGE);
-                  SetWindowPos(instance.webview_host_hwnd, nullptr, -32000, -32000, 0, 0, 
-                    SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
                   SetWindowLongPtr(instance.webview_host_hwnd, GWL_EXSTYLE, 
                     GetWindowLongPtr(instance.webview_host_hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
                   SetLayeredWindowAttributes(instance.webview_host_hwnd, 0, 0, LWA_ALPHA);
@@ -1959,6 +2073,22 @@ bool AnyWPEnginePlugin::StopWallpaper() {
   }
 
   // Stop single-monitor mode instance
+  // v2.6.7 FIX: Hide host window FIRST
+  if (webview_host_hwnd_ && IsWindow(webview_host_hwnd_)) {
+    ShowWindow(webview_host_hwnd_, SW_HIDE);
+    SetWindowPos(webview_host_hwnd_, nullptr, -32000, -32000, 0, 0, 
+      SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+  }
+  
+  // v2.6.7 FIX: Hide WebView content before closing
+  if (webview_controller_) {
+    try {
+      webview_controller_->put_IsVisible(FALSE);
+    } catch (...) {
+      Logger::Instance().Warning("Plugin", "Exception hiding WebView");
+    }
+  }
+  
   if (webview_controller_) {
     try {
       webview_controller_->Close();
@@ -1970,12 +2100,21 @@ bool AnyWPEnginePlugin::StopWallpaper() {
 
   webview_ = nullptr;
 
+  // v2.6.7 FIX: Wait for WebView2 async cleanup
+  Sleep(100);
+  MSG msg;
+  while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+
   if (webview_host_hwnd_) {
     try {
       // Verify window is still valid
       if (IsWindow(webview_host_hwnd_)) {
-        // v2.6.7 FIX: Hide window first (for Windows 10 compatibility)
-        ShowWindow(webview_host_hwnd_, SW_HIDE);
+        // v2.6.7 FIX: Destroy child windows first
+        EnumChildWindows(webview_host_hwnd_, DestroyChildWindowsProc, 
+          reinterpret_cast<LPARAM>(webview_host_hwnd_));
         
         // P0-1: Untrack before destroying
         ResourceTracker::Instance().UntrackWindow(webview_host_hwnd_);
@@ -1984,11 +2123,9 @@ bool AnyWPEnginePlugin::StopWallpaper() {
           DWORD error = GetLastError();
           Logger::Instance().Warning("Plugin", "Failed to destroy window, error: " + std::to_string(error));
           
-          // v2.6.7 FIX: Fallback for Windows 10 - move off screen and make transparent
+          // v2.6.7 FIX: Force hide - make it a message-only window and fully transparent
           if (IsWindow(webview_host_hwnd_)) {
             SetParent(webview_host_hwnd_, HWND_MESSAGE);
-            SetWindowPos(webview_host_hwnd_, nullptr, -32000, -32000, 0, 0, 
-              SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
             SetWindowLongPtr(webview_host_hwnd_, GWL_EXSTYLE, 
               GetWindowLongPtr(webview_host_hwnd_, GWL_EXSTYLE) | WS_EX_LAYERED);
             SetLayeredWindowAttributes(webview_host_hwnd_, 0, 0, LWA_ALPHA);

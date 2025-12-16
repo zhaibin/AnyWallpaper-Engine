@@ -67,31 +67,46 @@ HWND WindowManager::CreateWebViewHostWindow(
 
   // Set extended styles based on mouse transparent mode
   DWORD ex_style = WS_EX_NOACTIVATE;  // Always prevent focus stealing to avoid interfering with MouseHook
+  // v2.6.7 FIX: Add WS_EX_LAYERED to allow transparent window (prevents startup white screen)
+  ex_style |= WS_EX_LAYERED;
+  
   if (enable_mouse_transparent) {
     // Transparent mode: prevent focus + mouse pass-through
     ex_style |= WS_EX_TRANSPARENT;
     Logger::Instance().Info("WindowManager", 
-      "Extended styles: WS_EX_NOACTIVATE | WS_EX_TRANSPARENT (pass-through mode)");
+      "Extended styles: WS_EX_NOACTIVATE | WS_EX_LAYERED | WS_EX_TRANSPARENT (pass-through mode)");
   } else {
     // Interactive mode: prevent focus (keep WS_EX_NOACTIVATE), but remove WS_EX_TRANSPARENT
     // Why keep WS_EX_NOACTIVATE? Because we use MouseHook to inject events, focus changes interfere with this.
     Logger::Instance().Info("WindowManager", 
-      "Extended styles: WS_EX_NOACTIVATE (interactive mode - MouseHook injects events)");
+      "Extended styles: WS_EX_NOACTIVATE | WS_EX_LAYERED (interactive mode - MouseHook injects events)");
   }
 
   // Create as CHILD window of WorkerW
   // Note: When Explorer restarts, child windows will be destroyed automatically.
   // The recovery mechanism will detect this and recreate everything (Lively-style approach)
+  // v2.6.7 FIX: Create window WITHOUT WS_VISIBLE to prevent white screen flash
+  // We'll show it after setting transparency attributes
   HWND hwnd = CreateWindowExW(
       ex_style,
       L"STATIC",
       L"AnyWallpaperHost",
-      WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+      WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,  // Note: No WS_VISIBLE here
       x, y, width, height,
       parent_window,
       nullptr,
       GetModuleHandle(nullptr),
       nullptr);
+  
+  // v2.6.7 FIX: Set window to fully transparent BEFORE showing it (prevents startup white screen)
+  // The window will be made visible (alpha=255) after WebView2 finishes loading
+  if (hwnd) {
+    // First set transparency to 0
+    SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);
+    // Now it's safe to show the window - it's fully transparent
+    ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+    Logger::Instance().Info("WindowManager", "Window created with alpha=0 (transparent until WebView2 ready)");
+  }
 
   if (!hwnd) {
     DWORD error = GetLastError();
