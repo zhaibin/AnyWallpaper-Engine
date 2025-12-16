@@ -292,8 +292,12 @@ bool WorkerWHealthMonitor::IsWorkerWValid() {
 bool WorkerWHealthMonitor::IsWorkerWStillWallpaperLayer() {
   std::lock_guard<std::mutex> lock(mutex_);
   
-  // 检查 SHELLDLL_DefView 是否存在
-  // 这是验证 WorkerW 仍然是壁纸层的关键指标
+  // v2.6.7 FIX: 壁纸层 WorkerW 本身不包含 SHELLDLL_DefView！
+  // SHELLDLL_DefView 位于图标层 WorkerW（另一个窗口），不在我们监控的壁纸层中
+  // 正确的检查逻辑：
+  // 1. 验证 Progman 存在（桌面结构基础）
+  // 2. 验证我们的 WorkerW 仍然是 WorkerW 类型（已在 IsWorkerWValid 中检查）
+  // 3. 验证桌面结构完整（SHELLDLL_DefView 存在于某处）
   
   HWND progman = FindWindowW(L"Progman", nullptr);
   if (!progman) {
@@ -302,7 +306,7 @@ bool WorkerWHealthMonitor::IsWorkerWStillWallpaperLayer() {
     return false;
   }
   
-  // 递归查找 SHELLDLL_DefView
+  // 递归查找 SHELLDLL_DefView（在整个桌面结构中，不仅仅是我们的 WorkerW）
   auto FindSHELLDLL = [](HWND parent) -> HWND {
     HWND child = nullptr;
     while ((child = FindWindowExW(parent, child, nullptr, nullptr)) != nullptr) {
@@ -322,19 +326,28 @@ bool WorkerWHealthMonitor::IsWorkerWStillWallpaperLayer() {
     return nullptr;
   };
   
-  // 检查 SHELLDLL_DefView 是否在 WorkerW 或 Progman 中
-  HWND shelldll = FindSHELLDLL(workerw_hwnd_);
-  if (!shelldll && workerw_hwnd_ != progman) {
-    // 如果 WorkerW 中没有，检查 Progman
-    shelldll = FindSHELLDLL(progman);
+  // v2.6.7 FIX: 在整个桌面结构中查找 SHELLDLL_DefView
+  // 先检查 Progman（Windows 11 常见）
+  HWND shelldll = FindSHELLDLL(progman);
+  
+  // 如果 Progman 中没有，遍历所有 WorkerW 窗口查找
+  if (!shelldll) {
+    HWND workerw = nullptr;
+    while ((workerw = FindWindowExW(nullptr, workerw, L"WorkerW", nullptr)) != nullptr) {
+      shelldll = FindSHELLDLL(workerw);
+      if (shelldll) {
+        break;
+      }
+    }
   }
   
   if (!shelldll) {
     Logger::Instance().Warning("WorkerWHealthMonitor", 
-      "SHELLDLL_DefView not found, desktop structure may have changed");
+      "SHELLDLL_DefView not found in desktop structure");
     return false;
   }
   
+  // 桌面结构完整，我们的 WorkerW 有效（已在 IsWorkerWValid 中验证）
   return true;
 }
 
