@@ -1945,11 +1945,20 @@ bool AnyWPEnginePlugin::StopWallpaper() {
               if (!DestroyWindow(hwnd_to_destroy)) {
                 DWORD error = GetLastError();
                 Logger::Instance().Warning("Plugin", "Failed to destroy window, error: " + std::to_string(error));
-                // Force close
-                SendMessage(hwnd_to_destroy, WM_CLOSE, 0, 0);
-                Sleep(100);
+                
+                // v2.6.7 FIX: If destroy fails, make window invisible and move off-screen
+                // This ensures no white screen is visible even if window can't be destroyed
                 if (IsWindow(hwnd_to_destroy)) {
-                  SendMessage(hwnd_to_destroy, WM_DESTROY, 0, 0);
+                  // Remove from WorkerW to prevent it showing on desktop
+                  SetParent(hwnd_to_destroy, HWND_MESSAGE);  // Make it a message-only window
+                  // Move way off screen
+                  SetWindowPos(hwnd_to_destroy, nullptr, -32000, -32000, 0, 0, 
+                    SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+                  // Make fully transparent
+                  SetWindowLongPtr(hwnd_to_destroy, GWL_EXSTYLE, 
+                    GetWindowLongPtr(hwnd_to_destroy, GWL_EXSTYLE) | WS_EX_TRANSPARENT | WS_EX_LAYERED);
+                  SetLayeredWindowAttributes(hwnd_to_destroy, 0, 0, LWA_ALPHA);
+                  Logger::Instance().Info("Plugin", "Window hidden off-screen as fallback");
                 }
               } else {
                 Logger::Instance().Info("Plugin", "Window destroyed for monitor " + std::to_string(instance.monitor_index));
@@ -2050,11 +2059,19 @@ bool AnyWPEnginePlugin::StopWallpaper() {
         if (!DestroyWindow(hwnd_to_destroy)) {
           DWORD error = GetLastError();
           Logger::Instance().Warning("Plugin", "Failed to destroy window, error: " + std::to_string(error));
-          // Force close
-          SendMessage(hwnd_to_destroy, WM_CLOSE, 0, 0);
-          Sleep(100);
+          
+          // v2.6.7 FIX: If destroy fails, make window invisible and move off-screen
           if (IsWindow(hwnd_to_destroy)) {
-            SendMessage(hwnd_to_destroy, WM_DESTROY, 0, 0);
+            // Remove from WorkerW to prevent it showing on desktop
+            SetParent(hwnd_to_destroy, HWND_MESSAGE);  // Make it a message-only window
+            // Move way off screen
+            SetWindowPos(hwnd_to_destroy, nullptr, -32000, -32000, 0, 0, 
+              SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            // Make fully transparent
+            SetWindowLongPtr(hwnd_to_destroy, GWL_EXSTYLE, 
+              GetWindowLongPtr(hwnd_to_destroy, GWL_EXSTYLE) | WS_EX_TRANSPARENT | WS_EX_LAYERED);
+            SetLayeredWindowAttributes(hwnd_to_destroy, 0, 0, LWA_ALPHA);
+            Logger::Instance().Info("Plugin", "Window hidden off-screen as fallback");
           }
         } else {
           Logger::Instance().Info("Plugin", "Single-monitor window destroyed successfully");
