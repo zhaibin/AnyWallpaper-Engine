@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'anywp_engine'
-  s.version          = '2.6.6'
+  s.version          = '2.6.7'
   s.summary          = 'AnyWP Engine - Desktop Wallpaper Plugin for Flutter (macOS)'
   s.description      = <<-DESC
 AnyWP Engine plugin for macOS, providing desktop wallpaper functionality using WKWebView.
@@ -33,7 +33,7 @@ Supports multi-monitor setups, power management, bidirectional communication, an
   # Post-install script to ensure framework is properly embedded
   # Note: For precompiled framework integration, see PRECOMPILED_MACOS_INTEGRATION.md
   s.prepare_command = <<-CMD
-    echo "AnyWP Engine v2.6.6 - macOS Plugin"
+    echo "AnyWP Engine v2.6.7 - macOS Plugin"
     echo "For precompiled framework integration, see documentation"
   CMD
 end

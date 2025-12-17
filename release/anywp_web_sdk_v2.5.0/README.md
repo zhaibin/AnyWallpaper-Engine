@@ -1,9 +1,9 @@
 # AnyWP Engine - Web SDK v2.5.0
 
 **Web SDK Version**: v2.5.0
-**Compatible with AnyWP Engine**: v2.6.6+
+**Compatible with AnyWP Engine**: v2.6.7+
 
-> **Note**: Web SDK has independent version numbers. This SDK is compatible with AnyWP Engine v2.6.6 and later versions.
+> **Note**: Web SDK has independent version numbers. This SDK is compatible with AnyWP Engine v2.6.7 and later versions.
 
 Standalone Web SDK package for wallpaper developers.
 

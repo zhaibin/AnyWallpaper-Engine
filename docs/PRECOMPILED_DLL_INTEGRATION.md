@@ -84,12 +84,12 @@
 
 **推荐：预编译包**（最简单集成）
 ```
-anywp_engine_v2.6.6_precompiled.zip
+anywp_engine_v2.6.7_precompiled.zip
 ```
 
 **可选：源码包**（需要自定义修改）
 ```
-anywp_engine_v2.6.6_source.zip
+anywp_engine_v2.6.7_source.zip
 ```
 
 ### 2. 解压到项目目录
@@ -862,5 +862,5 @@ verify.bat
 
 ---
 
-**Version**: 2.6.6
+**Version**: 2.6.7
 

@@ -1,6 +1,6 @@
 ﻿name: anywp_engine
 description: AnyWP - Cross-platform Flutter plugin for desktop wallpaper engine (Windows & macOS)
-version: 2.6.6
+version: 2.6.7
 homepage: https://github.com/zhaibin/AnyWallpaper-Engine
 
 environment:
