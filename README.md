@@ -452,6 +452,7 @@ Progman (Desktop Window)
 - [快速开始](docs/QUICK_START.md) - Quick start guide
 - [测试指南](docs/TESTING_GUIDE.md) - Testing guide
 - [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues
+- [Runtime Issues](docs/RUNTIME_ISSUES.md) - VC++ Runtime and WebView2 troubleshooting
 
 ### Developer Guides
 - [🎯 Developer API Reference](docs/DEVELOPER_API_REFERENCE.md) - Complete API documentation
