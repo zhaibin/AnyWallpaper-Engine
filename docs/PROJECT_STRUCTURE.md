@@ -77,10 +77,10 @@ AnyWallpaper Engine/
 │
 ├── 📂 docs/                         # 文档目录
 │   ├── README.md                    # 文档索引
-│   ├── README_CN.md                 # 中文文档
+│   ├── README.md                    # 文档中心
 │   ├── QUICK_START.md               # 快速开始
 │   ├── TESTING_GUIDE.md             # 测试指南
-│   ├── USAGE_EXAMPLES.md            # 使用示例
+│   ├── API_USAGE_EXAMPLES.md        # 使用示例
 │   ├── TROUBLESHOOTING.md           # 故障排除
 │   ├── API_BRIDGE.md                # API 桥接文档
 │   ├── TECHNICAL_NOTES.md           # 技术说明
@@ -157,7 +157,7 @@ AnyWallpaper Engine/
 | | BEST_PRACTICES.md | 最佳实践 |
 | **技术文档** | TECHNICAL_NOTES.md | 深度技术实现细节 |
 | | API_BRIDGE.md | JavaScript Bridge 完整文档 |
-| | INTEGRATION_ARCHITECTURE.md | 集成架构 |
+| | ARCHITECTURE_DESIGN.md | 集成架构 |
 | **集成与发布** | PACKAGE_USAGE_GUIDE_CN.md | 包使用指南 |
 | | PRECOMPILED_DLL_INTEGRATION.md | 预编译 DLL 集成 |
 | | RELEASE_GUIDE.md | 发布指南 |
@@ -244,7 +244,7 @@ windows/anywp_sdk.js
 
 - 📘 [快速开始](QUICK_START.md) - 3 步上手
 - 🧪 [测试指南](TESTING_GUIDE.md) - 如何测试
-- 📚 [使用示例](USAGE_EXAMPLES.md) - 代码示例
+- 📚 [使用示例](API_USAGE_EXAMPLES.md) - 代码示例
 - 🔧 [技术说明](TECHNICAL_NOTES.md) - 深度技术
 - 🐛 [故障排除](TROUBLESHOOTING.md) - 问题解决
 
@@ -295,4 +295,3 @@ windows/anywp_sdk.js
 **版本**: 1.3.2-dev  
 **最后更新**: 2025-11-07  
 **重大更新**: C++ 代码模块化重构完成
-

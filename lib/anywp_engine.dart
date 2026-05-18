@@ -196,6 +196,21 @@ class AnyWPEngine {
     _startMessagePolling();
     debugPrint('[AnyWPEngine] Message callback and polling setup complete');
   }
+
+  /// Clear registered callbacks and stop background polling timers.
+  ///
+  /// Call this when the owning widget/app is disposed and no longer wants to
+  /// receive plugin callbacks.
+  static void clearCallbacks() {
+    _onMonitorChangeCallback = null;
+    _onPowerStateChangeCallback = null;
+    _onMessageCallback = null;
+    _onRecoveryCallback = null;
+    _powerStatePollingTimer?.cancel();
+    _powerStatePollingTimer = null;
+    _messagePollingTimer?.cancel();
+    _messagePollingTimer = null;
+  }
   
   /// Set callback for wallpaper recovery completion (v2.4.1+)
   /// 

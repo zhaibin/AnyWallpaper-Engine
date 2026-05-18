@@ -617,7 +617,7 @@ bool VerifySignature(const std::string& message_json, const std::string& signatu
 
 ## 🔗 相关文档
 
-- [实施指南](./ENGINE_WEBMESSAGE_IMPLEMENTATION_GUIDE.md)
+- [实施指南](./API_BRIDGE.md)
 - [快速参考](./ENGINE_QUICK_REFERENCE.md)
 - [测试用例](../test/message_protocol_test.dart)
 

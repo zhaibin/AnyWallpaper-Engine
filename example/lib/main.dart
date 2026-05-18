@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:anywp_engine/anywp_engine.dart';
@@ -11,7 +11,7 @@ class MonitorConfig {
   final String url;
   final bool wasRunning;
   final DateTime lastSeen;
-  
+
   MonitorConfig({
     required this.url,
     required this.wasRunning,
@@ -21,21 +21,21 @@ class MonitorConfig {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize window manager to prevent window position jumping
   await windowManager.ensureInitialized();
-  
+
   // Set application name for storage isolation
   await AnyWPEngine.setApplicationName('AnyWallpaperDemo');
-  
+
   // v2.3.2+ Enable auto recovery (simple mode - zero maintenance!)
   await AnyWPEngine.enableAutoRecovery(true);
   debugPrint('[APP] Auto recovery enabled');
-  
+
   // Print storage path for verification
   final storagePath = await AnyWPEngine.getStoragePath();
   debugPrint('[APP] Storage path: $storagePath');
-  
+
   runApp(const MyApp());
 }
 
@@ -46,44 +46,53 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProviderStateMixin {
+class _MyAppState extends State<MyApp>
+    with WindowListener, SingleTickerProviderStateMixin {
   TabController? _tabController;
   // Multi-monitor support
   List<MonitorInfo> _monitors = [];
-  final Map<int, bool> _monitorWallpapers = {};  // Track which monitors have wallpapers
-  final Map<int, TextEditingController> _monitorUrlControllers = {};  // Each monitor has its own URL
-  final Map<int, bool> _monitorLoading = {};  // Track loading state for each monitor
-  bool _allMonitorsLoading = false;  // Track "Start All" / "Stop All" loading state
-  
+  final Map<int, bool> _monitorWallpapers =
+      {}; // Track which monitors have wallpapers
+  final Map<int, TextEditingController> _monitorUrlControllers =
+      {}; // Each monitor has its own URL
+  final Map<int, bool> _monitorLoading =
+      {}; // Track loading state for each monitor
+  bool _allMonitorsLoading =
+      false; // Track "Start All" / "Stop All" loading state
+
   // Local file server for serving images without CORS issues (v2.5.2+)
   final LocalFileServer _fileServer = LocalFileServer();
-  String _httpServerBaseUrl = '';  // HTTP server base URL (e.g., http://127.0.0.1:54321)
-  Timer? _monitorCheckTimer;  // Timer for polling monitor changes
-  bool _isHandlingMonitorChange = false;  // Prevent overlapping monitor change handling
-  
+  String _httpServerBaseUrl =
+      ''; // HTTP server base URL (e.g., http://127.0.0.1:54321)
+  Timer? _monitorCheckTimer; // Timer for polling monitor changes
+  Timer? _autoStartTimer; // Timer for delayed carousel auto-start
+  bool _isHandlingMonitorChange =
+      false; // Prevent overlapping monitor change handling
+
   // Monitor configuration memory - preserves settings when monitors are unplugged
-  final Map<String, MonitorConfig> _monitorConfigMemory = {};  // Key: deviceName (e.g., \\.\DISPLAY2)
-  
+  final Map<String, MonitorConfig> _monitorConfigMemory =
+      {}; // Key: deviceName (e.g., \\.\DISPLAY2)
+
   // Window position memory - prevents jumping when monitors change
   Offset? _savedWindowPosition;
-  
+
   // Power saving & optimization
   String _powerState = 'Loading...';
   int _memoryUsageMB = 0;
   bool _autoPowerSaving = true;
-  
+
   // Bidirectional communication
   final List<Map<String, dynamic>> _receivedMessages = [];
   int _messagesSent = 0;
   int _messagesReceived = 0;
-  
+
   // Quick test pages - 只保留核心测试
   final List<Map<String, String>> _testPages = [
     {'name': 'Visibility', 'file': 'test_visibility.html', 'icon': '👁️'},
     {'name': 'API Test', 'file': 'test_api.html', 'icon': '⚙️'},
     {'name': 'Click Test', 'file': 'test_basic_click.html', 'icon': '👆'},
   ];
-  
+
   // 轮播控制状态
   final List<String> _carouselImages = [
     'https://picsum.photos/1920/1080?random=1',
@@ -97,32 +106,33 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   String _carouselStatus = 'stopped';
   int _carouselCountdown = 0; // 倒计时（秒）
   Timer? _carouselCountdownTimer;
-  final TextEditingController _intervalController = TextEditingController(text: '5');
+  final TextEditingController _intervalController =
+      TextEditingController(text: '5');
 
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize tab controller
     _tabController = TabController(length: 4, vsync: this);
     _tabController!.addListener(_onTabChanged);
-    
+
     // Register window listener to save/restore position
     windowManager.addListener(this);
-    
+
     // Start HTTP server for serving test pages (v2.5.2+)
     _startHttpServer();
-    
+
     _loadMonitors();
-    
+
     // Start polling for monitor changes (every 3 seconds to reduce UI thrashing)
     // Note: Direct InvokeMethod callback causes crashes, so we use polling instead
     _monitorCheckTimer = Timer.periodic(Duration(seconds: 3), (timer) {
       _checkMonitorChanges();
     });
-    
+
     debugPrint('[APP] Monitor polling started (every 3 seconds)');
-    
+
     // v2.1.1+ Fix: Setup power state change callback (polling-based)
     AnyWPEngine.setOnPowerStateChangeCallback((oldState, newState) {
       debugPrint('[APP] [PowerState] State changed: $oldState -> $newState');
@@ -133,25 +143,26 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       }
     });
     debugPrint('[APP] Power state change callback registered');
-    
+
     // v2.4.1+ Setup auto recovery callback (optional - for stateful wallpapers)
     AnyWPEngine.setOnRecoveryCallback((recoveredMonitors) async {
       debugPrint('[APP] ═══════════════════════════════════════════');
-      debugPrint('[APP] 🔄 Wallpaper recovered on monitors: $recoveredMonitors');
+      debugPrint(
+          '[APP] 🔄 Wallpaper recovered on monitors: $recoveredMonitors');
       debugPrint('[APP] ═══════════════════════════════════════════');
-      
+
       // Update UI state
       for (var monitorIndex in recoveredMonitors) {
         setState(() {
           _monitorWallpapers[monitorIndex] = true;
         });
       }
-      
+
       // Restore carousel configuration
       debugPrint('[APP] 📤 Sending carousel data to recovered WebView...');
       await _sendCarouselUpdate();
       debugPrint('[APP] ✅ Carousel data sent');
-      
+
       // Restore playback state if it was playing
       if (_carouselStatus == 'playing') {
         debugPrint('[APP] 🔄 Restoring playing state...');
@@ -161,7 +172,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       }
     });
     debugPrint('[APP] Recovery callback registered');
-    
+
     // Setup bidirectional communication callback
     AnyWPEngine.setOnMessageCallback((message) async {
       try {
@@ -172,13 +183,13 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
         debugPrint('[APP]   Data field: ${message['data']}');
         debugPrint('[APP]   Raw message: $message');
         debugPrint('[APP] ═══════════════════════════════════════════');
-        
+
         // Safe data extraction with defaults
         final messageType = message['type']?.toString() ?? 'unknown';
-        final messageData = message['data'] is Map 
-            ? message['data'] as Map<String, dynamic> 
+        final messageData = message['data'] is Map
+            ? message['data'] as Map<String, dynamic>
             : <String, dynamic>{};
-        
+
         // Parse timestamp safely
         DateTime messageTimestamp;
         try {
@@ -186,7 +197,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
           if (ts is int) {
             messageTimestamp = DateTime.fromMillisecondsSinceEpoch(ts);
           } else if (ts is String) {
-            messageTimestamp = DateTime.fromMillisecondsSinceEpoch(int.parse(ts));
+            messageTimestamp =
+                DateTime.fromMillisecondsSinceEpoch(int.parse(ts));
           } else {
             messageTimestamp = DateTime.now();
           }
@@ -194,7 +206,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
           debugPrint('[APP] Warning: Failed to parse timestamp: $e');
           messageTimestamp = DateTime.now();
         }
-        
+
         setState(() {
           _messagesReceived++;
           _receivedMessages.insert(0, {
@@ -203,24 +215,24 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
             'timestamp': messageTimestamp,
             'receivedAt': DateTime.now(),
           });
-          
+
           // Keep only last 50 messages
           if (_receivedMessages.length > 50) {
             _receivedMessages.removeLast();
           }
         });
-        
+
         // Handle carousel state changes from HTML
         if (messageType == 'carouselStateChanged') {
           debugPrint('[APP] Carousel state changed');
           final status = messageData['status']?.toString();
           final currentIndex = messageData['currentIndex'];
-          
+
           if (status != null) {
             setState(() {
               _carouselStatus = status;
             });
-            
+
             // 更新倒计时状态
             if (status == 'playing' && _carouselCountdownTimer == null) {
               _startCountdownTimer();
@@ -228,21 +240,21 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
               _stopCountdownTimer();
             }
           }
-          
+
           if (currentIndex != null && currentIndex is int) {
             setState(() {
               _carouselCurrentIndex = currentIndex;
             });
           }
         }
-        
+
         // Handle play success message from HTML
         if (messageType == 'playSuccess') {
           debugPrint('[APP] ✅ Play success confirmed by HTML');
           debugPrint('[APP]   Status: ${messageData['status']}');
           debugPrint('[APP]   Interval: ${messageData['interval']}ms');
           debugPrint('[APP]   Total Images: ${messageData['totalImages']}');
-          
+
           final status = messageData['status']?.toString();
           if (status == 'playing') {
             setState(() {
@@ -253,7 +265,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
             }
           }
         }
-        
+
         // Handle image displayed message from HTML
         if (messageType == 'imageDisplayed') {
           debugPrint('[APP] 🖼️ Image displayed');
@@ -261,7 +273,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
           final url = messageData['url'];
           debugPrint('[APP]   Index: $index');
           debugPrint('[APP]   URL: $url');
-          
+
           if (index != null && index is int) {
             setState(() {
               _carouselCurrentIndex = index;
@@ -272,34 +284,36 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
             }
           }
         }
-        
+
         // v2.3.1+ Handle wallpaper recreation request from C++ side (legacy manual mode)
         // v2.4.1+ Skip manual recreation when Auto Recovery is enabled (plugin handles it automatically)
         if (messageType == 'WALLPAPER_RECREATE_REQUIRED') {
           debugPrint('[APP] 🔄 Wallpaper recreation required!');
           debugPrint('[APP]   Reason: ${messageData['reason']}');
-          
+
           // v2.4.1+ Check if auto recovery is enabled
           final autoRecoveryEnabled = await AnyWPEngine.isAutoRecoveryEnabled();
           if (autoRecoveryEnabled) {
-            debugPrint('[APP] ✅ Auto Recovery is enabled, plugin will handle recreation automatically');
+            debugPrint(
+                '[APP] ✅ Auto Recovery is enabled, plugin will handle recreation automatically');
             debugPrint('[APP] ℹ️  No manual action needed from Flutter side');
             return; // Skip manual recreation
           }
-          
+
           // v2.4.0- Legacy: Manual recreation (only when Auto Recovery is disabled)
-          debugPrint('[APP] ⚠️  Auto Recovery disabled, performing manual recreation...');
+          debugPrint(
+              '[APP] ⚠️  Auto Recovery disabled, performing manual recreation...');
           // Auto-recreate wallpaper after a short delay
           Future.delayed(Duration(seconds: 1), () async {
             debugPrint('[APP] 🔄 Starting automatic wallpaper recreation...');
-            
+
             // Stop current wallpaper (cleanup destroyed windows)
             await AnyWPEngine.stopWallpaper();
             debugPrint('[APP] Wallpaper stopped, old handles cleared');
-            
+
             // Wait for cleanup to complete
             await Future.delayed(Duration(milliseconds: 500));
-            
+
             // Recreate wallpaper for each monitor that was running
             int recreatedCount = 0;
             for (final entry in Map.from(_monitorWallpapers).entries) {
@@ -309,72 +323,89 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                 if (controller != null) {
                   final url = controller.text.trim();
                   if (url.isNotEmpty) {
-                    debugPrint('[APP] Recreating wallpaper on monitor $monitorIndex: $url');
-                    final success = await AnyWPEngine.initializeWallpaperOnMonitor(
+                    debugPrint(
+                        '[APP] Recreating wallpaper on monitor $monitorIndex: $url');
+                    final success =
+                        await AnyWPEngine.initializeWallpaperOnMonitor(
                       url: url,
                       monitorIndex: monitorIndex,
                     );
-                    
+
                     setState(() {
                       _monitorWallpapers[monitorIndex] = success;
                     });
-                    
+
                     if (success) {
                       recreatedCount++;
-                      debugPrint('[APP] ✅ Monitor $monitorIndex recreated successfully');
+                      debugPrint(
+                          '[APP] ✅ Monitor $monitorIndex recreated successfully');
                     } else {
-                      debugPrint('[APP] ❌ Monitor $monitorIndex recreation failed');
+                      debugPrint(
+                          '[APP] ❌ Monitor $monitorIndex recreation failed');
                     }
                   }
                 }
               }
             }
-            
-            debugPrint('[APP] 🎉 Wallpaper recreation complete: $recreatedCount monitor(s) restored');
+
+            debugPrint(
+                '[APP] 🎉 Wallpaper recreation complete: $recreatedCount monitor(s) restored');
           });
         }
-        
+
         // Auto-reply to ping messages
         if (messageType == 'pong' && messageData.containsKey('requestId')) {
           final requestId = messageData['requestId'];
           debugPrint('[APP] Received pong response: $requestId');
         }
-        
+
         // Handle encryptFile request (v2.1.10+)
         if (messageType == 'encryptFile') {
           debugPrint('[APP] Processing encryptFile request');
-          final sourcePath = messageData['sourcePath']?.toString() ?? message['sourcePath']?.toString() ?? '';
-          final destPath = messageData['destPath']?.toString() ?? message['destPath']?.toString() ?? '';
-          
+          final sourcePath = messageData['sourcePath']?.toString() ??
+              message['sourcePath']?.toString() ??
+              '';
+          final destPath = messageData['destPath']?.toString() ??
+              message['destPath']?.toString() ??
+              '';
+
           if (sourcePath.isNotEmpty && destPath.isNotEmpty) {
             debugPrint('[APP] Encrypting: $sourcePath -> $destPath');
             AnyWPEngine.encryptFile(
               sourcePath: sourcePath,
               destPath: destPath,
             ).then((success) {
-              debugPrint('[APP] Encryption ${success ? "succeeded" : "failed"}');
+              debugPrint(
+                  '[APP] Encryption ${success ? "succeeded" : "failed"}');
             });
           } else {
-            debugPrint('[APP] ❌ Invalid encryptFile parameters: sourcePath=$sourcePath, destPath=$destPath');
+            debugPrint(
+                '[APP] ❌ Invalid encryptFile parameters: sourcePath=$sourcePath, destPath=$destPath');
           }
         }
-        
+
         // Handle decryptFile request (v2.1.10+)
         if (messageType == 'decryptFile') {
           debugPrint('[APP] Processing decryptFile request');
-          final encryptedPath = messageData['encryptedPath']?.toString() ?? message['encryptedPath']?.toString() ?? '';
-          final destPath = messageData['destPath']?.toString() ?? message['destPath']?.toString() ?? '';
-          
+          final encryptedPath = messageData['encryptedPath']?.toString() ??
+              message['encryptedPath']?.toString() ??
+              '';
+          final destPath = messageData['destPath']?.toString() ??
+              message['destPath']?.toString() ??
+              '';
+
           if (encryptedPath.isNotEmpty && destPath.isNotEmpty) {
             debugPrint('[APP] Decrypting: $encryptedPath -> $destPath');
             AnyWPEngine.decryptFile(
               encryptedPath: encryptedPath,
               destPath: destPath,
             ).then((success) {
-              debugPrint('[APP] Decryption ${success ? "succeeded" : "failed"}');
+              debugPrint(
+                  '[APP] Decryption ${success ? "succeeded" : "failed"}');
             });
           } else {
-            debugPrint('[APP] ❌ Invalid decryptFile parameters: encryptedPath=$encryptedPath, destPath=$destPath');
+            debugPrint(
+                '[APP] ❌ Invalid decryptFile parameters: encryptedPath=$encryptedPath, destPath=$destPath');
           }
         }
       } catch (e, stackTrace) {
@@ -383,20 +414,21 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
         debugPrint('[APP] Raw message: $message');
       }
     });
-    
+
     debugPrint('[APP] Bidirectional communication callback set');
-    
+
     // Auto-start carousel wallpaper
     // Wait for monitors and HTTP server to load, then auto-start carousel page
-    Future.delayed(Duration(seconds: 2), () async {
+    _autoStartTimer = Timer(Duration(seconds: 2), () async {
       if (mounted && _monitors.isNotEmpty && _httpServerBaseUrl.isNotEmpty) {
-        final carouselUrl = '$_httpServerBaseUrl/examples/test_carousel_control.html';
+        final carouselUrl =
+            '$_httpServerBaseUrl/examples/test_carousel_control.html';
         debugPrint('[APP] Auto-starting carousel page: $carouselUrl');
         final monitorIndex = _monitors.first.index;
         if (_monitorUrlControllers.containsKey(monitorIndex)) {
           _monitorUrlControllers[monitorIndex]!.text = carouselUrl;
           await _startWallpaperOnMonitor(monitorIndex);
-          
+
           // Wait for wallpaper to load, then send initial carousel data
           await Future.delayed(Duration(seconds: 3));
           debugPrint('[APP] Sending initial carousel data...');
@@ -406,98 +438,108 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       }
     });
   }
-  
+
   Future<void> _handleMonitorChange() async {
-    debugPrint('[APP] Handling monitor change - detecting changes and auto-applying...');
-    
+    debugPrint(
+        '[APP] Handling monitor change - detecting changes and auto-applying...');
+
     try {
-       // Get old monitor configuration BEFORE any changes
-       final oldMonitors = List<MonitorInfo>.from(_monitors);
-       final oldIndices = oldMonitors.map((m) => m.index).toSet();
-       
-       // Get new monitor list (without updating state yet)
-       final newMonitors = await AnyWPEngine.getMonitors();
-       final newIndices = newMonitors.map((m) => m.index).toSet();
-       
-       // Detect changes
-       final addedIndices = newIndices.difference(oldIndices);
-       final removedIndices = oldIndices.difference(newIndices);
-       
-       // IMPORTANT: Save configuration BEFORE _loadMonitors() clears controllers
-       if (removedIndices.isNotEmpty) {
-         debugPrint('[APP] Detected removed monitors: $removedIndices');
-         for (final removedIndex in removedIndices) {
-           // Find monitor in OLD list
-           final removedMonitor = oldMonitors.firstWhere(
-             (m) => m.index == removedIndex,
-             orElse: () => oldMonitors.first,
-           );
-           
-           // Save BEFORE controllers are disposed
-           if (_monitorUrlControllers.containsKey(removedIndex)) {
-             final url = _monitorUrlControllers[removedIndex]!.text.trim();
-             final wasRunning = _monitorWallpapers[removedIndex] == true;
-             
-             if (url.isNotEmpty) {
-               _monitorConfigMemory[removedMonitor.deviceName] = MonitorConfig(
-                 url: url,
-                 wasRunning: wasRunning,
-                 lastSeen: DateTime.now(),
-               );
-               debugPrint('[APP] 💾 Saved config for ${removedMonitor.deviceName}:');
-               debugPrint('[APP]    URL: $url');
-               debugPrint('[APP]    Running: $wasRunning');
-             }
-           }
-         }
-       }
-       
-       // Now refresh monitor list (this will clean up controllers)
-       await _loadMonitors();
-      
-       if (addedIndices.isNotEmpty) {
+      // Get old monitor configuration BEFORE any changes
+      final oldMonitors = List<MonitorInfo>.from(_monitors);
+      final oldIndices = oldMonitors.map((m) => m.index).toSet();
+
+      // Get new monitor list (without updating state yet)
+      final newMonitors = await AnyWPEngine.getMonitors();
+      final newIndices = newMonitors.map((m) => m.index).toSet();
+
+      // Detect changes
+      final addedIndices = newIndices.difference(oldIndices);
+      final removedIndices = oldIndices.difference(newIndices);
+
+      // IMPORTANT: Save configuration BEFORE _loadMonitors() clears controllers
+      if (removedIndices.isNotEmpty) {
+        debugPrint('[APP] Detected removed monitors: $removedIndices');
+        for (final removedIndex in removedIndices) {
+          // Find monitor in OLD list
+          final removedMonitor = oldMonitors.firstWhere(
+            (m) => m.index == removedIndex,
+            orElse: () => oldMonitors.first,
+          );
+
+          // Save BEFORE controllers are disposed
+          if (_monitorUrlControllers.containsKey(removedIndex)) {
+            final url = _monitorUrlControllers[removedIndex]!.text.trim();
+            final wasRunning = _monitorWallpapers[removedIndex] == true;
+
+            if (url.isNotEmpty) {
+              _monitorConfigMemory[removedMonitor.deviceName] = MonitorConfig(
+                url: url,
+                wasRunning: wasRunning,
+                lastSeen: DateTime.now(),
+              );
+              debugPrint(
+                  '[APP] 💾 Saved config for ${removedMonitor.deviceName}:');
+              debugPrint('[APP]    URL: $url');
+              debugPrint('[APP]    Running: $wasRunning');
+            }
+          }
+        }
+      }
+
+      // Now refresh monitor list (this will clean up controllers)
+      await _loadMonitors();
+
+      if (addedIndices.isNotEmpty) {
         debugPrint('[APP] Detected new monitors: $addedIndices');
-        
+
         int successCount = 0;
         Map<int, bool> updatedWallpapers = {};
-        
+
         // Process each newly added monitor
         for (final index in addedIndices) {
           final newMonitor = _monitors.firstWhere((m) => m.index == index);
           String? urlToUse;
           bool shouldStart = false;
-          
+
           // Strategy 1: Check if this monitor has saved configuration (was unplugged before)
           if (_monitorConfigMemory.containsKey(newMonitor.deviceName)) {
             final savedConfig = _monitorConfigMemory[newMonitor.deviceName]!;
-            
-            debugPrint('[APP] 📂 Found saved config for ${newMonitor.deviceName}:');
+
+            debugPrint(
+                '[APP] 📂 Found saved config for ${newMonitor.deviceName}:');
             debugPrint('[APP]    Saved URL: ${savedConfig.url}');
             debugPrint('[APP]    Was Running: ${savedConfig.wasRunning}');
             debugPrint('[APP]    Last Seen: ${savedConfig.lastSeen}');
-            
+
             // Only restore if it was running before being unplugged
             if (savedConfig.wasRunning) {
               urlToUse = savedConfig.url;
               shouldStart = true;
-              debugPrint('[APP] ✅ Will RESTORE previous wallpaper on monitor $index');
+              debugPrint(
+                  '[APP] ✅ Will RESTORE previous wallpaper on monitor $index');
             } else {
-              debugPrint('[APP] ⏸️ Wallpaper was NOT running, will not auto-start');
+              debugPrint(
+                  '[APP] ⏸️ Wallpaper was NOT running, will not auto-start');
             }
           } else {
-            debugPrint('[APP] ❌ No saved config found for ${newMonitor.deviceName}');
+            debugPrint(
+                '[APP] ❌ No saved config found for ${newMonitor.deviceName}');
           }
-          
+
           // Strategy 2: If no saved config, check if there's a running wallpaper on any other monitor
           if (!shouldStart) {
-            debugPrint('[APP] 🔍 No saved config or wasn\'t running, checking for active wallpapers...');
+            debugPrint(
+                '[APP] 🔍 No saved config or wasn\'t running, checking for active wallpapers...');
             for (final entry in _monitorWallpapers.entries) {
-              if (entry.value == true && _monitorUrlControllers.containsKey(entry.key)) {
-                final activeUrl = _monitorUrlControllers[entry.key]!.text.trim();
+              if (entry.value == true &&
+                  _monitorUrlControllers.containsKey(entry.key)) {
+                final activeUrl =
+                    _monitorUrlControllers[entry.key]!.text.trim();
                 if (activeUrl.isNotEmpty) {
                   urlToUse = activeUrl;
                   shouldStart = true;
-                  debugPrint('[APP] 🔄 Using active wallpaper URL from monitor ${entry.key}: $urlToUse');
+                  debugPrint(
+                      '[APP] 🔄 Using active wallpaper URL from monitor ${entry.key}: $urlToUse');
                   break;
                 }
               }
@@ -506,73 +548,79 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
               debugPrint('[APP] ⚠️ No active wallpaper found to copy');
             }
           }
-          
+
           // Apply wallpaper if we have a URL
           if (shouldStart && urlToUse != null && urlToUse.isNotEmpty) {
             debugPrint('[APP] ▶️ Starting wallpaper on monitor $index');
             debugPrint('[APP]    Device: ${newMonitor.deviceName}');
             debugPrint('[APP]    URL: $urlToUse');
-            
+
             // Set URL in controller
             if (_monitorUrlControllers[index] != null) {
               _monitorUrlControllers[index]!.text = urlToUse;
               debugPrint('[APP]    Controller updated with URL');
             }
-            
+
             // Try to start wallpaper
             bool success = await AnyWPEngine.initializeWallpaperOnMonitor(
               url: urlToUse,
               monitorIndex: index,
             );
-            
-            debugPrint('[APP]    Result: ${success ? "✅ SUCCESS" : "❌ FAILED"}');
-            
+
+            debugPrint(
+                '[APP]    Result: ${success ? "✅ SUCCESS" : "❌ FAILED"}');
+
             // If failed, try fallback to primary monitor's URL
             if (!success && urlToUse != _getPrimaryMonitorUrl()) {
-              debugPrint('[APP] Failed with URL: $urlToUse, trying primary monitor URL as fallback');
+              debugPrint(
+                  '[APP] Failed with URL: $urlToUse, trying primary monitor URL as fallback');
               final primaryUrl = _getPrimaryMonitorUrl();
-              
+
               if (primaryUrl != null && primaryUrl.isNotEmpty) {
                 debugPrint('[APP] Fallback to primary URL: $primaryUrl');
-                
+
                 if (_monitorUrlControllers[index] != null) {
                   _monitorUrlControllers[index]!.text = primaryUrl;
                 }
-                
+
                 success = await AnyWPEngine.initializeWallpaperOnMonitor(
                   url: primaryUrl,
                   monitorIndex: index,
                 );
-                
+
                 if (success) {
                   debugPrint('[APP] Fallback succeeded on monitor $index');
                 }
               }
             }
-            
+
             if (success) {
               updatedWallpapers[index] = true;
               successCount++;
-              debugPrint('[APP] Successfully started wallpaper on monitor $index');
+              debugPrint(
+                  '[APP] Successfully started wallpaper on monitor $index');
             } else {
-              debugPrint('[APP] Failed to start wallpaper on monitor $index (even after fallback)');
+              debugPrint(
+                  '[APP] Failed to start wallpaper on monitor $index (even after fallback)');
             }
           } else {
-            debugPrint('[APP] No URL to apply on monitor $index (no saved config and no active wallpaper)');
+            debugPrint(
+                '[APP] No URL to apply on monitor $index (no saved config and no active wallpaper)');
           }
         }
-        
+
         // Update state once after all operations
         if (updatedWallpapers.isNotEmpty && mounted) {
           setState(() {
             _monitorWallpapers.addAll(updatedWallpapers);
           });
         }
-        
+
         // Show result message
         if (mounted) {
           if (successCount > 0) {
-            _showMessage('Auto-started wallpaper on $successCount new monitor(s)');
+            _showMessage(
+                'Auto-started wallpaper on $successCount new monitor(s)');
           } else if (addedIndices.isNotEmpty) {
             _showMessage('New monitor detected - no wallpaper to apply');
           }
@@ -583,22 +631,24 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
           _showMessage('Display configuration changed');
         }
       }
-      
+
       debugPrint('[APP] Monitor change handled successfully');
     } catch (e, stackTrace) {
       debugPrint('[APP] ERROR in _handleMonitorChange: $e');
       debugPrint('[APP] StackTrace: $stackTrace');
-      
+
       if (mounted) {
         _showMessage('Error handling monitor change: $e');
       }
     }
   }
-  
+
   @override
   void dispose() {
     _monitorCheckTimer?.cancel();
+    _autoStartTimer?.cancel();
     _carouselCountdownTimer?.cancel();
+    AnyWPEngine.clearCallbacks();
     _tabController?.dispose();
     _fileServer.stop(); // Clean up HTTP server
     windowManager.removeListener(this);
@@ -608,46 +658,47 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     _intervalController.dispose();
     super.dispose();
   }
-  
+
   // 标签切换监听
   void _onTabChanged() {
     if (_tabController == null || !mounted) return;
-    
+
     final currentTab = _tabController!.index;
     debugPrint('[APP] Tab changed to index: $currentTab');
-    
+
     // 如果切换到 Carousel Control 标签（index = 2）
     if (currentTab == 2) {
       _checkAndLoadCarouselPage();
     }
   }
-  
+
   // 检查并加载轮播页面
   Future<void> _checkAndLoadCarouselPage() async {
     if (_monitors.isEmpty) return;
-    
+
     final monitorIndex = _monitors.first.index;
     final controller = _monitorUrlControllers[monitorIndex];
-    
+
     if (controller == null) return;
-    
+
     final currentUrl = controller.text.trim();
     final carouselUrl = _httpServerBaseUrl.isNotEmpty
         ? '$_httpServerBaseUrl/examples/test_carousel_control.html'
-        : 'http://127.0.0.1/examples/test_carousel_control.html';  // Fallback
-    
+        : 'http://127.0.0.1/examples/test_carousel_control.html'; // Fallback
+
     // 如果当前不是轮播页面，则切换到轮播页面
     if (currentUrl != carouselUrl) {
       debugPrint('[APP] Switching to carousel page...');
       controller.text = carouselUrl;
-      
+
       // 检查壁纸是否正在运行
       final isRunning = _monitorWallpapers[monitorIndex] == true;
-      
+
       if (isRunning) {
         // 如果正在运行，直接导航
         debugPrint('[APP] Navigating to carousel page...');
-        final success = await AnyWPEngine.navigateToUrlOnMonitor(carouselUrl, monitorIndex);
+        final success =
+            await AnyWPEngine.navigateToUrlOnMonitor(carouselUrl, monitorIndex);
         if (success) {
           _showMessage('已切换到轮播页面');
           // 等待页面加载，然后发送初始数据
@@ -666,7 +717,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       debugPrint('[APP] Already on carousel page');
     }
   }
-  
+
   // WindowListener callbacks - save window position before monitor change
   @override
   void onWindowMoved() async {
@@ -674,166 +725,158 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     _savedWindowPosition = position;
     debugPrint('[APP] Window position saved: $position');
   }
-  
+
   @override
   void onWindowEvent(String eventName) {
     // Monitor changes can trigger window repositioning by Windows
     // We'll restore position after monitor detection
     debugPrint('[APP] Window event: $eventName');
   }
-  
+
+  Future<bool> _hasBundledTestPages(String rootPath) async {
+    final testFile = File(
+      '$rootPath${Platform.pathSeparator}examples${Platform.pathSeparator}test_carousel_control.html',
+    );
+    return testFile.exists();
+  }
+
+  Future<String?> _findTestPageRootFrom(String startPath) async {
+    var dir = Directory(startPath).absolute;
+    var levelCount = 0;
+
+    while (dir.parent.path != dir.path && levelCount < 12) {
+      if (await _hasBundledTestPages(dir.path)) {
+        return dir.path;
+      }
+      dir = dir.parent;
+      levelCount++;
+    }
+
+    return null;
+  }
+
+  Future<String?> _resolveTestPageRoot() async {
+    final candidates = <String>[];
+    final executablePath = Platform.resolvedExecutable;
+    final macOSMarker = '/Contents/MacOS';
+    final markerIndex = executablePath.lastIndexOf(macOSMarker);
+
+    if (Platform.isMacOS && markerIndex != -1) {
+      final appPath = executablePath.substring(0, markerIndex);
+      candidates.add('$appPath/Contents/Resources');
+      candidates.add(appPath);
+    }
+
+    candidates.add(Directory.current.path);
+    candidates.add(Directory(executablePath).parent.path);
+
+    for (final candidate in candidates) {
+      if (await _hasBundledTestPages(candidate)) {
+        debugPrint('[HTTP] ✅ Found test pages root: $candidate');
+        return candidate;
+      }
+
+      final root = await _findTestPageRootFrom(candidate);
+      if (root != null) {
+        debugPrint('[HTTP] ✅ Found test pages root: $root');
+        return root;
+      }
+    }
+
+    return null;
+  }
+
   /// Start HTTP server for serving test pages (v2.5.2+)
   Future<void> _startHttpServer() async {
     try {
-      String projectRoot;
-      
-      if (Platform.isMacOS) {
-        // macOS: Use app bundle resources
-        // Get the executable path and find Resources directory
-        final executablePath = Platform.resolvedExecutable;
-        
-        // Safe path extraction with validation
-        final macOSMarker = '/Contents/MacOS';
-        final markerIndex = executablePath.lastIndexOf(macOSMarker);
-        
-        if (markerIndex != -1) {
-          // Running from app bundle
-          final appPath = executablePath.substring(0, markerIndex);
-          projectRoot = '$appPath/Contents/Resources';
-          
-          debugPrint('[HTTP] macOS: Using app bundle resources');
-          debugPrint('[HTTP] Executable: $executablePath');
-          debugPrint('[HTTP] App path: $appPath');
-          debugPrint('[HTTP] Resources path: $projectRoot');
-        } else {
-          // Not in standard app bundle (e.g., debug/development mode)
-          debugPrint('[HTTP] macOS: Not in standard app bundle, using development path');
-          final execDir = Directory(executablePath).parent.path;
-          projectRoot = execDir;
-          debugPrint('[HTTP] Development path: $projectRoot');
-        }
-        
-        // Verify examples directory exists in bundle
-        final examplesDir = Directory('$projectRoot/examples');
-        if (!await examplesDir.exists()) {
-          debugPrint('[HTTP] ❌ examples not found at $projectRoot, trying development path...');
-          
-          // Fallback: Try to find project root (development mode)
-          projectRoot = Directory.current.path;
-          var dir = Directory(projectRoot);
-          var maxLevels = 10;
-          var levelCount = 0;
-          
-          while (dir.parent.path != dir.path && levelCount < maxLevels) {
-            final examplesPath = '${dir.path}/examples';
-            if (await Directory(examplesPath).exists()) {
-              final testFile = File('$examplesPath/test_carousel_control.html');
-              if (await testFile.exists()) {
-                projectRoot = dir.path;
-                debugPrint('[HTTP] ✅ Found development path: $projectRoot');
-                break;
-              }
-            }
-            dir = dir.parent;
-            levelCount++;
-          }
-        } else {
-          debugPrint('[HTTP] ✅ Found examples in app bundle');
-        }
-      } else {
-        // Windows: Navigate up from build directory
-        projectRoot = Directory.current.path;
-        debugPrint('[HTTP] Windows: Current directory: $projectRoot');
-        
-        var dir = Directory(projectRoot);
-        while (dir.parent.path != dir.path) {
-          final examplesPath = '${dir.path}${Platform.pathSeparator}examples';
-          final examplesDir = Directory(examplesPath);
-          if (await examplesDir.exists()) {
-            final testFilePath = '$examplesPath${Platform.pathSeparator}test_carousel_control.html';
-            final testFile = File(testFilePath);
-            if (await testFile.exists()) {
-              projectRoot = dir.path;
-              debugPrint('[HTTP] ✅ Found project root: $projectRoot');
-              break;
-            }
-          }
-          dir = dir.parent;
-        }
-      }
-      
-      // Verify examples directory exists
-      final examplesDir = Directory('$projectRoot${Platform.pathSeparator}examples');
-      if (!await examplesDir.exists()) {
-        debugPrint('[HTTP] ❌ examples directory not found at: ${examplesDir.path}');
-        debugPrint('[HTTP] ⚠️  HTTP server will not start');
-        debugPrint('[HTTP] Tip: Use file:// or localfile:// protocol instead');
+      if (_fileServer.isRunning) {
+        setState(() {
+          _httpServerBaseUrl = _fileServer.baseUrl;
+        });
         return;
       }
-      
+
+      final projectRoot = await _resolveTestPageRoot();
+      if (projectRoot == null) {
+        debugPrint(
+            '[HTTP] ❌ examples directory not found from executable/current paths');
+        debugPrint('[HTTP] ⚠️  HTTP server will not start');
+        _showMessage(
+            'Test pages not found. Please run from the project checkout.');
+        return;
+      }
+
       debugPrint('[HTTP] Starting server with root: $projectRoot');
       final serverUrl = await _fileServer.start(projectRoot);
-      
+
       setState(() {
         _httpServerBaseUrl = serverUrl;
       });
-      
+
       debugPrint('[HTTP] ✅ Server started: $_httpServerBaseUrl');
       debugPrint('[HTTP] Test URLs:');
-      debugPrint('[HTTP]   - $_httpServerBaseUrl/examples/test_carousel_control.html');
+      debugPrint(
+          '[HTTP]   - $_httpServerBaseUrl/examples/test_carousel_control.html');
       debugPrint('[HTTP]   - $_httpServerBaseUrl/examples/test_simple.html');
-      
+
       // Update all existing monitor URL controllers with correct server URL
       if (_monitorUrlControllers.isNotEmpty) {
-        final carouselUrl = '$_httpServerBaseUrl/examples/test_carousel_control.html';
+        final carouselUrl =
+            '$_httpServerBaseUrl/examples/test_carousel_control.html';
         for (final entry in _monitorUrlControllers.entries) {
           // Only update if the controller still has the fallback URL (without port)
           final currentUrl = entry.value.text.trim();
-          if (currentUrl == 'http://127.0.0.1/examples/test_carousel_control.html') {
+          if (currentUrl ==
+              'http://127.0.0.1/examples/test_carousel_control.html') {
             entry.value.text = carouselUrl;
-            debugPrint('[HTTP] Updated monitor ${entry.key} URL to: $carouselUrl');
+            debugPrint(
+                '[HTTP] Updated monitor ${entry.key} URL to: $carouselUrl');
           }
         }
       }
     } catch (e, stackTrace) {
       debugPrint('[HTTP] ❌ Failed to start server: $e');
       debugPrint('[HTTP] Stack trace: $stackTrace');
+      _showMessage('Failed to start test page server: $e');
     }
   }
-  
+
   // Check for monitor changes by polling
   Future<void> _checkMonitorChanges() async {
     // Prevent overlapping calls
     if (_isHandlingMonitorChange) {
       return;
     }
-    
+
     try {
       final monitors = await AnyWPEngine.getMonitors();
-      
+
       // Check if monitor count changed
       if (monitors.length != _monitors.length) {
-        debugPrint('[APP] Monitor count changed: ${_monitors.length} -> ${monitors.length}');
-        
+        debugPrint(
+            '[APP] Monitor count changed: ${_monitors.length} -> ${monitors.length}');
+
         // Save current window position before handling monitor change
         try {
           final currentPosition = await windowManager.getPosition();
           _savedWindowPosition = currentPosition;
-          debugPrint('[APP] Saved window position before monitor change: $currentPosition');
+          debugPrint(
+              '[APP] Saved window position before monitor change: $currentPosition');
         } catch (e) {
           debugPrint('[APP] Failed to save window position: $e');
         }
-        
+
         _isHandlingMonitorChange = true;
         try {
           await _handleMonitorChange();
-          
+
           // Restore window position after a short delay (let Windows finish its repositioning)
           Future.delayed(Duration(milliseconds: 500), () async {
             if (_savedWindowPosition != null) {
               try {
                 await windowManager.setPosition(_savedWindowPosition!);
-                debugPrint('[APP] Restored window position to: $_savedWindowPosition');
+                debugPrint(
+                    '[APP] Restored window position to: $_savedWindowPosition');
               } catch (e) {
                 debugPrint('[APP] Failed to restore window position: $e');
               }
@@ -848,74 +891,78 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       _isHandlingMonitorChange = false;
     }
   }
-  
+
   Future<void> _loadMonitors() async {
     debugPrint('[APP] Loading monitors...');
-    
+
     try {
       final monitors = await AnyWPEngine.getMonitors();
-      
+
       debugPrint('[APP] Found ${monitors.length} monitor(s):');
       for (final monitor in monitors) {
         debugPrint('[APP]   $monitor');
       }
-      
+
       if (!mounted) {
         debugPrint('[APP] Widget not mounted, skipping setState');
         return;
       }
-      
+
       setState(() {
-      // Get current monitor indices before update
-      final oldIndices = _monitors.map((m) => m.index).toSet();
-      final newIndices = monitors.map((m) => m.index).toSet();
-      
-      // Log changes
-      final removed = oldIndices.difference(newIndices);
-      final added = newIndices.difference(oldIndices);
-      
-      if (removed.isNotEmpty) {
-        debugPrint('[APP] Removed monitors: $removed');
-      }
-      if (added.isNotEmpty) {
-        debugPrint('[APP] Added monitors: $added');
-      }
-      
-      _monitors = monitors;
-      
-      // Initialize wallpaper tracking, loading state and URL controllers for NEW monitors only
-      for (final monitor in monitors) {
-        if (!_monitorWallpapers.containsKey(monitor.index)) {
-          debugPrint('[APP] Initializing UI for new monitor ${monitor.index}');
-          _monitorWallpapers[monitor.index] = false;
-          _monitorLoading[monitor.index] = false;
-          // Use HTTP URL for carousel page if server is running
-          final defaultUrl = _httpServerBaseUrl.isNotEmpty
-              ? '$_httpServerBaseUrl/examples/test_carousel_control.html'
-              : 'http://127.0.0.1/examples/test_carousel_control.html'; // Will be updated when server starts
-          _monitorUrlControllers[monitor.index] = TextEditingController(
-            text: defaultUrl,
-          );
+        // Get current monitor indices before update
+        final oldIndices = _monitors.map((m) => m.index).toSet();
+        final newIndices = monitors.map((m) => m.index).toSet();
+
+        // Log changes
+        final removed = oldIndices.difference(newIndices);
+        final added = newIndices.difference(oldIndices);
+
+        if (removed.isNotEmpty) {
+          debugPrint('[APP] Removed monitors: $removed');
         }
-      }
-      
-      // Clean up controllers for removed monitors
-      final currentIndices = monitors.map((m) => m.index).toSet();
-      final keysToRemove = _monitorUrlControllers.keys.where((k) => !currentIndices.contains(k)).toList();
-      
-      if (keysToRemove.isNotEmpty) {
-        debugPrint('[APP] Cleaning up UI for removed monitors: $keysToRemove');
-      }
-      
-      for (final key in keysToRemove) {
-        _monitorUrlControllers[key]?.dispose();
-        _monitorUrlControllers.remove(key);
-        _monitorWallpapers.remove(key);
-        _monitorLoading.remove(key);
-        debugPrint('[APP] Removed monitor $key from UI');
-      }
+        if (added.isNotEmpty) {
+          debugPrint('[APP] Added monitors: $added');
+        }
+
+        _monitors = monitors;
+
+        // Initialize wallpaper tracking, loading state and URL controllers for NEW monitors only
+        for (final monitor in monitors) {
+          if (!_monitorWallpapers.containsKey(monitor.index)) {
+            debugPrint(
+                '[APP] Initializing UI for new monitor ${monitor.index}');
+            _monitorWallpapers[monitor.index] = false;
+            _monitorLoading[monitor.index] = false;
+            // Use HTTP URL for carousel page if server is running
+            final defaultUrl = _httpServerBaseUrl.isNotEmpty
+                ? '$_httpServerBaseUrl/examples/test_carousel_control.html'
+                : 'http://127.0.0.1/examples/test_carousel_control.html'; // Will be updated when server starts
+            _monitorUrlControllers[monitor.index] = TextEditingController(
+              text: defaultUrl,
+            );
+          }
+        }
+
+        // Clean up controllers for removed monitors
+        final currentIndices = monitors.map((m) => m.index).toSet();
+        final keysToRemove = _monitorUrlControllers.keys
+            .where((k) => !currentIndices.contains(k))
+            .toList();
+
+        if (keysToRemove.isNotEmpty) {
+          debugPrint(
+              '[APP] Cleaning up UI for removed monitors: $keysToRemove');
+        }
+
+        for (final key in keysToRemove) {
+          _monitorUrlControllers[key]?.dispose();
+          _monitorUrlControllers.remove(key);
+          _monitorWallpapers.remove(key);
+          _monitorLoading.remove(key);
+          debugPrint('[APP] Removed monitor $key from UI');
+        }
       });
-      
+
       debugPrint('[APP] Monitor list updated. Total: ${_monitors.length}');
     } catch (e, stackTrace) {
       debugPrint('[APP] ERROR in _loadMonitors: $e');
@@ -923,11 +970,10 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     }
   }
 
-
   Future<void> _startWallpaperOnMonitor(int monitorIndex) async {
     final controller = _monitorUrlControllers[monitorIndex];
     if (controller == null) return;
-    
+
     final url = controller.text.trim();
     if (url.isEmpty) {
       _showMessage('Please enter a URL for monitor $monitorIndex');
@@ -939,8 +985,9 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       _monitorLoading[monitorIndex] = true;
     });
 
-    debugPrint('[APP] Starting wallpaper on monitor $monitorIndex with URL: $url');
-    
+    debugPrint(
+        '[APP] Starting wallpaper on monitor $monitorIndex with URL: $url');
+
     try {
       final success = await AnyWPEngine.initializeWallpaperOnMonitor(
         url: url,
@@ -972,7 +1019,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     });
 
     debugPrint('[APP] Stopping wallpaper on monitor $monitorIndex');
-    
+
     try {
       final success = await AnyWPEngine.stopWallpaperOnMonitor(monitorIndex);
 
@@ -1004,29 +1051,30 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     });
 
     debugPrint('[APP] Starting wallpaper on all monitors with individual URLs');
-    
+
     int successCount = 0;
     try {
       for (final monitor in _monitors) {
         final controller = _monitorUrlControllers[monitor.index];
         if (controller == null) continue;
-        
+
         final url = controller.text.trim();
         if (url.isEmpty) continue;
-        
+
         final success = await AnyWPEngine.initializeWallpaperOnMonitor(
           url: url,
           monitorIndex: monitor.index,
         );
-        
+
         setState(() {
           _monitorWallpapers[monitor.index] = success;
         });
-        
+
         if (success) successCount++;
       }
-      
-      _showMessage('Started wallpaper on $successCount/${_monitors.length} monitor(s)');
+
+      _showMessage(
+          'Started wallpaper on $successCount/${_monitors.length} monitor(s)');
     } finally {
       // Clear loading state
       setState(() {
@@ -1048,7 +1096,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     });
 
     debugPrint('[APP] Stopping wallpaper on all monitors');
-    
+
     try {
       final success = await AnyWPEngine.stopWallpaperOnAllMonitors();
 
@@ -1085,7 +1133,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       }
     }
   }
-  
+
   // Get primary monitor's URL (helper for fallback)
   // IMPORTANT: Only returns URL if wallpaper is RUNNING successfully
   // This prevents fallback loops when URLs are invalid
@@ -1099,65 +1147,73 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
           if (controller != null) {
             final url = controller.text.trim();
             if (url.isNotEmpty) {
-              debugPrint('[APP] Found RUNNING wallpaper on primary monitor: $url');
+              debugPrint(
+                  '[APP] Found RUNNING wallpaper on primary monitor: $url');
               return url;
             }
           }
         } else {
-          debugPrint('[APP] Primary monitor exists but wallpaper is not running');
+          debugPrint(
+              '[APP] Primary monitor exists but wallpaper is not running');
         }
       }
     }
-    
+
     // Fallback: return any RUNNING wallpaper URL (not primary)
     for (final entry in _monitorWallpapers.entries) {
-      if (entry.value == true && _monitorUrlControllers.containsKey(entry.key)) {
+      if (entry.value == true &&
+          _monitorUrlControllers.containsKey(entry.key)) {
         final url = _monitorUrlControllers[entry.key]!.text.trim();
         if (url.isNotEmpty) {
-          debugPrint('[APP] Found RUNNING wallpaper on monitor ${entry.key}: $url');
+          debugPrint(
+              '[APP] Found RUNNING wallpaper on monitor ${entry.key}: $url');
           return url;
         }
       }
     }
-    
+
     debugPrint('[APP] No RUNNING wallpaper found for fallback');
     return null;
   }
-  
+
   // Load quick test page URL and auto-start/navigate wallpaper
   Future<void> _loadTestPage(int monitorIndex, String filename) async {
     final controller = _monitorUrlControllers[monitorIndex];
     if (controller == null) return;
-    
+
     // 启动 HTTP 服务器（如果未运行）
     if (!_fileServer.isRunning) {
-      final projectRoot = Directory.current.path;
-      await _fileServer.start(projectRoot);
+      await _startHttpServer();
+      if (!_fileServer.isRunning) {
+        return;
+      }
       debugPrint('[QuickTest] HTTP server started: ${_fileServer.baseUrl}');
     }
-    
+
     // 使用 HTTP URL
     final url = '${_fileServer.baseUrl}/examples/$filename';
     controller.text = url;
-    
+
     // Smart switching: use navigate if already running, otherwise start fresh
     final isRunning = _monitorWallpapers[monitorIndex] == true;
-    
+
     if (isRunning) {
       // Seamless navigation without showing desktop
-      debugPrint('[APP] Seamlessly navigating to $filename on monitor $monitorIndex');
-      
+      debugPrint(
+          '[APP] Seamlessly navigating to $filename on monitor $monitorIndex');
+
       setState(() {
         _monitorLoading[monitorIndex] = true;
       });
-      
+
       try {
-        final success = await AnyWPEngine.navigateToUrlOnMonitor(url, monitorIndex);
-        
+        final success =
+            await AnyWPEngine.navigateToUrlOnMonitor(url, monitorIndex);
+
         setState(() {
           _monitorLoading[monitorIndex] = false;
         });
-        
+
         if (success) {
           _showMessage('🎨 Switched to: $filename');
         } else {
@@ -1173,17 +1229,18 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       }
     } else {
       // First time start
-      debugPrint('[APP] Starting wallpaper with $filename on monitor $monitorIndex');
+      debugPrint(
+          '[APP] Starting wallpaper with $filename on monitor $monitorIndex');
       await _startWallpaperOnMonitor(monitorIndex);
     }
   }
-  
+
   // Power Saving & Optimization methods
   Future<void> _refreshPowerState() async {
     try {
       final state = await AnyWPEngine.getPowerState();
       final memory = await AnyWPEngine.getMemoryUsage();
-      
+
       setState(() {
         _powerState = state;
         _memoryUsageMB = memory;
@@ -1192,7 +1249,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       debugPrint('[APP] Error refreshing power state: $e');
     }
   }
-  
+
   Future<void> _pauseWallpaper() async {
     try {
       final success = await AnyWPEngine.pauseWallpaper();
@@ -1206,7 +1263,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       _showMessage('Error: $e');
     }
   }
-  
+
   Future<void> _resumeWallpaper() async {
     try {
       final success = await AnyWPEngine.resumeWallpaper();
@@ -1220,7 +1277,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       _showMessage('Error: $e');
     }
   }
-  
+
   Future<void> _toggleAutoPowerSaving() async {
     try {
       final newValue = !_autoPowerSaving;
@@ -1235,23 +1292,24 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       _showMessage('Error: $e');
     }
   }
-  
+
   Future<void> _optimizeMemory() async {
     try {
       final before = await AnyWPEngine.getMemoryUsage();
       await AnyWPEngine.optimizeMemory();
       await Future.delayed(Duration(seconds: 1)); // Wait for optimization
       final after = await AnyWPEngine.getMemoryUsage();
-      
+
       final freed = before - after;
-      _showMessage('Memory optimized! Freed: ${freed}MB (${before}MB → ${after}MB)');
-      
+      _showMessage(
+          'Memory optimized! Freed: ${freed}MB (${before}MB → ${after}MB)');
+
       await _refreshPowerState();
     } catch (e) {
       _showMessage('Error: $e');
     }
   }
-  
+
   Widget _buildOptimizationTab() {
     return ListView(
       padding: const EdgeInsets.all(24.0),
@@ -1283,9 +1341,11 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                   ],
                 ),
                 SizedBox(height: 16),
-                _buildStatusRow('Power State', _powerState, _getPowerStateColor(_powerState)),
+                _buildStatusRow('Power State', _powerState,
+                    _getPowerStateColor(_powerState)),
                 SizedBox(height: 8),
-                _buildStatusRow('Memory Usage', '${_memoryUsageMB}MB', Colors.blue),
+                _buildStatusRow(
+                    'Memory Usage', '${_memoryUsageMB}MB', Colors.blue),
                 SizedBox(height: 16),
                 CheckboxListTile(
                   title: Text('Auto Power Saving'),
@@ -1411,7 +1471,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       ],
     );
   }
-  
+
   Widget _buildStatusRow(String label, String value, Color color) {
     return Row(
       children: [
@@ -1439,15 +1499,21 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       ],
     );
   }
-  
+
   Color _getPowerStateColor(String state) {
     switch (state) {
-      case 'ACTIVE': return Colors.green;
-      case 'IDLE': return Colors.orange;
-      case 'LOCKED': return Colors.red;
-      case 'FULLSCREEN_APP': return Colors.purple;
-      case 'PAUSED': return Colors.grey;
-      default: return Colors.grey;
+      case 'ACTIVE':
+        return Colors.green;
+      case 'IDLE':
+        return Colors.orange;
+      case 'LOCKED':
+        return Colors.red;
+      case 'FULLSCREEN_APP':
+        return Colors.purple;
+      case 'PAUSED':
+        return Colors.grey;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -1480,7 +1546,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                       icon: Icon(Icons.refresh, size: 16),
                       label: Text('Refresh'),
                       style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
                     ),
                   ],
@@ -1494,15 +1561,19 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
           children: [
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: _allMonitorsLoading ? null : _startWallpaperOnAllMonitors,
-                icon: _allMonitorsLoading 
+                onPressed:
+                    _allMonitorsLoading ? null : _startWallpaperOnAllMonitors,
+                icon: _allMonitorsLoading
                     ? SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : Icon(Icons.play_arrow),
-                label: Text(_allMonitorsLoading ? 'Starting...' : 'Start All (with individual URLs)'),
+                label: Text(_allMonitorsLoading
+                    ? 'Starting...'
+                    : 'Start All (with individual URLs)'),
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.all(16),
                   backgroundColor: Colors.green,
@@ -1513,12 +1584,14 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
             SizedBox(width: 16),
             Expanded(
               child: ElevatedButton.icon(
-                onPressed: _allMonitorsLoading ? null : _stopWallpaperOnAllMonitors,
-                icon: _allMonitorsLoading 
+                onPressed:
+                    _allMonitorsLoading ? null : _stopWallpaperOnAllMonitors,
+                icon: _allMonitorsLoading
                     ? SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : Icon(Icons.stop),
                 label: Text(_allMonitorsLoading ? 'Stopping...' : 'Stop All'),
@@ -1586,12 +1659,15 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                       ),
                       Chip(
                         label: Text(
-                          _monitorWallpapers[monitor.index] == true ? 'Running' : 'Stopped',
+                          _monitorWallpapers[monitor.index] == true
+                              ? 'Running'
+                              : 'Stopped',
                           style: TextStyle(fontSize: 12),
                         ),
-                        backgroundColor: _monitorWallpapers[monitor.index] == true
-                            ? Colors.green[100]
-                            : Colors.grey[300],
+                        backgroundColor:
+                            _monitorWallpapers[monitor.index] == true
+                                ? Colors.green[100]
+                                : Colors.grey[300],
                       ),
                     ],
                   ),
@@ -1611,10 +1687,12 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                     runSpacing: 6,
                     children: _testPages.map((page) {
                       return InkWell(
-                        onTap: () => _loadTestPage(monitor.index, page['file']!),
+                        onTap: () =>
+                            _loadTestPage(monitor.index, page['file']!),
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.blue[50],
                             border: Border.all(color: Colors.blue[200]!),
@@ -1661,7 +1739,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                         hintText: 'Or enter custom URL here',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.link, size: 20),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                       style: TextStyle(fontSize: 14),
                     ),
@@ -1670,18 +1749,22 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: (_monitorWallpapers[monitor.index] == true || 
-                                     _monitorLoading[monitor.index] == true)
+                          onPressed: (_monitorWallpapers[monitor.index] ==
+                                      true ||
+                                  _monitorLoading[monitor.index] == true)
                               ? null
                               : () => _startWallpaperOnMonitor(monitor.index),
                           icon: _monitorLoading[monitor.index] == true
                               ? SizedBox(
                                   width: 14,
                                   height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white),
                                 )
                               : Icon(Icons.play_arrow, size: 16),
-                          label: Text(_monitorLoading[monitor.index] == true ? 'Starting...' : 'Start'),
+                          label: Text(_monitorLoading[monitor.index] == true
+                              ? 'Starting...'
+                              : 'Start'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             foregroundColor: Colors.white,
@@ -1691,18 +1774,22 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                       SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: (_monitorWallpapers[monitor.index] != true || 
-                                     _monitorLoading[monitor.index] == true)
+                          onPressed: (_monitorWallpapers[monitor.index] !=
+                                      true ||
+                                  _monitorLoading[monitor.index] == true)
                               ? null
                               : () => _stopWallpaperOnMonitor(monitor.index),
                           icon: _monitorLoading[monitor.index] == true
                               ? SizedBox(
                                   width: 14,
                                   height: 14,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white),
                                 )
                               : Icon(Icons.stop, size: 16),
-                          label: Text(_monitorLoading[monitor.index] == true ? 'Stopping...' : 'Stop'),
+                          label: Text(_monitorLoading[monitor.index] == true
+                              ? 'Stopping...'
+                              : 'Stop'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
@@ -1818,7 +1905,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
       _startCountdownTimer();
       debugPrint('[APP] ✅ Carousel play command sent with current image data');
       debugPrint('[APP]   Current index: $_carouselCurrentIndex');
-      debugPrint('[APP]   Current image: ${_carouselImages[_carouselCurrentIndex]}');
+      debugPrint(
+          '[APP]   Current image: ${_carouselImages[_carouselCurrentIndex]}');
     }
   }
 
@@ -1843,10 +1931,10 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
 
   Future<void> _carouselNext() async {
     if (_carouselImages.isEmpty) return;
-    
+
     // 计算下一张索引
     final nextIndex = (_carouselCurrentIndex + 1) % _carouselImages.length;
-    
+
     // 发送下一张图片信息
     final success = await AnyWPEngine.sendMessage(
       message: {
@@ -1877,10 +1965,11 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
 
   Future<void> _carouselPrevious() async {
     if (_carouselImages.isEmpty) return;
-    
+
     // 计算上一张索引
-    final prevIndex = (_carouselCurrentIndex - 1 + _carouselImages.length) % _carouselImages.length;
-    
+    final prevIndex = (_carouselCurrentIndex - 1 + _carouselImages.length) %
+        _carouselImages.length;
+
     // 发送上一张图片信息
     final success = await AnyWPEngine.sendMessage(
       message: {
@@ -1912,7 +2001,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   Future<void> _carouselSetInterval() async {
     final seconds = int.tryParse(_intervalController.text) ?? 5;
     final interval = seconds * 1000;
-    
+
     final success = await AnyWPEngine.sendMessage(
       message: {
         'type': 'setInterval',
@@ -1971,7 +2060,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   void _removeCarouselImage(int index) {
     setState(() {
       _carouselImages.removeAt(index);
-      if (_carouselCurrentIndex >= _carouselImages.length && _carouselImages.isNotEmpty) {
+      if (_carouselCurrentIndex >= _carouselImages.length &&
+          _carouselImages.isNotEmpty) {
         _carouselCurrentIndex = _carouselImages.length - 1;
       }
     });
@@ -1982,7 +2072,7 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
   void _startCountdownTimer() {
     _stopCountdownTimer();
     _resetCountdown();
-    
+
     _carouselCountdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
@@ -2034,31 +2124,40 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                       SizedBox(width: 12),
                       Text(
                         '🎠 轮播壁纸控制中心',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                   Divider(height: 32),
-                  
+
                   // 播放控制按钮
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         '▶️ 播放控制',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700]),
                       ),
                       // 状态和倒计时显示
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(_carouselStatus).withValues(alpha: 0.1),
+                          color: _getStatusColor(_carouselStatus)
+                              .withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: _getStatusColor(_carouselStatus)),
+                          border: Border.all(
+                              color: _getStatusColor(_carouselStatus)),
                         ),
                         child: Row(
                           children: [
-                            Icon(_getStatusIcon(_carouselStatus), size: 18, color: _getStatusColor(_carouselStatus)),
+                            Icon(_getStatusIcon(_carouselStatus),
+                                size: 18,
+                                color: _getStatusColor(_carouselStatus)),
                             SizedBox(width: 8),
                             Text(
                               _getStatusText(_carouselStatus),
@@ -2068,7 +2167,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                                 fontSize: 14,
                               ),
                             ),
-                            if (_carouselStatus == 'playing' && _carouselCountdown > 0) ...[
+                            if (_carouselStatus == 'playing' &&
+                                _carouselCountdown > 0) ...[
                               SizedBox(width: 8),
                               Text(
                                 '⏱️ ${_carouselCountdown}s',
@@ -2144,13 +2244,16 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                       ),
                     ],
                   ),
-                  
+
                   SizedBox(height: 24),
-                  
+
                   // 轮播间隔设置
                   Text(
                     '⏱️ 轮播间隔',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[700]),
                   ),
                   SizedBox(height: 12),
                   Row(
@@ -2175,7 +2278,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.purple,
                           foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 16),
                         ),
                       ),
                     ],
@@ -2184,9 +2288,9 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
               ),
             ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // 图片列表管理
           Card(
             elevation: 4,
@@ -2200,11 +2304,13 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.photo_library, color: Colors.green, size: 24),
+                          Icon(Icons.photo_library,
+                              color: Colors.green, size: 24),
                           SizedBox(width: 8),
                           Text(
                             '🖼️ 图片列表 (${_carouselImages.length}张)',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -2243,13 +2349,16 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                             itemCount: _carouselImages.length,
                             itemBuilder: (context, index) {
                               return Card(
-                                margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                margin: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 child: ListTile(
                                   leading: CircleAvatar(
                                     backgroundColor: Colors.blue,
                                     child: Text(
                                       '${index + 1}',
-                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                   title: Text(
@@ -2260,7 +2369,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                                   ),
                                   trailing: IconButton(
                                     icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _removeCarouselImage(index),
+                                    onPressed: () =>
+                                        _removeCarouselImage(index),
                                   ),
                                 ),
                               );
@@ -2285,9 +2395,9 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
               ),
             ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // 通信统计
           Card(
             child: Padding(
@@ -2305,14 +2415,15 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                     children: [
                       _buildStatBox('发送', _messagesSent, Colors.blue),
                       _buildStatBox('接收', _messagesReceived, Colors.green),
-                      _buildStatBox('消息', _receivedMessages.length, Colors.orange),
+                      _buildStatBox(
+                          '消息', _receivedMessages.length, Colors.orange),
                     ],
                   ),
                 ],
               ),
             ),
           ),
-          
+
           SizedBox(height: 16),
 
           // 接收到的消息
@@ -2327,7 +2438,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                     children: [
                       Text(
                         '📥 接收到的消息',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       TextButton.icon(
                         onPressed: () {
@@ -2362,21 +2474,27 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                             itemBuilder: (context, index) {
                               final msg = _receivedMessages[index];
                               return Card(
-                                margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                margin: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 child: ListTile(
                                   leading: CircleAvatar(
-                                    backgroundColor: _getMessageColor(msg['type']),
+                                    backgroundColor:
+                                        _getMessageColor(msg['type']),
                                     child: Text(
                                       '${index + 1}',
-                                      style: TextStyle(color: Colors.white, fontSize: 12),
+                                      style: TextStyle(
+                                          color: Colors.white, fontSize: 12),
                                     ),
                                   ),
                                   title: Text(
                                     '${msg['type']}',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13),
                                   ),
                                   subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '时间: ${(msg['receivedAt'] as DateTime).toString().substring(11, 19)}',
@@ -2385,7 +2503,9 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                                       if (msg['data'].toString().isNotEmpty)
                                         Text(
                                           '数据: ${msg['data']}',
-                                          style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey[700]),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -2419,7 +2539,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                       SizedBox(width: 8),
                       Text(
                         '💡 使用说明',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -2557,16 +2678,17 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.bug_report, color: Colors.deepPurple, size: 28),
+                      Icon(Icons.bug_report,
+                          color: Colors.deepPurple, size: 28),
                       SizedBox(width: 12),
                       Text(
                         '🐛 Debug Tools',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                   Divider(height: 32),
-                  
                   Text(
                     '日志级别控制',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -2577,13 +2699,13 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                     style: TextStyle(color: Colors.grey[600]),
                   ),
                   SizedBox(height: 16),
-                  
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => TestLoggingPage()),
+                          MaterialPageRoute(
+                              builder: (context) => TestLoggingPage()),
                         );
                       },
                       icon: Icon(Icons.settings, size: 24),
@@ -2591,7 +2713,8 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepPurple,
                         foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -2602,9 +2725,9 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
               ),
             ),
           ),
-          
+
           SizedBox(height: 16),
-          
+
           // Future debug features can be added here
           Card(
             elevation: 4,
@@ -2669,4 +2792,3 @@ class _MyAppState extends State<MyApp> with WindowListener, SingleTickerProvider
     );
   }
 }
-

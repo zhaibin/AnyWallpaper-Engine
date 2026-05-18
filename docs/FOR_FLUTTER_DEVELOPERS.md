@@ -255,7 +255,7 @@ getApplicationSupportPath() -> String      // 获取 Application Support 路径
 
 ### 系统架构（可选）
 
-**[INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md)**
+**[ARCHITECTURE_DESIGN.md](ARCHITECTURE_DESIGN.md)**
 - 整体架构设计
 - 组件交互关系
 - 技术选型说明
@@ -824,7 +824,7 @@ AnyWPEngine.onPowerStateChange((state) {
 ### 路径 3：完全掌握（4小时）
 
 1. 路径2 的所有内容
-2. [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) - 架构理解（30分钟）
+2. [ARCHITECTURE_DESIGN.md](ARCHITECTURE_DESIGN.md) - 架构理解（30分钟）
 3. [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) - 技术细节（1小时）
 4. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) - 问题诊断（30分钟）
 5. 阅读源代码
@@ -867,7 +867,7 @@ AnyWPEngine.onPowerStateChange((state) {
 | 看示例 | [API_USAGE_EXAMPLES.md](API_USAGE_EXAMPLES.md) |
 | 学优化 | [BEST_PRACTICES.md](BEST_PRACTICES.md) |
 | 解决问题 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
-| 理解原理 | [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) |
+| 理解原理 | [ARCHITECTURE_DESIGN.md](ARCHITECTURE_DESIGN.md) |
 
 ---
 

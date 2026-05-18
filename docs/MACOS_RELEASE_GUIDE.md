@@ -145,10 +145,10 @@ flutter build macos --release
 
 ## 📚 文档
 
-- [macOS 预编译包集成指南](docs/PRECOMPILED_MACOS_INTEGRATION.md)
-- [macOS 开发者指南](docs/MACOS_DEVELOPER_GUIDE.md)
-- [多平台架构设计](docs/MULTIPLATFORM_ARCHITECTURE.md)
-- [API 参考文档](docs/DEVELOPER_API_REFERENCE.md)
+- [macOS 预编译包集成指南](PRECOMPILED_MACOS_INTEGRATION.md)
+- [macOS 开发者指南](MACOS_DEVELOPER_GUIDE.md)
+- [多平台架构设计](MULTIPLATFORM_ARCHITECTURE.md)
+- [API 参考文档](DEVELOPER_API_REFERENCE.md)
 
 ## 🔧 系统要求
 
@@ -174,7 +174,7 @@ flutter build macos --release
 
 ---
 
-**完整更新日志**: [CHANGELOG_CN.md](CHANGELOG_CN.md)
+**完整更新日志**: [CHANGELOG_CN.md](../CHANGELOG_CN.md)
 ```
 
 ---

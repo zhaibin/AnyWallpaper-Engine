@@ -584,7 +584,7 @@ window.webkit.messageHandlers.test.postMessage("Hello from WebView!");
 ### 项目文档
 - [多平台架构设计](./MULTIPLATFORM_ARCHITECTURE.md)
 - [macOS 开发指南](./MACOS_DEVELOPER_GUIDE.md)
-- [macOS 支持总结](./MACOS_SUPPORT_SUMMARY.md)
+- [macOS 支持总结](./MULTIPLATFORM_ARCHITECTURE.md)
 
 ---
 

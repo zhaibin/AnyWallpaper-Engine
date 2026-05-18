@@ -61,5 +61,4 @@ example\build\windows\x64\runner\Release\anywallpaper_engine_example.exe
 
 ---
 
-**更多信息**: [README.md](README.md) | [中文文档](docs/README_CN.md)
-
+**更多信息**: [项目 README](../README.md) | [文档中心](README.md)

@@ -241,7 +241,7 @@ AnyWPEngine.setOnMessageCallback((message) {
 
 ## 🔗 相关文档
 
-- [详细实施指南](./ENGINE_WEBMESSAGE_IMPLEMENTATION_GUIDE.md)
+- [详细实施指南](./API_BRIDGE.md)
 - [消息协议定义](../lib/models/wallpaper_message.dart)
 - [测试用例](../test/message_test.dart)
 

@@ -8,7 +8,8 @@ echo " optimizeMemory 代码有效性检查"
 echo "========================================"
 echo ""
 
-PROJECT_ROOT="/Users/zhaibin/Dev/anywp-engine"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
 echo "✅ 检查 1: WallpaperInstance 是否有 webView 属性"
@@ -132,7 +133,6 @@ echo "  1. 运行客户端定时优化"
 echo "  2. 观察活动监视器中 Web Content 进程内存"
 echo "  3. 查看日志: test_logs/ 目录"
 echo ""
-
 
 
 

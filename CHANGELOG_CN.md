@@ -2190,7 +2190,7 @@ void setupWallpaperRecovery() {
 
 - 新增 `docs/MESSAGE_PROTOCOL.md` - 消息协议规范
 - 新增 `docs/ENGINE_QUICK_REFERENCE.md` - 引擎开发快速参考
-- 新增 `docs/ENGINE_WEBMESSAGE_IMPLEMENTATION_GUIDE.md` - WebMessage 实施指南
+- 新增 `docs/API_BRIDGE.md` - WebMessage 实施指南
 - 更新 `docs/FOR_FLUTTER_DEVELOPERS.md` - 添加双向通信 API
 - 更新 `docs/DEVELOPER_API_REFERENCE.md` - 完整 API 参考
 - 更新 `docs/WEB_DEVELOPER_GUIDE_CN.md` - JavaScript SDK API
@@ -3179,7 +3179,7 @@ await AnyWPEngine.initializeWallpaperOnMonitor(
 - ✅ 创建 10 个核心模块 + 10 个工具类（共 19 个模块）
 - ✅ 零性能损失，编译速度提升 55%
 
-**详细文档**: [docs/REFACTORING_OVERVIEW.md](docs/REFACTORING_OVERVIEW.md)
+**详细文档**: [docs/ARCHITECTURE_DESIGN.md](docs/ARCHITECTURE_DESIGN.md)
 
 ### ✨ 新增模块（Phase 2）
 
@@ -3328,7 +3328,7 @@ await AnyWPEngine.initializeWallpaperOnMonitor(
 ### 📚 文档更新
 
 #### 新增核心文档
-- **[docs/REFACTORING_OVERVIEW.md](docs/REFACTORING_OVERVIEW.md)** - ⭐ 核心重构文档
+- **[docs/ARCHITECTURE_DESIGN.md](docs/ARCHITECTURE_DESIGN.md)** - ⭐ 核心重构文档
   - 重构全景概览
   - 代码统计和模块清单
   - 质量指标和性能数据

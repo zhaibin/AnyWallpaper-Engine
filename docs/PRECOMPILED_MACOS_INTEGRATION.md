@@ -555,9 +555,9 @@ flutter build macos
 ## 📚 更多资源
 
 - **完整文档**：[README.md](../README.md)
-- **macOS 开发指南**：[docs/MACOS_DEVELOPER_GUIDE.md](docs/MACOS_DEVELOPER_GUIDE.md)
-- **API 参考**：[docs/DEVELOPER_API_REFERENCE.md](docs/DEVELOPER_API_REFERENCE.md)
-- **Web 开发指南**：[docs/WEB_DEVELOPER_GUIDE_CN.md](docs/WEB_DEVELOPER_GUIDE_CN.md)
+- **macOS 开发指南**：[MACOS_DEVELOPER_GUIDE.md](MACOS_DEVELOPER_GUIDE.md)
+- **API 参考**：[DEVELOPER_API_REFERENCE.md](DEVELOPER_API_REFERENCE.md)
+- **Web 开发指南**：[WEB_DEVELOPER_GUIDE_CN.md](WEB_DEVELOPER_GUIDE_CN.md)
 - **发布页面**：[GitHub Releases](https://github.com/zhaibin/AnyWallpaper-Engine/releases)
 
 ---
@@ -580,4 +580,3 @@ flutter build macos
 - ✅ **完整的 entitlements 配置指南**
 - ✅ **跨平台 Web SDK 支持**
 - ✅ **详细的故障排除指南**
-

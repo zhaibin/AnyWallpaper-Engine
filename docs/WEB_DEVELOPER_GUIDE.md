@@ -76,7 +76,7 @@ This guide is for web developers who want to integrate their web pages into AnyW
 - ✅ **More stable** - Complete error recovery & retry logic
 - ✅ **Power efficient** - Smart resource management
 
-**Technical Details**: [REFACTORING_OVERVIEW.md](REFACTORING_OVERVIEW.md) | [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md)
+**Technical Details**: [ARCHITECTURE_DESIGN.md](ARCHITECTURE_DESIGN.md) | [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md)
 
 ---
 

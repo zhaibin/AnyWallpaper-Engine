@@ -9,6 +9,11 @@
 #include <mutex>
 #include <exception>
 #include <chrono>
+#include <atomic>
+
+#ifdef ERROR
+#undef ERROR
+#endif
 
 namespace anywp_engine {
 
@@ -352,4 +357,3 @@ class ErrorHandler {
 }  // namespace anywp_engine
 
 #endif  // ANYWP_ENGINE_ERROR_HANDLER_H_
-

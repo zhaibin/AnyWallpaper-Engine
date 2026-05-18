@@ -463,7 +463,7 @@ Progman (Desktop Window)
 ### 📦 Integration & Packaging
 - [⚡ Quick Integration](QUICK_INTEGRATION.md) - 30-second integration guide
 - [📚 Package Usage Guide](docs/PACKAGE_USAGE_GUIDE_CN.md) - Complete packaging guide (中文)
-- [🏗️ Integration Architecture](docs/INTEGRATION_ARCHITECTURE.md) - Architecture & workflows
+- [🏗️ Integration Architecture](docs/ARCHITECTURE_DESIGN.md) - Architecture & workflows
 - [🎯 Cheat Sheet](docs/CHEAT_SHEET_CN.md) - Quick reference card (中文)
 
 ### Technical Guides

@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # WebView2 NuGet package
-set(WEBVIEW2_PACKAGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../packages/Microsoft.Web.WebView2.1.0.2651.64")
+set(WEBVIEW2_PACKAGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../packages/Microsoft.Web.WebView2.1.0.2592.51")
 
 # Add source files for basic unit tests (includes Phase 2 & 3 modules + v2.1.0)
 add_executable(unit_tests
@@ -65,4 +65,3 @@ target_link_libraries(webview_tests
 
 # Disable warnings for WebView tests
 target_compile_options(webview_tests PRIVATE /wd4819)
-

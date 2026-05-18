@@ -125,7 +125,7 @@ AnyWP.onMessage(function(message) {
 - ✅ **更稳定** - 完整的错误恢复和重试逻辑
 - ✅ **更省电** - 智能资源管理和自动暂停
 
-**技术详情**: [REFACTORING_OVERVIEW.md](REFACTORING_OVERVIEW.md) | [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md)
+**技术详情**: [ARCHITECTURE_DESIGN.md](ARCHITECTURE_DESIGN.md) | [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md)
 
 ---
 

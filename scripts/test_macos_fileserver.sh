@@ -1,7 +1,9 @@
 #!/bin/bash
 # Quick test for macOS file server
 
-cd /Users/zhaibin/Dev/anywp-engine
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
 
 echo "========================================="
 echo " Quick Test - macOS LocalFileServer"
@@ -63,4 +65,3 @@ echo "1. 检查示例应用日志中的 HTTP 服务器启动信息"
 echo "2. 确认服务器找到了正确的项目根目录"
 echo "3. 尝试使用 localfile:// 协议替代"
 echo ""
-

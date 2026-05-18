@@ -40,7 +40,7 @@ if not exist "%WEBVIEW2_DIR%" (
 echo Compiling comprehensive tests...
 echo.
 
-cl /EHsc /std:c++17 ^
+cl /EHsc /std:c++17 /utf-8 ^
    /I"%cd%\.." ^
    /I"%WEBVIEW2_DIR%\build\native\include" ^
    "%cd%\comprehensive_test.cpp" ^
@@ -91,5 +91,4 @@ echo ========================================
 echo.
 
 exit /b %TEST_RESULT%
-
 

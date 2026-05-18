@@ -22,7 +22,7 @@ AnyWP Engine 项目包含三个层次的测试：
 **运行**: `.\scripts\test_precompiled_package.ps1 -Version "2.4.1" -TestLevel Quick`  
 **覆盖**: 预编译包完整性和功能验证
 
-详见: [预编译包测试指南](PRECOMPILED_PACKAGE_TESTING.md)
+预编译包测试脚本位于 `scripts/test_precompiled_package.ps1`。
 
 ## 🎯 测试策略
 
@@ -109,7 +109,7 @@ npm test
 
 ## 📚 相关文档
 
-- [预编译包测试详细指南](PRECOMPILED_PACKAGE_TESTING.md)
+- 预编译包测试脚本: `../scripts/test_precompiled_package.ps1`
 - [C++ 单元测试框架](../windows/test/README.md)
 - [Web SDK 测试](../sdk/src/README.md)
 - [开发者API参考](DEVELOPER_API_REFERENCE.md)

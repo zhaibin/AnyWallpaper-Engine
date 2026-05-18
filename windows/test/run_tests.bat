@@ -37,7 +37,7 @@ if not exist "%WEBVIEW2_DIR%" (
 REM Compile unit tests (Phase 1 + Phase 3 modules - Flutter-independent)
 REM Note: Some Phase 1 modules (MouseHookManager, IframeDetector, SDKBridge) depend on Flutter headers
 REM and will be tested via integration tests
-cl /EHsc /std:c++17 ^
+cl /EHsc /std:c++17 /utf-8 ^
    /I"%cd%\.." ^
    /I"%WEBVIEW2_DIR%\build\native\include" ^
    "%cd%\unit_tests.cpp" ^
@@ -84,7 +84,7 @@ if not exist "%WEBVIEW2_DIR%" (
 )
 
 REM Compile WebViewManager tests
-cl /EHsc /std:c++17 ^
+cl /EHsc /std:c++17 /utf-8 ^
    /I"%cd%\.." ^
    /I"%WEBVIEW2_DIR%\build\native\include" ^
    "%cd%\webview_manager_tests.cpp" ^
@@ -160,5 +160,4 @@ echo ========================================
 
 pause
 exit /b %TOTAL_RESULT%
-
 

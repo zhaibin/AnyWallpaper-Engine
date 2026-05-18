@@ -110,7 +110,7 @@ AnyWP Engine v2.0 features a completely modular C++ architecture with significan
 - SafetyMacros - 21 safety macros
 
 **Technical Details:**
-- [REFACTORING_OVERVIEW.md](REFACTORING_OVERVIEW.md) - Complete refactoring overview
+- [ARCHITECTURE_DESIGN.md](ARCHITECTURE_DESIGN.md) - Complete refactoring overview
 - [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) - Implementation details
 
 ---

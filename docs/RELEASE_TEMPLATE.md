@@ -109,18 +109,18 @@ dependencies:
 ## 📚 完整文档
 
 ### 快速开始
-- [预编译 DLL 集成指南](docs/PRECOMPILED_DLL_INTEGRATION.md) ⭐
-- [快速开始指南](docs/QUICK_START.md)
-- [打包使用指南](docs/PACKAGE_USAGE_GUIDE_CN.md)
+- [预编译 DLL 集成指南](PRECOMPILED_DLL_INTEGRATION.md) ⭐
+- [快速开始指南](QUICK_START.md)
+- [打包使用指南](PACKAGE_USAGE_GUIDE_CN.md)
 
 ### API 文档
-- [开发者 API 参考](docs/DEVELOPER_API_REFERENCE.md)
-- [API 使用示例](docs/API_USAGE_EXAMPLES.md)
+- [开发者 API 参考](DEVELOPER_API_REFERENCE.md)
+- [API 使用示例](API_USAGE_EXAMPLES.md)
 
 ### 进阶指南
-- [最佳实践](docs/BEST_PRACTICES.md)
-- [Web 开发者指南](docs/WEB_DEVELOPER_GUIDE_CN.md)
-- [故障排除](docs/TROUBLESHOOTING.md)
+- [最佳实践](BEST_PRACTICES.md)
+- [Web 开发者指南](WEB_DEVELOPER_GUIDE_CN.md)
+- [故障排除](TROUBLESHOOTING.md)
 
 ---
 

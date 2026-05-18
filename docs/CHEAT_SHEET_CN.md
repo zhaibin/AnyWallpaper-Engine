@@ -289,7 +289,7 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
 |------|------|
 | **快速集成** | [QUICK_INTEGRATION.md](../QUICK_INTEGRATION.md) |
 | **完整指南** | [PACKAGE_USAGE_GUIDE_CN.md](PACKAGE_USAGE_GUIDE_CN.md) |
-| **架构文档** | [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) |
+| **架构文档** | [ARCHITECTURE_DESIGN.md](ARCHITECTURE_DESIGN.md) |
 | **API 文档** | [API_BRIDGE.md](API_BRIDGE.md) |
 | **GitHub Issues** | [报告问题](https://github.com/zhaibin/AnyWallpaper-Engine/issues) |
 
@@ -299,7 +299,7 @@ class _WallpaperScreenState extends State<WallpaperScreen> {
 
 1. ⚡ **新手**: 先看 [QUICK_INTEGRATION.md](../QUICK_INTEGRATION.md)
 2. 📚 **进阶**: 阅读 [PACKAGE_USAGE_GUIDE_CN.md](PACKAGE_USAGE_GUIDE_CN.md)
-3. 🏗️ **深入**: 研究 [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md)
+3. 🏗️ **深入**: 研究 [ARCHITECTURE_DESIGN.md](ARCHITECTURE_DESIGN.md)
 4. 🔧 **调试**: 参考 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 ---
