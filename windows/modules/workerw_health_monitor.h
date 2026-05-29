@@ -47,10 +47,10 @@ public:
    * WorkerW 健康状态
    */
   enum class HealthStatus {
-    UNKNOWN,     // 未知状态（未开始监控）
-    HEALTHY,     // 健康（WorkerW 有效）
-    UNHEALTHY,   // 不健康（WorkerW 失效）
-    RECOVERING   // 恢复中
+    kUnknown,     // 未知状态（未开始监控）
+    kHealthy,     // 健康（WorkerW 有效）
+    kUnhealthy,   // 不健康（WorkerW 失效）
+    kRecovering   // 恢复中
   };
 
   WorkerWHealthMonitor();
@@ -183,4 +183,3 @@ private:
 }  // namespace anywp_engine
 
 #endif  // ANYWP_ENGINE_WORKERW_HEALTH_MONITOR_H_
-

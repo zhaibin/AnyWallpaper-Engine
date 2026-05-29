@@ -32,10 +32,10 @@ class WallpaperLifecycleManager {
    * @brief 壁纸状态枚举
    */
   enum class WallpaperState {
-    ACTIVE,      // 正常运行
-    PAUSED,      // 已暂停
-    RESUMING,    // 恢复中
-    DESTROYED    // 已销毁
+    kActive,      // 正常运行
+    kPaused,      // 已暂停
+    kResuming,    // 恢复中
+    kDestroyed    // 已销毁
   };
 
   /**
@@ -177,7 +177,7 @@ class WallpaperLifecycleManager {
 
  private:
   // 状态管理
-  WallpaperState current_state_ = WallpaperState::ACTIVE;
+  WallpaperState current_state_ = WallpaperState::kActive;
   std::atomic<bool> is_paused_{false};
   std::string last_pause_reason_;
   std::string last_resume_reason_;
@@ -208,4 +208,3 @@ class WallpaperLifecycleManager {
 }  // namespace anywp_engine
 
 #endif  // FLUTTER_PLUGIN_WALLPAPER_LIFECYCLE_MANAGER_H_
-

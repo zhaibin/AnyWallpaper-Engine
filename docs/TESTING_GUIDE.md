@@ -1,25 +1,40 @@
 # AnyWP Engine 测试指南
 
+Last updated: 2026-05-28
+
 ## 📋 测试概览
 
 AnyWP Engine 项目包含三个层次的测试：
 
+## 测试环境
+
+Windows 专属验证必须在可用的 **Windows 环境** 中执行。本地开发默认使用 Parallels Desktop 中的 Windows 虚拟机；其他开发者可以使用真实 Windows 机器、Windows 虚拟机或 CI Windows runner。需要 Windows 环境执行的内容包括：
+
+- `.bat` 脚本，例如 `.\scripts\pre_release_check.bat`、`.\scripts\test_full.bat`、`.\scripts\release.bat`。
+- Windows Flutter 构建，例如 `flutter build windows --debug` 和 `flutter build windows --release`。
+- WebView2、DLL/LIB、WorkerW、Explorer 恢复、多显示器和壁纸窗口行为验证。
+- Windows 预编译包验证，例如 `.\scripts\verify_precompiled.bat {engine_version} {sdk_version}`。
+
+macOS 主机侧只负责通用文档检查、TypeScript SDK 检查、macOS 构建/发布检查，以及不依赖 Windows GUI/WebView2 的静态验证。不要把 macOS shell 中无法运行 Windows `.bat` 视为测试通过或失败；应标记为“待 Windows 环境验证”。
+
 ### 1. 单元测试（C++）
 
-**位置**: `windows/test/`  
-**运行**: `cd windows\test && run_tests.bat`  
+**位置**: `windows/test/`
+**运行环境**: Windows 环境（本地可使用 Parallels Desktop Windows VM）
+**运行**: `cd windows\test && run_comprehensive_test.bat`
 **覆盖**: C++ 工具类和模块
 
 ### 2. Web SDK 测试（TypeScript）
 
-**位置**: `sdk/src/__tests__/`  
-**运行**: `cd sdk\src && npm test`  
+**位置**: `sdk/src/__tests__/`
+**运行**: `cd sdk\src && npm test`
 **覆盖**: JavaScript SDK API
 
 ### 3. 预编译包测试（PowerShell）⭐ **新增**
 
-**位置**: `scripts/test_precompiled_package.ps1`  
-**运行**: `.\scripts\test_precompiled_package.ps1 -Version "2.4.1" -TestLevel Quick`  
+**位置**: `scripts/test_precompiled_package.ps1`
+**运行环境**: Windows 环境（本地可使用 Parallels Desktop Windows VM）
+**运行**: `.\scripts\test_precompiled_package.ps1 -Version "2.4.1" -TestLevel Quick`
 **覆盖**: 预编译包完整性和功能验证
 
 预编译包测试脚本位于 `scripts/test_precompiled_package.ps1`。
@@ -29,11 +44,11 @@ AnyWP Engine 项目包含三个层次的测试：
 ### 开发时测试
 
 ```powershell
-# C++ 代码修改后
+# 在 Windows 环境中：C++ 代码修改后
 cd windows\test
-run_tests.bat
+run_comprehensive_test.bat
 
-# Web SDK 修改后
+# macOS 或 Windows 均可：Web SDK 修改后
 cd sdk\src
 npm test
 ```
@@ -41,6 +56,8 @@ npm test
 ### 发布前测试
 
 ```powershell
+# 在 Windows 环境中执行 Windows 发布验证
+
 # 1. 构建预编译包
 .\scripts\release.bat
 
@@ -106,6 +123,7 @@ npm test
 2. **新功能必须添加测试用例** ✓
 3. **测试覆盖率不得降低** ✓
 4. **CI失败不得合并代码** ✓
+5. **Windows 行为必须在 Windows 环境中验证** ✓
 
 ## 📚 相关文档
 
@@ -116,5 +134,5 @@ npm test
 
 ---
 
-**最后更新**: 2025-11-19  
-**文档版本**: 1.0.0
+**最后更新**: 2026-05-28
+**文档版本**: 1.1.0

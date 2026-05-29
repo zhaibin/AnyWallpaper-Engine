@@ -1,23 +1,23 @@
 # AnyWP Engine - Scripts Reference
 
-**Last Updated**: 2025-11-15  
-**Version**: 2.1.5
+**Last Updated**: 2026-05-28
+**Version**: 2.6.7
 
 ---
 
 ## Overview
 
-The repository now维持 **16** 个脚本（含 PowerShell 模块），覆盖环境准备、日常开发、自动化测试以及发版流程。全部脚本均为英文，默认使用 `pwsh` ≥ 7.5.4 执行。
+The repository now maintains **41** scripts and helper modules (`.bat`, `.ps1`, `.psm1`, `.sh`) covering environment setup, SDK builds, development, testing, package verification, and release automation. Windows scripts prefer `pwsh` when available and fall back to Windows PowerShell where implemented.
 
 | 分类 | 脚本 | 说明 |
 | --- | --- | --- |
 | Setup & SDK | `setup.bat` | 安装 WebView2 依赖 |
-|  | `build_sdk.bat` | 编译 TypeScript SDK，运行单测 |
+|  | `build_sdk.bat` / `build_sdk.sh` | 编译 TypeScript SDK 到分发文件 |
 | Development | `build.bat` | 构建并运行示例（Debug） |
 |  | `run.bat` | 快速运行已有构建 |
 |  | `debug.bat` | 带日志的调试模式 |
 |  | `monitor_log.bat` | Tail `test_logs\debug_run.log` |
-| Testing | `test_full.bat` | 8 个演示页面自动化测试 |
+| Testing | `test_full.bat` | 4 个演示页面自动化测试 |
 |  | `analyze.ps1` | 解析 `test_full` 输出，支持 HTML 报告 |
 | Release Automation | `release.bat` | 构建预编译包 / 源码包 / Web SDK 包 |
 |  | `check_version_consistency.ps1` | 校验版本号一致性 |
@@ -25,6 +25,8 @@ The repository now维持 **16** 个脚本（含 PowerShell 模块），覆盖环
 |  | `generate_commit_template.ps1` | 生成中文提交模板 |
 |  | `release_git.bat` | 自动执行 Git add/commit/tag/push |
 |  | `verify_precompiled.bat` | 验证三类发布包内容 |
+| macOS Release | `sync_version.sh` | 同步 `pubspec.yaml` 版本到 podspec |
+|  | `release_macos.sh` | 构建 macOS 预编译包、源码包和 Web SDK 包 |
 | Support Module | `release_utils.psm1` | PowerShell 辅助函数库 |
 
 ---
@@ -40,8 +42,8 @@ The repository now维持 **16** 个脚本（含 PowerShell 模块），覆盖环
 
 ### `build_sdk.bat`
 - 安装 `sdk\src\package.json` 依赖
-- 执行 Rollup 打包到 `sdk\dist\anywp_sdk.js`
-- 运行单测并输出覆盖率（`sdk\src\coverage\`）
+- 执行 TypeScript 编译和 Rollup 打包到 `sdk\dist\anywp_sdk.js`
+- 传入 `production` 时同时生成 `sdk\dist\anywp_sdk.min.js`
 
 **Tip**：发版前需确保最新 `anywp_sdk.js` 已生成。
 
@@ -50,9 +52,9 @@ The repository now维持 **16** 个脚本（含 PowerShell 模块），覆盖环
 ## Development Scripts
 
 ### `build.bat`
-1. 执行 `flutter clean` / `flutter pub get`
-2. `flutter build windows --debug`
-3. 启动示例应用
+1. 检查 WebView2 SDK，缺失时调用 `setup.bat`
+2. 在 `example/` 下执行 `flutter build windows --debug`
+3. 启动 Debug 示例应用
 
 ### `run.bat`
 - 直接运行 `example\build\windows\x64\runner\Release\...exe`
@@ -71,7 +73,7 @@ The repository now维持 **16** 个脚本（含 PowerShell 模块），覆盖环
 
 ### `test_full.bat`
 - 构建 Debug 版本
-- 依次打开 8 个演示页面（约 95 秒）
+- 依次打开 4 个演示页面（约 50 秒）
 - 采集以下文件：
   - `test_logs\test_full_{timestamp}.log`
   - `test_logs\memory_{timestamp}.csv`
@@ -80,7 +82,7 @@ The repository now维持 **16** 个脚本（含 PowerShell 模块），覆盖环
 
 ### `analyze.ps1`
 - 解析上述 CSV/LOG
-- 指标：最大/平均内存、CPU、增长率
+- 指标：最大/平均内存、内存增长率、CPU 累计秒数、线程数
 - 选项：`-GenerateHtml` 为 `test_logs\performance_report_{timestamp}.html`
 
 > 建议发版前执行一次 `test_full` + `analyze.ps1`，确认无性能回归。
@@ -95,6 +97,8 @@ The repository now维持 **16** 个脚本（含 PowerShell 模块），覆盖环
 - `CHANGELOG_CN.md`
 - `.cursorrules`
 - `docs/PRECOMPILED_DLL_INTEGRATION.md`
+
+同时解析 `sdk/src/package.json` 并提示 Web SDK 独立版本，但不会要求 SDK 版本与插件版本一致。
 
 在 `release.bat` 中作为第一步执行。
 
@@ -114,27 +118,28 @@ PowerShell 辅助模块，提供：
 
 ### `release.bat`
 1. 调用 `check_version_consistency.ps1`
-2. 构建 Flutter Release（example/windows）
-3. 生成：
+2. 调用 `build_sdk.bat production`
+3. 构建 Flutter Release（example/windows）
+4. 生成：
    - `release/anywp_engine_v{version}_precompiled.zip`
    - `release/anywp_engine_v{version}_source.zip`
-   - `release/anywp_web_sdk_v{version}.zip`
-4. 自动执行：
+   - `release/anywp_web_sdk_v{sdk_version}.zip`
+5. 自动执行：
    - `generate_release_notes.ps1`
    - `generate_commit_template.ps1`
-5. 输出下一步提示（验证、Git、GitHub Release）
+6. 输出下一步提示（验证、Git、GitHub Release）
 
 ### `verify_precompiled.bat`
-核对三类发布包的关键文件是否齐全；发包后务必执行：
+核对三类发布包的关键文件是否齐全；第一个参数是 Engine 版本，第二个 SDK 版本可省略，省略时脚本会从 `sdk\src\package.json` 读取。
 
 ```bash
-scripts\verify_precompiled.bat 2.1.5
+scripts\verify_precompiled.bat 2.6.7 2.5.0
 ```
 
 ### `release_git.bat`
 ```bash
-scripts\release_git.bat 2.1.5         # 默认 push
-scripts\release_git.bat 2.1.5 --no-push
+scripts\release_git.bat 2.6.7         # 默认 push
+scripts\release_git.bat 2.6.7 --no-push
 ```
 - 自动执行 `git add` / `git commit`（使用生成的模板）
 - 创建并推送 tag（可跳过 push）
@@ -156,9 +161,8 @@ pwsh ./scripts/analyze.ps1 -GenerateHtml
 
 # 3. 发版构建
 scripts\release.bat
-scripts\verify_precompiled.bat 2.1.5
-scripts\release_git.bat 2.1.5
+scripts\verify_precompiled.bat 2.6.7 2.5.0
+scripts\release_git.bat 2.6.7
 ```
 
 > GitHub Release 页面内容可直接复制 `release/GITHUB_RELEASE_NOTES_v{version}.md`，上传三个 ZIP 包即可。
-

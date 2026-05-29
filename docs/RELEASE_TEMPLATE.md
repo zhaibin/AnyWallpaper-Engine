@@ -234,10 +234,10 @@ flutter build windows
 ### 测试 HTML
 
 项目包含多个测试 HTML 文件：
-- `examples/test_simple.html` - 简单壁纸
-- `examples/test_draggable.html` - 拖拽功能测试
 - `examples/test_api.html` - 完整 API 测试
-- `examples/test_react.html` - React 集成示例
+- `examples/test_visibility.html` - 可见性/省电测试
+- `examples/test_basic_click.html` - 点击检测测试
+- `examples/test_carousel_control.html` - 轮播控制测试
 
 ---
 
@@ -282,4 +282,3 @@ flutter build windows
 - 🐛 提交 [Issue](https://github.com/zhaibin/AnyWallpaper-Engine/issues)
 - 💬 参与 [讨论](https://github.com/zhaibin/AnyWallpaper-Engine/discussions)
 - 📧 联系作者：[GitHub @zhaibin](https://github.com/zhaibin)
-

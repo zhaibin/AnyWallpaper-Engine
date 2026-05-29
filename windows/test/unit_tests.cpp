@@ -2185,7 +2185,7 @@ TEST_SUITE(WorkerWHealthMonitor) {
   TEST_CASE(initialization) {
     WorkerWHealthMonitor monitor;
     ASSERT_FALSE(monitor.IsMonitoring());
-    ASSERT_EQUAL(WorkerWHealthMonitor::HealthStatus::UNKNOWN, monitor.GetHealthStatus());
+    ASSERT_EQUAL(WorkerWHealthMonitor::HealthStatus::kUnknown, monitor.GetHealthStatus());
     ASSERT_EQUAL(0, monitor.GetConsecutiveFailures());
   }
   
@@ -2258,7 +2258,7 @@ TEST_SUITE(WorkerWHealthMonitor) {
     
     // Should reset failure count
     ASSERT_EQUAL(0, monitor.GetConsecutiveFailures());
-    ASSERT_EQUAL(WorkerWHealthMonitor::HealthStatus::HEALTHY, monitor.GetHealthStatus());
+    ASSERT_EQUAL(WorkerWHealthMonitor::HealthStatus::kHealthy, monitor.GetHealthStatus());
     
     monitor.StopMonitoring();
   }
@@ -2360,5 +2360,4 @@ TEST_SUITE(WorkerWHealthMonitor) {
 int main() {
   return TestRunner::Instance().Run();
 }
-
 

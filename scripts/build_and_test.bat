@@ -70,7 +70,7 @@ echo ========================================
 echo.
 echo 1. 应用即将启动
 echo 2. 在应用的 Wallpaper 标签页中：
-echo    - 输入 URL: file:///E:/Projects/AnyWallpaper/AnyWP-Test/examples/test_custom_scheme.html
+echo    - 输入 URL: file:///E:/Projects/AnyWallpaper/AnyWP-Test/examples/test_carousel_control.html
 echo    - 点击 "Start" 按钮启动壁纸
 echo 3. 在测试页面中点击 "Run All Tests"
 echo 4. 查看测试结果（绿色=成功，红色=失败）
@@ -94,4 +94,3 @@ echo ✓ 应用已启动！
 echo.
 echo 按任意键退出此脚本...
 pause >nul
-

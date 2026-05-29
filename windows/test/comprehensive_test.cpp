@@ -8,7 +8,6 @@
 #include "../utils/cpu_profiler.h"
 #include "../utils/startup_optimizer.h"
 #include "../modules/power_manager.h"
-#include "../modules/mouse_hook_manager.h"
 #include "../modules/monitor_manager.h"
 #include "../modules/iframe_detector.h"
 #include "../modules/sdk_bridge.h"
@@ -41,14 +40,14 @@ TEST_SUITE(Logger) {
 }
 
 TEST_SUITE(PowerManager) {
-  TEST_CASE(singleton_access) {
-    auto& pm1 = PowerManager::Instance();
-    auto& pm2 = PowerManager::Instance();
-    ASSERT_TRUE(&pm1 == &pm2);
+  TEST_CASE(initialization) {
+    PowerManager pm;
+    ASSERT_FALSE(pm.IsEnabled());
+    ASSERT_TRUE(pm.GetCurrentState() == PowerManager::PowerState::ACTIVE);
   }
   
   TEST_CASE(power_state) {
-    auto& pm = PowerManager::Instance();
+    PowerManager pm;
     // Check initial state
     bool is_active = pm.IsFullscreenAppActive();
     ASSERT_TRUE(!is_active || is_active); // Just check it doesn't crash
@@ -112,9 +111,7 @@ TEST_SUITE(IframeDetector) {
   TEST_CASE(update_iframes) {
     IframeDetector detector;
     
-    std::string json = R"([
-      {"x": 10, "y": 20, "width": 100, "height": 50}
-    ])";
+    std::string json = R"({"type":"IFRAME_DATA","iframes":[{"id":"frame1","src":"test.html","clickUrl":"","bounds":{"left":10,"top":20,"width":100,"height":50},"visible":true}]})";
     
     detector.UpdateIframes(json);
     ASSERT_TRUE(detector.GetCount() > 0);
@@ -123,50 +120,28 @@ TEST_SUITE(IframeDetector) {
   TEST_CASE(clear_iframes) {
     IframeDetector detector;
     
-    detector.UpdateIframes(R"([{"x": 0, "y": 0, "width": 10, "height": 10}])");
+    detector.UpdateIframes(R"({"type":"IFRAME_DATA","iframes":[{"id":"frame1","src":"test.html","clickUrl":"","bounds":{"left":0,"top":0,"width":10,"height":10},"visible":true}]})");
     detector.Clear();
     
     ASSERT_EQUAL(0, detector.GetCount());
   }
 }
 
-TEST_SUITE(MouseHookManager) {
-  TEST_CASE(initialization) {
-    MouseHookManager manager;
-    ASSERT_FALSE(manager.IsInstalled());
-  }
-  
-  TEST_CASE(install_uninstall) {
-    MouseHookManager manager;
-    
-    bool installed = manager.Install();
-    if (installed) {
-      ASSERT_TRUE(manager.IsInstalled());
-      manager.Uninstall();
-      ASSERT_FALSE(manager.IsInstalled());
-    } else {
-      // Hook may fail in test environment, that's OK
-      ASSERT_TRUE(true);
-    }
-  }
-}
-
 TEST_SUITE(MonitorManager) {
-  TEST_CASE(singleton_access) {
-    auto& mm1 = MonitorManager::Instance();
-    auto& mm2 = MonitorManager::Instance();
-    ASSERT_TRUE(&mm1 == &mm2);
+  TEST_CASE(initialization) {
+    MonitorManager manager;
+    ASSERT_FALSE(manager.IsMonitoring());
   }
   
   TEST_CASE(get_monitors) {
-    auto& manager = MonitorManager::Instance();
+    MonitorManager manager;
     auto monitors = manager.GetMonitors();
     
     ASSERT_TRUE(monitors.size() > 0);
   }
   
   TEST_CASE(monitor_dimensions) {
-    auto& manager = MonitorManager::Instance();
+    MonitorManager manager;
     auto monitors = manager.GetMonitors();
     
     for (const auto& monitor : monitors) {
@@ -321,5 +296,3 @@ int main() {
   
   return result;
 }
-
-

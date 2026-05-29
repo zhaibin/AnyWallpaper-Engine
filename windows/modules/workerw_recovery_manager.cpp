@@ -25,7 +25,7 @@ WorkerWRecoveryManager::RecoveryStrategy WorkerWRecoveryManager::RecoverWorkerW(
   if (is_recovering_.exchange(true)) {
     Logger::Instance().Warning("WorkerWRecoveryManager", 
       "Recovery already in progress, skipping duplicate request");
-    return RecoveryStrategy::NONE;
+    return RecoveryStrategy::kNone;
   }
 
   try {
@@ -36,7 +36,7 @@ WorkerWRecoveryManager::RecoveryStrategy WorkerWRecoveryManager::RecoverWorkerW(
       Logger::Instance().Info("WorkerWRecoveryManager", 
         "Recovery completed using REPARENT strategy");
       is_recovering_.store(false);
-      return RecoveryStrategy::REPARENT;
+      return RecoveryStrategy::kReparent;
     }
 
     // 策略1 失败，需要请求完全重建
@@ -49,12 +49,12 @@ WorkerWRecoveryManager::RecoveryStrategy WorkerWRecoveryManager::RecoverWorkerW(
     }
 
     is_recovering_.store(false);
-    return RecoveryStrategy::FULL_REINIT;
+    return RecoveryStrategy::kFullReinit;
   } catch (const std::exception& e) {
     Logger::Instance().Error("WorkerWRecoveryManager", 
       std::string("Exception in RecoverWorkerW: ") + e.what());
     is_recovering_.store(false);
-    return RecoveryStrategy::NONE;
+    return RecoveryStrategy::kNone;
   }
 }
 
@@ -109,21 +109,21 @@ WorkerWRecoveryManager::RecoveryStrategy WorkerWRecoveryManager::CheckWorkerWSta
     const WallpaperInstance* instance) {
   
   if (!instance) {
-    return RecoveryStrategy::NONE;
+    return RecoveryStrategy::kNone;
   }
 
   // 检查 WorkerW 句柄
   if (!instance->worker_w_hwnd || !IsWindow(instance->worker_w_hwnd)) {
     Logger::Instance().Warning("WorkerWRecoveryManager", 
       "WorkerW window is invalid for monitor " + std::to_string(instance->monitor_index));
-    return RecoveryStrategy::RECREATE_WORKERW;
+    return RecoveryStrategy::kRecreateWorkerW;
   }
 
   // 检查 WebView 宿主窗口
   if (!instance->webview_host_hwnd || !IsWindow(instance->webview_host_hwnd)) {
     Logger::Instance().Warning("WorkerWRecoveryManager", 
       "WebView host window is invalid for monitor " + std::to_string(instance->monitor_index));
-    return RecoveryStrategy::FULL_REINIT;
+    return RecoveryStrategy::kFullReinit;
   }
 
   // 检查父子关系
@@ -131,17 +131,17 @@ WorkerWRecoveryManager::RecoveryStrategy WorkerWRecoveryManager::CheckWorkerWSta
   if (parent != instance->worker_w_hwnd) {
     Logger::Instance().Warning("WorkerWRecoveryManager", 
       "Parent-child relationship broken for monitor " + std::to_string(instance->monitor_index));
-    return RecoveryStrategy::REPARENT;
+    return RecoveryStrategy::kReparent;
   }
 
   // 验证 WorkerW 的有效性
   if (!ValidateWorkerW(instance->worker_w_hwnd)) {
     Logger::Instance().Warning("WorkerWRecoveryManager", 
       "WorkerW validation failed for monitor " + std::to_string(instance->monitor_index));
-    return RecoveryStrategy::RECREATE_WORKERW;
+    return RecoveryStrategy::kRecreateWorkerW;
   }
 
-  return RecoveryStrategy::NONE;
+  return RecoveryStrategy::kNone;
 }
 
 bool WorkerWRecoveryManager::ValidateWorkerW(HWND worker_w) {
@@ -280,4 +280,3 @@ bool WorkerWRecoveryManager::VerifyProgmanHierarchy(HWND worker_w) {
 }
 
 }  // namespace anywp_engine
-

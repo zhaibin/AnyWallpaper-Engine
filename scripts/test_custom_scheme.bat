@@ -49,7 +49,7 @@ echo.
 REM 3. 运行应用
 echo [3/4] 启动应用...
 echo    应用将自动加载测试 HTML 页面
-echo    请在应用中手动加载: examples\test_custom_scheme.html
+echo    请在应用中手动加载: examples\test_carousel_control.html
 echo.
 
 if not exist "example\build\windows\x64\runner\Debug\anywallpaper_engine_example.exe" (
@@ -72,7 +72,7 @@ echo ========================================
 echo  🎯 测试步骤
 echo ========================================
 echo.
-echo 1. 应用已启动并加载 test_custom_scheme.html
+echo 1. 应用已启动并加载 test_carousel_control.html
 echo 2. 点击页面中的 "Run All Tests" 按钮
 echo 3. 查看测试结果：
 echo    - 绿色 ✓ = 测试通过
@@ -89,4 +89,3 @@ echo    - 图片正常显示
 echo.
 echo ========================================
 pause
-

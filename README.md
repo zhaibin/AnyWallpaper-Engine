@@ -499,11 +499,10 @@ SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0);
 ## 🧪 Testing
 
 测试文件位于 `examples/` 目录：
-- `test_simple.html` - 简单测试页面
 - `test_api.html` - 完整 API 功能测试
 - `test_visibility.html` - 可见性 API 测试
-- `test_react.html` / `test_vue.html` - 框架集成测试
-- `test_iframe_ads.html` - iframe 测试
+- `test_basic_click.html` - 点击检测测试
+- `test_carousel_control.html` - 轮播控制测试
 
 运行测试：
 ```bash

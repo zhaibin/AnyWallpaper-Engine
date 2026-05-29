@@ -223,7 +223,7 @@ flutter build windows --release
 
 **验证命令**: 
 ```bash
-.\scripts\verify_precompiled.bat {版本号}
+.\scripts\verify_precompiled.bat {引擎版本号} {SDK版本号}
 ```
 自动验证预编译包、源码包与 Web SDK 包的完整性。
 
@@ -470,7 +470,7 @@ del commit_msg.txt
 
 **A**: 使用验证脚本：
 ```bash
-.\scripts\verify_precompiled.bat {版本号}
+.\scripts\verify_precompiled.bat {引擎版本号} {SDK版本号}
 ```
 脚本会自动检查所有必需文件是否存在。
 
@@ -485,7 +485,7 @@ del commit_msg.txt
 | `pre_release_check.bat` | 发版前全面检查（13项） | 无 |
 | `release.bat` | 构建发布包（3个 ZIP） | 无 |
 | `release_git.bat` | 自动 Git 提交和推送 | `{版本号}` |
-| `verify_precompiled.bat` | 验证发布包完整性 | `{版本号}` |
+| `verify_precompiled.bat` | 验证发布包完整性 | `{引擎版本号} [SDK版本号]` |
 
 ### 辅助脚本
 
@@ -510,7 +510,7 @@ del commit_msg.txt
 # 发版流程
 .\scripts\pre_release_check.bat          # 发版前检查
 .\scripts\release.bat                    # 构建发布包
-.\scripts\verify_precompiled.bat 2.4.1   # 验证发布包
+.\scripts\verify_precompiled.bat 2.4.1 2.4.0   # 验证发布包（第二个参数为 SDK 版本，可省略自动读取）
 .\scripts\release_git.bat 2.4.1          # Git 提交推送
 ```
 

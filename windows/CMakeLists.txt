@@ -99,6 +99,7 @@ set_target_properties(${PLUGIN_NAME} PROPERTIES
   CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 target_compile_options(${PLUGIN_NAME} PRIVATE 
+  /utf-8  # Treat source files as UTF-8; required for Chinese comments in Windows sources
   /wd4819  # Disable C4819 encoding warning
   /wd4244  # Disable C4244 wchar_t to char conversion warning
 )
@@ -223,4 +224,3 @@ endif()
 # # Install full C++ header (optional, for source integration)
 # install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/anywp_engine_plugin.h"
 #         DESTINATION include/anywp_engine)
-

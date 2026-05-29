@@ -34,6 +34,8 @@ This index covers only the current root documentation and `docs/` directory. His
 - [MULTIPLATFORM_ARCHITECTURE.md](MULTIPLATFORM_ARCHITECTURE.md) - Windows/macOS architecture.
 - [PLATFORM_COMPARISON.md](PLATFORM_COMPARISON.md) - Platform capability comparison.
 - [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) - Repository layout.
+- [CODING_STANDARDS.md](CODING_STANDARDS.md) - Project coding standards.
+- [DOCUMENTATION_STANDARDS.md](DOCUMENTATION_STANDARDS.md) - Documentation standards.
 - [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) - Implementation notes.
 - [API_BRIDGE.md](API_BRIDGE.md) - Flutter/native/Web bridge.
 - [MESSAGE_PROTOCOL.md](MESSAGE_PROTOCOL.md) - Message protocol.
@@ -57,6 +59,7 @@ This index covers only the current root documentation and `docs/` directory. His
 ## Release And Maintenance
 
 - [RELEASE_GUIDE.md](RELEASE_GUIDE.md)
+- [RELEASE_STANDARDS.md](RELEASE_STANDARDS.md)
 - [RELEASE_TEMPLATE.md](RELEASE_TEMPLATE.md)
 - [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md)
 - [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)
@@ -74,5 +77,5 @@ This index covers only the current root documentation and `docs/` directory. His
 ## Current Docs Count
 
 - Root Markdown files: 3
-- Current `docs/*.md` files: 42
+- Current `docs/*.md` files: 45
 - Historical `release/` docs: excluded

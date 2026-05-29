@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:anywp_engine/anywp_engine.dart';
 
 /// Auto Recovery 完整测试示例
-/// 
+///
 /// 测试场景：
 /// 1. 启用 Auto Recovery
 /// 2. 设置壁纸
@@ -100,7 +100,7 @@ class _TestPageState extends State<TestPage> {
     try {
       await AnyWPEngine.enableAutoRecovery(true);
       _log('enableAutoRecovery(true) 调用成功');
-      
+
       setState(() {
         _autoRecoveryEnabled = true;
       });
@@ -125,22 +125,23 @@ class _TestPageState extends State<TestPage> {
 
   Future<void> _testSetWallpaper() async {
     _log('[Test 3/4] 设置测试壁纸...');
-    
+
     // 使用项目中的测试 HTML
-    final htmlPath = '${Directory.current.path}/../examples/test_simple.html';
+    final htmlPath =
+        '${Directory.current.path}/../examples/test_visibility.html';
     final file = File(htmlPath);
-    
+
     if (!file.existsSync()) {
       _log('测试 HTML 不存在: $htmlPath', isError: true);
       _log('使用备用方案：Windows 默认壁纸');
-      
+
       // 使用 Windows 默认图片作为测试
       try {
         final success = await AnyWPEngine.initializeWallpaperOnMonitor(
           url: 'file:///C:/Windows/Web/Screen/img100.jpg',
           monitorIndex: 0,
         );
-        
+
         if (success) {
           _log('壁纸设置成功（使用系统图片）');
           setState(() {
@@ -161,7 +162,7 @@ class _TestPageState extends State<TestPage> {
         monitorIndex: 0,
         // autoSave: true 是默认值，会自动保存配置
       );
-      
+
       if (success) {
         _log('壁纸设置成功（使用测试 HTML）');
         _log('URL: file:///${file.absolute.path}');
@@ -178,17 +179,17 @@ class _TestPageState extends State<TestPage> {
 
   Future<void> _testVerifyConfig() async {
     _log('[Test 4/4] 验证配置保存...');
-    
+
     // 等待配置保存完成
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     _log('配置应该已自动保存（autoSave: true）');
     _log('');
     _log('检查引擎日志确认：');
     _log('  - 应该看到: "Auto recovery ENABLED"');
     _log('  - 应该看到: "Wallpaper configuration saved"');
     _log('  - 应该看到: "Auto recovery: 1 configuration(s) saved"');
-    
+
     setState(() {
       _configSaved = true;
     });
@@ -224,7 +225,7 @@ class _TestPageState extends State<TestPage> {
               ],
             ),
           ),
-          
+
           // 控制按钮
           Padding(
             padding: const EdgeInsets.all(16),
@@ -255,9 +256,9 @@ class _TestPageState extends State<TestPage> {
               ),
             ),
           ),
-          
+
           const Divider(height: 1),
-          
+
           // 日志输出
           Expanded(
             child: ListView.builder(
@@ -268,7 +269,7 @@ class _TestPageState extends State<TestPage> {
                 final isError = log.contains('❌');
                 final isSuccess = log.contains('✓');
                 final isHeader = log.contains('===');
-                
+
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Text(
@@ -283,7 +284,8 @@ class _TestPageState extends State<TestPage> {
                               : isHeader
                                   ? Colors.blue
                                   : Colors.black87,
-                      fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
+                      fontWeight:
+                          isHeader ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                 );
@@ -335,4 +337,3 @@ class _StatusIndicator extends StatelessWidget {
     );
   }
 }
-

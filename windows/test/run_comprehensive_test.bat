@@ -11,7 +11,6 @@ echo - PowerManager
 echo - URLValidator
 echo - StatePersistence
 echo - IframeDetector
-echo - MouseHookManager
 echo - MonitorManager
 echo - SDKBridge
 echo - MemoryProfiler
@@ -52,14 +51,14 @@ cl /EHsc /std:c++17 /utf-8 ^
    "%cd%\..\utils\memory_profiler.cpp" ^
    "%cd%\..\utils\cpu_profiler.cpp" ^
    "%cd%\..\utils\startup_optimizer.cpp" ^
+   "%cd%\..\sdk_loader.cpp" ^
    "%cd%\..\modules\power_manager.cpp" ^
-   "%cd%\..\modules\mouse_hook_manager.cpp" ^
    "%cd%\..\modules\monitor_manager.cpp" ^
    "%cd%\..\modules\iframe_detector.cpp" ^
    "%cd%\..\modules\sdk_bridge.cpp" ^
    /link /out:"comprehensive_test.exe" ^
    "%WEBVIEW2_DIR%\build\native\x64\WebView2LoaderStatic.lib" ^
-   psapi.lib User32.lib Ole32.lib OleAut32.lib Shlwapi.lib
+   psapi.lib User32.lib Ole32.lib OleAut32.lib Shlwapi.lib Shell32.lib
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
@@ -91,4 +90,3 @@ echo ========================================
 echo.
 
 exit /b %TEST_RESULT%
-

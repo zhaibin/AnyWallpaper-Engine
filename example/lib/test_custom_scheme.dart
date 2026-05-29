@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:anywp_engine/anywp_engine.dart';
 
 /// anywp:// 协议测试页面
-/// 
+///
 /// 功能：
 /// 1. 加载测试 HTML 页面
 /// 2. 监听协议请求
@@ -31,14 +31,16 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
       });
 
       // 获取测试 HTML 路径
-      final htmlPath = 'E:\\Projects\\AnyWallpaper\\AnyWP-Test\\examples\\test_custom_scheme.html';
-      
+      final htmlPath =
+          'E:\\Projects\\AnyWallpaper\\AnyWP-Test\\examples\\test_carousel_control.html';
+
       // 初始化引擎
       await AnyWPEngine.initializeWallpaper(url: 'file:///$htmlPath');
-      
+
       setState(() {
         _isInitialized = true;
-        _status = 'Wallpaper engine initialized!\nTest HTML loaded: test_custom_scheme.html';
+        _status =
+            'Wallpaper engine initialized!\nTest HTML loaded: test_carousel_control.html';
       });
 
       // 延迟显示壁纸
@@ -47,8 +49,8 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
 
       debugPrint('[TestCustomScheme] ✓ Wallpaper shown');
       debugPrint('[TestCustomScheme] Test page URL: file:///$htmlPath');
-      debugPrint('[TestCustomScheme] Expected to handle anywp:// protocol requests');
-      
+      debugPrint(
+          '[TestCustomScheme] Expected to handle anywp:// protocol requests');
     } catch (e) {
       setState(() {
         _status = 'Error: $e';
@@ -104,7 +106,7 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
                   color: _isInitialized ? Colors.green : Colors.orange,
                 ),
                 const SizedBox(height: 20),
-                
+
                 // 标题
                 const Text(
                   'Custom Scheme Test',
@@ -115,7 +117,7 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                
+
                 // 状态文本
                 Text(
                   _status,
@@ -127,7 +129,7 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
                   ),
                 ),
                 const SizedBox(height: 30),
-                
+
                 // 功能说明
                 Container(
                   padding: const EdgeInsets.all(20),
@@ -163,7 +165,7 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 // 测试文件信息
                 Container(
                   padding: const EdgeInsets.all(15),
@@ -201,7 +203,7 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                
+
                 // 操作按钮
                 if (_isInitialized) ...[
                   Row(
@@ -263,4 +265,3 @@ class _TestCustomSchemePageState extends State<TestCustomSchemePage> {
     );
   }
 }
-

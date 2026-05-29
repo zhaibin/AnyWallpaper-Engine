@@ -91,6 +91,11 @@ class _MyAppState extends State<MyApp>
     {'name': 'Visibility', 'file': 'test_visibility.html', 'icon': '👁️'},
     {'name': 'API Test', 'file': 'test_api.html', 'icon': '⚙️'},
     {'name': 'Click Test', 'file': 'test_basic_click.html', 'icon': '👆'},
+    {
+      'name': 'Carousel',
+      'file': 'test_carousel_control.html',
+      'icon': '🎠',
+    },
   ];
 
   // 轮播控制状态
@@ -817,7 +822,7 @@ class _MyAppState extends State<MyApp>
       debugPrint('[HTTP] Test URLs:');
       debugPrint(
           '[HTTP]   - $_httpServerBaseUrl/examples/test_carousel_control.html');
-      debugPrint('[HTTP]   - $_httpServerBaseUrl/examples/test_simple.html');
+      debugPrint('[HTTP]   - $_httpServerBaseUrl/examples/test_api.html');
 
       // Update all existing monitor URL controllers with correct server URL
       if (_monitorUrlControllers.isNotEmpty) {

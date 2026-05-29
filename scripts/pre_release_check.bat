@@ -70,7 +70,7 @@ if ERRORLEVEL 1 (
 
 call :PrintCheck "Checking Flutter lints..."
 cd /d "%~dp0..\example"
-flutter analyze >nul 2>&1
+call flutter analyze >nul 2>&1
 if ERRORLEVEL 1 (
     call :AddWarning "Flutter analyze found issues"
     echo   Run 'flutter analyze' for details
@@ -88,7 +88,7 @@ if exist "%~dp0..\windows\packages\Microsoft.Web.WebView2.1.0.2592.51" (
 
 call :PrintCheck "Checking Web SDK build files..."
 if exist "%~dp0..\sdk\dist\anywp_sdk.js" (
-    findstr /C:"SDK v%VERSION%" "%~dp0..\sdk\dist\anywp_sdk.js" >nul
+    findstr /C:"SDK v%SDK_VERSION%" "%~dp0..\sdk\dist\anywp_sdk.js" >nul
     if ERRORLEVEL 1 (
         call :AddWarning "Web SDK needs rebuild (version mismatch in built file)"
         echo   Run: .\scripts\build_sdk.bat
@@ -202,4 +202,3 @@ goto :EOF
 echo   [WARN] %~1
 set /a WARNING_COUNT+=1
 goto :EOF
-

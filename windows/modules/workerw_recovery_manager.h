@@ -30,10 +30,10 @@ class WorkerWRecoveryManager {
    * @brief 恢复策略枚举
    */
   enum class RecoveryStrategy {
-    NONE,              // 无需恢复
-    REPARENT,          // 重新设置父子关系
-    RECREATE_WORKERW,  // 重新创建 WorkerW
-    FULL_REINIT        // 完全重新初始化
+    kNone,              // 无需恢复
+    kReparent,          // 重新设置父子关系
+    kRecreateWorkerW,   // 重新创建 WorkerW
+    kFullReinit         // 完全重新初始化
   };
 
   /**
@@ -153,4 +153,3 @@ class WorkerWRecoveryManager {
 }  // namespace anywp_engine
 
 #endif  // FLUTTER_PLUGIN_WORKERW_RECOVERY_MANAGER_H_
-

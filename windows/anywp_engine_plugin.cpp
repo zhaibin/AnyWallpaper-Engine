@@ -271,10 +271,10 @@ AnyWPEnginePlugin::AnyWPEnginePlugin() {
         " -> " + std::to_string(static_cast<int>(new_state)) + 
         ", reason: " + reason);
       // Update plugin state
-      if (new_state == WallpaperLifecycleManager::WallpaperState::PAUSED) {
+      if (new_state == WallpaperLifecycleManager::WallpaperState::kPaused) {
         power_state_ = PowerState::PAUSED;
         NotifyPowerStateChange(PowerState::PAUSED);
-      } else if (new_state == WallpaperLifecycleManager::WallpaperState::ACTIVE) {
+      } else if (new_state == WallpaperLifecycleManager::WallpaperState::kActive) {
         power_state_ = PowerState::ACTIVE;
         NotifyPowerStateChange(PowerState::ACTIVE);
       }
@@ -4497,4 +4497,3 @@ __declspec(dllexport) void AnyWPEnginePluginRegisterWithRegistrar(
 }
 
 }  // extern "C"
-

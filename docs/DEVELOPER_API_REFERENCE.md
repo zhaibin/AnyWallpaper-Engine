@@ -1204,7 +1204,7 @@ AnyWPEngine.setOnMessageCallback((message) {
 **See Also:**
 - [MESSAGE_PROTOCOL.md](MESSAGE_PROTOCOL.md) - Complete message protocol specification
 - [WEB_DEVELOPER_GUIDE_CN.md](WEB_DEVELOPER_GUIDE_CN.md) - JavaScript SDK API
-- `examples/test_bidirectional.html` - Complete test example
+- `examples/test_api.html` - Complete test example
 
 ---
 
@@ -1229,5 +1229,4 @@ AnyWPEngine.setOnMessageCallback((message) {
 - [API Usage Examples](API_USAGE_EXAMPLES.md)
 - [Web Developer Guide](WEB_DEVELOPER_GUIDE_CN.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
-
 

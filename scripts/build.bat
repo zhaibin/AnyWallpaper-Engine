@@ -31,7 +31,7 @@ if not exist "packages\Microsoft.Web.WebView2.1.0.2592.51" (
 cd /d "%~dp0..\example"
 
 call :PrintStep "Building Debug version..."
-flutter build windows --debug
+call flutter build windows --debug
 
 if errorlevel 1 (
     echo.
@@ -53,4 +53,3 @@ goto :EOF
 echo [Step !STEP!/%TOTAL_STEPS%] %~1
 set /a STEP+=1
 goto :EOF
-

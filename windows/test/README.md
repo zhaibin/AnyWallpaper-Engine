@@ -13,13 +13,12 @@
 #### 1. Comprehensive Test (推荐)
 - **`comprehensive_test.cpp`** (9 KB)
   - Tests all independent modules
-  - **13 test suites**, covering:
+  - **12 test suites**, covering:
     - Logger
     - PowerManager
     - URLValidator
     - StatePersistence
     - IframeDetector
-    - MouseHookManager
     - MonitorManager
     - SDKBridge
     - MemoryProfiler (Phase 3)
@@ -35,17 +34,11 @@
   - Auto-detects VS environment
   - Usage: Run from Developer Command Prompt
 
-#### 2. Full Unit Tests
-- **`unit_tests.cpp`** (40 KB)
-  - Complete test suite with all modules
-  - Includes Phase 2 modules (disabled by default)
-  - **209 test cases** total
-  - Requires Flutter headers for Phase 2 tests
-
-- **`run_tests.bat`** (4 KB)
-  - Original test runner
-  - Compiles standalone modules only
-  - Includes WebViewManager tests
+#### 2. Compatibility Runner
+- **`run_tests.bat`**
+  - Compatibility entry point for older docs/scripts
+  - Delegates to `run_comprehensive_test.bat`
+  - Does not compile the historical `unit_tests.cpp` suite, which is retained as reference material but no longer matches current module APIs
 
 #### 3. WebView Manager Tests
 - **`webview_manager_tests.cpp`** (11 KB)
@@ -67,7 +60,7 @@ cd windows\test
 run_comprehensive_test.bat
 ```
 
-### Run Full Unit Tests
+### Run Compatibility Entry Point
 ```batch
 cd windows\test
 # From Developer Command Prompt:
@@ -79,7 +72,7 @@ run_tests.bat
 ### Latest Run (v2.0)
 ```
 Comprehensive Test:
-  - Total: 13 test suites
+  - Total: 12 test suites / 29 tests
   - Passed: ✅ All tests
   - Time: ~1 second
   - Memory: ~6 MB
@@ -123,7 +116,6 @@ Performance Metrics:
 - URLValidator: 3 tests
 - StatePersistence: 2 tests
 - IframeDetector: 3 tests
-- MouseHookManager: 2 tests
 - MonitorManager: 3 tests
 - SDKBridge: 2 tests
 - DesktopWallpaperHelper: 2 tests
@@ -140,7 +132,7 @@ Performance Metrics:
 ### Integration Tests
 - Phase 2 modules (require Flutter)
 - Full plugin functionality
-- Use `unit_tests.cpp` with Flutter build
+- Use Flutter Windows build and app-level tests
 
 ### Performance Tests
 - Memory profiling
@@ -152,7 +144,7 @@ Performance Metrics:
 
 - Test Framework: See `test_framework.h`
 - Module Tests: See `comprehensive_test.cpp`
-- Full Suite: See `unit_tests.cpp`
+- Compatibility runner: See `run_tests.bat`
 - Build System: See `CMakeLists.txt`
 
 ## 🔍 Troubleshooting
@@ -186,5 +178,4 @@ LNK2019: unresolved external symbol
 **Last Updated**: 2025-11-10  
 **Status**: ✅ All tests passing  
 **Coverage**: 13 test suites, 100% independent modules
-
 

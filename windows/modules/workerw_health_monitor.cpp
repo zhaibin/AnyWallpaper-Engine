@@ -8,7 +8,7 @@ WorkerWHealthMonitor::WorkerWHealthMonitor()
     : workerw_hwnd_(nullptr),
       should_stop_(false),
       is_monitoring_(false),
-      health_status_(HealthStatus::UNKNOWN),
+      health_status_(HealthStatus::kUnknown),
       consecutive_failures_(0),
       check_interval_ms_(3000),
       last_check_time_(std::chrono::steady_clock::now()),
@@ -52,7 +52,7 @@ bool WorkerWHealthMonitor::StartMonitoring(HWND workerw, int check_interval_ms) 
   check_interval_ms_ = (check_interval_ms > 0) ? check_interval_ms : 3000;
   should_stop_.store(false);
   consecutive_failures_.store(0);
-  health_status_.store(HealthStatus::HEALTHY);
+  health_status_.store(HealthStatus::kHealthy);
   
   Logger::Instance().Info("WorkerWHealthMonitor", 
     "Starting WorkerW health monitoring (interval: " + 
@@ -89,7 +89,7 @@ void WorkerWHealthMonitor::StopMonitoring() {
   }
   
   is_monitoring_.store(false);
-  health_status_.store(HealthStatus::UNKNOWN);
+  health_status_.store(HealthStatus::kUnknown);
   
   Logger::Instance().Info("WorkerWHealthMonitor", "Health monitor stopped");
 }
@@ -105,7 +105,7 @@ void WorkerWHealthMonitor::UpdateWorkerW(HWND workerw) {
   
   workerw_hwnd_ = workerw;
   consecutive_failures_.store(0);
-  health_status_.store(HealthStatus::HEALTHY);
+  health_status_.store(HealthStatus::kHealthy);
   
   Logger::Instance().Info("WorkerWHealthMonitor", 
     "WorkerW handle updated, health status reset to HEALTHY");
@@ -187,7 +187,7 @@ void WorkerWHealthMonitor::MonitorThreadProc() {
         // Explorer 重启意味着桌面完全重建，立即触发恢复
         Logger::Instance().Error("WorkerWHealthMonitor", 
           "Triggering recovery due to Explorer restart");
-        health_status_.store(HealthStatus::UNHEALTHY);
+        health_status_.store(HealthStatus::kUnhealthy);
         TriggerRecovery();
         
         // 重置检查计数器
@@ -207,7 +207,7 @@ void WorkerWHealthMonitor::MonitorThreadProc() {
         if (!is_healthy) {
           Logger::Instance().Warning("WorkerWHealthMonitor", 
             "Periodic check failed, triggering recovery");
-          health_status_.store(HealthStatus::UNHEALTHY);
+          health_status_.store(HealthStatus::kUnhealthy);
           TriggerRecovery();
         }
         
@@ -230,16 +230,16 @@ void WorkerWHealthMonitor::MonitorThreadProc() {
           Logger::Instance().Error("WorkerWHealthMonitor", 
             "WorkerW unhealthy, triggering recovery...");
           
-          health_status_.store(HealthStatus::UNHEALTHY);
+          health_status_.store(HealthStatus::kUnhealthy);
           TriggerRecovery();
         }
       } else {
         // 健康检查通过
-        if (health_status_.load() == HealthStatus::UNHEALTHY) {
+        if (health_status_.load() == HealthStatus::kUnhealthy) {
           Logger::Instance().Info("WorkerWHealthMonitor", 
             "WorkerW recovered and healthy again");
         }
-        health_status_.store(HealthStatus::HEALTHY);
+        health_status_.store(HealthStatus::kHealthy);
       }
       
     } catch (const std::exception& e) {
@@ -365,7 +365,7 @@ void WorkerWHealthMonitor::TriggerRecovery() {
   }
   
   last_recovery_time_ = now;
-  health_status_.store(HealthStatus::RECOVERING);
+  health_status_.store(HealthStatus::kRecovering);
   
   // 调用恢复回调
   {
@@ -406,4 +406,3 @@ void WorkerWHealthMonitor::RecordCheckResult(bool is_healthy) {
 }
 
 }  // namespace anywp_engine
-

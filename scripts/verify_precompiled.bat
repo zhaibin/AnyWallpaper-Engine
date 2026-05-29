@@ -6,21 +6,38 @@ REM Verify that all required files exist
 REM ==========================================
 
 if "%1"=="" (
-    echo Usage: verify_precompiled.bat VERSION
-    echo Example: verify_precompiled.bat 2.1.0
+    echo Usage: verify_precompiled.bat ENGINE_VERSION [SDK_VERSION]
+    echo Example: verify_precompiled.bat 2.6.7 2.5.0
     exit /b 1
 )
 
 set VERSION=%1
+set SDK_VERSION=%2
 set PROJECT_ROOT=%~dp0..
 set RELEASE_DIR=%PROJECT_ROOT%\release
 set PRECOMPILED_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_precompiled
 set SOURCE_DIR=%RELEASE_DIR%\anywp_engine_v%VERSION%_source
-set WEB_SDK_DIR=%RELEASE_DIR%\anywp_web_sdk_v%VERSION%
+
+REM Web SDK has an independent version. If it is not provided, read it from package.json.
+if "%SDK_VERSION%"=="" (
+    set PWSH_CMD=pwsh
+    where !PWSH_CMD! >nul 2>nul
+    if ERRORLEVEL 1 set PWSH_CMD=powershell
+    for /f "delims=" %%a in ('!PWSH_CMD! -NoLogo -NoProfile -Command "(Get-Content '%PROJECT_ROOT%\sdk\src\package.json' | ConvertFrom-Json).version"') do set SDK_VERSION=%%a
+)
+
+if "%SDK_VERSION%"=="" (
+    echo ERROR: Unable to determine Web SDK version. Pass it explicitly as the second argument.
+    echo Example: verify_precompiled.bat %VERSION% 2.5.0
+    exit /b 1
+)
+
+set WEB_SDK_DIR=%RELEASE_DIR%\anywp_web_sdk_v%SDK_VERSION%
 
 echo ========================================
 echo  AnyWP Engine - Package Verification
-echo  Version: %VERSION%
+echo  Engine Version: %VERSION%
+echo  Web SDK Version: %SDK_VERSION%
 echo ========================================
 echo.
 
@@ -279,10 +296,10 @@ if not exist "%WEB_SDK_DIR%\examples" (
 
 echo Checking Web SDK ZIP package...
 if not exist "%WEB_SDK_DIR%.zip" (
-    echo   [MISSING] anywp_web_sdk_v%VERSION%.zip
+    echo   [MISSING] anywp_web_sdk_v%SDK_VERSION%.zip
     set /a ERROR_COUNT+=1
 ) else (
-    echo   [OK] anywp_web_sdk_v%VERSION%.zip
+    echo   [OK] anywp_web_sdk_v%SDK_VERSION%.zip
 )
 
 :summary
@@ -304,7 +321,7 @@ if %ERROR_COUNT% EQU 0 (
     echo Ready for GitHub Release:
     echo   - anywp_engine_v%VERSION%_precompiled.zip
     echo   - anywp_engine_v%VERSION%_source.zip
-    echo   - anywp_web_sdk_v%VERSION%.zip
+    echo   - anywp_web_sdk_v%SDK_VERSION%.zip
     exit /b 0
 ) else (
     echo Status: FAILED
@@ -313,4 +330,3 @@ if %ERROR_COUNT% EQU 0 (
     echo Please run release.bat again to rebuild packages.
     exit /b 1
 )
-

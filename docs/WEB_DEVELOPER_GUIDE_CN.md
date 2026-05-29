@@ -1340,10 +1340,10 @@ onUnmounted(() => {
 
 查看 `examples/` 目录下的示例文件：
 
-- `test_simple.html` - 基础 HTML 示例
-- `test_react.html` - React 集成示例
-- `test_vue.html` - Vue 集成示例
 - `test_api.html` - 完整 API 演示
+- `test_visibility.html` - 可见性与省电示例
+- `test_basic_click.html` - 点击处理示例
+- `test_carousel_control.html` - 轮播控制示例
 
 ---
 
@@ -1392,4 +1392,3 @@ onUnmounted(() => {
 **版本**: 4.1.0  
 **更新日期**: 2025-11-05  
 **SDK版本**: AnyWP SDK v4.1.0
-

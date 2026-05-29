@@ -56,13 +56,13 @@ Write-Host ""
 # Analyze CPU
 Write-Host "[2/5] Analyzing CPU data..."
 $cpuData = Import-Csv $cpuLog.FullName -Header "Time","CPU","Threads","Handles" | Select-Object -Skip 1
-$maxCPU = ($cpuData.CPU | Measure-Object -Maximum).Maximum
-$avgCPU = ($cpuData.CPU | Measure-Object -Average).Average
+$maxCpuSeconds = ($cpuData.CPU | Measure-Object -Maximum).Maximum
+$avgCpuSeconds = ($cpuData.CPU | Measure-Object -Average).Average
 $maxThreads = ($cpuData.Threads | Measure-Object -Maximum).Maximum
 
 Write-Host "CPU Analysis:"
-Write-Host "  - Max CPU: $([math]::Round($maxCPU, 2))%"
-Write-Host "  - Avg CPU: $([math]::Round($avgCPU, 2))%"
+Write-Host "  - Max CPU seconds: $([math]::Round($maxCpuSeconds, 2))"
+Write-Host "  - Avg CPU seconds: $([math]::Round($avgCpuSeconds, 2))"
 Write-Host "  - Max Threads: $maxThreads"
 Write-Host ""
 
@@ -72,7 +72,6 @@ $score = 100
 
 if ($maxWS -gt 300) { $score -= 30 } elseif ($maxWS -gt 250) { $score -= 10 }
 if ($growth -gt 10) { $score -= 20 } elseif ($growth -gt 5) { $score -= 10 }
-if ($avgCPU -gt 15) { $score -= 20 } elseif ($avgCPU -gt 10) { $score -= 10 }
 
 Write-Host "Performance Score: $score/100"
 if ($score -ge 90) {
@@ -135,8 +134,8 @@ if ($GenerateHTML) {
     
     <div class="section">
         <h2>CPU Metrics</h2>
-        <div class="metric">Max CPU<br><strong>$([math]::Round($maxCPU, 2))%</strong></div>
-        <div class="metric">Avg CPU<br><strong>$([math]::Round($avgCPU, 2))%</strong></div>
+        <div class="metric">Max CPU Seconds<br><strong>$([math]::Round($maxCpuSeconds, 2))</strong></div>
+        <div class="metric">Avg CPU Seconds<br><strong>$([math]::Round($avgCpuSeconds, 2))</strong></div>
         <div class="metric">Max Threads<br><strong>$maxThreads</strong></div>
     </div>
     
@@ -159,4 +158,3 @@ Write-Host ""
 Write-Host "========================================"
 Write-Host "Analysis Complete!"
 Write-Host "========================================"
-

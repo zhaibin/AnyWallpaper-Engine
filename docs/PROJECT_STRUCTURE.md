@@ -100,9 +100,10 @@ AnyWallpaper Engine/
 │   └── PUSH_TO_GITHUB.bat           # Git 推送辅助
 │
 └── 📂 examples/                     # 测试文件
-    ├── test_simple.html             # 简单测试页面
+    ├── test_visibility.html         # 可见性/省电测试页面
     ├── test_api.html                # API 测试页面
-    └── test_iframe_ads.html         # iframe 测试页面
+    ├── test_basic_click.html        # 点击检测测试页面
+    └── test_carousel_control.html   # 轮播控制测试页面
 ```
 
 ## 📝 核心文件说明
@@ -181,9 +182,10 @@ AnyWallpaper Engine/
 
 | 文件 | 说明 |
 |------|------|
-| `test_simple.html` | 简单测试页面（推荐首次测试）<br>显示渐变背景和时钟 |
+| `test_visibility.html` | 可见性 API 与省电测试页面 |
 | `test_api.html` | API 功能测试页面<br>测试 onClick、openURL 等功能 |
-| `test_iframe_ads.html` | iframe 广告检测测试页面<br>测试跨域 iframe 点击 |
+| `test_basic_click.html` | 点击检测测试页面 |
+| `test_carousel_control.html` | 轮播控制测试页面 |
 
 ## 🔧 构建产物
 
@@ -223,7 +225,7 @@ windows/packages/Microsoft.Web.WebView2.1.0.2592.51/
 .\scripts\test.bat
 
 # 示例 HTML
-examples/test_simple.html
+examples/test_carousel_control.html
 ```
 
 ### 源代码路径

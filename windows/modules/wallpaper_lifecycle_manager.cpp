@@ -20,7 +20,7 @@ WallpaperLifecycleManager::~WallpaperLifecycleManager() {
 
 void WallpaperLifecycleManager::Initialize(MemoryOptimizer* memory_optimizer) {
   memory_optimizer_ = memory_optimizer;
-  current_state_ = WallpaperState::ACTIVE;
+  current_state_ = WallpaperState::kActive;
   is_paused_.store(false);
   
   Logger::Instance().Info("WallpaperLifecycleManager", "Module configured");
@@ -42,7 +42,7 @@ bool WallpaperLifecycleManager::PauseWallpaper(const std::string& reason) {
     pause_count_++;
 
     // 更新状态
-    ChangeState(WallpaperState::PAUSED, reason);
+    ChangeState(WallpaperState::kPaused, reason);
 
     // Execute pause scripts to freeze animations
     // Note: This will freeze the last frame without completely hiding the wallpaper
@@ -100,7 +100,7 @@ bool WallpaperLifecycleManager::ResumeWallpaper(const std::string& reason, bool 
     resume_count_++;
 
     // 更新状态
-    ChangeState(WallpaperState::RESUMING, reason);
+    ChangeState(WallpaperState::kResuming, reason);
 
     // CRITICAL FIX: Verify and restore window if necessary (for long-term lock/sleep)
     bool need_reinitialize = force_reinit;  // Force if requested
@@ -123,7 +123,7 @@ bool WallpaperLifecycleManager::ResumeWallpaper(const std::string& reason, bool 
         // Pass empty URL to use default URL in the callback implementation
         if (config_restore_callback_("", "WallpaperLifecycleManager")) {
           is_paused_.store(false);
-          ChangeState(WallpaperState::ACTIVE, "Configuration restored");
+          ChangeState(WallpaperState::kActive, "Configuration restored");
           return true;  // Restoration successful
         }
         // Restoration failed, continue to error return
@@ -155,7 +155,7 @@ bool WallpaperLifecycleManager::ResumeWallpaper(const std::string& reason, bool 
     ExecuteScriptToAllInstances(resume_script.str());
 
     // 更新状态
-    ChangeState(WallpaperState::ACTIVE, reason);
+    ChangeState(WallpaperState::kActive, reason);
     is_paused_.store(false);
 
     Logger::Instance().Info("WallpaperLifecycleManager", "Wallpaper resumed successfully - animations restarted");
@@ -387,4 +387,3 @@ bool WallpaperLifecycleManager::ValidateSingleInstance(const WallpaperInstance& 
 }
 
 }  // namespace anywp_engine
-

@@ -721,10 +721,10 @@ onUnmounted(() => {
 
 See example files in `examples/` directory:
 
-- `test_simple.html` - Basic HTML example
-- `test_react.html` - React integration example
-- `test_vue.html` - Vue integration example
 - `test_api.html` - Complete API demonstration
+- `test_visibility.html` - Visibility and power-saving example
+- `test_basic_click.html` - Click handling example
+- `test_carousel_control.html` - Carousel control example
 
 ---
 
@@ -767,4 +767,3 @@ Current version only supports click events. More interactions coming in future v
 
 **Version**: 4.0.0  
 **Last Updated**: 2025-11-03
-

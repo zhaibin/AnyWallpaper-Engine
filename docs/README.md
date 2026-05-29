@@ -26,6 +26,8 @@ This directory contains the current documentation for AnyWP Engine. Historical r
 - [MULTIPLATFORM_ARCHITECTURE.md](MULTIPLATFORM_ARCHITECTURE.md) - Cross-platform architecture.
 - [PLATFORM_COMPARISON.md](PLATFORM_COMPARISON.md) - Windows/macOS behavior comparison.
 - [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) - Repository structure.
+- [CODING_STANDARDS.md](CODING_STANDARDS.md) - Project coding standards.
+- [DOCUMENTATION_STANDARDS.md](DOCUMENTATION_STANDARDS.md) - Documentation standards.
 - [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) - Implementation notes.
 - [API_BRIDGE.md](API_BRIDGE.md) - JavaScript bridge details.
 - [MESSAGE_PROTOCOL.md](MESSAGE_PROTOCOL.md) - Flutter/native/Web message protocol.
@@ -43,6 +45,7 @@ This directory contains the current documentation for AnyWP Engine. Historical r
 ## Operations
 
 - [RELEASE_GUIDE.md](RELEASE_GUIDE.md)
+- [RELEASE_STANDARDS.md](RELEASE_STANDARDS.md)
 - [RELEASE_TEMPLATE.md](RELEASE_TEMPLATE.md)
 - [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md)
 - [SCRIPTS_REFERENCE.md](SCRIPTS_REFERENCE.md)

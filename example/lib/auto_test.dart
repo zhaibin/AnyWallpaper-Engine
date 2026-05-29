@@ -8,10 +8,10 @@ import 'package:path/path.dart' as path;
 /// 自动化测试应用 - 依次测试所有功能并收集日志
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await windowManager.ensureInitialized();
   await AnyWPEngine.setApplicationName('AnyWPAutoTest');
-  
+
   runApp(const AutoTestApp());
 }
 
@@ -24,21 +24,6 @@ class AutoTestApp extends StatefulWidget {
 
 class _AutoTestAppState extends State<AutoTestApp> {
   final List<TestCase> _testCases = [
-    TestCase(
-      name: 'test_refactoring.html',
-      description: '🔧 重构测试 - 模块化架构验证',
-      duration: Duration(seconds: 20),
-    ),
-    TestCase(
-      name: 'test_simple.html',
-      description: '🎨 基础壁纸测试 - 紫色渐变 + 时钟',
-      duration: Duration(seconds: 10),
-    ),
-    // TestCase(
-    //   name: 'test_drag_debug.html',
-    //   description: '🔍 拖拽调试 - 详细日志 + 状态持久化',
-    //   duration: Duration(seconds: 15),
-    // ), // ⚠️ 已排除拖拽测试
     TestCase(
       name: 'test_api.html',
       description: '⚙️ 完整 API 测试 - 所有 SDK 功能',
@@ -55,34 +40,24 @@ class _AutoTestAppState extends State<AutoTestApp> {
       duration: Duration(seconds: 10),
     ),
     TestCase(
-      name: 'test_react.html',
-      description: '⚛️ React SPA 测试',
-      duration: Duration(seconds: 10),
-    ),
-    TestCase(
-      name: 'test_vue.html',
-      description: '💚 Vue SPA 测试',
-      duration: Duration(seconds: 10),
-    ),
-    TestCase(
-      name: 'test_iframe_ads.html',
-      description: '📺 iframe 坐标映射测试',
+      name: 'test_carousel_control.html',
+      description: '🎠 轮播控制测试',
       duration: Duration(seconds: 10),
     ),
   ];
-  
+
   int _currentTestIndex = 0;
   final List<String> _testLogs = [];
   bool _isRunning = false;
   String _status = '准备开始测试...';
   MonitorInfo? _monitor;
-  
+
   @override
   void initState() {
     super.initState();
     _initTest();
   }
-  
+
   Future<void> _initTest() async {
     // 获取显示器信息
     final monitors = await AnyWPEngine.getMonitors();
@@ -90,60 +65,61 @@ class _AutoTestAppState extends State<AutoTestApp> {
       _log('错误: 未找到显示器');
       return;
     }
-    
+
     _monitor = monitors.first;
-    _log('找到显示器: ${_monitor!.deviceName} (${_monitor!.width}x${_monitor!.height})');
-    
+    _log(
+        '找到显示器: ${_monitor!.deviceName} (${_monitor!.width}x${_monitor!.height})');
+
     // 延迟 2 秒后自动开始测试
     await Future.delayed(Duration(seconds: 2));
     _startAutoTest();
   }
-  
+
   Future<void> _startAutoTest() async {
     setState(() {
       _isRunning = true;
       _status = '测试进行中...';
     });
-    
+
     for (int i = 0; i < _testCases.length; i++) {
       _currentTestIndex = i;
       final testCase = _testCases[i];
-      
+
       _log('\n========================================');
       _log('测试 ${i + 1}/${_testCases.length}: ${testCase.name}');
       _log('描述: ${testCase.description}');
       _log('========================================');
-      
+
       setState(() {
-        _status = '[${ i + 1}/${_testCases.length}] ${testCase.name}';
+        _status = '[${i + 1}/${_testCases.length}] ${testCase.name}';
       });
-      
+
       await _runTest(testCase);
-      
+
       // 测试之间暂停 2 秒
       if (i < _testCases.length - 1) {
         _log('等待 2 秒后继续下一个测试...\n');
         await Future.delayed(Duration(seconds: 2));
       }
     }
-    
+
     _log('\n========================================');
     _log('所有测试完成！');
     _log('========================================');
-    
+
     setState(() {
       _isRunning = false;
       _status = '测试完成';
     });
-    
+
     // 保存日志到文件
     await _saveLogsToFile();
-    
+
     // 5 秒后自动退出
     await Future.delayed(Duration(seconds: 5));
     exit(0);
   }
-  
+
   Future<void> _runTest(TestCase testCase) async {
     try {
       // 获取测试文件的绝对路径
@@ -157,44 +133,43 @@ class _AutoTestAppState extends State<AutoTestApp> {
         'examples',
         testCase.name,
       );
-      
+
       final htmlFile = File(htmlPath);
       if (!htmlFile.existsSync()) {
         _log('错误: 测试文件不存在: $htmlPath');
         return;
       }
-      
+
       final url = 'file:///${htmlPath.replaceAll('\\', '/')}';
       _log('加载 URL: $url');
-      
+
       // 启动壁纸
       _log('启动壁纸...');
       final success = await AnyWPEngine.initializeWallpaperOnMonitor(
         url: url,
         monitorIndex: _monitor!.index,
       );
-      
+
       if (!success) {
         _log('错误: 壁纸启动失败');
         return;
       }
-      
+
       _log('壁纸启动成功，运行 ${testCase.duration.inSeconds} 秒...');
-      
+
       // 等待测试持续时间
       await Future.delayed(testCase.duration);
-      
+
       // 停止壁纸
       _log('停止壁纸...');
       await AnyWPEngine.stopWallpaperOnMonitor(_monitor!.index);
       _log('壁纸已停止');
-      
     } catch (e, stackTrace) {
       _log('测试异常: $e');
       _log('堆栈: $stackTrace');
     }
   }
-  
+
   void _log(String message) {
     final timestamp = DateTime.now().toString().substring(11, 19);
     final logMessage = '[$timestamp] $message';
@@ -203,7 +178,7 @@ class _AutoTestAppState extends State<AutoTestApp> {
       _testLogs.add(logMessage);
     });
   }
-  
+
   Future<void> _saveLogsToFile() async {
     try {
       final logFile = File('auto_test_results.log');
@@ -213,7 +188,7 @@ class _AutoTestAppState extends State<AutoTestApp> {
       _log('保存日志失败: $e');
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -256,10 +231,12 @@ class _AutoTestAppState extends State<AutoTestApp> {
                     itemCount: _testLogs.length,
                     itemBuilder: (context, index) {
                       return Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         child: Text(
                           _testLogs[index],
-                          style: TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                          style:
+                              TextStyle(fontSize: 12, fontFamily: 'monospace'),
                         ),
                       );
                     },
@@ -272,7 +249,7 @@ class _AutoTestAppState extends State<AutoTestApp> {
       ),
     );
   }
-  
+
   @override
   void dispose() {
     super.dispose();
@@ -283,11 +260,10 @@ class TestCase {
   final String name;
   final String description;
   final Duration duration;
-  
+
   TestCase({
     required this.name,
     required this.description,
     required this.duration,
   });
 }
-

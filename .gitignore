@@ -63,6 +63,7 @@ test_logs/
 
 # Temporary development files
 .claude/
+.codegraph/
 commit_*.bat
 create_commit_msg.bat
 windows/nul
@@ -73,4 +74,3 @@ release/*_precompiled/
 release/*_source/
 release/*_web_sdk/
 release/*.zip
-
